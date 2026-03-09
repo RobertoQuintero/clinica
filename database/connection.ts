@@ -50,6 +50,8 @@ class DB {
         request.input(key, sql.Bit, value);
       } else if (typeof value === 'number') {
         request.input(key, sql.Int, value);
+      } else if (value instanceof Date) {
+        request.input(key, sql.DateTime2, value);
       } else {
         request.input(key, sql.NVarChar(sql.MAX), value ?? null);
       }

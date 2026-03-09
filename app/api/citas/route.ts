@@ -53,15 +53,18 @@ export const POST = async (req: Request) => {
       id_empresa,
     } = body;
 
+    const toDate = (val: Date | string | null | undefined) =>
+      val ? new Date(val) : null;
+
     const commonParams = {
       id_paciente,
       id_podologo,
-      fecha_inicio,
-      fecha_fin,
+      fecha_inicio: toDate(fecha_inicio),
+      fecha_fin:    toDate(fecha_fin),
       estado,
       motivo_cancelacion,
-      created_at,
-      deleted_at,
+      created_at: toDate(created_at),
+      deleted_at: toDate(deleted_at),
       id_sucursal,
       id_empresa,
     };

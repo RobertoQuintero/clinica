@@ -43,8 +43,9 @@ export const GET = async (req: Request) => {
 };
 
 export const POST = async (req: Request) => {
+  const body: IPaciente = await req.json();
+
   try {
-    const body: IPaciente = await req.json();
 
     const {
       id_paciente,
@@ -67,15 +68,18 @@ export const POST = async (req: Request) => {
       id_empresa,
     } = body;
 
+    const toDate = (val: Date | string | null | undefined) =>
+      val ? new Date(val) : null;
+
     const commonParams = {
       nombre,
       telefono,
-      fecha_nacimiento,
+      fecha_nacimiento: toDate(fecha_nacimiento),
       direccion,
       observaciones_generales,
-      created_at,
-      updated_at,
-      deleted_at,
+      created_at:  toDate(created_at),
+      updated_at:  toDate(updated_at),
+      deleted_at:  toDate(deleted_at),
       apellido_paterno,
       apellido_materno,
       sexo,
@@ -86,6 +90,7 @@ export const POST = async (req: Request) => {
       id_sucursal,
       id_empresa,
     };
+    
 
     let result;
 
