@@ -4,21 +4,46 @@ import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
   try {
-    const resp = await db.query(`
-      SELECT [id_consulta]
-            ,[id_paciente]
-            ,[id_podologo]
-            ,[fecha]
-            ,[diagnostico]
-            ,[tratamiento_aplicado]
-            ,[observaciones]
-            ,[created_at]
-            ,[deleted_at]
-            ,[costo_total]
-            ,[id_sucursal]
-            ,[id_empresa]
-        FROM [CentroPodologico].[dbo].[consultas]
-    `);
+    const { searchParams } = new URL(req.url);
+    const id_paciente = searchParams.get("id_paciente");
+
+    let resp;
+    if (id_paciente) {
+      resp = await db.queryParams(`
+        SELECT [id_consulta]
+              ,[id_paciente]
+              ,[id_podologo]
+              ,[fecha]
+              ,[diagnostico]
+              ,[tratamiento_aplicado]
+              ,[observaciones]
+              ,[created_at]
+              ,[deleted_at]
+              ,[costo_total]
+              ,[id_sucursal]
+              ,[id_empresa]
+          FROM [CentroPodologico].[dbo].[consultas]
+         WHERE [id_paciente] = @id_paciente
+           AND [deleted_at] IS NULL
+         ORDER BY [fecha] DESC
+      `, { id_paciente: Number(id_paciente) });
+    } else {
+      resp = await db.query(`
+        SELECT [id_consulta]
+              ,[id_paciente]
+              ,[id_podologo]
+              ,[fecha]
+              ,[diagnostico]
+              ,[tratamiento_aplicado]
+              ,[observaciones]
+              ,[created_at]
+              ,[deleted_at]
+              ,[costo_total]
+              ,[id_sucursal]
+              ,[id_empresa]
+          FROM [CentroPodologico].[dbo].[consultas]
+      `);
+    }
 
     return NextResponse.json({ ok: true, data: resp });
   } catch (error) {
@@ -49,15 +74,18 @@ export const POST = async (req: Request) => {
       id_empresa,
     } = body;
 
+    const toDate = (v: Date | string | null | undefined): Date | null =>
+      v ? new Date(v) : null;
+
     const commonParams = {
       id_paciente,
       id_podologo,
-      fecha,
+      fecha:                toDate(fecha),
       diagnostico,
       tratamiento_aplicado,
       observaciones,
-      created_at,
-      deleted_at,
+      created_at:           toDate(created_at),
+      deleted_at:           toDate(deleted_at),
       costo_total,
       id_sucursal,
       id_empresa,

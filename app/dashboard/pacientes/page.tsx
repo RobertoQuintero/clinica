@@ -34,8 +34,7 @@ export default function PacientesPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]           = useState<IPaciente>(EMPTY);
   const [saving, setSaving]       = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-
+  const [error, setError]         = useState<string | null>(null);  const [search, setSearch]         = useState("");
   const fetchPacientes = async () => {
     if (!user) return;
     setLoading(true);
@@ -89,6 +88,15 @@ export default function PacientesPage() {
     }
   };
 
+  const pacientesFiltrados = pacientes.filter((p) => {
+    const q = search.toLowerCase();
+    return (
+      p.nombre.toLowerCase().includes(q) ||
+      p.apellido_paterno.toLowerCase().includes(q) ||
+      p.apellido_materno.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -99,6 +107,16 @@ export default function PacientesPage() {
         >
           + Nuevo paciente
         </button>
+      </div>
+
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar por nombre o apellidos..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
+        />
       </div>
 
       {loading ? (
@@ -114,11 +132,11 @@ export default function PacientesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
-              {pacientes.length === 0 ? (
+              {pacientesFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
-              ) : pacientes.map((p) => (
+              ) : pacientesFiltrados.map((p) => (
                 <PacienteFila key={p.id_paciente} paciente={p} onEdit={openEdit} />
               ))}
             </tbody>

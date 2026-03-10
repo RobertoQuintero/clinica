@@ -7,6 +7,7 @@ export const GET = async (req: Request) => {
     const { searchParams } = new URL(req.url);
     const id_sucursal = searchParams.get("id_sucursal");
     const id_empresa  = searchParams.get("id_empresa");
+    const id_paciente = searchParams.get("id_paciente");
 
     const resp = await db.queryParams(`
       SELECT [id_paciente]
@@ -30,7 +31,8 @@ export const GET = async (req: Request) => {
         FROM [CentroPodologico].[dbo].[pacientes]
         WHERE (@id_sucursal IS NULL OR [id_sucursal] = @id_sucursal)
           AND (@id_empresa  IS NULL OR [id_empresa]  = @id_empresa)
-    `, { id_sucursal: id_sucursal ? Number(id_sucursal) : null, id_empresa: id_empresa ? Number(id_empresa) : null });
+          AND (@id_paciente IS NULL OR [id_paciente] = @id_paciente)
+    `, { id_sucursal: id_sucursal ? Number(id_sucursal) : null, id_empresa: id_empresa ? Number(id_empresa) : null, id_paciente: id_paciente ? Number(id_paciente) : null });
 
     return NextResponse.json({ ok: true, data: resp });
   } catch (error) {
@@ -43,9 +45,9 @@ export const GET = async (req: Request) => {
 };
 
 export const POST = async (req: Request) => {
-  const body: IPaciente = await req.json();
-
+  
   try {
+    const body: IPaciente = await req.json();
 
     const {
       id_paciente,
