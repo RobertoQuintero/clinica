@@ -93,7 +93,8 @@ export default function PacientesPage() {
     return (
       p.nombre.toLowerCase().includes(q) ||
       p.apellido_paterno.toLowerCase().includes(q) ||
-      p.apellido_materno.toLowerCase().includes(q)
+      p.apellido_materno.toLowerCase().includes(q) ||
+      p.telefono.includes(q)
     );
   });
 
@@ -112,7 +113,7 @@ export default function PacientesPage() {
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Buscar por nombre o apellidos..."
+          placeholder="Buscar por nombre, apellidos o teléfono..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
