@@ -3,12 +3,35 @@ import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import db from "@/database/connection";
 import { IRegisterPayload, IAuthUser } from "@/interfaces/auth";
+import {
+  getClientIP,
+  checkBlocked,
+  recordFailedAttempt,
+  REG_IP_THRESHOLD,
+  REG_IP_BLOCK_MINUTES,
+  REG_IP_WINDOW_MINUTES,
+} from "@/lib/rateLimiter";
 
 const JWT_SECRET     = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 días
 
 export const POST = async (req: Request) => {
   try {
+    const ip = getClientIP(req);
+
+    // --- Protección contra abuso masivo de registro por IP ---
+    const ipCheck = await checkBlocked("REG_IP", ip);
+    if (ipCheck.blocked) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Demasiadas solicitudes de registro. Intente más tarde.",
+          retryAfter: ipCheck.retryAfter,
+        },
+        { status: 429, headers: { "Retry-After": ipCheck.retryAfter! } }
+      );
+    }
+
     const body: IRegisterPayload = await req.json();
     const { nombre, email, password, telefono } = body;
 
@@ -27,6 +50,7 @@ export const POST = async (req: Request) => {
     );
 
     if (existing && existing.length > 0) {
+      await recordFailedAttempt("REG_IP", ip, REG_IP_THRESHOLD, REG_IP_BLOCK_MINUTES, REG_IP_WINDOW_MINUTES);
       return NextResponse.json(
         { ok: false, message: "El correo electrónico ya está registrado" },
         { status: 409 }

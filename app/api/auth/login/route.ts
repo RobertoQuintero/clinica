@@ -3,12 +3,39 @@ import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import db from "@/database/connection";
 import { ILoginPayload, IAuthUser } from "@/interfaces/auth";
+import {
+  getClientIP,
+  checkBlocked,
+  recordFailedAttempt,
+  resetAttempts,
+  IP_THRESHOLD,
+  IP_BLOCK_MINUTES,
+  IP_WINDOW_MINUTES,
+  EMAIL_THRESHOLD,
+  EMAIL_BLOCK_MINUTES,
+  EMAIL_WINDOW_MINUTES,
+} from "@/lib/rateLimiter";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 días
 
 export const POST = async (req: Request) => {
   try {
+    const ip = getClientIP(req);
+
+    // --- Protección contra fuerza bruta: verificar bloqueo por IP ---
+    const ipCheck = await checkBlocked("IP", ip);
+    if (ipCheck.blocked) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Demasiados intentos fallidos. Intente más tarde.",
+          retryAfter: ipCheck.retryAfter,
+        },
+        { status: 429, headers: { "Retry-After": ipCheck.retryAfter! } }
+      );
+    }
+
     const body: ILoginPayload = await req.json();
     const { email, password } = body;
 
@@ -16,6 +43,20 @@ export const POST = async (req: Request) => {
       return NextResponse.json(
         { ok: false, message: "Email y contraseña son requeridos" },
         { status: 400 }
+      );
+    }
+
+    // --- Protección contra fuerza bruta: verificar bloqueo por cuenta ---
+    const emailCheck = await checkBlocked("EMAIL", email);
+    if (emailCheck.blocked) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Cuenta bloqueada temporalmente por múltiples intentos fallidos. Intente más tarde.",
+          retryAfter: emailCheck.retryAfter,
+        },
+        { status: 429, headers: { "Retry-After": emailCheck.retryAfter! } }
       );
     }
 
@@ -29,6 +70,10 @@ export const POST = async (req: Request) => {
     );
 
     if (!rows || rows.length === 0) {
+      await Promise.all([
+        recordFailedAttempt("IP", ip, IP_THRESHOLD, IP_BLOCK_MINUTES, IP_WINDOW_MINUTES),
+        recordFailedAttempt("EMAIL", email, EMAIL_THRESHOLD, EMAIL_BLOCK_MINUTES, EMAIL_WINDOW_MINUTES),
+      ]);
       return NextResponse.json(
         { ok: false, message: "Credenciales inválidas" },
         { status: 401 }
@@ -57,11 +102,21 @@ export const POST = async (req: Request) => {
     // Comparar password con bcryptjs
     const passwordMatch = await bcrypt.compare(password, userRow.password_hash);
     if (!passwordMatch) {
+      await Promise.all([
+        recordFailedAttempt("IP", ip, IP_THRESHOLD, IP_BLOCK_MINUTES, IP_WINDOW_MINUTES),
+        recordFailedAttempt("EMAIL", email, EMAIL_THRESHOLD, EMAIL_BLOCK_MINUTES, EMAIL_WINDOW_MINUTES),
+      ]);
       return NextResponse.json(
         { ok: false, message: "Credenciales inválidas" },
         { status: 401 }
       );
     }
+
+    // Login exitoso: limpiar intentos fallidos
+    await Promise.all([
+      resetAttempts("IP", ip),
+      resetAttempts("EMAIL", email),
+    ]);
 
     // Payload del JWT
     const payload: IAuthUser = {
