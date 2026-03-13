@@ -14,7 +14,7 @@ const EMPTY: ICita = {
   id_podologo:        0,
   fecha_inicio:       "",
   fecha_fin:          "",
-  estado:             "pendiente",
+  estado:             "agendada",
   motivo_cancelacion: "",
   created_at:         "",
   deleted_at:         "",

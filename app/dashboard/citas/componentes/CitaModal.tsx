@@ -4,7 +4,7 @@ import { ICita } from "@/interfaces/cita";
 import { IPaciente } from "@/interfaces/paciente";
 import { IUser } from "@/interfaces/user";
 
-const ESTADOS = ["pendiente", "confirmada", "completada", "cancelada"];
+const ESTADOS = ["agendada", "atendida", "cancelada"];
 
 interface Props {
   form: ICita;
@@ -18,6 +18,16 @@ interface Props {
 }
 
 export default function CitaModal({ form, pacientes, podologos, saving, error, onChange, onSubmit, onClose }: Props) {
+  const handleFechaInicio = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e);
+    if (e.target.value) {
+      const end = new Date(new Date(e.target.value).getTime() + 60 * 60 * 1000);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const fechaFin = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
+      onChange({ target: { name: "fecha_fin", value: fechaFin } } as React.ChangeEvent<HTMLInputElement>);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
@@ -57,7 +67,7 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, o
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Fecha inicio</span>
             <input type="datetime-local" name="fecha_inicio"
               value={form.fecha_inicio ? String(form.fecha_inicio).slice(0, 16) : ""}
-              onChange={onChange} required
+              onChange={handleFechaInicio} required
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400" />
           </label>
           <label className="flex flex-col gap-1">
@@ -76,7 +86,7 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, o
               ))}
             </select>
           </label>
-          {form.estado === "cancelada" && (
+          {(form.estado === "cancelada") && (
             <label className="col-span-1 sm:col-span-2 flex flex-col gap-1">
               <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Motivo de cancelación</span>
               <textarea
