@@ -48,7 +48,7 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, o
             <select name="id_podologo" value={form.id_podologo} onChange={onChange} required
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400">
               <option value={0}>Seleccionar</option>
-              {podologos.map((u) => (
+              {podologos.filter((u) => u.id_role === 2).map((u) => (
                 <option key={u.id_user} value={u.id_user}>{u.nombre}</option>
               ))}
             </select>
