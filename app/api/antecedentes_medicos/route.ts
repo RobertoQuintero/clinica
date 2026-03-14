@@ -5,28 +5,54 @@ import { NextResponse } from "next/server";
 export const GET = async(req:Request) =>{
     
   try {
+    const { searchParams } = new URL(req.url);
+    const id_paciente = searchParams.get("id_paciente");
 
-    const resp=await db.query(`
-        SELECT [id_antecedente_medico]
-      ,[id_paciente]
-      ,[fecha_registro]
-      ,[alergia_anestesia]
-      ,[alergia_antibioticos]
-      ,[alergia_sulfas]
-      ,[alergia_latex]
-      ,[alergia_ninguna]
-      ,[diabetico]
-      ,[hipertenso]
-      ,[hipotiroidismo]
-      ,[cancer]
-      ,[embarazada]
-      ,[lactando]
-      ,[fracturas]
-      ,[antecedentes_dermatologicos]
-      ,[medicamentos_actuales]
-      ,[tipo_sangre]
-      ,[otros]
-      FROM [CentroPodologico].[dbo].[antecedentes_medicos]
+    const resp = id_paciente
+      ? await db.queryParams(`
+          SELECT [id_antecedente_medico]
+        ,[id_paciente]
+        ,[fecha_registro]
+        ,[alergia_anestesia]
+        ,[alergia_antibioticos]
+        ,[alergia_sulfas]
+        ,[alergia_latex]
+        ,[alergia_ninguna]
+        ,[diabetico]
+        ,[hipertenso]
+        ,[hipotiroidismo]
+        ,[cancer]
+        ,[embarazada]
+        ,[lactando]
+        ,[fracturas]
+        ,[antecedentes_dermatologicos]
+        ,[medicamentos_actuales]
+        ,[tipo_sangre]
+        ,[otros]
+        FROM [CentroPodologico].[dbo].[antecedentes_medicos]
+        WHERE [id_paciente] = @id_paciente
+        `, { id_paciente: Number(id_paciente) })
+      : await db.query(`
+          SELECT [id_antecedente_medico]
+        ,[id_paciente]
+        ,[fecha_registro]
+        ,[alergia_anestesia]
+        ,[alergia_antibioticos]
+        ,[alergia_sulfas]
+        ,[alergia_latex]
+        ,[alergia_ninguna]
+        ,[diabetico]
+        ,[hipertenso]
+        ,[hipotiroidismo]
+        ,[cancer]
+        ,[embarazada]
+        ,[lactando]
+        ,[fracturas]
+        ,[antecedentes_dermatologicos]
+        ,[medicamentos_actuales]
+        ,[tipo_sangre]
+        ,[otros]
+        FROM [CentroPodologico].[dbo].[antecedentes_medicos]
         `)
 
 
