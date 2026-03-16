@@ -1,5 +1,6 @@
 import db from "@/database/connection";
 import { IPaciente } from "@/interfaces/paciente";
+import { toDBString } from "@/utils/date_helpper";
 import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
@@ -13,7 +14,7 @@ export const GET = async (req: Request) => {
       SELECT [id_paciente]
             ,[nombre]
             ,[telefono]
-            ,[fecha_nacimiento]
+            ,CONVERT(varchar(10), [fecha_nacimiento], 120) AS fecha_nacimiento
             ,[direccion]
             ,[observaciones_generales]
             ,[created_at]
@@ -76,7 +77,7 @@ export const POST = async (req: Request) => {
     const commonParams = {
       nombre,
       telefono,
-      fecha_nacimiento: toDate(fecha_nacimiento),
+      fecha_nacimiento: toDBString(String(fecha_nacimiento ?? '')),
       direccion,
       observaciones_generales,
       created_at:  toDate(created_at),

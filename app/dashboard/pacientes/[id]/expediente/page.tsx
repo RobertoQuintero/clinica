@@ -7,6 +7,7 @@ import { IPaciente } from "@/interfaces/paciente";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ConsultaModal from "./componentes/ConsultaModal";
+import { buildDate, toDateTimeLocal } from "@/utils/date_helpper";
 
 const buildEmpty = (id_paciente: number, id_podologo: number, id_sucursal: number, id_empresa: number): IConsulta => ({
   id_consulta:          0,
@@ -83,7 +84,7 @@ export default function ExpedientePage() {
   };
 
   const openEdit = (c: IConsulta) => {
-    setForm({ ...c, fecha: c.fecha ? (c.fecha as string).slice(0, 16) : "" });
+    setForm({ ...c, fecha: toDateTimeLocal(String(c.fecha ?? "")) });
     setError(null);
     setShowModal(true);
   };
@@ -101,7 +102,7 @@ export default function ExpedientePage() {
       const res  = await fetch("/api/consultas", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ ...form, created_at: new Date().toISOString() }),
+        body:    JSON.stringify({ ...form, created_at: buildDate(new Date()) }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.data ?? "Error al guardar");
@@ -116,7 +117,9 @@ export default function ExpedientePage() {
 
   const formatDate = (val: Date | string) => {
     if (!val) return "—";
-    return new Date(val).toLocaleDateString("es-MX", {
+    const s = String(val).replace(" ", "T");
+    const normalized = s.includes("T") ? s : s + "T00:00:00";
+    return new Date(normalized).toLocaleDateString("es-MX", {
       year: "numeric", month: "short", day: "2-digit",
     });
   };
@@ -157,9 +160,7 @@ export default function ExpedientePage() {
               Expediente médico — registro más reciente
             </span>
             <span className="text-xs text-zinc-400 dark:text-zinc-500">
-              {new Date(latestAntecedente.fecha_registro).toLocaleDateString("es-MX", {
-                year: "numeric", month: "short", day: "2-digit",
-              })}
+              {formatDate(latestAntecedente.fecha_registro)}
             </span>
           </div>
           <div className="flex flex-wrap gap-2 mb-2">

@@ -88,7 +88,7 @@ export default function CitasPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.data ?? "Error al guardar");
       setShowModal(false);
-      await fetchCitas();
+      fetchCitas(); // fire-and-forget — save already confirmed, don't let refresh errors affect the modal
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {

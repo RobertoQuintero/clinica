@@ -12,7 +12,7 @@ export const GET = async(req:Request) =>{
       ? await db.queryParams(`
           SELECT [id_antecedente_medico]
         ,[id_paciente]
-        ,[fecha_registro]
+        ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
         ,[alergia_anestesia]
         ,[alergia_antibioticos]
         ,[alergia_sulfas]
@@ -35,7 +35,7 @@ export const GET = async(req:Request) =>{
       : await db.query(`
           SELECT [id_antecedente_medico]
         ,[id_paciente]
-        ,[fecha_registro]
+        ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
         ,[alergia_anestesia]
         ,[alergia_antibioticos]
         ,[alergia_sulfas]

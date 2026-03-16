@@ -1,5 +1,6 @@
 import db from "@/database/connection";
 import { IConsulta } from "@/interfaces/consulta";
+import { toDBString } from "@/utils/date_helpper";
 import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
@@ -13,7 +14,7 @@ export const GET = async (req: Request) => {
         SELECT [id_consulta]
               ,[id_paciente]
               ,[id_podologo]
-              ,[fecha]
+              ,CONVERT(varchar(19), [fecha], 120) AS fecha
               ,[diagnostico]
               ,[tratamiento_aplicado]
               ,[observaciones]
@@ -32,7 +33,7 @@ export const GET = async (req: Request) => {
         SELECT [id_consulta]
               ,[id_paciente]
               ,[id_podologo]
-              ,[fecha]
+              ,CONVERT(varchar(19), [fecha], 120) AS fecha
               ,[diagnostico]
               ,[tratamiento_aplicado]
               ,[observaciones]
@@ -80,7 +81,7 @@ export const POST = async (req: Request) => {
     const commonParams = {
       id_paciente,
       id_podologo,
-      fecha:                toDate(fecha),
+      fecha:                toDBString(String(fecha ?? '')),
       diagnostico,
       tratamiento_aplicado,
       observaciones,

@@ -23,7 +23,9 @@ const estadoBadge = (estado: string) => {
 
 const fmtDate = (d: Date | string) => {
   if (!d) return "—";
-  return new Date(d).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+  // Replace space separator with T so the string is parsed as local time (no UTC shift)
+  const normalized = String(d).replace(" ", "T");
+  return new Date(normalized).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 };
 
 export default function CitaFila({ cita: c, pacientes, podologos, onEdit }: Props) {

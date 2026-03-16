@@ -1,5 +1,6 @@
 import db from "@/database/connection";
 import { ICita } from "@/interfaces/cita";
+import { toDBString } from "@/utils/date_helpper";
 import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
@@ -12,8 +13,8 @@ export const GET = async (req: Request) => {
       SELECT [id_cita]
             ,[id_paciente]
             ,[id_podologo]
-            ,[fecha_inicio]
-            ,[fecha_fin]
+            ,CONVERT(varchar(19), [fecha_inicio], 120) AS fecha_inicio
+            ,CONVERT(varchar(19), [fecha_fin],    120) AS fecha_fin
             ,[estado]
             ,[motivo_cancelacion]
             ,[created_at]
@@ -59,8 +60,8 @@ export const POST = async (req: Request) => {
     const commonParams = {
       id_paciente,
       id_podologo,
-      fecha_inicio: toDate(fecha_inicio),
-      fecha_fin:    toDate(fecha_fin),
+      fecha_inicio: toDBString(String(fecha_inicio ?? '')),
+      fecha_fin:    toDBString(String(fecha_fin    ?? '')),
       estado,
       motivo_cancelacion,
       created_at: toDate(created_at),
