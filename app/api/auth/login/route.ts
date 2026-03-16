@@ -91,14 +91,6 @@ export const POST = async (req: Request) => {
       id_empresa: number;
     };
 
-    // Verificar que la cuenta esté activa
-    if (!userRow.status) {
-      return NextResponse.json(
-        { ok: false, message: "Cuenta inactiva" },
-        { status: 403 }
-      );
-    }
-
     // Comparar password con bcryptjs
     const passwordMatch = await bcrypt.compare(password, userRow.password_hash);
     if (!passwordMatch) {

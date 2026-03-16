@@ -108,30 +108,24 @@ export async function recordFailedAttempt(
      USING (SELECT @key_type AS key_type, @key_value AS key_value) AS source
         ON target.[key_type]  = source.[key_type]
        AND target.[key_value] = source.[key_value]
-     -- Bloqueo anterior expiró: reiniciar contador
-     WHEN MATCHED AND (
-       target.[blocked_until] IS NOT NULL
-       AND target.[blocked_until] <= GETUTCDATE()
-     ) THEN
-       UPDATE SET
-         [failed_count]    = 1,
-         [last_attempt_at] = GETUTCDATE(),
-         [blocked_until]   = NULL
-     -- Ventana de tiempo expiró (sin bloqueo activo): reiniciar contador
-     WHEN MATCHED AND (
-       target.[blocked_until] IS NULL
-       AND target.[last_attempt_at] < DATEADD(MINUTE, -@window_minutes, GETUTCDATE())
-     ) THEN
-       UPDATE SET
-         [failed_count]    = 1,
-         [last_attempt_at] = GETUTCDATE(),
-         [blocked_until]   = NULL
-     -- Dentro de la ventana: incrementar y block si se supera el umbral
+     -- Un solo WHEN MATCHED con CASE para evitar el error de SQL Server
      WHEN MATCHED THEN
        UPDATE SET
-         [failed_count]    = target.[failed_count] + 1,
+         [failed_count] = CASE
+           -- Bloqueo expirado o ventana expirada: reiniciar a 1
+           WHEN (target.[blocked_until] IS NOT NULL AND target.[blocked_until] <= GETUTCDATE())
+             OR (target.[blocked_until] IS NULL AND target.[last_attempt_at] < DATEADD(MINUTE, -@window_minutes, GETUTCDATE()))
+           THEN 1
+           -- Dentro de la ventana: incrementar
+           ELSE target.[failed_count] + 1
+         END,
          [last_attempt_at] = GETUTCDATE(),
-         [blocked_until]   = CASE
+         [blocked_until] = CASE
+           -- Bloqueo expirado o ventana expirada: limpiar bloqueo
+           WHEN (target.[blocked_until] IS NOT NULL AND target.[blocked_until] <= GETUTCDATE())
+             OR (target.[blocked_until] IS NULL AND target.[last_attempt_at] < DATEADD(MINUTE, -@window_minutes, GETUTCDATE()))
+           THEN NULL
+           -- Dentro de la ventana: bloquear si se supera el umbral
            WHEN target.[failed_count] + 1 >= @threshold
            THEN DATEADD(MINUTE, @block_minutes, GETUTCDATE())
            ELSE NULL

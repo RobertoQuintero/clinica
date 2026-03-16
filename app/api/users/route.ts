@@ -1,6 +1,7 @@
 import db from "@/database/connection";
 import { IUser } from "@/interfaces/user";
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 
 export const GET = async (req: Request) => {
   try {
@@ -45,7 +46,7 @@ export const POST = async (req: Request) => {
       nombre,
       email,
       telefono,
-      password_hash,
+      password_hash: rawPassword,
       id_role,
       status,
       created_at,
@@ -55,23 +56,18 @@ export const POST = async (req: Request) => {
       id_empresa,
     } = body;
 
-    const commonParams = {
-      nombre,
-      email,
-      telefono,
-      password_hash,
-      id_role,
-      status,
-      created_at,
-      updated_at,
-      deleted_at,
-      id_sucursal,
-      id_empresa,
-    };
-
     let result;
 
     if (id_user === 0) {
+      // Nuevo usuario: password obligatorio, siempre hashear
+      if (!rawPassword) {
+        return NextResponse.json(
+          { ok: false, data: "La contraseña es requerida" },
+          { status: 400 }
+        );
+      }
+      const password_hash = await bcrypt.hash(rawPassword, 10);
+
       result = await db.queryParams(`
         INSERT INTO [CentroPodologico].[dbo].[users]
           ([id_user],[nombre],[email],[telefono],[password_hash],[id_role],
@@ -82,14 +78,27 @@ export const POST = async (req: Request) => {
           @nombre,@email,@telefono,@password_hash,@id_role,
           @status,@created_at,@updated_at,@deleted_at,@id_sucursal,@id_empresa
         )
-      `, commonParams);
+      `, {
+        nombre, email, telefono, password_hash,
+        id_role, status, created_at, updated_at, deleted_at, id_sucursal, id_empresa,
+      });
     } else {
+      // Edición: si viene password lo hasheamos; si no, conservar el hash existente
+      let passwordClause = "";
+      let passwordParam: Record<string, string> = {};
+
+      if (rawPassword) {
+        const password_hash = await bcrypt.hash(rawPassword, 10);
+        passwordClause = "[password_hash] = @password_hash,";
+        passwordParam  = { password_hash };
+      }
+
       result = await db.queryParams(`
         UPDATE [CentroPodologico].[dbo].[users] SET
           [nombre]        = @nombre,
           [email]         = @email,
           [telefono]      = @telefono,
-          [password_hash] = @password_hash,
+          ${passwordClause}
           [id_role]       = @id_role,
           [status]        = @status,
           [created_at]    = @created_at,
@@ -99,7 +108,11 @@ export const POST = async (req: Request) => {
           [id_empresa]    = @id_empresa
         OUTPUT INSERTED.*
         WHERE [id_user] = @id_user
-      `, { id_user, ...commonParams });
+      `, {
+        id_user, nombre, email, telefono,
+        ...passwordParam,
+        id_role, status, created_at, updated_at, deleted_at, id_sucursal, id_empresa,
+      });
     }
 
     return NextResponse.json({ ok: true, data: result?.[0] ?? null });

@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { IRole } from "@/interfaces/roles";
 import { IUser } from "@/interfaces/user";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import UsuarioFila from "./componentes/UsuarioFila";
 import UsuarioModal from "./componentes/UsuarioModal";
 
@@ -24,6 +25,7 @@ const EMPTY: IUser = {
 
 export default function UsuariosPage() {
   const { user }                  = useAuth();
+  const router                    = useRouter();
   const [usuarios, setUsuarios]   = useState<IUser[]>([]);
   const [roles, setRoles]         = useState<IRole[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -31,6 +33,12 @@ export default function UsuariosPage() {
   const [form, setForm]           = useState<IUser>(EMPTY);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user && user.id_role !== 1) {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
 
   const fetchUsuarios = async () => {
     if (!user) return;

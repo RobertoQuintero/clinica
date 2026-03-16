@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import db from "@/database/connection";
 import { IRegisterPayload, IAuthUser } from "@/interfaces/auth";
+import { buildDate } from "@/utils/date_helpper";
 import {
   getClientIP,
   checkBlocked,
@@ -60,7 +61,7 @@ export const POST = async (req: Request) => {
     // Hashear el password
     const password_hash = await bcrypt.hash(password, 10);
 
-    const now = new Date().toISOString();
+    const now = buildDate(new Date());
 
     // Insertar usuario con valores por defecto
     const rows = await db.queryParams(
@@ -78,8 +79,8 @@ export const POST = async (req: Request) => {
         email,
         telefono,
         password_hash,
-        id_role:     1,
-        status:      1,
+        id_role:     3,
+        status:      0,
         created_at:  now,
         updated_at:  now,
         deleted_at:  null,

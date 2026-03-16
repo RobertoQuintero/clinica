@@ -5,16 +5,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useState } from "react";
 
-const NAV_LINKS = [
-  { href: "/dashboard/pacientes", label: "Pacientes" },
-  { href: "/dashboard/usuarios",  label: "Usuarios"  },
-  { href: "/dashboard/citas",     label: "Citas"     },
+const ALL_NAV_LINKS = [
+  { href: "/dashboard/pacientes", label: "Pacientes",  minRole: 0 },
+  { href: "/dashboard/usuarios",  label: "Usuarios",   minRole: 1 },
+  { href: "/dashboard/citas",     label: "Citas",      minRole: 0 },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navLinks = ALL_NAV_LINKS.filter(
+    (l) => l.minRole === 0 || (user?.id_role ?? 0) === l.minRole
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
@@ -27,7 +31,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         {/* Nav links — only on large screens */}
         <div className="hidden lg:flex items-center gap-1">
-          {NAV_LINKS.map(({ href, label }) => (
+          {navLinks.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
@@ -101,7 +105,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV_LINKS.map(({ href, label }) => (
+          {navLinks.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
