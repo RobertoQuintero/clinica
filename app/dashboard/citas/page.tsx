@@ -96,6 +96,25 @@ export default function CitasPage() {
     }
   };
 
+  const handleChangeEstado = async (id_cita: number, estado: string) => {
+    const cita = citas.find((c) => c.id_cita === id_cita);
+    if (!cita) return;
+    // Optimistic update
+    setCitas((prev) => prev.map((c) => c.id_cita === id_cita ? { ...c, estado } : c));
+    try {
+      const res = await fetch("/api/citas", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ ...cita, estado }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.data ?? "Error al actualizar");
+    } catch {
+      // Revert on failure
+      setCitas((prev) => prev.map((c) => c.id_cita === id_cita ? { ...c, estado: cita.estado } : c));
+    }
+  };
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -115,7 +134,7 @@ export default function CitasPage() {
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {["#", "Paciente", "Podólogo", "Inicio", "Fin", "Estado", ""].map((h) => (
+                {[ "Paciente", "Podólogo", "Inicio", "Fin", "Estado", ""].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -125,8 +144,15 @@ export default function CitasPage() {
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
-              ) : citas.map((c) => (
-                <CitaFila key={c.id_cita} cita={c} pacientes={pacientes} podologos={podologos} onEdit={openEdit} />
+              ) : [...citas].sort((a, b) => {
+                  const aCan = a.estado.toLowerCase() === "cancelada" ? 1 : 0;
+                  const bCan = b.estado.toLowerCase() === "cancelada" ? 1 : 0;
+                  if (aCan !== bCan) return aCan - bCan;
+                  const tA = new Date(String(a.fecha_inicio).replace(" ", "T")).getTime();
+                  const tB = new Date(String(b.fecha_inicio).replace(" ", "T")).getTime();
+                  return tB - tA;
+                }).map((c) => (
+                <CitaFila key={c.id_cita} cita={c} pacientes={pacientes} podologos={podologos} onEdit={openEdit} onChangeEstado={handleChangeEstado} />
               ))}
             </tbody>
           </table>

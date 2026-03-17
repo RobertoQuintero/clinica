@@ -127,7 +127,7 @@ export default function PacientesPage() {
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {["#", "Nombre", "Apellido paterno", "Apellido materno", "Teléfono", "Sexo", "Ciudad", ""].map((h) => (
+                {["Nombre", "Apellido paterno", "Apellido materno", "Teléfono", "Sexo", "Ciudad", ""].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
