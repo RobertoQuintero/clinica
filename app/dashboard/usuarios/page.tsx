@@ -34,6 +34,17 @@ export default function UsuariosPage() {
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
+  const [search, setSearch] = useState("");
+
+  type SortKey = "nombre" | "email" | "telefono" | "id_role" | "status";
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortAsc, setSortAsc] = useState(true);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortAsc((prev) => !prev);
+    else { setSortKey(key); setSortAsc(true); }
+  };
+
   useEffect(() => {
     if (user && user.id_role !== 1) {
       router.replace("/dashboard");
@@ -106,16 +117,38 @@ export default function UsuariosPage() {
     }
   };
 
+  const usuariosFiltrados = [...usuarios]
+    .filter((u) =>
+      search.trim() === "" ||
+      u.nombre.toLowerCase().includes(search.trim().toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortKey) return 0;
+      const va = String(a[sortKey] ?? "").toLowerCase();
+      const vb = String(b[sortKey] ?? "").toLowerCase();
+      return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Usuarios</h2>
-        <button
+        {/* <button
           onClick={openNew}
           className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
         >
           + Nuevo usuario
-        </button>
+        </button> */}
+      </div>
+
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Buscar por nombre..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+        />
       </div>
 
       {loading ? (
@@ -125,9 +158,25 @@ export default function UsuariosPage() {
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {["#", "Nombre", "Email", "Teléfono", "Rol", "Activo", ""].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{h}</th>
+                {([
+                  { label: "Nombre",   key: "nombre"   },
+                  { label: "Email",    key: "email"    },
+                  { label: "Teléfono", key: "telefono" },
+                  { label: "Rol",      key: "id_role"  },
+                  { label: "Activo",   key: "status"   },
+                ] as { label: string; key: SortKey }[]).map(({ label, key }) => (
+                  <th
+                    key={key}
+                    onClick={() => toggleSort(key)}
+                    className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
+                  >
+                    {label}
+                    <span className="ml-1 text-xs">
+                      {sortKey === key ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
+                    </span>
+                  </th>
                 ))}
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
@@ -135,7 +184,7 @@ export default function UsuariosPage() {
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
-              ) : usuarios.map((u) => (
+              ) : usuariosFiltrados.map((u) => (
                 <UsuarioFila key={u.id_user} usuario={u} roles={roles} onEdit={openEdit} />
               ))}
             </tbody>

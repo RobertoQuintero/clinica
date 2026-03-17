@@ -14,7 +14,6 @@ export default function UsuarioFila({ usuario: u, roles, onEdit }: Props) {
 
   return (
     <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-      <td className="px-4 py-3 text-zinc-500">{u.id_user}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.nombre}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.email}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.telefono}</td>

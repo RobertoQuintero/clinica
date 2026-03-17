@@ -34,7 +34,17 @@ export default function PacientesPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]           = useState<IPaciente>(EMPTY);
   const [saving, setSaving]       = useState(false);
-  const [error, setError]         = useState<string | null>(null);  const [search, setSearch]         = useState("");
+  const [error, setError]         = useState<string | null>(null);
+  const [search, setSearch]         = useState("");
+
+  type SortKey = "nombre" | "apellido_paterno" | "apellido_materno" | "telefono" | "sexo" | "ciudad_preferida";
+  const [sortKey, setSortKey]   = useState<SortKey | null>(null);
+  const [sortAsc, setSortAsc]   = useState(true);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortAsc((prev) => !prev);
+    else { setSortKey(key); setSortAsc(true); }
+  };
   const fetchPacientes = async () => {
     if (!user) return;
     setLoading(true);
@@ -88,15 +98,22 @@ export default function PacientesPage() {
     }
   };
 
-  const pacientesFiltrados = pacientes.filter((p) => {
-    const q = search.toLowerCase();
-    return (
-      p.nombre.toLowerCase().includes(q) ||
-      p.apellido_paterno.toLowerCase().includes(q) ||
-      p.apellido_materno.toLowerCase().includes(q) ||
-      p.telefono.includes(q)
-    );
-  });
+  const pacientesFiltrados = pacientes
+    .filter((p) => {
+      const q = search.toLowerCase();
+      return (
+        p.nombre.toLowerCase().includes(q) ||
+        p.apellido_paterno.toLowerCase().includes(q) ||
+        p.apellido_materno.toLowerCase().includes(q) ||
+        p.telefono.includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (!sortKey) return 0;
+      const va = String(a[sortKey] ?? "").toLowerCase();
+      const vb = String(b[sortKey] ?? "").toLowerCase();
+      return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
 
   return (
     <div>
@@ -127,9 +144,26 @@ export default function PacientesPage() {
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {["Nombre", "Apellido paterno", "Apellido materno", "Teléfono", "Sexo", "Ciudad", ""].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{h}</th>
+                {([
+                  { label: "Nombre",           key: "nombre"            },
+                  { label: "Apellido paterno",  key: "apellido_paterno"  },
+                  { label: "Apellido materno",  key: "apellido_materno"  },
+                  { label: "Teléfono",          key: "telefono"          },
+                  { label: "Sexo",              key: "sexo"              },
+                  { label: "Ciudad",            key: "ciudad_preferida"  },
+                ] as { label: string; key: SortKey }[]).map(({ label, key }) => (
+                  <th
+                    key={key}
+                    onClick={() => toggleSort(key)}
+                    className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
+                  >
+                    {label}
+                    <span className="ml-1 text-xs">
+                      {sortKey === key ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
+                    </span>
+                  </th>
                 ))}
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
