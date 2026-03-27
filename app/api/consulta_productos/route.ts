@@ -4,16 +4,32 @@ import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
   try {
-    const resp = await db.query(`
-      SELECT [id_consulta_producto]
-            ,[id_consulta]
-            ,[id_producto]
-            ,[precio]
-            ,[cantidad]
-            ,[status]
-            ,[created_at]
-        FROM [CentroPodologico].[dbo].[consulta_productos]
-    `);
+    const { searchParams } = new URL(req.url);
+    const id_consulta = searchParams.get("id_consulta");
+
+    let resp;
+    if (id_consulta) {
+      resp = await db.queryParams(`
+        SELECT cp.[id_consulta_producto],cp.[id_consulta],cp.[id_producto]
+              ,p.[nombre] AS nombre_producto
+              ,cp.[precio],cp.[cantidad],cp.[status]
+              ,CONVERT(varchar(19), cp.[created_at], 120) AS created_at
+          FROM [CentroPodologico].[dbo].[consulta_productos] cp
+          LEFT JOIN [CentroPodologico].[dbo].[productos] p ON p.[id_producto] = cp.[id_producto]
+         WHERE cp.[id_consulta] = @id_consulta
+      `, { id_consulta: Number(id_consulta) });
+    } else {
+      resp = await db.query(`
+        SELECT [id_consulta_producto]
+              ,[id_consulta]
+              ,[id_producto]
+              ,[precio]
+              ,[cantidad]
+              ,[status]
+              ,[created_at]
+          FROM [CentroPodologico].[dbo].[consulta_productos]
+      `);
+    }
 
     return NextResponse.json({ ok: true, data: resp });
   } catch (error) {

@@ -6,10 +6,29 @@ import { NextResponse } from "next/server";
 export const GET = async (req: Request) => {
   try {
     const { searchParams } = new URL(req.url);
-    const id_paciente = searchParams.get("id_paciente");
+    const id_paciente  = searchParams.get("id_paciente");
+    const id_consulta  = searchParams.get("id_consulta");
 
     let resp;
-    if (id_paciente) {
+    if (id_consulta) {
+      resp = await db.queryParams(`
+        SELECT [id_consulta]
+              ,[id_paciente]
+              ,[id_podologo]
+              ,CONVERT(varchar(19), [fecha], 120) AS fecha
+              ,[diagnostico]
+              ,[tratamiento_aplicado]
+              ,[observaciones]
+              ,CONVERT(varchar(19), [created_at], 120) AS created_at
+              ,[deleted_at]
+              ,[costo_total]
+              ,[id_sucursal]
+              ,[id_empresa]
+          FROM [CentroPodologico].[dbo].[consultas]
+         WHERE [id_consulta] = @id_consulta
+           AND [deleted_at] IS NULL
+      `, { id_consulta: Number(id_consulta) });
+    } else if (id_paciente) {
       resp = await db.queryParams(`
         SELECT [id_consulta]
               ,[id_paciente]

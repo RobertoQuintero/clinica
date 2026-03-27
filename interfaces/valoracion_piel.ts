@@ -12,6 +12,6 @@ export interface IValoracionPiel {
     helomas:            boolean;
     verrugas:           boolean;
     observaciones:      string;
-    status:             string;
-    created_at:         Date | string;
+    status:             boolean;
+    created_at:         Date | string; 
 }

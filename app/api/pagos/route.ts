@@ -4,17 +4,34 @@ import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
   try {
-    const resp = await db.query(`
-      SELECT [id_pago]
-            ,[id_consulta]
-            ,[monto]
-            ,[metodo_pago]
-            ,[fecha_pago]
-            ,[referencia]
-            ,[created_at]
-            ,[id_empresa]
-        FROM [CentroPodologico].[dbo].[pagos]
-    `);
+    const { searchParams } = new URL(req.url);
+    const id_consulta = searchParams.get("id_consulta");
+
+    let resp;
+    if (id_consulta) {
+      resp = await db.queryParams(`
+        SELECT [id_pago],[id_consulta],[monto],[metodo_pago]
+              ,CONVERT(varchar(10), [fecha_pago], 120) AS fecha_pago
+              ,[referencia]
+              ,CONVERT(varchar(19), [created_at], 120) AS created_at
+              ,[id_empresa]
+          FROM [CentroPodologico].[dbo].[pagos]
+         WHERE [id_consulta] = @id_consulta
+         ORDER BY [id_pago] DESC
+      `, { id_consulta: Number(id_consulta) });
+    } else {
+      resp = await db.query(`
+        SELECT [id_pago]
+              ,[id_consulta]
+              ,[monto]
+              ,[metodo_pago]
+              ,[fecha_pago]
+              ,[referencia]
+              ,[created_at]
+              ,[id_empresa]
+          FROM [CentroPodologico].[dbo].[pagos]
+      `);
+    }
 
     return NextResponse.json({ ok: true, data: resp });
   } catch (error) {

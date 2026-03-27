@@ -4,24 +4,42 @@ import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
   try {
-    const resp = await db.query(`
-      SELECT [id_valoracion_piel]
-            ,[id_consulta]
-            ,[fecha_valoracion]
-            ,[edema]
-            ,[dermatomicosis]
-            ,[pie_atleta]
-            ,[bromhidrosis]
-            ,[hiperdrosis]
-            ,[anhidrosis]
-            ,[hiperqueratosis]
-            ,[helomas]
-            ,[verrugas]
-            ,[observaciones]
-            ,[status]
-            ,[created_at]
-        FROM [CentroPodologico].[dbo].[valoracion_piel]
-    `);
+    const { searchParams } = new URL(req.url);
+    const id_consulta = searchParams.get("id_consulta");
+
+    let resp;
+    if (id_consulta) {
+      resp = await db.queryParams(`
+        SELECT [id_valoracion_piel]
+              ,[id_consulta]
+              ,CONVERT(varchar(10), [fecha_valoracion], 120) AS fecha_valoracion
+              ,[edema],[dermatomicosis],[pie_atleta],[bromhidrosis]
+              ,[hiperdrosis],[anhidrosis],[hiperqueratosis]
+              ,[helomas],[verrugas],[observaciones],[status]
+              ,CONVERT(varchar(19), [created_at], 120) AS created_at
+          FROM [CentroPodologico].[dbo].[valoracion_piel]
+         WHERE [id_consulta] = @id_consulta
+      `, { id_consulta: Number(id_consulta) });
+    } else {
+      resp = await db.query(`
+        SELECT [id_valoracion_piel]
+              ,[id_consulta]
+              ,[fecha_valoracion]
+              ,[edema]
+              ,[dermatomicosis]
+              ,[pie_atleta]
+              ,[bromhidrosis]
+              ,[hiperdrosis]
+              ,[anhidrosis]
+              ,[hiperqueratosis]
+              ,[helomas]
+              ,[verrugas]
+              ,[observaciones]
+              ,[status]
+              ,[created_at]
+          FROM [CentroPodologico].[dbo].[valoracion_piel]
+      `);
+    }
 
     return NextResponse.json({ ok: true, data: resp });
   } catch (error) {

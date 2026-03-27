@@ -8,5 +8,5 @@ export interface IPatologiaUngueal {
     hematoma_subungueal:   boolean;
     onicofosis:            boolean;
     paquioniquia:          boolean;
-    onicomicosis:          boolean;
+    onicomicosis:          boolean; 
 }

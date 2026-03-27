@@ -4,19 +4,22 @@ import { NextResponse } from "next/server";
 
 export const GET = async (req: Request) => {
   try {
-    const resp = await db.query(`
-      SELECT [id_patologia]
-            ,[id_consulta]
-            ,[anoniquia]
-            ,[microniquia]
-            ,[onicolisis]
-            ,[onicauxis]
-            ,[hematoma_subungueal]
-            ,[onicofosis]
-            ,[paquioniquia]
-            ,[onicomicosis]
-        FROM [CentroPodologico].[dbo].[patologia_ungueal]
-    `);
+    const { searchParams } = new URL(req.url);
+    const id_consulta = searchParams.get("id_consulta");
+
+    const resp = id_consulta
+      ? await db.queryParams(
+          `SELECT [id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
+                  [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis]
+             FROM [CentroPodologico].[dbo].[patologia_ungueal]
+            WHERE [id_consulta] = @id_consulta`,
+          { id_consulta: Number(id_consulta) }
+        )
+      : await db.query(
+          `SELECT [id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
+                  [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis]
+             FROM [CentroPodologico].[dbo].[patologia_ungueal]`
+        );
 
     return NextResponse.json({ ok: true, data: resp });
   } catch (error) {
