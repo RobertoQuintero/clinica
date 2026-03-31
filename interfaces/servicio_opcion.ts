@@ -4,5 +4,5 @@ export interface IServicioOpcion {
     descripcion:        string;
     precio:             number;
     id_sucursal:        number;
-    status:             string;
+    status:             boolean;
 }
