@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import { ReactNode, useState } from "react";
 
 const ALL_NAV_LINKS = [
-  { href: "/dashboard/pacientes", label: "Pacientes",  minRole: 0 },
-  { href: "/dashboard/usuarios",  label: "Usuarios",   minRole: 1 },
-  { href: "/dashboard/citas",     label: "Citas",      minRole: 0 },
-  { href: "/dashboard/servicios", label: "Servicios",  minRole: 0 },
+  { href: "/dashboard/pacientes",  label: "Pacientes",  minRole: 0 },
+  { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 1 },
+  { href: "/dashboard/citas",      label: "Citas",      minRole: 0 },
+  { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0 },
+  { href: "/dashboard/sucursales", label: "Sucursales", minRole: 0 },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
 import { IArchivo } from "@/interfaces/archivos";
 import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
@@ -8,6 +7,7 @@ import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
+import { getConsultaData, savePago, savePatologia, saveValoracion } from "./actions";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import TabFotos from "./componentes/TabFotos";
@@ -27,7 +27,6 @@ type Tab = "general" | "valoracion" | "patologia" | "servicios" | "fotos" | "pro
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function ConsultaPage() {
-  const { user }     = useAuth();
   const router       = useRouter();
   const params       = useParams();
   const id_paciente  = Number(params.id);
@@ -100,31 +99,14 @@ export default function ConsultaPage() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [cRes, vRes, patRes, aRes, pRes, pgRes, pacRes] = await Promise.all([
-        fetch(`/api/consultas?id_consulta=${id_consulta}`),
-        fetch(`/api/valoracion_piel?id_consulta=${id_consulta}`),
-        fetch(`/api/patologia_ungueal?id_consulta=${id_consulta}`),
-        fetch(`/api/archivos?id_consulta=${id_consulta}`),
-        fetch(`/api/consulta_productos?id_consulta=${id_consulta}`),
-        fetch(`/api/pagos?id_consulta=${id_consulta}`),
-        fetch(`/api/pacientes?id_paciente=${id_paciente}`),
-      ]);
-      const [cData, vData, patData, aData, pData, pgData, pacData] = await Promise.all([
-        cRes.json(), vRes.json(), patRes.json(), aRes.json(), pRes.json(), pgRes.json(), pacRes.json(),
-      ]);
-      if (cData.ok   && cData.data?.length)   setConsulta(cData.data[0]);
-      if (pacData.ok && pacData.data?.length) setPaciente(pacData.data[0]);
-      if (vData.ok   && vData.data?.length) {
-        setValoracion(vData.data[0]);
-        setValoracionForm(vData.data[0]);
-      }
-      if (patData.ok && patData.data?.length) {
-        setPatologia(patData.data[0]);
-        setPatologiaForm(patData.data[0]);
-      }
-      if (aData.ok)  setArchivos(aData.data  ?? []);
-      if (pData.ok)  setProductos(pData.data ?? []);
-      if (pgData.ok) setPagos(pgData.data    ?? []);
+      const data = await getConsultaData(id_consulta, id_paciente);
+      if (data.consulta)   setConsulta(data.consulta);
+      if (data.paciente)   setPaciente(data.paciente);
+      if (data.valoracion) { setValoracion(data.valoracion); setValoracionForm(data.valoracion); }
+      if (data.patologia)  { setPatologia(data.patologia);  setPatologiaForm(data.patologia);  }
+      setArchivos(data.archivos);
+      setProductos(data.productos);
+      setPagos(data.pagos);
     } finally {
       setLoading(false);
     }
@@ -139,18 +121,13 @@ export default function ConsultaPage() {
     setSavingValoracion(true);
     setValoracionError(null);
     try {
-      const res  = await fetch("/api/valoracion_piel", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...valoracionForm,
-          created_at: valoracionForm.created_at || buildDate(new Date()),
-        } satisfies IValoracionPiel),
+      const result = await saveValoracion({
+        ...valoracionForm,
+        created_at: valoracionForm.created_at || buildDate(new Date()),
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
-      setValoracion(data.data);
-      setValoracionForm(data.data);
+      if (!result.ok) throw new Error(result.data);
+      setValoracion(result.data);
+      setValoracionForm(result.data);
     } catch (err: unknown) {
       setValoracionError(err instanceof Error ? err.message : "Error al guardar");
     } finally {
@@ -165,15 +142,10 @@ export default function ConsultaPage() {
     setSavingPatologia(true);
     setPatologiaError(null);
     try {
-      const res  = await fetch("/api/patologia_ungueal", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patologiaForm satisfies IPatologiaUngueal),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
-      setPatologia(data.data);
-      setPatologiaForm(data.data);
+      const result = await savePatologia(patologiaForm);
+      if (!result.ok) throw new Error(result.data);
+      setPatologia(result.data);
+      setPatologiaForm(result.data);
     } catch (err: unknown) {
       setPatologiaError(err instanceof Error ? err.message : "Error al guardar");
     } finally {
@@ -192,23 +164,9 @@ export default function ConsultaPage() {
     setSavingPago(true);
     setPagoError(null);
     try {
-      const res  = await fetch("/api/pagos", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_pago:    0,
-          id_consulta,
-          monto:      pagoForm.monto,
-          metodo_pago: pagoForm.metodo_pago,
-          fecha_pago:  pagoForm.fecha_pago,
-          referencia:  pagoForm.referencia,
-          created_at:  buildDate(new Date()),
-          id_empresa:  user?.id_empresa ?? 0,
-        } satisfies IPago),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
-      setPagos((prev) => [data.data, ...prev]);
+      const result = await savePago(pagoForm);
+      if (!result.ok) throw new Error(result.data);
+      setPagos((prev) => [result.data, ...prev]);
       setPagoForm({
         id_consulta,
         monto:       0,

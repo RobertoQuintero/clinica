@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { IRole } from "@/interfaces/roles";
+import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -28,6 +29,7 @@ export default function UsuariosPage() {
   const router                    = useRouter();
   const [usuarios, setUsuarios]   = useState<IUser[]>([]);
   const [roles, setRoles]         = useState<IRole[]>([]);
+  const [sucursales, setSucursales] = useState<ISucursal[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]           = useState<IUser>(EMPTY);
@@ -36,7 +38,7 @@ export default function UsuariosPage() {
 
   const [search, setSearch] = useState("");
 
-  type SortKey = "nombre" | "email" | "telefono" | "id_role" | "status";
+  type SortKey = "nombre" | "email" | "telefono" | "id_role" | "id_sucursal" | "status";
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -71,9 +73,19 @@ export default function UsuariosPage() {
     if (data.ok) setRoles(data.data);
   };
 
+  const fetchSucursales = async () => {
+    if (!user) return;
+    const res = await fetch(
+      `/api/sucursales?id_empresa=${user.id_empresa}&status=1&activo=1`
+    );
+    const data = await res.json();
+    if (data.ok) setSucursales(data.data);
+  };
+
   useEffect(() => {
     fetchUsuarios();
     fetchRoles();
+    fetchSucursales();
   }, [user]);
 
   const openNew = () => {
@@ -159,11 +171,12 @@ export default function UsuariosPage() {
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
                 {([
-                  { label: "Nombre",   key: "nombre"   },
-                  { label: "Email",    key: "email"    },
-                  { label: "Teléfono", key: "telefono" },
-                  { label: "Rol",      key: "id_role"  },
-                  { label: "Activo",   key: "status"   },
+                  { label: "Nombre",    key: "nombre"      },
+                  { label: "Email",     key: "email"       },
+                  { label: "Teléfono",  key: "telefono"    },
+                  { label: "Rol",       key: "id_role"     },
+                  { label: "Sucursal",  key: "id_sucursal" },
+                  { label: "Activo",    key: "status"      },
                 ] as { label: string; key: SortKey }[]).map(({ label, key }) => (
                   <th
                     key={key}
@@ -185,7 +198,7 @@ export default function UsuariosPage() {
                   <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
               ) : usuariosFiltrados.map((u) => (
-                <UsuarioFila key={u.id_user} usuario={u} roles={roles} onEdit={openEdit} />
+                <UsuarioFila key={u.id_user} usuario={u} roles={roles} sucursales={sucursales} onEdit={openEdit} />
               ))}
             </tbody>
           </table>
@@ -196,10 +209,12 @@ export default function UsuariosPage() {
         <UsuarioModal
           form={form}
           roles={roles}
+          sucursales={sucursales}
           saving={saving}
           error={error}
           onChange={handleChange}
           onStatusChange={(checked) => setForm((prev) => ({ ...prev, status: checked }))}
+          onSucursalChange={(id) => setForm((prev) => ({ ...prev, id_sucursal: id }))}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
         />
