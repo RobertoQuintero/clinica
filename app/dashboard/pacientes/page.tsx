@@ -5,6 +5,7 @@ import { IPaciente } from "@/interfaces/paciente";
 import { useEffect, useState } from "react";
 import PacienteFila from "./componentes/PacienteFila";
 import PacienteModal from "./componentes/PacienteModal";
+import { getPacientes, savePaciente } from "./actions";
 
 const EMPTY: IPaciente = {
   id_paciente:                  0,
@@ -46,20 +47,16 @@ export default function PacientesPage() {
     else { setSortKey(key); setSortAsc(true); }
   };
   const fetchPacientes = async () => {
-    if (!user) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/pacientes?id_sucursal=${user.id_sucursal}&id_empresa=${user.id_empresa}`
-      );
-      const data = await res.json();
-      if (data.ok) setPacientes(data.data);
+      const data = await getPacientes();
+      setPacientes(data);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchPacientes(); }, [user]);
+  useEffect(() => { fetchPacientes(); }, []);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });
@@ -82,13 +79,8 @@ export default function PacientesPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/pacientes", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
+      const result = await savePaciente(form);
+      if (!result.ok) throw new Error(result.message ?? "Error al guardar");
       setShowModal(false);
       await fetchPacientes();
     } catch (err: unknown) {

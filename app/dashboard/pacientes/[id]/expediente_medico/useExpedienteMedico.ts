@@ -1,9 +1,9 @@
-import { useAuth } from "@/contexts/AuthContext";
 import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IPaciente } from "@/interfaces/paciente";
 import { addZeroToday } from "@/utils/date_helpper";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { getAntecedentes, getPacienteById, saveAntecedente } from "./actions";
 
 export const BOOL_LABELS: Record<string, string> = {
   alergia_anestesia:           "Alergia anestesia",
@@ -59,7 +59,6 @@ export function activeBools(a: IAntecedenteMedico): string[] {
 }
 
 export function useExpedienteMedico() {
-  const { user }    = useAuth();
   const router      = useRouter();
   const params      = useParams();
   const id_paciente = Number(params.id);
@@ -73,28 +72,24 @@ export function useExpedienteMedico() {
   const [error, setError]               = useState<string | null>(null);
 
   const fetchPaciente = async () => {
-    const res  = await fetch(`/api/pacientes?id_paciente=${id_paciente}`);
-    const data = await res.json();
-    if (data.ok && data.data?.length) setPaciente(data.data[0]);
+    const paciente = await getPacienteById(id_paciente);
+    if (paciente) setPaciente(paciente);
   };
 
   const fetchAntecedentes = async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`/api/antecedentes_medicos?id_paciente=${id_paciente}`);
-      const data = await res.json();
-      if (data.ok) setAntecedentes(data.data);
+      const data = await getAntecedentes(id_paciente);
+      setAntecedentes(data);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      fetchPaciente();
-      fetchAntecedentes();
-    }
-  }, [user, id_paciente]);
+    fetchPaciente();
+    fetchAntecedentes();
+  }, [id_paciente]);
 
   const openNew = () => {
     const latest = antecedentes.length
@@ -143,13 +138,8 @@ export function useExpedienteMedico() {
     setSaving(true);
     setError(null);
     try {
-      const res  = await fetch("/api/antecedentes_medicos", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
+      const result = await saveAntecedente(form);
+      if (!result.ok) throw new Error(result.message ?? "Error al guardar");
       setShowModal(false);
       await fetchAntecedentes();
     } catch (err: unknown) {

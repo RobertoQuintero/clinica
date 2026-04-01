@@ -7,6 +7,7 @@ import { IUser } from "@/interfaces/user";
 import { useEffect, useState } from "react";
 import CitaFila from "./componentes/CitaFila";
 import CitaModal from "./componentes/CitaModal";
+import { getCitas, getPacientes, getPodologos, saveCita } from "./actions";
 
 const EMPTY: ICita = {
   id_cita:            0,
@@ -49,31 +50,21 @@ export default function CitasPage() {
     </span>
   );
 
-  const fetchCitas = async () => {
-    if (!user) return;
+  const refreshCitas = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/citas?id_sucursal=${user.id_sucursal}&id_empresa=${user.id_empresa}`
-      );
-      const data = await res.json();
-      if (data.ok) setCitas(data.data);
+      const data = await getCitas();
+      setCitas(data);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!user) return;
-    fetchCitas();
-    // Fetch pacientes y usuarios (podólogos) del mismo contexto
-    fetch(`/api/pacientes?id_sucursal=${user.id_sucursal}&id_empresa=${user.id_empresa}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setPacientes(d.data); });
-    fetch(`/api/users?id_sucursal=${user.id_sucursal}&id_empresa=${user.id_empresa}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setPodologos(d.data); });
-  }, [user]);
+    refreshCitas();
+    getPacientes().then(setPacientes);
+    getPodologos().then(setPodologos);
+  }, []);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });
@@ -96,15 +87,10 @@ export default function CitasPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/citas", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
+      const result = await saveCita(form);
+      if (!result.ok) throw new Error(result.message ?? "Error al guardar");
       setShowModal(false);
-      fetchCitas(); // fire-and-forget — save already confirmed, don't let refresh errors affect the modal
+      refreshCitas();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -118,13 +104,8 @@ export default function CitasPage() {
     // Optimistic update
     setCitas((prev) => prev.map((c) => c.id_cita === id_cita ? { ...c, estado } : c));
     try {
-      const res = await fetch("/api/citas", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ ...cita, estado }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al actualizar");
+      const result = await saveCita({ ...cita, estado });
+      if (!result.ok) throw new Error(result.message ?? "Error al actualizar");
     } catch {
       // Revert on failure
       setCitas((prev) => prev.map((c) => c.id_cita === id_cita ? { ...c, estado: cita.estado } : c));

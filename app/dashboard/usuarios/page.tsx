@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsuarioFila from "./componentes/UsuarioFila";
 import UsuarioModal from "./componentes/UsuarioModal";
+import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario } from "./actions";
 
 const EMPTY: IUser = {
   id_user:       0,
@@ -57,29 +58,22 @@ export default function UsuariosPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/users?id_sucursal=${user.id_sucursal}&id_empresa=${user.id_empresa}`
-      );
-      const data = await res.json();
-      if (data.ok) setUsuarios(data.data);
+      const data = await getUsuarios();
+      setUsuarios(data);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchRoles = async () => {
-    const res = await fetch("/api/roles");
-    const data = await res.json();
-    if (data.ok) setRoles(data.data);
+    const data = await getRoles();
+    setRoles(data);
   };
 
   const fetchSucursales = async () => {
     if (!user) return;
-    const res = await fetch(
-      `/api/sucursales?id_empresa=${user.id_empresa}&status=1&activo=1`
-    );
-    const data = await res.json();
-    if (data.ok) setSucursales(data.data);
+    const data = await getSucursalesActivas();
+    setSucursales(data);
   };
 
   useEffect(() => {
@@ -113,13 +107,18 @@ export default function UsuariosPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/users", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(form),
+      const res = await saveUsuario({
+        id_user:       form.id_user,
+        nombre:        form.nombre,
+        email:         form.email,
+        telefono:      form.telefono,
+        password_hash: form.password_hash,
+        id_role:       form.id_role,
+        status:        form.status,
+        id_sucursal:   form.id_sucursal,
+        id_empresa:    form.id_empresa,
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
+      if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
       await fetchUsuarios();
     } catch (err: unknown) {
