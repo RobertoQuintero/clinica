@@ -14,7 +14,6 @@ import TabFotos from "./componentes/TabFotos";
 import TabGeneral from "./componentes/TabGeneral";
 import TabPagar from "./componentes/TabPagar";
 import TabPatologia from "./componentes/TabPatologia";
-import { ConsultaProductoExtended } from "./componentes/TabProductos";
 import TabProductos from "./componentes/TabProductos";
 import TabServicios from "./componentes/TabServicios";
 import TabValoracion from "./componentes/TabValoracion";
@@ -39,7 +38,6 @@ export default function ConsultaPage() {
   const [paciente,   setPaciente  ] = useState<IPaciente | null>(null);
   const [valoracion, setValoracion] = useState<IValoracionPiel | null>(null);
   const [archivos,   setArchivos  ] = useState<IArchivo[]>([]);
-  const [productos,  setProductos ] = useState<ConsultaProductoExtended[]>([]);
   const [pagos,      setPagos     ] = useState<IPago[]>([]);
   const [loading,    setLoading   ] = useState(true);
   const [patologia,  setPatologia ] = useState<IPatologiaUngueal | null>(null);
@@ -105,7 +103,6 @@ export default function ConsultaPage() {
       if (data.valoracion) { setValoracion(data.valoracion); setValoracionForm(data.valoracion); }
       if (data.patologia)  { setPatologia(data.patologia);  setPatologiaForm(data.patologia);  }
       setArchivos(data.archivos);
-      setProductos(data.productos);
       setPagos(data.pagos);
     } finally {
       setLoading(false);
@@ -282,7 +279,7 @@ export default function ConsultaPage() {
             />
           )}
           {activeTab === "productos"  && (
-            <TabProductos productos={productos} />
+            <TabProductos id_consulta={id_consulta} />
           )}
           {activeTab === "pagar"      && (
             <TabPagar

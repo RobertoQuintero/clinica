@@ -10,6 +10,7 @@ const ALL_NAV_LINKS = [
   { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 1 },
   { href: "/dashboard/citas",      label: "Citas",      minRole: 0 },
   { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0 },
+  { href: "/dashboard/productos",  label: "Productos",  minRole: 0 },
   { href: "/dashboard/sucursales", label: "Sucursales", minRole: 0 },
 ];
 

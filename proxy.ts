@@ -4,7 +4,7 @@ import { IAuthUser } from "@/interfaces/auth";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
-export const middleware = async (req: NextRequest) => {
+export const proxy = async (req: NextRequest) => {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("auth_token")?.value;
 

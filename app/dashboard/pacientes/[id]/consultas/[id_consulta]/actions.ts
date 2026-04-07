@@ -95,7 +95,8 @@ export async function getConsultaData(
     db.queryParams(
       `SELECT cp.[id_consulta_producto],cp.[id_consulta],cp.[id_producto]
               ,p.[nombre] AS nombre_producto
-              ,cp.[precio],cp.[cantidad],cp.[status]
+              ,cp.[precio],cp.[cantidad]
+              ,CASE WHEN cp.[status] = 1 THEN 'activo' ELSE 'inactivo' END AS status
               ,CONVERT(varchar(19), cp.[created_at], 120) AS created_at
          FROM [CentroPodologico].[dbo].[consulta_productos] cp
          LEFT JOIN [CentroPodologico].[dbo].[productos] p ON p.[id_producto] = cp.[id_producto]
@@ -402,6 +403,118 @@ export async function selectServicioOpcion(
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al guardar la selección de servicio" };
+  }
+}
+
+// ─── consulta productos ───────────────────────────────────────────────────────
+
+export type ProductoCatalogo = { id_producto: number; nombre: string; precio: number };
+
+const CONSULTA_PRODUCTOS_SELECT = `
+  SELECT cp.[id_consulta_producto],cp.[id_consulta],cp.[id_producto]
+        ,p.[nombre] AS nombre_producto
+        ,cp.[precio],cp.[cantidad]
+        ,CASE WHEN cp.[status] = 1 THEN 'activo' ELSE 'inactivo' END AS status
+        ,CONVERT(varchar(19), cp.[created_at], 120) AS created_at
+    FROM [CentroPodologico].[dbo].[consulta_productos] cp
+    LEFT JOIN [CentroPodologico].[dbo].[productos] p ON p.[id_producto] = cp.[id_producto]`;
+
+export async function getConsultaProductos(
+  id_consulta: number,
+): Promise<ConsultaProductoExtended[]> {
+  const rows = await db.queryParams(
+    `${CONSULTA_PRODUCTOS_SELECT}
+    WHERE cp.[id_consulta] = @id_consulta
+    ORDER BY cp.[id_consulta_producto]`,
+    { id_consulta },
+  );
+  return rows as ConsultaProductoExtended[];
+}
+
+export async function getProductosCatalogo(): Promise<ProductoCatalogo[]> {
+  const id_empresa = await getIdEmpresa();
+  const rows = await db.queryParams(
+    `SELECT [id_producto],[nombre],[precio]
+       FROM [CentroPodologico].[dbo].[productos]
+      WHERE [status] = 1 AND [id_empresa] = @id_empresa
+      ORDER BY [nombre]`,
+    { id_empresa },
+  );
+  return rows as ProductoCatalogo[];
+}
+
+export async function addConsultaProducto(
+  id_consulta: number,
+  id_producto:  number,
+  precio:       number,
+  cantidad:     number,
+): Promise<ActionResult<ConsultaProductoExtended>> {
+  try {
+    const created_at = buildDate(new Date());
+
+    const inserted = await db.queryParams(
+      `INSERT INTO [CentroPodologico].[dbo].[consulta_productos]
+         ([id_consulta_producto],[id_consulta],[id_producto],[precio],[cantidad],[status],[created_at])
+       OUTPUT INSERTED.[id_consulta_producto] AS new_id
+       VALUES (
+         (SELECT ISNULL(MAX([id_consulta_producto]),0)+1 FROM [CentroPodologico].[dbo].[consulta_productos]),
+         @id_consulta,@id_producto,@precio,@cantidad,1,@created_at
+       )`,
+      { id_consulta, id_producto, precio, cantidad, created_at },
+    );
+
+    const new_id = (inserted[0] as { new_id: number }).new_id;
+    const rows = await db.queryParams(
+      `${CONSULTA_PRODUCTOS_SELECT} WHERE cp.[id_consulta_producto] = @new_id`,
+      { new_id },
+    );
+    return { ok: true, data: rows[0] as ConsultaProductoExtended };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al agregar el producto" };
+  }
+}
+
+export async function updateConsultaProducto(
+  id_consulta_producto: number,
+  precio:               number,
+  cantidad:             number,
+  status:               string,
+): Promise<ActionResult<ConsultaProductoExtended>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[consulta_productos]
+          SET [precio]   = @precio,
+              [cantidad] = @cantidad,
+              [status]   = CASE WHEN @status = 'activo' THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END
+        WHERE [id_consulta_producto] = @id_consulta_producto`,
+      { id_consulta_producto, precio, cantidad, status },
+    );
+
+    const rows = await db.queryParams(
+      `${CONSULTA_PRODUCTOS_SELECT} WHERE cp.[id_consulta_producto] = @id_consulta_producto`,
+      { id_consulta_producto },
+    );
+    return { ok: true, data: rows[0] as ConsultaProductoExtended };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al actualizar el producto" };
+  }
+}
+
+export async function deleteConsultaProducto(
+  id_consulta_producto: number,
+): Promise<ActionResult<null>> {
+  try {
+    await db.queryParams(
+      `DELETE FROM [CentroPodologico].[dbo].[consulta_productos]
+        WHERE [id_consulta_producto] = @id_consulta_producto`,
+      { id_consulta_producto },
+    );
+    return { ok: true, data: null };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al eliminar el producto" };
   }
 }
 
