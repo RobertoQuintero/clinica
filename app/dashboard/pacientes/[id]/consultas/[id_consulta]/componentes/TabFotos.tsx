@@ -4,7 +4,6 @@ import { IArchivo } from "@/interfaces/archivos";
 import { IPaciente } from "@/interfaces/paciente";
 import { buildDate } from "@/utils/date_helpper";
 import { useRef, useState } from "react";
-import { fmtDatetime } from "./helpers";
 
 interface Props {
   archivos:       IArchivo[];
@@ -12,6 +11,8 @@ interface Props {
   paciente:       IPaciente | null;
   id_paciente:    number;
   id_consulta:    number;
+  /** Fixed category assigned to every upload; only items with this category are shown. */
+  categoria:      string;
 }
 
 const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> =>
@@ -40,11 +41,12 @@ const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> 
     img.src = objectUrl;
   });
 
-export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta }: Props) {
+export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria }: Props) {
   const fileInputRef                       = useRef<HTMLInputElement>(null);
   const [uploadingFile,  setUploadingFile] = useState(false);
   const [uploadError,    setUploadError  ] = useState<string | null>(null);
-  const [categoriaUpload, setCategoriaUpload] = useState("");
+
+  const visibleArchivos = archivos.filter((a) => a.categoria === categoria);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,7 +63,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
       const baseName  = paciente
         ? `${sanitize(paciente.nombre)}_${sanitize(paciente.apellido_paterno)}_consulta${id_consulta}`
         : `paciente${id_paciente}_consulta${id_consulta}`;
-      const seq      = archivos.length + 1;
+      const seq      = visibleArchivos.length + 1;
       const ext      = isImage ? ".jpg" : ".pdf";
       const fileName = `${baseName}_${seq}${ext}`;
 
@@ -83,14 +85,13 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
           ruta:        String(uploadData.data),
           tipo,
           created_at:  buildDate(new Date()),
-          categoria:   categoriaUpload.trim() || tipo,
+          categoria:   categoria,
         } satisfies IArchivo),
       });
       const archivoData = await archivoRes.json();
       if (!archivoData.ok) throw new Error(archivoData.data ?? "Error al registrar el archivo");
 
       onAddArchivo(archivoData.data);
-      setCategoriaUpload("");
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : "Error al subir el archivo");
     } finally {
@@ -103,20 +104,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
     <div className="space-y-4">
 
       {/* upload */}
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-        <div className="flex-1 min-w-40">
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-            Categoría (opcional)
-          </label>
-          <input
-            type="text"
-            value={categoriaUpload}
-            onChange={(e) => setCategoriaUpload(e.target.value)}
-            placeholder="ej. pie derecho"
-            disabled={uploadingFile}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 disabled:opacity-50"
-          />
-        </div>
+      <div className="flex justify-end">
         <input
           ref={fileInputRef}
           type="file"
@@ -147,21 +135,21 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
             </>
           )}
         </button>
-        {uploadError && (
-          <p className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/30 dark:text-red-400">
-            {uploadError}
-          </p>
-        )}
       </div>
+      {uploadError && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/30 dark:text-red-400">
+          {uploadError}
+        </p>
+      )}
 
-      {archivos.length === 0 ? (
+      {visibleArchivos.length === 0 ? (
         <p className="text-zinc-400 text-sm">Sin archivos registrados.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {["#", "Categoría", "Tipo", "Ruta", "Fecha"].map((h) => (
+                {["Categoría", "Tipo", "Ruta"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
                     {h}
                   </th>
@@ -169,9 +157,8 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
-              {archivos.map((a) => (
+              {visibleArchivos.map((a) => (
                 <tr key={a.id_archivo} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3 text-zinc-500">{a.id_archivo}</td>
                   <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{a.categoria || "—"}</td>
                   <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{a.tipo || "—"}</td>
                   <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 max-w-xs truncate">
@@ -179,7 +166,6 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
                       {a.ruta}
                     </a>
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">{fmtDatetime(a.created_at)}</td>
                 </tr>
               ))}
             </tbody>

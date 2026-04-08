@@ -21,7 +21,7 @@ import { fmtDatetime } from "./componentes/helpers";
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-type Tab = "general" | "valoracion" | "patologia" | "servicios" | "fotos" | "productos" | "pagar";
+type Tab = "general" | "valoracion" | "patologia" | "servicios" | "fotos_valoracion" | "productos" | "fotos_pedicure" | "pagar";
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 
@@ -181,13 +181,14 @@ export default function ConsultaPage() {
   // ── ui helpers ─────────────────────────────────────────────────────────────
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: "general",   label: "1. General"              },
-    { key: "valoracion",label: "2. Valoración de piel"   },
-    { key: "patologia", label: "3. Patología ungueal"    },
-    { key: "servicios", label: "4. Servicios"            },
-    { key: "fotos",     label: "5. Fotos"                },
-    { key: "productos", label: "6. Productos"            },
-    { key: "pagar",     label: "7. Pagar"                },
+    { key: "general",         label: "1. General"              },
+    { key: "valoracion",      label: "2. Valoración de piel"   },
+    { key: "patologia",       label: "3. Patología ungueal"    },
+    { key: "servicios",       label: "4. Servicios"            },
+    { key: "fotos_valoracion",label: "5. Fotos Valoración"     },
+    { key: "productos",       label: "6. Productos"            },
+    { key: "fotos_pedicure",  label: "7. Fotos Pedicure"       },
+    { key: "pagar",           label: "8. Pagar"                },
   ];
 
   const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
@@ -223,12 +224,12 @@ export default function ConsultaPage() {
 
       {/* tab nav */}
       <div className="border-b border-zinc-200 dark:border-zinc-700">
-        <nav className="flex flex-wrap gap-1 -mb-px">
+        <nav className="flex gap-0 -mb-px overflow-x-auto">
           {TABS.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`px-2.5 py-1.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === key
                   ? "border-zinc-800 text-zinc-800 dark:border-zinc-200 dark:text-zinc-100"
                   : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300 dark:hover:text-zinc-300"
@@ -269,17 +270,28 @@ export default function ConsultaPage() {
           {activeTab === "servicios"  && (
             <TabServicios id_consulta={id_consulta} />
           )}
-          {activeTab === "fotos"      && (
+          {activeTab === "fotos_valoracion" && (
             <TabFotos
               archivos={archivos}
               onAddArchivo={(a) => setArchivos((prev) => [a, ...prev])}
               paciente={paciente}
               id_paciente={id_paciente}
               id_consulta={id_consulta}
+              categoria="VALORACION"
             />
           )}
           {activeTab === "productos"  && (
             <TabProductos id_consulta={id_consulta} />
+          )}
+          {activeTab === "fotos_pedicure" && (
+            <TabFotos
+              archivos={archivos}
+              onAddArchivo={(a) => setArchivos((prev) => [a, ...prev])}
+              paciente={paciente}
+              id_paciente={id_paciente}
+              id_consulta={id_consulta}
+              categoria="PEDICURE"
+            />
           )}
           {activeTab === "pagar"      && (
             <TabPagar
