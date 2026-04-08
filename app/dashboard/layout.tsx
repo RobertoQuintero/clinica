@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useState } from "react";
+import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordModal";
 
 const ALL_NAV_LINKS = [
   { href: "/dashboard/pacientes",  label: "Pacientes",  minRole: 0 },
@@ -18,6 +19,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [passwordModal, setPasswordModal] = useState(false);
 
   const navLinks = ALL_NAV_LINKS.filter(
     (l) => l.minRole === 0 || (user?.id_role ?? 0) === l.minRole
@@ -51,7 +53,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         {/* User + logout — only on large screens */}
         <div className="hidden lg:flex items-center gap-4">
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{user?.nombre}</span>
+          <button
+            onClick={() => setPasswordModal(true)}
+            className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:underline underline-offset-2 transition-colors"
+          >
+            {user?.nombre}
+          </button>
           <button
             onClick={logout}
             className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
@@ -103,7 +110,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {/* User info */}
         <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-700">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Sesión iniciada como</p>
-          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-100 mt-0.5">{user?.nombre}</p>
+          <button
+            onClick={() => { setSidebarOpen(false); setPasswordModal(true); }}
+            className="text-sm font-medium text-zinc-800 dark:text-zinc-100 mt-0.5 hover:underline underline-offset-2 transition-colors text-left"
+          >
+            {user?.nombre}
+          </button>
         </div>
 
         {/* Nav links */}
@@ -136,6 +148,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="p-6">{children}</main>
+
+      {passwordModal && (
+        <CambiarPasswordModal onClose={() => setPasswordModal(false)} />
+      )}
     </div>
   );
 }
