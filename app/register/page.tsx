@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,7 +54,12 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-md dark:bg-zinc-800">
-        <h1 className="mb-6 text-2xl font-semibold text-zinc-800 dark:text-zinc-50">
+        <div className="mb-6 flex justify-center">
+          <div className="relative overflow-hidden rounded-full" style={{ width: 150, height: 150 }}>
+            <Image src="/piezen.jpg" alt="Logo" fill sizes="150px" loading="eager" style={{ objectFit: "cover" }} />
+          </div>
+        </div>
+        <h1 className="mb-6 text-2xl font-semibold text-zinc-800 dark:text-zinc-50 text-center">
           Crear cuenta
         </h1>
 
