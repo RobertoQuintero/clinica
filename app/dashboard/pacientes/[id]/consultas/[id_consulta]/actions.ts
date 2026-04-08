@@ -2,6 +2,7 @@
 
 import db from "@/database/connection";
 import { IArchivo } from "@/interfaces/archivos";
+import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IConsulta } from "@/interfaces/consulta";
 import { IConsultaProducto } from "@/interfaces/consulta_producto";
 import { IConsultaServicio } from "@/interfaces/consulta_servicio";
@@ -516,6 +517,66 @@ export async function deleteConsultaProducto(
     console.error(err);
     return { ok: false, data: "Error al eliminar el producto" };
   }
+}
+
+// ─── general tab data ────────────────────────────────────────────────────────
+
+export interface ServicioResumen {
+  id_consulta_servicio: number;
+  nombre_servicio:      string;
+  descripcion_opcion:   string;
+  precio_aplicado:      number;
+}
+
+export interface GeneralTabData {
+  antecedentes:    IAntecedenteMedico | null;
+  serviciosUsados: ServicioResumen[];
+  productos:       ConsultaProductoExtended[];
+}
+
+export async function getGeneralTabData(
+  id_consulta: number,
+  id_paciente:  number,
+): Promise<GeneralTabData> {
+  const [antRows, sRows, pRows] = await Promise.all([
+    db.queryParams(
+      `SELECT [id_antecedente_medico],[id_paciente]
+              ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
+              ,[alergia_anestesia],[alergia_antibioticos],[alergia_sulfas],[alergia_latex]
+              ,[alergia_ninguna],[diabetico],[hipertenso],[hipotiroidismo],[cancer]
+              ,[embarazada],[lactando],[fracturas],[antecedentes_dermatologicos]
+              ,[medicamentos_actuales],[tipo_sangre],[otros]
+         FROM [CentroPodologico].[dbo].[antecedentes_medicos]
+        WHERE [id_paciente] = @id_paciente`,
+      { id_paciente },
+    ),
+    db.queryParams(
+      `SELECT cs.[id_consulta_servicio]
+              ,s.[nombre]  AS nombre_servicio
+              ,so.[descripcion] AS descripcion_opcion
+              ,cs.[precio_aplicado]
+         FROM [CentroPodologico].[dbo].[consulta_servicios] cs
+         JOIN [CentroPodologico].[dbo].[servicio_opciones] so
+           ON so.[id_servicio_opcion] = cs.[id_servicio_opcion]
+         JOIN [CentroPodologico].[dbo].[servicios] s
+           ON s.[id_servicio] = so.[id_servicio]
+        WHERE cs.[id_consulta] = @id_consulta
+        ORDER BY s.[id_servicio]`,
+      { id_consulta },
+    ),
+    db.queryParams(
+      `${CONSULTA_PRODUCTOS_SELECT}
+        WHERE cp.[id_consulta] = @id_consulta
+        ORDER BY cp.[id_consulta_producto]`,
+      { id_consulta },
+    ),
+  ]);
+
+  return {
+    antecedentes:    (antRows[0] as IAntecedenteMedico) ?? null,
+    serviciosUsados: sRows as ServicioResumen[],
+    productos:       pRows as ConsultaProductoExtended[],
+  };
 }
 
 // ─── archivos ─────────────────────────────────────────────────────────────────

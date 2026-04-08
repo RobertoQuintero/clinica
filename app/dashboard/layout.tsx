@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm dark:bg-zinc-800">
         {/* Logo */}
         <Link href="/dashboard" className="text-xl font-bold text-zinc-800 dark:text-zinc-50 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
-          Centro podológico
+          Pie Zen
         </Link>
 
         {/* Nav links — only on large screens */}

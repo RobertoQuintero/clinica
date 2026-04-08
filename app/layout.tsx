@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Centro Podológico",
-  description: "Centro Podológico - Gestión de citas y usuarios",
+  title: "Pie Zen",
+  description: "Centro Podológico Pie Zen - Gestión de citas y usuarios",
 };
 
 export default function RootLayout({

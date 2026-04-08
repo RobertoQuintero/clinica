@@ -247,7 +247,12 @@ export default function ConsultaPage() {
       ) : (
         <>
           {activeTab === "general"    && (
-            <TabGeneral consulta={consulta} costoTotal={costoTotal} />
+            <TabGeneral
+              consulta={consulta}
+              paciente={paciente}
+              valoracion={valoracion}
+              patologia={patologia}
+            />
           )}
           {activeTab === "valoracion" && (
             <TabValoracion
