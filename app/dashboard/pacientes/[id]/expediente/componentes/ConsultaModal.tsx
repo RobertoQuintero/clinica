@@ -1,18 +1,61 @@
 "use client";
 
 import { IConsulta } from "@/interfaces/consulta";
+import { ISucursal } from "@/interfaces/sucursal";
+import { IUser } from "@/interfaces/user";
 import { toDateTimeLocal } from "@/utils/date_helpper";
+import { useEffect, useState } from "react";
 
 interface Props {
   form: IConsulta;
   saving: boolean;
   error: string | null;
+  podologos: IUser[];
+  sucursales: ISucursal[];
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onPodologoChange: (id: number) => void;
+  onSucursalChange: (id: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
 
-export default function ConsultaModal({ form, saving, error, onChange, onSubmit, onClose }: Props) {
+export default function ConsultaModal({ form, saving, error, podologos, sucursales, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
+  const [podologoInput, setPodologoInput] = useState("");
+  const [sucursalInput, setSucursalInput] = useState("");
+
+  useEffect(() => {
+    const found = podologos.find((p) => p.id_user === form.id_podologo);
+    setPodologoInput(found?.nombre ?? "");
+  }, [form.id_podologo, podologos]);
+
+  useEffect(() => {
+    const found = sucursales.find((s) => s.id_sucursal === form.id_sucursal);
+    setSucursalInput(found ? (found.ciudad ?? found.nombre) : "");
+  }, [form.id_sucursal, sucursales]);
+
+  const handlePodologoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPodologoInput(val);
+    const found = podologos.find((p) => p.nombre === val);
+    if (found) onPodologoChange(found.id_user);
+  };
+
+  const sucursalLabel = (s: ISucursal) => s.ciudad ?? s.nombre;
+
+  const handleSucursalInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSucursalInput(val);
+    const found = sucursales.find((s) => sucursalLabel(s) === val);
+    if (found) onSucursalChange(found.id_sucursal);
+  };
+
+  const handleSucursalFocus = () => setSucursalInput("");
+
+  const handleSucursalBlur = () => {
+    const found = sucursales.find((s) => s.id_sucursal === form.id_sucursal);
+    setSucursalInput(found ? sucursalLabel(found) : "");
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
@@ -44,6 +87,42 @@ export default function ConsultaModal({ form, saving, error, onChange, onSubmit,
               required
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Podólogo</span>
+            <input
+              type="text"
+              list="podologos-list"
+              value={podologoInput}
+              onChange={handlePodologoInput}
+              placeholder="Buscar podólogo…"
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            />
+            <datalist id="podologos-list">
+              {podologos.map((p) => (
+                <option key={p.id_user} value={p.nombre} />
+              ))}
+            </datalist>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursal</span>
+            <input
+              type="text"
+              list="sucursales-list"
+              value={sucursalInput}
+              onChange={handleSucursalInput}
+              onFocus={handleSucursalFocus}
+              onBlur={handleSucursalBlur}
+              placeholder="Buscar sucursal…"
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            />
+            <datalist id="sucursales-list">
+              {sucursales.map((s) => (
+                <option key={s.id_sucursal} value={s.ciudad!} />
+              ))}
+            </datalist>
           </label>
 
           <label className="flex flex-col gap-1">

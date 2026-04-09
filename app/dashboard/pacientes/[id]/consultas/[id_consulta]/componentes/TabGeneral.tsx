@@ -5,7 +5,7 @@ import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ConsultaProductoExtended,
   GeneralTabData,
@@ -70,18 +70,46 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia }
   const [antecedentes,    setAntecedentes   ] = useState<IAntecedenteMedico | null>(null);
   const [serviciosUsados, setServiciosUsados] = useState<ServicioResumen[]>([]);
   const [productos,       setProductos      ] = useState<ConsultaProductoExtended[]>([]);
+  const [nombrePodologo,  setNombrePodologo ] = useState<string | null>(null);
+  const [sucursalNombre,  setSucursalNombre ] = useState<string | null>(null);
+  const [sucursalCiudad,  setSucursalCiudad ] = useState<string | null>(null);
   const [loading,         setLoading        ] = useState(true);
+  const [exporting,       setExporting      ] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!consulta) return;
     setLoading(true);
-    getGeneralTabData(consulta.id_consulta, consulta.id_paciente).then((d: GeneralTabData) => {
+    getGeneralTabData(
+      consulta.id_consulta,
+      consulta.id_paciente,
+      consulta.id_podologo,
+      consulta.id_sucursal,
+    ).then((d: GeneralTabData) => {
       setAntecedentes(d.antecedentes);
       setServiciosUsados(d.serviciosUsados);
       setProductos(d.productos);
+      setNombrePodologo(d.nombrePodologo);
+      setSucursalNombre(d.sucursalNombre);
+      setSucursalCiudad(d.sucursalCiudad);
       setLoading(false);
     });
   }, [consulta?.id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleExportImage = async () => {
+    if (!contentRef.current) return;
+    setExporting(true);
+    try {
+      const domtoimage = (await import("dom-to-image-more")).default;
+      const canvas = await domtoimage.toCanvas(contentRef.current, { scale: 2 });
+      const link = document.createElement("a");
+      link.download = `consulta-general.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (!paciente || !consulta) {
     return <p className="text-zinc-400 text-sm">No se encontró información.</p>;
@@ -151,6 +179,23 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia }
 
   return (
     <div className="space-y-4">
+
+      {/* export button */}
+      {/* <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleExportImage}
+          disabled={exporting || loading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+          </svg>
+          {exporting ? "Exportando…" : "Exportar imagen"}
+        </button>
+      </div> */}
+
+      <div ref={contentRef} className="space-y-4">
 
       {/* 1. Datos del paciente */}
       <SectionCard title="Datos del paciente">
@@ -341,7 +386,25 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia }
         )}
       </SectionCard>
 
-      {/* 7. Total general */}
+      {/* 7. Podólogo y sucursal */}
+      <SectionCard title="Podólogo y sucursal">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+          <div>
+            <dt className="text-zinc-500 font-medium">Podólogo</dt>
+            <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{nombrePodologo ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-zinc-500 font-medium">Sucursal</dt>
+            <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">
+              {sucursalNombre
+                ? `${sucursalNombre}${sucursalCiudad ? ` — ${sucursalCiudad}` : ""}`
+                : "—"}
+            </dd>
+          </div>
+        </dl>
+      </SectionCard>
+
+      {/* 8. Total general */}
       <div className="flex justify-end">
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-6 py-3 text-sm space-y-1 min-w-48">
           <div className="flex justify-between gap-8 text-zinc-600 dark:text-zinc-400">
@@ -359,6 +422,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia }
         </div>
       </div>
 
+      </div>{/* end contentRef */}
     </div>
   );
 }

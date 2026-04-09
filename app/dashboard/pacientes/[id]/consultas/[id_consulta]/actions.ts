@@ -532,13 +532,18 @@ export interface GeneralTabData {
   antecedentes:    IAntecedenteMedico | null;
   serviciosUsados: ServicioResumen[];
   productos:       ConsultaProductoExtended[];
+  nombrePodologo:  string | null;
+  sucursalNombre:  string | null;
+  sucursalCiudad:  string | null;
 }
 
 export async function getGeneralTabData(
-  id_consulta: number,
+  id_consulta:  number,
   id_paciente:  number,
+  id_podologo:  number,
+  id_sucursal:  number,
 ): Promise<GeneralTabData> {
-  const [antRows, sRows, pRows] = await Promise.all([
+  const [antRows, sRows, pRows, podRows, sucRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_antecedente_medico],[id_paciente]
               ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
@@ -570,12 +575,26 @@ export async function getGeneralTabData(
         ORDER BY cp.[id_consulta_producto]`,
       { id_consulta },
     ),
+    db.queryParams(
+      `SELECT [nombre] FROM [CentroPodologico].[dbo].[users] WHERE [id_user] = @id_podologo`,
+      { id_podologo },
+    ),
+    db.queryParams(
+      `SELECT [nombre],[ciudad] FROM [CentroPodologico].[dbo].[sucursales] WHERE [id_sucursal] = @id_sucursal`,
+      { id_sucursal },
+    ),
   ]);
+
+  const pod = (podRows[0] as { nombre?: string } | undefined);
+  const suc = (sucRows[0] as { nombre?: string; ciudad?: string } | undefined);
 
   return {
     antecedentes:    (antRows[0] as IAntecedenteMedico) ?? null,
     serviciosUsados: sRows as ServicioResumen[],
     productos:       pRows as ConsultaProductoExtended[],
+    nombrePodologo:  pod?.nombre ?? null,
+    sucursalNombre:  suc?.nombre ?? null,
+    sucursalCiudad:  suc?.ciudad ?? null,
   };
 }
 

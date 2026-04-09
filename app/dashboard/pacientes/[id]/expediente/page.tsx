@@ -12,6 +12,8 @@ export default function ExpedientePage() {
     id_paciente,
     consultas,
     latestAntecedente,
+    podologos,
+    sucursales,
     loading,
     showModal,
     form,
@@ -20,6 +22,8 @@ export default function ExpedientePage() {
     openNew,
     openEdit,
     handleChange,
+    handlePodologoChange,
+    handleSucursalChange,
     handleSubmit,
     closeModal,
     goBack,
@@ -52,7 +56,11 @@ export default function ExpedientePage() {
           form={form}
           saving={saving}
           error={error}
+          podologos={podologos}
+          sucursales={sucursales}
           onChange={handleChange}
+          onPodologoChange={handlePodologoChange}
+          onSucursalChange={handleSucursalChange}
           onSubmit={handleSubmit}
           onClose={closeModal}
         />

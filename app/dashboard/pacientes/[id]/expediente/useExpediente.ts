@@ -2,7 +2,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
-import { buildDate, toDateTimeLocal } from "@/utils/date_helpper";
+import { ISucursal } from "@/interfaces/sucursal";
+import { IUser } from "@/interfaces/user";
+import { toDateTimeLocal } from "@/utils/date_helpper";
+import {
+  getAntecedentesByPaciente,
+  getConsultasByPaciente,
+  getPacienteById,
+  getPodologos,
+  getSucursalesActivas,
+  saveConsulta,
+} from "./actions";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -44,6 +54,8 @@ export function useExpediente() {
   const [consultas,          setConsultas         ] = useState<IConsulta[]>([]);
   const [paciente,           setPaciente          ] = useState<IPaciente | null>(null);
   const [latestAntecedente,  setLatestAntecedente ] = useState<IAntecedenteMedico | null>(null);
+  const [podologos,          setPodologos         ] = useState<IUser[]>([]);
+  const [sucursales,         setSucursales        ] = useState<ISucursal[]>([]);
   const [loading,            setLoading           ] = useState(true);
   const [showModal,          setShowModal         ] = useState(false);
   const [form,               setForm              ] = useState<IConsulta | null>(null);
@@ -51,16 +63,24 @@ export function useExpediente() {
   const [error,              setError             ] = useState<string | null>(null);
 
   const fetchPaciente = async () => {
-    const res  = await fetch(`/api/pacientes?id_paciente=${id_paciente}`);
-    const data = await res.json();
-    if (data.ok && data.data?.length) setPaciente(data.data[0]);
+    const data = await getPacienteById(id_paciente);
+    if (data) setPaciente(data);
+  };
+
+  const fetchPodologos = async () => {
+    const data = await getPodologos();
+    setPodologos(data);
+  };
+
+  const fetchSucursales = async () => {
+    const data = await getSucursalesActivas();
+    setSucursales(data);
   };
 
   const fetchLatestAntecedente = async () => {
-    const res  = await fetch(`/api/antecedentes_medicos?id_paciente=${id_paciente}`);
-    const data = await res.json();
-    if (data.ok && data.data?.length) {
-      const sorted = [...data.data].sort(
+    const data = await getAntecedentesByPaciente(id_paciente);
+    if (data.length) {
+      const sorted = [...data].sort(
         (a: IAntecedenteMedico, b: IAntecedenteMedico) =>
           b.id_antecedente_medico - a.id_antecedente_medico
       );
@@ -71,9 +91,8 @@ export function useExpediente() {
   const fetchConsultas = async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`/api/consultas?id_paciente=${id_paciente}`);
-      const data = await res.json();
-      if (data.ok) setConsultas(data.data);
+      const data = await getConsultasByPaciente(id_paciente);
+      setConsultas(data);
     } finally {
       setLoading(false);
     }
@@ -84,6 +103,8 @@ export function useExpediente() {
       fetchPaciente();
       fetchConsultas();
       fetchLatestAntecedente();
+      fetchPodologos();
+      fetchSucursales();
     }
   }, [user, id_paciente]);
 
@@ -104,19 +125,22 @@ export function useExpediente() {
     setForm((prev) => prev ? { ...prev, [e.target.name]: e.target.value } : prev);
   };
 
+  const handlePodologoChange = (id_podologo: number) => {
+    setForm((prev) => prev ? { ...prev, id_podologo } : prev);
+  };
+
+  const handleSucursalChange = (id_sucursal: number) => {
+    setForm((prev) => prev ? { ...prev, id_sucursal } : prev);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
     setSaving(true);
     setError(null);
     try {
-      const res  = await fetch("/api/consultas", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ ...form, created_at: buildDate(new Date()) }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.data ?? "Error al guardar");
+      const result = await saveConsulta(form);
+      if (!result.ok) throw new Error(typeof result.data === "string" ? result.data : "Error al guardar");
       setShowModal(false);
       await fetchConsultas();
     } catch (err: unknown) {
@@ -131,6 +155,8 @@ export function useExpediente() {
     id_paciente,
     consultas,
     latestAntecedente,
+    podologos,
+    sucursales,
     loading,
     showModal,
     form,
@@ -139,6 +165,8 @@ export function useExpediente() {
     openNew,
     openEdit,
     handleChange,
+    handlePodologoChange,
+    handleSucursalChange,
     handleSubmit,
     closeModal:            () => setShowModal(false),
     goBack:                () => router.back(),
