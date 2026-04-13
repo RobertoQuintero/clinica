@@ -23,6 +23,7 @@ export async function getServicios(): Promise<IServicio[]> {
   const data = await db.queryParams(
     `SELECT [id_servicio],
             [nombre],
+            [descripcion],
             [status],
             CONVERT(varchar(19), [cretated_at], 120) AS cretated_at,
             [id_empresa]
@@ -35,28 +36,29 @@ export async function getServicios(): Promise<IServicio[]> {
 }
 
 export async function saveServicio(
-  form: Pick<IServicio, "id_servicio" | "nombre">
+  form: Pick<IServicio, "id_servicio" | "nombre" | "descripcion">
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_servicio, nombre } = form;
+    const { id_servicio, nombre, descripcion } = form;
     const { id_empresa } = await getActiveUser();
 
     if (id_servicio === 0) {
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[servicios]
-           ([id_servicio], [nombre], [status], [cretated_at], [id_empresa])
+           ([id_servicio], [nombre], [descripcion], [status], [cretated_at], [id_empresa])
          VALUES (
            (SELECT ISNULL(MAX([id_servicio]), 0) + 1 FROM [CentroPodologico].[dbo].[servicios]),
-           @nombre, 1, @cretated_at, @id_empresa
+           @nombre, @descripcion, 1, @cretated_at, @id_empresa
          )`,
-        { nombre, cretated_at: buildDate(new Date()), id_empresa }
+        { nombre, descripcion, cretated_at: buildDate(new Date()), id_empresa }
       );
     } else {
       await db.queryParams(
         `UPDATE [CentroPodologico].[dbo].[servicios]
-            SET [nombre] = @nombre
+            SET [nombre] = @nombre,
+                [descripcion] = @descripcion
           WHERE [id_servicio] = @id_servicio`,
-        { id_servicio, nombre }
+        { id_servicio, nombre, descripcion }
       );
     }
 

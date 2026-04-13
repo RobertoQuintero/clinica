@@ -4,4 +4,5 @@ export interface IServicio {
     status:      boolean;
     cretated_at: string;
     id_empresa:  number;
+    descripcion: string;
 }

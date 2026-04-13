@@ -32,6 +32,7 @@ export async function getOpcionesServicio(id_servicio: number): Promise<IServici
   const data = await db.queryParams(
     `SELECT [id_servicio_opcion],
             [id_servicio],
+            [nombre],
             [descripcion],
             [precio],
             [id_sucursal],
@@ -48,26 +49,27 @@ export async function saveOpcionServicio(
   form: Omit<IServicioOpcion, "id_sucursal" | "status">
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_servicio_opcion, id_servicio, descripcion, precio } = form;
+    const { id_servicio_opcion, id_servicio, nombre, descripcion, precio } = form;
     const { id_sucursal } = await getActiveUser();
 
     if (id_servicio_opcion === 0) {
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[servicio_opciones]
-           ([id_servicio_opcion],[id_servicio],[descripcion],[precio],[id_sucursal],[status])
+           ([id_servicio_opcion],[id_servicio],[nombre],[descripcion],[precio],[id_sucursal],[status])
          VALUES (
            (SELECT ISNULL(MAX([id_servicio_opcion]),0)+1 FROM [CentroPodologico].[dbo].[servicio_opciones]),
-           @id_servicio,@descripcion,@precio,@id_sucursal,1
+           @id_servicio,@nombre,@descripcion,@precio,@id_sucursal,1
          )`,
-        { id_servicio, descripcion, precio: Number(precio), id_sucursal }
+        { id_servicio, nombre, descripcion, precio: Number(precio), id_sucursal }
       );
     } else {
       await db.queryParams(
         `UPDATE [CentroPodologico].[dbo].[servicio_opciones] SET
+            [nombre]      = @nombre,
             [descripcion] = @descripcion,
             [precio]      = @precio
           WHERE [id_servicio_opcion] = @id_servicio_opcion`,
-        { id_servicio_opcion, descripcion, precio: Number(precio) }
+        { id_servicio_opcion, nombre, descripcion, precio: Number(precio) }
       );
     }
 

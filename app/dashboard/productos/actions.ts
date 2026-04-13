@@ -24,6 +24,7 @@ export async function getProductos(): Promise<IProducto[]> {
     `SELECT [id_producto],
             [nombre],
             [precio],
+            [descripcion],
             [status],
             CONVERT(varchar(19), [created_at], 120) AS created_at,
             [id_empresa]
@@ -36,29 +37,30 @@ export async function getProductos(): Promise<IProducto[]> {
 }
 
 export async function saveProducto(
-  form: Pick<IProducto, "id_producto" | "nombre" | "precio">
+  form: Pick<IProducto, "id_producto" | "nombre" | "precio" | "descripcion">
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_producto, nombre, precio } = form;
+    const { id_producto, nombre, precio, descripcion } = form;
     const { id_empresa } = await getActiveUser();
 
     if (id_producto === 0) {
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[productos]
-           ([id_producto], [nombre], [precio], [status], [created_at], [id_empresa])
+           ([id_producto], [nombre], [precio], [descripcion], [status], [created_at], [id_empresa])
          VALUES (
            (SELECT ISNULL(MAX([id_producto]), 0) + 1 FROM [CentroPodologico].[dbo].[productos]),
-           @nombre, @precio, 1, @created_at, @id_empresa
+           @nombre, @precio, @descripcion, 1, @created_at, @id_empresa
          )`,
-        { nombre, precio, created_at: buildDate(new Date()), id_empresa }
+        { nombre, precio, descripcion, created_at: buildDate(new Date()), id_empresa }
       );
     } else {
       await db.queryParams(
         `UPDATE [CentroPodologico].[dbo].[productos]
             SET [nombre] = @nombre,
-                [precio] = @precio
+                [precio] = @precio,
+                [descripcion] = @descripcion
           WHERE [id_producto] = @id_producto`,
-        { id_producto, nombre, precio }
+        { id_producto, nombre, precio, descripcion }
       );
     }
 

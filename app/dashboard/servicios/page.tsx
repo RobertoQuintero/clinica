@@ -6,9 +6,9 @@ import { getServicios, saveServicio } from "./actions";
 import ServicioFila from "./componentes/ServicioFila";
 import ServicioModal from "./componentes/ServicioModal";
 
-type FormData = Pick<IServicio, "id_servicio" | "nombre">;
+type FormData = Pick<IServicio, "id_servicio" | "nombre" | "descripcion">;
 
-const EMPTY: FormData = { id_servicio: 0, nombre: "" };
+const EMPTY: FormData = { id_servicio: 0, nombre: "", descripcion: "" };
 
 export default function ServiciosPage() {
   const [servicios, setServicios] = useState<IServicio[]>([]);
@@ -47,12 +47,12 @@ export default function ServiciosPage() {
   };
 
   const openEdit = (s: IServicio) => {
-    setForm({ id_servicio: s.id_servicio, nombre: s.nombre });
+    setForm({ id_servicio: s.id_servicio, nombre: s.nombre, descripcion: s.descripcion ?? "" });
     setError(null);
     setShowModal(true);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -119,6 +119,7 @@ export default function ServiciosPage() {
                     {sortKey === "nombre" ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
                   </span>
                 </th>
+                <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300">Descripción</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>

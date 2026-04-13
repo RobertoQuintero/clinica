@@ -6,9 +6,9 @@ import { getProductos, saveProducto } from "./actions";
 import ProductoFila from "./componentes/ProductoFila";
 import ProductoModal from "./componentes/ProductoModal";
 
-type FormData = Pick<IProducto, "id_producto" | "nombre" | "precio">;
+type FormData = Pick<IProducto, "id_producto" | "nombre" | "precio" | "descripcion">;
 
-const EMPTY: FormData = { id_producto: 0, nombre: "", precio: 0 };
+const EMPTY: FormData = { id_producto: 0, nombre: "", precio: 0, descripcion: "" };
 
 export default function ProductosPage() {
   const [productos, setProductos] = useState<IProducto[]>([]);
@@ -47,12 +47,12 @@ export default function ProductosPage() {
   };
 
   const openEdit = (p: IProducto) => {
-    setForm({ id_producto: p.id_producto, nombre: p.nombre, precio: p.precio });
+    setForm({ id_producto: p.id_producto, nombre: p.nombre, precio: p.precio, descripcion: p.descripcion ?? "" });
     setError(null);
     setShowModal(true);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
@@ -135,13 +135,14 @@ export default function ProductosPage() {
                     {sortKey === "precio" ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
                   </span>
                 </th>
+                <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300">Descripción</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
               {productosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-zinc-400">
+                  <td colSpan={4} className="px-4 py-6 text-center text-zinc-400">
                     Sin registros
                   </td>
                 </tr>

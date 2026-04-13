@@ -5,4 +5,5 @@ export interface IProducto {
     status:      string;
     created_at:  Date | string;
     id_empresa:  number;
+    descripcion: string;
 }

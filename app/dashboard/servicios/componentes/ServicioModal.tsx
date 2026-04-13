@@ -2,13 +2,13 @@
 
 import { IServicio } from "@/interfaces/servicio";
 
-type FormData = Pick<IServicio, "id_servicio" | "nombre">;
+type FormData = Pick<IServicio, "id_servicio" | "nombre" | "descripcion">;
 
 interface Props {
   form: FormData;
   saving: boolean;
   error: string | null;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
@@ -45,6 +45,17 @@ export default function ServicioModal({ form, saving, error, onChange, onSubmit,
               onChange={onChange}
               required
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Descripción</span>
+            <textarea
+              name="descripcion"
+              value={form.descripcion ?? ""}
+              onChange={onChange}
+              rows={3}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
             />
           </label>
 

@@ -15,7 +15,7 @@ import OpcionModal from "./componentes/OpcionModal";
 type FormData = Omit<IServicioOpcion, "id_sucursal" | "status">;
 
 function makeEmpty(id_servicio: number): FormData {
-  return { id_servicio_opcion: 0, id_servicio, descripcion: "", precio: 0 };
+  return { id_servicio_opcion: 0, id_servicio, nombre: "", descripcion: "", precio: 0 };
 }
 
 interface Props {
@@ -37,7 +37,7 @@ export default function OpcionesServicioPage({ params }: Props) {
   const [error, setError]                   = useState<string | null>(null);
   const [search, setSearch]                 = useState("");
 
-  type SortKey = "descripcion" | "precio";
+  type SortKey = "nombre" | "descripcion" | "precio";
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -72,6 +72,7 @@ export default function OpcionesServicioPage({ params }: Props) {
     setForm({
       id_servicio_opcion: o.id_servicio_opcion,
       id_servicio:        o.id_servicio,
+      nombre:             o.nombre,
       descripcion:        o.descripcion,
       precio:             o.precio,
     });
@@ -104,7 +105,10 @@ export default function OpcionesServicioPage({ params }: Props) {
   };
 
   const opcionesFiltradas = opciones
-    .filter((o) => o.descripcion.toLowerCase().includes(search.toLowerCase()))
+    .filter((o) =>
+      (o.nombre ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (o.descripcion ?? "").toLowerCase().includes(search.toLowerCase())
+    )
     .sort((a, b) => {
       if (!sortKey) return 0;
       if (sortKey === "precio") {
@@ -155,6 +159,15 @@ export default function OpcionesServicioPage({ params }: Props) {
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
                 <th
+                  onClick={() => toggleSort("nombre")}
+                  className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
+                >
+                  Nombre
+                  <span className="ml-1 text-xs">
+                    {sortKey === "nombre" ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
+                  </span>
+                </th>
+                <th
                   onClick={() => toggleSort("descripcion")}
                   className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
                 >
@@ -178,7 +191,7 @@ export default function OpcionesServicioPage({ params }: Props) {
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
               {opcionesFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-zinc-400">
+                  <td colSpan={4} className="px-4 py-6 text-center text-zinc-400">
                     Sin registros
                   </td>
                 </tr>
