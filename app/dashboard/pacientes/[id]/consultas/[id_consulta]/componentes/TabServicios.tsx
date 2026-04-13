@@ -155,7 +155,7 @@ export default function TabServicios({ id_consulta }: Props) {
                           className="h-4 w-4 border-zinc-300 text-zinc-800 focus:ring-zinc-500"
                         />
                         <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-300">
-                          {opcion.descripcion}
+                          {opcion.nombre}
                         </span>
                         <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400 tabular-nums">
                           ${Number(opcion.precio).toFixed(2)}

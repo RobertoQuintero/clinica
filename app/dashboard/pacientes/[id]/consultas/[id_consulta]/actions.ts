@@ -313,7 +313,7 @@ export async function getServiciosTabData(id_consulta: number): Promise<{
       `SELECT s.[id_servicio], s.[nombre], s.[status],
               CONVERT(varchar(19), s.[cretated_at], 120) AS cretated_at,
               s.[id_empresa],
-              so.[id_servicio_opcion], so.[descripcion], so.[precio], so.[id_sucursal]
+              so.[id_servicio_opcion], so.[nombre] AS opcion_nombre, so.[descripcion], so.[precio], so.[id_sucursal]
          FROM [CentroPodologico].[dbo].[servicios] s
          LEFT JOIN [CentroPodologico].[dbo].[servicio_opciones] so
                 ON so.[id_servicio] = s.[id_servicio] AND so.[status] = 1
@@ -332,6 +332,7 @@ export async function getServiciosTabData(id_consulta: number): Promise<{
 
   type JoinRow = IServicio & {
     id_servicio_opcion: number | null;
+    opcion_nombre:      string | null;
     descripcion:        string | null;
     precio:             number | null;
     id_sucursal:        number | null;
@@ -353,6 +354,7 @@ export async function getServiciosTabData(id_consulta: number): Promise<{
       servicioMap.get(r.id_servicio)!.opciones.push({
         id_servicio_opcion: r.id_servicio_opcion,
         id_servicio:        r.id_servicio,
+        nombre:             r.opcion_nombre!,
         descripcion:        r.descripcion!,
         precio:             r.precio!,
         id_sucursal:        r.id_sucursal ?? 0,

@@ -191,9 +191,10 @@ export default function ConsultaPage() {
     { key: "pagar",           label: "8. Pagar"                },
   ];
 
-  const totalPagado = pagos.reduce((s, p) => s + Number(p.monto), 0);
-  const costoTotal  = Number(consulta?.costo_total ?? 0);
-  const saldo       = costoTotal - totalPagado;
+  const totalPagado   = pagos.reduce((s, p) => s + Number(p.monto), 0);
+  const costoTotal    = Number(consulta?.costo_total ?? 0);
+  const [totalGeneral, setTotalGeneral] = useState(costoTotal);
+  const saldo         = totalGeneral - totalPagado;
 
   // ── render ─────────────────────────────────────────────────────────────────
 
@@ -220,6 +221,17 @@ export default function ConsultaPage() {
             </span>
           )}
         </h1>
+        <span className="ml-auto text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Total: <span className="font-semibold">${totalGeneral.toFixed(2)}</span>
+          {/* {saldo > 0 && (
+            <span className="ml-2 text-red-500 dark:text-red-400">
+              Saldo: ${saldo.toFixed(2)}
+            </span>
+          )} */}
+          {saldo <= 0 && costoTotal > 0 && (
+            <span className="ml-2 text-green-600 dark:text-green-400">Pagado</span>
+          )}
+        </span>
       </div>
 
       {/* tab nav */}
@@ -252,6 +264,7 @@ export default function ConsultaPage() {
               paciente={paciente}
               valoracion={valoracion}
               patologia={patologia}
+              onTotalChange={setTotalGeneral}
             />
           )}
           {activeTab === "valoracion" && (
