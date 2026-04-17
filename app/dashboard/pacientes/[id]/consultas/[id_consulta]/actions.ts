@@ -344,6 +344,7 @@ export async function getServiciosTabData(id_consulta: number): Promise<{
       servicioMap.set(r.id_servicio, {
         id_servicio: r.id_servicio,
         nombre:      r.nombre,
+        descripcion: (r as IServicio).descripcion ?? "",
         status:      r.status,
         cretated_at: r.cretated_at,
         id_empresa:  r.id_empresa,
