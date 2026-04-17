@@ -10,6 +10,7 @@ import {
   getConsultasByPaciente,
   getPacienteById,
   getPodologos,
+  getPodologosBySucursal,
   getSucursalesActivas,
   saveConsulta,
 } from "./actions";
@@ -129,8 +130,10 @@ export function useExpediente() {
     setForm((prev) => prev ? { ...prev, id_podologo } : prev);
   };
 
-  const handleSucursalChange = (id_sucursal: number) => {
-    setForm((prev) => prev ? { ...prev, id_sucursal } : prev);
+  const handleSucursalChange = async (id_sucursal: number) => {
+    setForm((prev) => prev ? { ...prev, id_sucursal, id_podologo: 0 } : prev);
+    const data = await getPodologosBySucursal(id_sucursal);
+    setPodologos(data);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

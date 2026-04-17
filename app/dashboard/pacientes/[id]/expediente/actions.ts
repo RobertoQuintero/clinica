@@ -144,6 +144,21 @@ export async function getPodologos(): Promise<IUser[]> {
   return data as IUser[];
 }
 
+export async function getPodologosBySucursal(id_sucursal: number): Promise<IUser[]> {
+  const { id_empresa } = await getActiveUser();
+  const data = await db.queryParams(
+    `SELECT [id_user], [nombre], [email], [telefono], [id_role], [status],
+            [id_sucursal], [id_empresa]
+       FROM [CentroPodologico].[dbo].[users]
+      WHERE [id_role]    = 2
+        AND [status]     = 1
+        AND [id_sucursal] = @id_sucursal
+        AND [id_empresa]  = @id_empresa`,
+    { id_sucursal, id_empresa }
+  );
+  return data as IUser[];
+}
+
 export async function getSucursalesActivas(): Promise<ISucursal[]> {
   const { id_empresa } = await getActiveUser();
   const data = await db.queryParams(
