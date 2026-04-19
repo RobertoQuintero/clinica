@@ -2,22 +2,30 @@
 
 import { IPatologiaUrl } from "@/interfaces/patologia_url";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { getEnlaces } from "./actions";
 import EnlaceFila from "./componentes/EnlaceFila";
 
 export default function EnlacesPage() {
-  const [enlaces, setEnlaces]   = useState<IPatologiaUrl[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState("");
+  const { user }              = useAuth();
+  const router                = useRouter();
+  const [enlaces, setEnlaces] = useState<IPatologiaUrl[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState("");
 
   type SortKey = "nombre";
-  const [sortKey, setSortKey]   = useState<SortKey | null>(null);
-  const [sortAsc, setSortAsc]   = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortAsc, setSortAsc] = useState(true);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((prev) => !prev);
     else { setSortKey(key); setSortAsc(true); }
   };
+
+  useEffect(() => {
+    if (user && user.id_role === 3) router.replace("/dashboard");
+  }, [user, router]);
 
   const fetchEnlaces = async () => {
     setLoading(true);

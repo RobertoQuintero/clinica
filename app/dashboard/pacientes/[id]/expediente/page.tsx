@@ -8,6 +8,7 @@ import { useExpediente } from "./useExpediente";
 
 export default function ExpedientePage() {
   const {
+    user,
     paciente,
     id_paciente,
     consultas,
@@ -58,6 +59,7 @@ export default function ExpedientePage() {
           error={error}
           podologos={podologos}
           sucursales={sucursales}
+          currentUser={user ?? undefined}
           onChange={handleChange}
           onPodologoChange={handlePodologoChange}
           onSucursalChange={handleSucursalChange}

@@ -16,6 +16,7 @@ export interface IAuthUser {
   nombre:      string;
   email:       string;
   id_role:     number;
+  role_nombre: string;
   status:      boolean;
   id_sucursal: number;
   id_empresa:  number;

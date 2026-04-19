@@ -3,6 +3,7 @@
 import { IConsulta } from "@/interfaces/consulta";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
+import { IAuthUser } from "@/interfaces/auth";
 import { toDateTimeLocal } from "@/utils/date_helpper";
 import { useEffect, useState } from "react";
 
@@ -12,6 +13,7 @@ interface Props {
   error: string | null;
   podologos: IUser[];
   sucursales: ISucursal[];
+  currentUser?: IAuthUser;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onPodologoChange: (id: number) => void;
   onSucursalChange: (id: number) => void;
@@ -19,7 +21,8 @@ interface Props {
   onClose: () => void;
 }
 
-export default function ConsultaModal({ form, saving, error, podologos, sucursales, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
+export default function ConsultaModal({ form, saving, error, podologos, sucursales, currentUser, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
+  const isSucursalLocked = currentUser?.id_role === 3;
   const [podologoInput, setPodologoInput] = useState("");
   const [sucursalInput, setSucursalInput] = useState("");
 
@@ -97,20 +100,23 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursal</span>
             <input
               type="text"
-              list="sucursales-list"
+              list={isSucursalLocked ? undefined : "sucursales-list"}
               value={sucursalInput}
-              onChange={handleSucursalInput}
-              onFocus={handleSucursalFocus}
-              onBlur={handleSucursalBlur}
+              onChange={isSucursalLocked ? undefined : handleSucursalInput}
+              onFocus={isSucursalLocked ? undefined : handleSucursalFocus}
+              onBlur={isSucursalLocked ? undefined : handleSucursalBlur}
               placeholder="Buscar sucursal…"
+              readOnly={isSucursalLocked}
               required
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              className={`rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400${isSucursalLocked ? " opacity-60 cursor-not-allowed" : ""}`}
             />
-            <datalist id="sucursales-list">
-              {sucursales.map((s) => (
-                <option key={s.id_sucursal} value={s.ciudad!} />
-              ))}
-            </datalist>
+            {!isSucursalLocked && (
+              <datalist id="sucursales-list">
+                {sucursales.map((s) => (
+                  <option key={s.id_sucursal} value={s.ciudad!} />
+                ))}
+              </datalist>
+            )}
           </label>
 
           <label className="flex flex-col gap-1">

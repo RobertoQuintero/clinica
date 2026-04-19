@@ -154,6 +154,7 @@ export function useExpediente() {
   };
 
   return {
+    user,
     paciente,
     id_paciente,
     consultas,

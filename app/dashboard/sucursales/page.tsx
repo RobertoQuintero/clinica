@@ -1,17 +1,22 @@
 "use client";
 
-import { ISucursal } from "@/interfaces/sucursal";
-import { useEffect, useState } from "react";
-import { getSucursales, saveSucursal } from "./actions";
+import { ICatState, ISucursal } from "@/interfaces/sucursal";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { getStates, getSucursales, saveSucursal } from "./actions";
 import SucursalFila from "./componentes/SucursalFila";
 import SucursalModal from "./componentes/SucursalModal";
 
-type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono">;
+type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state">;
 
-const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null };
+const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null };
 
 export default function SucursalesPage() {
+  const { user }                    = useAuth();
+  const router                      = useRouter();
   const [sucursales, setSucursales] = useState<ISucursal[]>([]);
+  const [states, setStates]         = useState<ICatState[]>([]);
   const [loading, setLoading]       = useState(true);
   const [showModal, setShowModal]   = useState(false);
   const [form, setForm]             = useState<FormData>(EMPTY);
@@ -19,7 +24,7 @@ export default function SucursalesPage() {
   const [error, setError]           = useState<string | null>(null);
   const [search, setSearch]         = useState("");
 
-  type SortKey = "nombre" | "direccion" | "telefono" | "ciudad";
+  type SortKey = "nombre" |"estado"| "direccion" | "telefono" | "ciudad";
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -27,6 +32,10 @@ export default function SucursalesPage() {
     if (sortKey === key) setSortAsc((prev) => !prev);
     else { setSortKey(key); setSortAsc(true); }
   };
+
+  useEffect(() => {
+    if (user && user.id_role !== 1) router.replace("/dashboard");
+  }, [user, router]);
 
   const fetchSucursales = async () => {
     setLoading(true);
@@ -38,7 +47,10 @@ export default function SucursalesPage() {
     }
   };
 
-  useEffect(() => { fetchSucursales(); }, []);
+  useEffect(() => {
+    fetchSucursales();
+    getStates().then(setStates);
+  }, []);
 
   const openNew = () => {
     setForm({ ...EMPTY });
@@ -53,6 +65,7 @@ export default function SucursalesPage() {
       ciudad: s.ciudad,
       direccion: s.direccion,
       telefono: s.telefono,
+      id_state: s.id_state ?? null,
     });
     setError(null);
     setShowModal(true);
@@ -60,6 +73,10 @@ export default function SucursalesPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleStateChange = (id_state: number | null) => {
+    setForm((prev) => ({ ...prev, id_state }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,15 +145,21 @@ export default function SucursalesPage() {
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {(["nombre", "direccion", "telefono", "ciudad"] as SortKey[]).map((key) => (
-                  <th
-                    key={key}
-                    onClick={() => toggleSort(key)}
-                    className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
-                  >
-                    {key.charAt(0).toUpperCase() + key.slice(1)}
-                    <span className="ml-1 text-xs">{sortIndicator(key)}</span>
-                  </th>
+                {(["nombre","estado","ciudad", "direccion", "telefono" ] as SortKey[]).map((key, i) => (
+                  <React.Fragment key={key}>
+                    {/* {i === 1 && (
+                      <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                        Estado
+                      </th>
+                    )} */}
+                    <th
+                      onClick={() => toggleSort(key)}
+                      className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
+                    >
+                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                      <span className="ml-1 text-xs">{sortIndicator(key)}</span>
+                    </th>
+                  </React.Fragment>
                 ))}
                 <th className="px-4 py-3" />
               </tr>
@@ -166,9 +189,11 @@ export default function SucursalesPage() {
       {showModal && (
         <SucursalModal
           form={form}
+          states={states}
           saving={saving}
           error={error}
           onChange={handleChange}
+          onStateChange={handleStateChange}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
         />

@@ -2,6 +2,8 @@
 
 import { IServicio } from "@/interfaces/servicio";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { getServicios, saveServicio } from "./actions";
 import ServicioFila from "./componentes/ServicioFila";
 import ServicioModal from "./componentes/ServicioModal";
@@ -11,6 +13,8 @@ type FormData = Pick<IServicio, "id_servicio" | "nombre" | "descripcion">;
 const EMPTY: FormData = { id_servicio: 0, nombre: "", descripcion: "" };
 
 export default function ServiciosPage() {
+  const { user }                  = useAuth();
+  const router                    = useRouter();
   const [servicios, setServicios] = useState<IServicio[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -27,6 +31,10 @@ export default function ServiciosPage() {
     if (sortKey === key) setSortAsc((prev) => !prev);
     else { setSortKey(key); setSortAsc(true); }
   };
+
+  useEffect(() => {
+    if (user && user.id_role === 3) router.replace("/dashboard");
+  }, [user, router]);
 
   const fetchServicios = async () => {
     setLoading(true);

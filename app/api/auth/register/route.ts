@@ -99,12 +99,20 @@ export const POST = async (req: Request) => {
       id_empresa:  number;
     };
 
+    // Fetch role name
+    const roleRows = await db.queryParams(
+      `SELECT [nombre] FROM [CentroPodologico].[dbo].[roles] WHERE [id_role] = @id_role`,
+      { id_role: newUser.id_role }
+    );
+    const role_nombre: string = roleRows?.[0]?.nombre ?? "";
+
     // Payload del JWT (sin password_hash)
     const payload: IAuthUser = {
       id_user:     newUser.id_user,
       nombre:      newUser.nombre,
       email:       newUser.email,
       id_role:     newUser.id_role,
+      role_nombre,
       status:      newUser.status,
       id_sucursal: newUser.id_sucursal,
       id_empresa:  newUser.id_empresa,

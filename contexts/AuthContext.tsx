@@ -10,7 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { IAuthUser, IAuthContext } from "@/interfaces/auth";
 
-const AuthContext = createContext<IAuthContext | null>(null);
+const AuthContext = createContext<IAuthContext | null>(null); 
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser]           = useState<IAuthUser | null>(null);
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   return (

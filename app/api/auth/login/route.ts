@@ -62,10 +62,11 @@ export const POST = async (req: Request) => {
 
     // Buscar usuario por email
     const rows = await db.queryParams(
-      `SELECT [id_user],[nombre],[email],[telefono],[password_hash],
-              [id_role],[status],[id_sucursal],[id_empresa]
-         FROM [CentroPodologico].[dbo].[users]
-        WHERE [email] = @email AND [deleted_at] IS NULL`,
+      `SELECT u.[id_user],u.[nombre],u.[email],u.[telefono],u.[password_hash],
+              u.[id_role],r.[nombre] AS role_nombre,u.[status],u.[id_sucursal],u.[id_empresa]
+         FROM [CentroPodologico].[dbo].[users] u
+         LEFT JOIN [CentroPodologico].[dbo].[roles] r ON r.[id_role] = u.[id_role]
+        WHERE u.[email] = @email AND u.[deleted_at] IS NULL`,
       { email }
     );
 
@@ -86,6 +87,7 @@ export const POST = async (req: Request) => {
       email: string;
       password_hash: string;
       id_role: number;
+      role_nombre: string;
       status: boolean;
       id_sucursal: number;
       id_empresa: number;
@@ -116,6 +118,7 @@ export const POST = async (req: Request) => {
       nombre:      userRow.nombre,
       email:       userRow.email,
       id_role:     userRow.id_role,
+      role_nombre: userRow.role_nombre ?? "",
       status:      userRow.status,
       id_sucursal: userRow.id_sucursal,
       id_empresa:  userRow.id_empresa,

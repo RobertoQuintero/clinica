@@ -7,13 +7,13 @@ import { useState } from "react";
 import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordModal";
 
 const ALL_NAV_LINKS = [
-  { href: "/dashboard/pacientes",  label: "Pacientes",  minRole: 0 },
-  { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 1 },
-  { href: "/dashboard/citas",      label: "Citas",      minRole: 0 },
-  { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0 },
-  { href: "/dashboard/productos",  label: "Productos",  minRole: 0 },
-  { href: "/dashboard/sucursales", label: "Sucursales", minRole: 0 },
-  { href: "/dashboard/enlaces",    label: "Enlaces",    minRole: 0 },
+  { href: "/dashboard/pacientes",  label: "Pacientes",  minRole: 0, excludeRoles: [] as number[] },
+  { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 1, excludeRoles: [] as number[] },
+  { href: "/dashboard/citas",      label: "Citas",      minRole: 0, excludeRoles: [] as number[] },
+  { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0, excludeRoles: [3] },
+  { href: "/dashboard/productos",  label: "Productos",  minRole: 0, excludeRoles: [] as number[] },
+  { href: "/dashboard/sucursales", label: "Sucursales", minRole: 1, excludeRoles: [] as number[] },
+  { href: "/dashboard/enlaces",    label: "Enlaces",    minRole: 0, excludeRoles: [3] },
 ];
 
 export default function Navbar() {
@@ -23,9 +23,10 @@ export default function Navbar() {
   const [passwordModal, setPasswordModal] = useState(false);
 
   const navLinks = ALL_NAV_LINKS.filter(
-    (l) => l.minRole === 0 || (user?.id_role ?? 0) === l.minRole
+    (l) =>
+      (l.minRole === 0 || (user?.id_role ?? 0) === l.minRole) &&
+      !l.excludeRoles.includes(user?.id_role ?? 0)
   );
-
   return (
     <>
       {/* Top bar */}
@@ -59,9 +60,10 @@ export default function Navbar() {
         <div className="hidden lg:flex items-center gap-4">
           <button
             onClick={() => setPasswordModal(true)}
-            className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:underline underline-offset-2 transition-colors"
+            className="flex flex-col items-end hover:underline underline-offset-2 transition-colors"
           >
-            {user?.nombre}
+            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 leading-tight">{user?.nombre}</span>
+            <span className="text-xs text-zinc-400 dark:text-zinc-500 leading-tight">{user?.role_nombre}</span>
           </button>
           <button
             onClick={logout}
@@ -130,9 +132,10 @@ export default function Navbar() {
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Sesión iniciada como</p>
           <button
             onClick={() => { setSidebarOpen(false); setPasswordModal(true); }}
-            className="text-sm font-medium text-zinc-800 dark:text-zinc-100 mt-0.5 hover:underline underline-offset-2 transition-colors text-left"
+            className="flex flex-col items-start mt-0.5 hover:underline underline-offset-2 transition-colors text-left"
           >
-            {user?.nombre}
+            <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100 leading-tight">{user?.nombre}</span>
+            <span className="text-xs text-zinc-400 dark:text-zinc-500 leading-tight">{user?.role_nombre}</span>
           </button>
         </div>
 
