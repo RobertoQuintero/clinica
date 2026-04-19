@@ -74,6 +74,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [nombrePodologo,  setNombrePodologo ] = useState<string | null>(null);
   const [sucursalNombre,  setSucursalNombre ] = useState<string | null>(null);
   const [sucursalCiudad,  setSucursalCiudad ] = useState<string | null>(null);
+  const [patologiaUrls,   setPatologiaUrls  ] = useState<Record<string, string>>({});
   const [loading,         setLoading        ] = useState(true);
   const [exporting,       setExporting      ] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -93,6 +94,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       setNombrePodologo(d.nombrePodologo);
       setSucursalNombre(d.sucursalNombre);
       setSucursalCiudad(d.sucursalCiudad);
+      setPatologiaUrls(d.patologiaUrls);
       setLoading(false);
     });
   }, [consulta?.id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -174,7 +176,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
         }
       }
 
-      pdf.save("consulta-general.pdf");
+      pdf.save(`${nombreCompleto || "consulta-general"}.pdf`);
     } finally {
       contentRef.current?.removeAttribute("data-exporting");
       styleEl.remove();
@@ -257,7 +259,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     const phone  = digits.startsWith("52") ? digits : `52${digits}`;
 
     const lines: string[] = [
-      "*RESUMEN DE CONSULTA*",
+      "*VALORACIÓN DEL PIE*",
       "",
       `*Paciente:* ${nombreCompleto}`,
     ];
@@ -281,7 +283,74 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       );
     }
 
-    if (serviciosUsados.length > 0) {
+    if (antecedentes) {
+      const chips = antChips;
+      lines.push("", "*ANTECEDENTES MÉDICOS*");
+      if (chips.length > 0) {
+        lines.push(chips.map((c) => `• ${c}`).join("\n"));
+      }
+      if (antecedentes.tipo_sangre)          lines.push(`*Tipo de sangre:* ${antecedentes.tipo_sangre}`);
+      if (antecedentes.medicamentos_actuales) lines.push(`*Medicamentos:* ${antecedentes.medicamentos_actuales}`);
+      if (antecedentes.otros)                lines.push(`*Otros:* ${antecedentes.otros}`);
+      if (chips.length === 0 && !antecedentes.tipo_sangre && !antecedentes.medicamentos_actuales && !antecedentes.otros) {
+        lines.push("_Sin antecedentes relevantes._");
+      }
+    }
+
+    if (valoracion) {
+      lines.push("", "*VALORACIÓN DE LA PIEL*");
+      if (valoracionChips.length > 0) {
+        const valoracionKeys: (keyof IValoracionPiel)[] = [
+          "edema","dermatomicosis","pie_atleta","bromhidrosis",
+          "hiperdrosis","anhidrosis","hiperqueratosis","helomas","verrugas",
+        ];
+        valoracionKeys.forEach((k) => {
+          if (valoracion[k] === true || (valoracion[k] as unknown) === 1) {
+            const label = valoracionChips.find(
+              (c) => c === ({
+                edema:"Edema",dermatomicosis:"Dermatomicosis",pie_atleta:"Pie de atleta",
+                bromhidrosis:"Bromhidrosis",hiperdrosis:"Hiperhidrosis",anhidrosis:"Anhidrosis",
+                hiperqueratosis:"Hiperqueratosis",helomas:"Helomas",verrugas:"Verrugas",
+              } as Record<string, string>)[k as string]
+            ) ?? k;
+            lines.push(`• ${label}`);
+            const url = patologiaUrls[k as string];
+            if (url) lines.push(`  ${url}`);
+          }
+        });
+      } else {
+        lines.push("_Sin hallazgos registrados._");
+      }
+      if (valoracion.observaciones) lines.push(`*Observaciones:* ${valoracion.observaciones}`);
+    }
+
+    if (patologia) {
+      lines.push("", "*PATOLOGÍA UNGUEAL*");
+      if (patChips.length > 0) {
+        const patologiaKeys: (keyof IPatologiaUngueal)[] = [
+          "anoniquia","microniquia","onicolisis","onicauxis",
+          "hematoma_subungueal","onicofosis","paquioniquia","onicomicosis",
+        ];
+        patologiaKeys.forEach((k) => {
+          if (patologia[k] === true || (patologia[k] as unknown) === 1) {
+            const label = patChips.find(
+              (c) => c === ({
+                anoniquia:"Anoniquia",microniquia:"Microniquia",onicolisis:"Onicolisis",
+                onicauxis:"Onicauxis",hematoma_subungueal:"Hematoma subungueal",
+                onicofosis:"Onicofosis",paquioniquia:"Paquioniquia",onicomicosis:"Onicomicosis",
+              } as Record<string, string>)[k as string]
+            ) ?? k;
+            lines.push(`• ${label}`);
+            const url = patologiaUrls[k as string];
+            if (url) lines.push(`  ${url}`);
+          }
+        });
+      } else {
+        lines.push("_Sin patologías registradas._");
+      }
+    }
+
+     if (serviciosUsados.length > 0) {
       lines.push("", "*SERVICIOS*");
       serviciosUsados.forEach((s) => {
         const opcion = s.descripcion_opcion ? ` (${s.descripcion_opcion})` : "";
@@ -299,39 +368,6 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
         lines.push(`• ${p.nombre_producto} ×${p.cantidad}: $${sub}`);
       });
       lines.push(`_Subtotal productos: $${totalProductos.toFixed(2)}_`);
-    }
-
-    if (antecedentes) {
-      const chips = antChips;
-      lines.push("", "*ANTECEDENTES MÉDICOS*");
-      if (chips.length > 0) {
-        lines.push(chips.map((c) => `• ${c}`).join("\n"));
-      }
-      if (antecedentes.tipo_sangre)          lines.push(`*Tipo de sangre:* ${antecedentes.tipo_sangre}`);
-      if (antecedentes.medicamentos_actuales) lines.push(`*Medicamentos:* ${antecedentes.medicamentos_actuales}`);
-      if (antecedentes.otros)                lines.push(`*Otros:* ${antecedentes.otros}`);
-      if (chips.length === 0 && !antecedentes.tipo_sangre && !antecedentes.medicamentos_actuales && !antecedentes.otros) {
-        lines.push("_Sin antecedentes relevantes._");
-      }
-    }
-
-    if (valoracion) {
-      lines.push("", "*VALORACIÓN DE PIEL*");
-      if (valoracionChips.length > 0) {
-        lines.push(valoracionChips.map((c) => `• ${c}`).join("\n"));
-      } else {
-        lines.push("_Sin hallazgos registrados._");
-      }
-      if (valoracion.observaciones) lines.push(`*Observaciones:* ${valoracion.observaciones}`);
-    }
-
-    if (patologia) {
-      lines.push("", "*PATOLOGÍA UNGUEAL*");
-      if (patChips.length > 0) {
-        lines.push(patChips.map((c) => `• ${c}`).join("\n"));
-      } else {
-        lines.push("_Sin patologías registradas._");
-      }
     }
 
     if (consulta?.diagnostico) {

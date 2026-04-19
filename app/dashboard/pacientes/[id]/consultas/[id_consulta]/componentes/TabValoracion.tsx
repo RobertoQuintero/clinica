@@ -7,6 +7,7 @@ interface Props {
   saving:   boolean;
   error:    string | null;
   onSubmit: (e: React.FormEvent) => void;
+  locked?:  boolean;
 }
 
 const CONDITIONS: [keyof IValoracionPiel, string][] = [
@@ -21,7 +22,7 @@ const CONDITIONS: [keyof IValoracionPiel, string][] = [
   ["verrugas",        "Verrugas"       ],
 ];
 
-export default function TabValoracion({ form, onChange, saving, error, onSubmit }: Props) {
+export default function TabValoracion({ form, onChange, saving, error, onSubmit, locked }: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {error && (
@@ -40,7 +41,8 @@ export default function TabValoracion({ form, onChange, saving, error, onSubmit 
           value={String(form.fecha_valoracion ?? "").slice(0, 10)}
           onChange={(e) => onChange((f) => ({ ...f, fecha_valoracion: e.target.value }))}
           required
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+          disabled={locked}
+          className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 disabled:opacity-60 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -54,7 +56,8 @@ export default function TabValoracion({ form, onChange, saving, error, onSubmit 
                 type="checkbox"
                 checked={!!form[key]}
                 onChange={(e) => onChange((f) => ({ ...f, [key]: e.target.checked }))}
-                className="h-4 w-4 rounded border-zinc-300 text-zinc-800 focus:ring-zinc-500"
+                disabled={locked}
+                className="h-4 w-4 rounded border-zinc-300 text-zinc-800 focus:ring-zinc-500 disabled:cursor-not-allowed"
               />
               <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
             </label>
@@ -72,23 +75,26 @@ export default function TabValoracion({ form, onChange, saving, error, onSubmit 
           onChange={(e) => onChange((f) => ({ ...f, observaciones: e.target.value }))}
           rows={3}
           placeholder="Observaciones adicionales..."
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 resize-none"
+          disabled={locked}
+          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
         />
       </div>
 
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500"
-        >
-          {saving
-            ? "Guardando..."
-            : form.id_valoracion_piel === 0
-              ? "Registrar valoración"
-              : "Guardar cambios"}
-        </button>
-      </div>
+      {!locked && (
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            {saving
+              ? "Guardando..."
+              : form.id_valoracion_piel === 0
+                ? "Registrar valoración"
+                : "Guardar cambios"}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

@@ -5,9 +5,11 @@ import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
+import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
-import { getConsultaData, savePago, savePatologia, saveValoracion } from "./actions";
+import { getConsultaData, savePago, savePatologia, saveValoracion, updateConsultaCosto, updateProcesoField } from "./actions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import TabFotos from "./componentes/TabFotos";
@@ -26,6 +28,7 @@ type Tab = "general" | "valoracion" | "patologia" | "servicios" | "fotos_valorac
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function ConsultaPage() {
+  const { user }     = useAuth();
   const router       = useRouter();
   const params       = useParams();
   const id_paciente  = Number(params.id);
@@ -41,6 +44,7 @@ export default function ConsultaPage() {
   const [pagos,      setPagos     ] = useState<IPago[]>([]);
   const [loading,    setLoading   ] = useState(true);
   const [patologia,  setPatologia ] = useState<IPatologiaUngueal | null>(null);
+  const [proceso,    setProceso   ] = useState<IProceso | null>(null);
 
   // valoracion form
   const VALORACION_DEFAULTS: IValoracionPiel = {
@@ -104,6 +108,7 @@ export default function ConsultaPage() {
       if (data.patologia)  { setPatologia(data.patologia);  setPatologiaForm(data.patologia);  }
       setArchivos(data.archivos);
       setPagos(data.pagos);
+      setProceso(data.proceso);
     } finally {
       setLoading(false);
     }
@@ -125,6 +130,10 @@ export default function ConsultaPage() {
       if (!result.ok) throw new Error(result.data);
       setValoracion(result.data);
       setValoracionForm(result.data);
+      // mark step complete and advance
+      const procResult = await updateProcesoField(id_consulta, "valoracion_piel", 1);
+      if (procResult.ok) setProceso(procResult.data);
+      setActiveTab("patologia");
     } catch (err: unknown) {
       setValoracionError(err instanceof Error ? err.message : "Error al guardar");
     } finally {
@@ -143,6 +152,10 @@ export default function ConsultaPage() {
       if (!result.ok) throw new Error(result.data);
       setPatologia(result.data);
       setPatologiaForm(result.data);
+      // mark step complete and advance
+      const procResult = await updateProcesoField(id_consulta, "patologia_ungueal", 1);
+      if (procResult.ok) setProceso(procResult.data);
+      setActiveTab("servicios");
     } catch (err: unknown) {
       setPatologiaError(err instanceof Error ? err.message : "Error al guardar");
     } finally {
@@ -161,6 +174,7 @@ export default function ConsultaPage() {
     setSavingPago(true);
     setPagoError(null);
     try {
+      await updateConsultaCosto(id_consulta, totalGeneral);
       const result = await savePago(pagoForm);
       if (!result.ok) throw new Error(result.data);
       setPagos((prev) => [result.data, ...prev]);
@@ -180,13 +194,51 @@ export default function ConsultaPage() {
 
   // ── ui helpers ─────────────────────────────────────────────────────────────
 
+  /** True when proceso is paid and current user is not admin */
+  const locked = !!proceso?.pagar && user?.id_role !== 1;
+
+  /** Returns whether a tab is accessible based on proceso progress */
+  const isTabAccessible = (tab: Tab): boolean => {
+    if (!proceso) return true; // legacy consultation without proceso → all accessible
+    switch (tab) {
+      case "general":
+      case "valoracion":
+        return true;
+      case "patologia":
+        return !!proceso.valoracion_piel;
+      case "servicios":
+        return !!proceso.patologia_ungueal;
+      case "productos":
+        return !!proceso.servicios;
+      case "fotos_valoracion":
+        return !!proceso.productos;
+      case "fotos_pedicure":
+        return !!proceso.fotos_valoracion;
+      case "pagar":
+        return !!proceso.fotos_pedicure;
+      default:
+        return false;
+    }
+  };
+
+  const handleContinuar = async (field: "servicios" | "productos" | "fotos_valoracion" | "fotos_pedicure", nextTab: Tab) => {
+    const procResult = await updateProcesoField(id_consulta, field, 1);
+    if (procResult.ok) setProceso(procResult.data);
+    setActiveTab(nextTab);
+  };
+
+  const handleFinalizar = async () => {
+    const procResult = await updateProcesoField(id_consulta, "pagar", 1);
+    if (procResult.ok) setProceso(procResult.data);
+  };
+
   const TABS: { key: Tab; label: string }[] = [
     { key: "general",         label: "1. General"              },
     { key: "valoracion",      label: "2. Valoración de piel"   },
     { key: "patologia",       label: "3. Patología ungueal"    },
     { key: "servicios",       label: "4. Servicios"            },
-    { key: "fotos_valoracion",label: "5. Fotos Valoración"     },
-    { key: "productos",       label: "6. Productos"            },
+    { key: "productos",       label: "5. Productos"            },
+    { key: "fotos_valoracion",label: "6. Fotos Valoración"     },
     { key: "fotos_pedicure",  label: "7. Fotos Pedicure"       },
     { key: "pagar",           label: "8. Pagar"                },
   ];
@@ -237,19 +289,26 @@ export default function ConsultaPage() {
       {/* tab nav */}
       <div className="border-b border-zinc-200 dark:border-zinc-700">
         <nav className="flex gap-0 -mb-px overflow-x-auto">
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`px-2.5 py-1.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === key
-                  ? "border-zinc-800 text-zinc-800 dark:border-zinc-200 dark:text-zinc-100"
-                  : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300 dark:hover:text-zinc-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+          {TABS.map(({ key, label }) => {
+            const accessible = isTabAccessible(key);
+            return (
+              <button
+                key={key}
+                onClick={() => accessible && setActiveTab(key)}
+                disabled={!accessible}
+                title={!accessible ? "Completa el paso anterior primero" : undefined}
+                className={`px-2.5 py-1.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === key
+                    ? "border-zinc-800 text-zinc-800 dark:border-zinc-200 dark:text-zinc-100"
+                    : accessible
+                      ? "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300 dark:hover:text-zinc-300"
+                      : "border-transparent text-zinc-300 dark:text-zinc-600 cursor-not-allowed opacity-50"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </nav>
       </div>
 
@@ -274,6 +333,7 @@ export default function ConsultaPage() {
               saving={savingValoracion}
               error={valoracionError}
               onSubmit={handleValoracionSubmit}
+              locked={locked}
             />
           )}
           {activeTab === "patologia"  && (
@@ -283,10 +343,15 @@ export default function ConsultaPage() {
               saving={savingPatologia}
               error={patologiaError}
               onSubmit={handlePatologiaSubmit}
+              locked={locked}
             />
           )}
           {activeTab === "servicios"  && (
-            <TabServicios id_consulta={id_consulta} />
+            <TabServicios
+              id_consulta={id_consulta}
+              locked={locked}
+              onContinuar={() => handleContinuar("servicios", "productos")}
+            />
           )}
           {activeTab === "fotos_valoracion" && (
             <TabFotos
@@ -296,10 +361,16 @@ export default function ConsultaPage() {
               id_paciente={id_paciente}
               id_consulta={id_consulta}
               categoria="VALORACION"
+              locked={locked}
+              onContinuar={() => handleContinuar("fotos_valoracion", "fotos_pedicure")}
             />
           )}
           {activeTab === "productos"  && (
-            <TabProductos id_consulta={id_consulta} />
+            <TabProductos
+              id_consulta={id_consulta}
+              locked={locked}
+              onContinuar={() => handleContinuar("productos", "fotos_valoracion")}
+            />
           )}
           {activeTab === "fotos_pedicure" && (
             <TabFotos
@@ -309,11 +380,14 @@ export default function ConsultaPage() {
               id_paciente={id_paciente}
               id_consulta={id_consulta}
               categoria="PEDICURE"
+              locked={locked}
+              onContinuar={() => handleContinuar("fotos_pedicure", "pagar")}
             />
           )}
           {activeTab === "pagar"      && (
             <TabPagar
-              costoTotal={costoTotal}
+              costoTotal={totalGeneral}
+              onCostoTotalChange={setTotalGeneral}
               totalPagado={totalPagado}
               saldo={saldo}
               pagos={pagos}
@@ -322,6 +396,9 @@ export default function ConsultaPage() {
               saving={savingPago}
               error={pagoError}
               onSubmit={handlePagoSubmit}
+              locked={locked}
+              onFinalizar={handleFinalizar}
+              procesoPagado={!!proceso?.pagar}
             />
           )}
         </>

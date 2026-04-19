@@ -11,4 +11,5 @@ export interface IConsulta {
     costo_total:          number;
     id_sucursal:          number;
     id_empresa:           number;
+    nombre_podologo?:     string;
 }

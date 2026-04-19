@@ -132,54 +132,6 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
             </datalist>
           </label>
 
-          
-
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Costo total</span>
-            <input
-              type="number"
-              name="costo_total"
-              value={form.costo_total}
-              onChange={onChange}
-              min={0}
-              step="0.01"
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </label>
-
-          <label className="col-span-1 sm:col-span-2 flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Diagnóstico</span>
-            <textarea
-              name="diagnostico"
-              value={form.diagnostico}
-              onChange={onChange}
-              rows={3}
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
-            />
-          </label>
-
-          <label className="col-span-1 sm:col-span-2 flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Tratamiento aplicado</span>
-            <textarea
-              name="tratamiento_aplicado"
-              value={form.tratamiento_aplicado}
-              onChange={onChange}
-              rows={3}
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
-            />
-          </label>
-
-          <label className="col-span-1 sm:col-span-2 flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Observaciones</span>
-            <textarea
-              name="observaciones"
-              value={form.observaciones}
-              onChange={onChange}
-              rows={2}
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
-            />
-          </label>
-
           <div className="col-span-1 sm:col-span-2 flex justify-end gap-3 pt-2">
             <button
               type="button"

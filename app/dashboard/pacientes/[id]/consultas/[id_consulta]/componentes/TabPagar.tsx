@@ -3,19 +3,24 @@ import React from "react";
 import { fmtDate } from "./helpers";
 
 interface Props {
-  costoTotal:       number;
-  totalPagado:      number;
-  saldo:            number;
-  pagos:            IPago[];
-  pagoForm:         Omit<IPago, "id_pago" | "created_at" | "id_empresa">;
-  onPagoFormChange: React.Dispatch<React.SetStateAction<Omit<IPago, "id_pago" | "created_at" | "id_empresa">>>;
-  saving:           boolean;
-  error:            string | null;
-  onSubmit:         (e: React.FormEvent) => void;
+  costoTotal:         number;
+  onCostoTotalChange: (val: number) => void;
+  totalPagado:        number;
+  saldo:              number;
+  pagos:              IPago[];
+  pagoForm:           Omit<IPago, "id_pago" | "created_at" | "id_empresa">;
+  onPagoFormChange:   React.Dispatch<React.SetStateAction<Omit<IPago, "id_pago" | "created_at" | "id_empresa">>>;
+  saving:             boolean;
+  error:              string | null;
+  onSubmit:           (e: React.FormEvent) => void;
+  locked?:            boolean;
+  onFinalizar?:       () => void;
+  procesoPagado?:     boolean;
 }
 
 export default function TabPagar({
   costoTotal,
+  onCostoTotalChange,
   totalPagado,
   saldo,
   pagos,
@@ -24,16 +29,21 @@ export default function TabPagar({
   saving,
   error,
   onSubmit,
+  locked,
+  onFinalizar,
+  procesoPagado,
 }: Props) {
+  React.useEffect(() => {
+    if (saldo > 0) {
+      onPagoFormChange((f) => ({ ...f, monto: saldo }));
+    }
+  }, [saldo]);
+
   return (
     <div className="space-y-6">
 
       {/* resumen */}
-      <div className="grid grid-cols-3 gap-4 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-center text-sm">
-        <div>
-          <p className="text-zinc-500">Costo total</p>
-          <p className="mt-1 text-lg font-semibold text-zinc-800 dark:text-zinc-100">${costoTotal.toFixed(2)}</p>
-        </div>
+      <div className="grid grid-cols-2 gap-4 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-center text-sm">
         <div>
           <p className="text-zinc-500">Pagado</p>
           <p className="mt-1 text-lg font-semibold text-green-600 dark:text-green-400">${totalPagado.toFixed(2)}</p>
@@ -75,7 +85,7 @@ export default function TabPagar({
       )}
 
       {/* nuevo pago */}
-      {saldo > 0 && (
+      {saldo > 0 && !locked && (
         <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
           <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Registrar pago</h3>
 
@@ -93,7 +103,7 @@ export default function TabPagar({
                 min="0.01"
                 step="0.01"
                 max={saldo}
-                value={pagoForm.monto || ""}
+                value={pagoForm.monto !== 0 ? pagoForm.monto : saldo}
                 onChange={(e) => onPagoFormChange((f) => ({ ...f, monto: Number(e.target.value) }))}
                 required
                 className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500"
@@ -149,6 +159,25 @@ export default function TabPagar({
       {saldo <= 0 && pagos.length > 0 && (
         <p className="text-center text-sm font-medium text-green-600 dark:text-green-400">
           Consulta pagada en su totalidad ✓
+        </p>
+      )}
+
+      {/* finalizar proceso */}
+      {!procesoPagado && !locked && saldo <= 0 && pagos.length > 0 && onFinalizar && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onFinalizar}
+            className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
+          >
+            Finalizar proceso
+          </button>
+        </div>
+      )}
+
+      {procesoPagado && (
+        <p className="text-center text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          Proceso finalizado
         </p>
       )}
     </div>

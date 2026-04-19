@@ -13,6 +13,8 @@ interface Props {
   id_consulta:    number;
   /** Fixed category assigned to every upload; only items with this category are shown. */
   categoria:      string;
+  locked?:        boolean;
+  onContinuar?:   () => void;
 }
 
 const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> =>
@@ -41,7 +43,7 @@ const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> 
     img.src = objectUrl;
   });
 
-export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria }: Props) {
+export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria, locked, onContinuar }: Props) {
   const fileInputRef                       = useRef<HTMLInputElement>(null);
   const [uploadingFile,  setUploadingFile] = useState(false);
   const [uploadError,    setUploadError  ] = useState<string | null>(null);
@@ -104,38 +106,40 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
     <div className="space-y-4">
 
       {/* upload */}
-      <div className="flex justify-end">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,.pdf"
-          className="hidden"
-          onChange={handleFileUpload}
-        />
-        <button
-          type="button"
-          disabled={uploadingFile}
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
-        >
-          {uploadingFile ? (
-            <>
-              <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              Subiendo...
-            </>
-          ) : (
-            <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4m0 0L8 8m4-4l4 4" />
-              </svg>
-              Subir imagen / PDF
-            </>
-          )}
-        </button>
-      </div>
+      {!locked && (
+        <div className="flex justify-end">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <button
+            type="button"
+            disabled={uploadingFile}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
+          >
+            {uploadingFile ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Subiendo...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4m0 0L8 8m4-4l4 4" />
+                </svg>
+                Subir imagen / PDF
+              </>
+            )}
+          </button>
+        </div>
+      )}
       {uploadError && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/30 dark:text-red-400">
           {uploadError}
@@ -170,6 +174,18 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!locked && onContinuar && (
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={onContinuar}
+            className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            Continuar
+          </button>
         </div>
       )}
     </div>

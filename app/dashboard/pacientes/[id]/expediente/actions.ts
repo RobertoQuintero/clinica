@@ -53,14 +53,16 @@ export async function getAntecedentesByPaciente(id_paciente: number): Promise<IA
 
 export async function getConsultasByPaciente(id_paciente: number): Promise<IConsulta[]> {
   const data = await db.queryParams(
-    `SELECT [id_consulta], [id_paciente], [id_podologo],
-            CONVERT(varchar(19), [fecha], 120) AS fecha,
-            [diagnostico], [tratamiento_aplicado], [observaciones],
-            [created_at], [deleted_at], [costo_total], [id_sucursal], [id_empresa]
-       FROM [CentroPodologico].[dbo].[consultas]
-      WHERE [id_paciente] = @id_paciente
-        AND [deleted_at] IS NULL
-      ORDER BY [fecha] DESC`,
+    `SELECT c.[id_consulta], c.[id_paciente], c.[id_podologo],
+            CONVERT(varchar(19), c.[fecha], 120) AS fecha,
+            c.[diagnostico], c.[tratamiento_aplicado], c.[observaciones],
+            c.[created_at], c.[deleted_at], c.[costo_total], c.[id_sucursal], c.[id_empresa],
+            u.[nombre] AS nombre_podologo
+       FROM [CentroPodologico].[dbo].[consultas] c
+       LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = c.[id_podologo]
+      WHERE c.[id_paciente] = @id_paciente
+        AND c.[deleted_at] IS NULL
+      ORDER BY c.[fecha] DESC`,
     { id_paciente }
   );
   return data as IConsulta[];
@@ -103,6 +105,19 @@ export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data
          )`,
         commonParams
       );
+      const newConsulta = (result as IConsulta[])?.[0];
+      if (newConsulta?.id_consulta) {
+        await db.queryParams(
+          `INSERT INTO [CentroPodologico].[dbo].[procesos]
+             ([id_proceso],[id_consulta],[valoracion_piel],[patologia_ungueal],
+              [servicios],[productos],[fotos_valoracion],[fotos_pedicure],[pagar])
+           VALUES (
+             (SELECT ISNULL(MAX([id_proceso]),0)+1 FROM [CentroPodologico].[dbo].[procesos]),
+             @id_consulta,0,0,0,0,0,0,0
+           )`,
+          { id_consulta: newConsulta.id_consulta }
+        );
+      }
     } else {
       result = await db.queryParams(
         `UPDATE [CentroPodologico].[dbo].[consultas] SET

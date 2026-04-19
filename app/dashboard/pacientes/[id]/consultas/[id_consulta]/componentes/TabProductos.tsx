@@ -11,12 +11,14 @@ import AddProductoForm from "./AddProductoForm";
 import ProductoRow from "./ProductoRow";
 
 interface Props {
-  id_consulta: number;
+  id_consulta:  number;
+  locked?:      boolean;
+  onContinuar?: () => void;
 }
 
 const HEADERS = ["Producto", "Cantidad", "Precio unit.", "Subtotal", ""];
 
-export default function TabProductos({ id_consulta }: Props) {
+export default function TabProductos({ id_consulta, locked, onContinuar }: Props) {
   const [productos, setProductos] = useState<ConsultaProductoExtended[]>([]);
   const [catalogo,  setCatalogo ] = useState<ProductoCatalogo[]>([]);
   const [loading,   setLoading  ] = useState(true);
@@ -48,11 +50,13 @@ export default function TabProductos({ id_consulta }: Props) {
 
   return (
     <div className="space-y-4">
-      <AddProductoForm
-        id_consulta={id_consulta}
-        catalogo={catalogo}
-        onAdd={(p) => setProductos((prev) => [...prev, p])}
-      />
+      {!locked && (
+        <AddProductoForm
+          id_consulta={id_consulta}
+          catalogo={catalogo}
+          onAdd={(p) => setProductos((prev) => [...prev, p])}
+        />
+      )}
 
       {productos.length === 0 ? (
         <p className="text-zinc-400 text-sm">Sin productos registrados.</p>
@@ -92,6 +96,18 @@ export default function TabProductos({ id_consulta }: Props) {
             Total productos: ${total.toFixed(2)}
           </p>
         </>
+      )}
+
+      {!locked && onContinuar && (
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={onContinuar}
+            className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            Continuar
+          </button>
+        </div>
       )}
     </div>
   );

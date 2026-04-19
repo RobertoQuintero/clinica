@@ -11,12 +11,14 @@ import { IConsultaServicio } from "@/interfaces/consulta_servicio";
 // ─── types ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  id_consulta: number;
+  id_consulta:  number;
+  locked?:      boolean;
+  onContinuar?: () => void;
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export default function TabServicios({ id_consulta }: Props) {
+export default function TabServicios({ id_consulta, locked, onContinuar }: Props) {
   const [servicios,         setServicios        ] = useState<ServicioConOpciones[]>([]);
   const [consultaServicios, setConsultaServicios] = useState<IConsultaServicio[]>([]);
   const [loading,           setLoading          ] = useState(true);
@@ -52,6 +54,19 @@ export default function TabServicios({ id_consulta }: Props) {
         ?.id_servicio_opcion ?? 0
     );
   };
+
+  // Normalise: lowercase, trim, strip diacritics ("Clínico" → "clinico")
+  const norm = (s: string) =>
+    s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // Names (accent-insensitive, case-insensitive) that are mandatory before continuing
+  const REQUIRED_SERVICE_NAMES = ["pedicure clinico", "extras", "onicocriptosis"];
+
+  const canContinuar = REQUIRED_SERVICE_NAMES.every((reqName) => {
+    const servicio = servicios.find((s) => norm(s.nombre) === reqName);
+    if (!servicio) return false;
+    return getSelected(servicio.id_servicio) !== 0;
+  });
 
   const handleSelect = (
     id_servicio:        number,
@@ -144,7 +159,7 @@ export default function TabServicios({ id_consulta }: Props) {
                           name={`servicio_${servicio.id_servicio}`}
                           value={opcion.id_servicio_opcion}
                           checked={checked}
-                          disabled={isSaving}
+                          disabled={isSaving || locked}
                           onChange={() =>
                             handleSelect(
                               servicio.id_servicio,
@@ -169,6 +184,19 @@ export default function TabServicios({ id_consulta }: Props) {
           </div>
         );
       })}
+
+      {!locked && onContinuar && (
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={onContinuar}
+            disabled={!canContinuar}
+            className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Continuar
+          </button>
+        </div>
+      )}
     </div>
   );
 }

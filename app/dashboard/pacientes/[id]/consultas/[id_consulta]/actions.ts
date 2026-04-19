@@ -9,6 +9,7 @@ import { IConsultaServicio } from "@/interfaces/consulta_servicio";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
+import { IProceso } from "@/interfaces/proceso";
 import { IServicio } from "@/interfaces/servicio";
 import { IServicioOpcion } from "@/interfaces/servicio_opcion";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
@@ -28,7 +29,22 @@ export interface ConsultaData {
   archivos:   IArchivo[];
   productos:  ConsultaProductoExtended[];
   pagos:      IPago[];
+  proceso:    IProceso | null;
 }
+
+export type ProcesoField =
+  | 'valoracion_piel'
+  | 'patologia_ungueal'
+  | 'servicios'
+  | 'productos'
+  | 'fotos_valoracion'
+  | 'fotos_pedicure'
+  | 'pagar';
+
+const PROCESO_FIELDS: ProcesoField[] = [
+  'valoracion_piel', 'patologia_ungueal', 'servicios',
+  'productos', 'fotos_valoracion', 'fotos_pedicure', 'pagar',
+];
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; data: string };
 
@@ -55,7 +71,7 @@ export async function getConsultaData(
   id_consulta: number,
   id_paciente: number,
 ): Promise<ConsultaData> {
-  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows] = await Promise.all([
+  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_consulta],[id_paciente],[id_podologo]
               ,CONVERT(varchar(19), [fecha], 120)      AS fecha
@@ -126,6 +142,13 @@ export async function getConsultaData(
         WHERE [id_paciente] = @id_paciente`,
       { id_paciente },
     ),
+    db.queryParams(
+      `SELECT [id_proceso],[id_consulta],[valoracion_piel],[patologia_ungueal],
+              [servicios],[productos],[fotos_valoracion],[fotos_pedicure],[pagar]
+         FROM [CentroPodologico].[dbo].[procesos]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
   ]);
 
   return {
@@ -136,7 +159,32 @@ export async function getConsultaData(
     productos:  (pRows      as ConsultaProductoExtended[]) ?? [],
     pagos:      (pgRows     as IPago[])                 ?? [],
     paciente:   (pacRows[0] as IPaciente)               ?? null,
+    proceso:    (procRows[0] as IProceso)               ?? null,
   };
+}
+
+// ─── proceso ──────────────────────────────────────────────────────────────────
+
+export async function updateProcesoField(
+  id_consulta: number,
+  field: ProcesoField,
+  value: boolean | number,
+): Promise<ActionResult<IProceso>> {
+  try {
+    if (!PROCESO_FIELDS.includes(field)) {
+      return { ok: false, data: "Campo no permitido" };
+    }
+    const result = await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[procesos]
+          SET [${field}] = @value
+       OUTPUT INSERTED.*
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta, value: value ? 1 : 0 },
+    );
+    return { ok: true, data: (result[0] as IProceso) };
+  } catch {
+    return { ok: false, data: "Error al actualizar proceso" };
+  }
 }
 
 // ─── valoración de piel ───────────────────────────────────────────────────────
@@ -261,6 +309,25 @@ export async function savePatologia(
   }
 }
 
+// ─── costo total ─────────────────────────────────────────────────────────────
+
+export async function updateConsultaCosto(
+  id_consulta: number,
+  costo_total: number,
+): Promise<ActionResult<void>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[consultas]
+          SET [costo_total] = @costo_total
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta, costo_total },
+    );
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, data: "Error al actualizar el costo total" };
+  }
+}
+
 // ─── pagos ────────────────────────────────────────────────────────────────────
 
 export async function savePago(
@@ -270,10 +337,9 @@ export async function savePago(
     const id_empresa = await getIdEmpresa();
     const created_at = buildDate(new Date());
 
-    const result = await db.queryParams(
+    await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[pagos]
          ([id_pago],[id_consulta],[monto],[metodo_pago],[fecha_pago],[referencia],[created_at],[id_empresa])
-       OUTPUT INSERTED.*
        VALUES (
          (SELECT ISNULL(MAX([id_pago]),0)+1 FROM [CentroPodologico].[dbo].[pagos]),
          @id_consulta,@monto,@metodo_pago,@fecha_pago,@referencia,@created_at,@id_empresa
@@ -289,7 +355,19 @@ export async function savePago(
       },
     );
 
-    return { ok: true, data: result?.[0] as IPago };
+    const rows = await db.queryParams(
+      `SELECT TOP 1 [id_pago],[id_consulta],[monto],[metodo_pago]
+              ,CONVERT(varchar(10), [fecha_pago], 120) AS fecha_pago
+              ,[referencia]
+              ,CONVERT(varchar(19), [created_at], 120) AS created_at
+              ,[id_empresa]
+         FROM [CentroPodologico].[dbo].[pagos]
+        WHERE [id_consulta] = @id_consulta
+        ORDER BY [id_pago] DESC`,
+      { id_consulta: form.id_consulta },
+    );
+
+    return { ok: true, data: rows?.[0] as IPago };
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al registrar el pago" };
@@ -538,6 +616,7 @@ export interface GeneralTabData {
   nombrePodologo:  string | null;
   sucursalNombre:  string | null;
   sucursalCiudad:  string | null;
+  patologiaUrls:   Record<string, string>;
 }
 
 export async function getGeneralTabData(
@@ -546,7 +625,7 @@ export async function getGeneralTabData(
   id_podologo:  number,
   id_sucursal:  number,
 ): Promise<GeneralTabData> {
-  const [antRows, sRows, pRows, podRows, sucRows] = await Promise.all([
+  const [antRows, sRows, pRows, podRows, sucRows, urlRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_antecedente_medico],[id_paciente]
               ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
@@ -586,10 +665,20 @@ export async function getGeneralTabData(
       `SELECT [nombre],[ciudad] FROM [CentroPodologico].[dbo].[sucursales] WHERE [id_sucursal] = @id_sucursal`,
       { id_sucursal },
     ),
+    db.query(
+      `SELECT [nombre_patologia],[url]
+         FROM [CentroPodologico].[dbo].[patologia_urls]
+        WHERE [status] = 1 AND [url] IS NOT NULL AND [url] <> ''`,
+    ),
   ]);
 
   const pod = (podRows[0] as { nombre?: string } | undefined);
   const suc = (sucRows[0] as { nombre?: string; ciudad?: string } | undefined);
+
+  const patologiaUrls: Record<string, string> = {};
+  (urlRows as { nombre_patologia: string; url: string }[]).forEach((r) => {
+    patologiaUrls[r.nombre_patologia] = r.url;
+  });
 
   return {
     antecedentes:    (antRows[0] as IAntecedenteMedico) ?? null,
@@ -598,6 +687,7 @@ export async function getGeneralTabData(
     nombrePodologo:  pod?.nombre ?? null,
     sucursalNombre:  suc?.nombre ?? null,
     sucursalCiudad:  suc?.ciudad ?? null,
+    patologiaUrls,
   };
 }
 
