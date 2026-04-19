@@ -1,5 +1,6 @@
 "use client";
 
+import { saveArchivo } from "../actions";
 import { IArchivo } from "@/interfaces/archivos";
 import { IPaciente } from "@/interfaces/paciente";
 import { buildDate } from "@/utils/date_helpper";
@@ -69,28 +70,23 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
       const ext      = isImage ? ".jpg" : ".pdf";
       const fileName = `${baseName}_${seq}${ext}`;
 
-      const formData = new FormData();
-      formData.append("file", fileToSend, fileName);
-
-      const uploadRes  = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadRes  = await fetch(`/api/upload?name=${encodeURIComponent(fileName)}`, {
+        method: "POST",
+        headers: { "Content-Type": isImage ? "image/jpeg" : "application/pdf" },
+        body: fileToSend,
+      });
       const uploadData = await uploadRes.json();
       if (!uploadData.ok) throw new Error(uploadData.data ?? "Error al subir el archivo");
 
       const tipo = file.type.startsWith("image/") ? "imagen" : "pdf";
 
-      const archivoRes  = await fetch("/api/archivos", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_archivo:  0,
-          id_consulta,
-          ruta:        String(uploadData.data),
-          tipo,
-          created_at:  buildDate(new Date()),
-          categoria:   categoria,
-        } satisfies IArchivo),
+      const archivoData = await saveArchivo({
+        id_consulta,
+        ruta:       String(uploadData.data),
+        tipo,
+        created_at: buildDate(new Date()),
+        categoria,
       });
-      const archivoData = await archivoRes.json();
       if (!archivoData.ok) throw new Error(archivoData.data ?? "Error al registrar el archivo");
 
       onAddArchivo(archivoData.data);
