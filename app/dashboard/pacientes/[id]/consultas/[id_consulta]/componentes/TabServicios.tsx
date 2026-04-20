@@ -11,14 +11,15 @@ import { IConsultaServicio } from "@/interfaces/consulta_servicio";
 // ─── types ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  id_consulta:  number;
-  locked?:      boolean;
-  onContinuar?: () => void;
+  id_consulta:   number;
+  locked?:       boolean;
+  onContinuar?:  () => void;
+  onTotalChange?: (total: number) => void;
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export default function TabServicios({ id_consulta, locked, onContinuar }: Props) {
+export default function TabServicios({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
   const [servicios,         setServicios        ] = useState<ServicioConOpciones[]>([]);
   const [consultaServicios, setConsultaServicios] = useState<IConsultaServicio[]>([]);
   const [loading,           setLoading          ] = useState(true);
@@ -27,6 +28,12 @@ export default function TabServicios({ id_consulta, locked, onContinuar }: Props
 
   // Track which servicio is currently being saved
   const [savingId, setSavingId] = useState<number | null>(null);
+
+  // Report services total to parent whenever selected options change
+  useEffect(() => {
+    const total = consultaServicios.reduce((s, cs) => s + Number(cs.precio_aplicado), 0);
+    onTotalChange?.(total);
+  }, [consultaServicios]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;

@@ -11,14 +11,15 @@ import AddProductoForm from "./AddProductoForm";
 import ProductoRow from "./ProductoRow";
 
 interface Props {
-  id_consulta:  number;
-  locked?:      boolean;
-  onContinuar?: () => void;
+  id_consulta:   number;
+  locked?:       boolean;
+  onContinuar?:  () => void;
+  onTotalChange?: (total: number) => void;
 }
 
 const HEADERS = ["Producto", "Cantidad", "Precio unit.", "Subtotal", ""];
 
-export default function TabProductos({ id_consulta, locked, onContinuar }: Props) {
+export default function TabProductos({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
   const [productos, setProductos] = useState<ConsultaProductoExtended[]>([]);
   const [catalogo,  setCatalogo ] = useState<ProductoCatalogo[]>([]);
   const [loading,   setLoading  ] = useState(true);
@@ -44,6 +45,11 @@ export default function TabProductos({ id_consulta, locked, onContinuar }: Props
   }, [id_consulta]);
 
   const total = productos.reduce((s, p) => s + Number(p.precio) * Number(p.cantidad), 0);
+
+  // Report products total to parent whenever the list changes
+  useEffect(() => {
+    onTotalChange?.(total);
+  }, [productos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <p className="text-zinc-400 text-sm">Cargando productos…</p>;
   if (error)   return <p className="text-sm text-red-500">{error}</p>;

@@ -58,16 +58,17 @@ function Chip({ label }: { label: string }) {
 // ─── props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  consulta:        IConsulta          | null;
-  paciente:        IPaciente          | null;
-  valoracion:      IValoracionPiel    | null;
-  patologia:       IPatologiaUngueal  | null;
-  onTotalChange?:  (total: number) => void;
+  consulta:                    IConsulta          | null;
+  paciente:                    IPaciente          | null;
+  valoracion:                  IValoracionPiel    | null;
+  patologia:                   IPatologiaUngueal  | null;
+  onServiciosTotalChange?:     (total: number) => void;
+  onProductosTotalChange?:     (total: number) => void;
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export default function TabGeneral({ consulta, paciente, valoracion, patologia, onTotalChange }: Props) {
+export default function TabGeneral({ consulta, paciente, valoracion, patologia, onServiciosTotalChange, onProductosTotalChange }: Props) {
   const [antecedentes,    setAntecedentes   ] = useState<IAntecedenteMedico | null>(null);
   const [serviciosUsados, setServiciosUsados] = useState<ServicioResumen[]>([]);
   const [productos,       setProductos      ] = useState<ConsultaProductoExtended[]>([]);
@@ -380,7 +381,8 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     window.open(url, "_blank");
   };
 
-  useEffect(() => { onTotalChange?.(totalGeneral); }, [totalGeneral]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onServiciosTotalChange?.(totalServicios); }, [totalServicios]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onProductosTotalChange?.(totalProductos); }, [totalProductos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── render ──────────────────────────────────────────────────────────────────
 

@@ -229,7 +229,10 @@ export default function ConsultaPage() {
 
   const handleFinalizar = async () => {
     const procResult = await updateProcesoField(id_consulta, "pagar", 1);
-    if (procResult.ok) setProceso(procResult.data);
+    if (procResult.ok) {
+      setProceso(procResult.data);
+      setActiveTab("general");
+    }
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -243,10 +246,12 @@ export default function ConsultaPage() {
     { key: "pagar",           label: "8. Pagar"                },
   ];
 
-  const totalPagado   = pagos.reduce((s, p) => s + Number(p.monto), 0);
-  const costoTotal    = Number(consulta?.costo_total ?? 0);
-  const [totalGeneral, setTotalGeneral] = useState(costoTotal);
-  const saldo         = totalGeneral - totalPagado;
+  const totalPagado    = pagos.reduce((s, p) => s + Number(p.monto), 0);
+  const costoTotal     = Number(consulta?.costo_total ?? 0);
+  const [totalServicios, setTotalServicios] = useState(costoTotal);
+  const [totalProductos, setTotalProductos] = useState(0);
+  const totalGeneral   = totalServicios + totalProductos;
+  const saldo          = totalGeneral - totalPagado;
 
   // ── render ─────────────────────────────────────────────────────────────────
 
@@ -323,7 +328,8 @@ export default function ConsultaPage() {
               paciente={paciente}
               valoracion={valoracion}
               patologia={patologia}
-              onTotalChange={setTotalGeneral}
+              onServiciosTotalChange={setTotalServicios}
+              onProductosTotalChange={setTotalProductos}
             />
           )}
           {activeTab === "valoracion" && (
@@ -351,6 +357,7 @@ export default function ConsultaPage() {
               id_consulta={id_consulta}
               locked={locked}
               onContinuar={() => handleContinuar("servicios", "productos")}
+              onTotalChange={setTotalServicios}
             />
           )}
           {activeTab === "fotos_valoracion" && (
@@ -370,6 +377,7 @@ export default function ConsultaPage() {
               id_consulta={id_consulta}
               locked={locked}
               onContinuar={() => handleContinuar("productos", "fotos_valoracion")}
+              onTotalChange={setTotalProductos}
             />
           )}
           {activeTab === "fotos_pedicure" && (
@@ -387,7 +395,7 @@ export default function ConsultaPage() {
           {activeTab === "pagar"      && (
             <TabPagar
               costoTotal={totalGeneral}
-              onCostoTotalChange={setTotalGeneral}
+              onCostoTotalChange={setTotalServicios}
               totalPagado={totalPagado}
               saldo={saldo}
               pagos={pagos}
