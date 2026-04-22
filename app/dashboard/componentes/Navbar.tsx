@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useSucursal } from "@/contexts/SucursalContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -18,6 +19,7 @@ const ALL_NAV_LINKS = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { sucursales, selectedId, setSelected } = useSucursal();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [passwordModal, setPasswordModal] = useState(false);
@@ -54,6 +56,20 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+          {/* Sucursal selector */}
+          {sucursales.length > 1 && (
+            <select
+              value={selectedId}
+              onChange={(e) => setSelected(Number(e.target.value))}
+              className="ml-2 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
+            >
+              {sucursales.map((s) => (
+                <option key={s.id_sucursal} value={s.id_sucursal}>
+                  {s.nombre}{s.ciudad ? ` — ${s.ciudad}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* User + logout — only on large screens */}
@@ -155,6 +171,23 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+          {/* Sucursal selector */}
+          {sucursales.length > 1 && (
+            <div className="pt-2">
+              <p className="px-4 pb-1 text-xs text-zinc-400 dark:text-zinc-500">Sucursal</p>
+              <select
+                value={selectedId}
+                onChange={(e) => { setSidebarOpen(false); setSelected(Number(e.target.value)); }}
+                className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
+              >
+                {sucursales.map((s) => (
+                  <option key={s.id_sucursal} value={s.id_sucursal}>
+                    {s.nombre}{s.ciudad ? ` — ${s.ciudad}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </nav>
 
         {/* Logout */}

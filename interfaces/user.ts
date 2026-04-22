@@ -11,4 +11,5 @@ export interface IUser {
     deleted_at:    Date | string;
     id_sucursal:   number;
     id_empresa:    number;
+    sucursales_string: string; 
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useSucursal } from "@/contexts/SucursalContext";
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
@@ -11,22 +12,24 @@ import UsuarioModal from "./componentes/UsuarioModal";
 import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario } from "./actions";
 
 const EMPTY: IUser = {
-  id_user:       0,
-  nombre:        "",
-  email:         "",
-  telefono:      "",
-  password_hash: "",
-  id_role:       0,
-  status:        true,
-  created_at:    "",
-  updated_at:    "",
-  deleted_at:    "",
-  id_sucursal:   0,
-  id_empresa:    0,
+  id_user:           0,
+  nombre:            "",
+  email:             "",
+  telefono:          "",
+  password_hash:     "",
+  id_role:           0,
+  status:            true,
+  created_at:        "",
+  updated_at:        "",
+  deleted_at:        "",
+  id_sucursal:       0,
+  id_empresa:        0,
+  sucursales_string: "",
 };
 
 export default function UsuariosPage() {
   const { user }                  = useAuth();
+  const { selectedId }            = useSucursal();
   const router                    = useRouter();
   const [usuarios, setUsuarios]   = useState<IUser[]>([]);
   const [roles, setRoles]         = useState<IRole[]>([]);
@@ -80,7 +83,7 @@ export default function UsuariosPage() {
     fetchUsuarios();
     fetchRoles();
     fetchSucursales();
-  }, [user]);
+  }, [user, selectedId]);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });
@@ -89,7 +92,7 @@ export default function UsuariosPage() {
   };
 
   const openEdit = (u: IUser) => {
-    setForm({ ...u, password_hash: "" });
+    setForm({ ...u, password_hash: "", sucursales_string: u.sucursales_string ?? "" });
     setError(null);
     setShowModal(true);
   };
@@ -102,21 +105,33 @@ export default function UsuariosPage() {
     }));
   };
 
+  const handleSucursalesStringChange = (id: number) => {
+    setForm((prev) => {
+      const current = (prev.sucursales_string ?? "").split(",").filter(Boolean);
+      const idStr = String(id);
+      const updated = current.includes(idStr)
+        ? current.filter((x) => x !== idStr)
+        : [...current, idStr];
+      return { ...prev, sucursales_string: updated.join(",") };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
       const res = await saveUsuario({
-        id_user:       form.id_user,
-        nombre:        form.nombre,
-        email:         form.email,
-        telefono:      form.telefono,
-        password_hash: form.password_hash,
-        id_role:       form.id_role,
-        status:        form.status,
-        id_sucursal:   form.id_sucursal,
-        id_empresa:    form.id_empresa,
+        id_user:           form.id_user,
+        nombre:            form.nombre,
+        email:             form.email,
+        telefono:          form.telefono,
+        password_hash:     form.password_hash,
+        id_role:           form.id_role,
+        status:            form.status,
+        id_sucursal:       form.id_sucursal,
+        id_empresa:        form.id_empresa,
+        sucursales_string: form.sucursales_string ?? "",
       });
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
@@ -213,7 +228,8 @@ export default function UsuariosPage() {
           error={error}
           onChange={handleChange}
           onStatusChange={(checked) => setForm((prev) => ({ ...prev, status: checked }))}
-          onSucursalChange={(id) => setForm((prev) => ({ ...prev, id_sucursal: id }))}
+          onIdSucursalChange={(id) => setForm((prev) => ({ ...prev, id_sucursal: id }))}
+          onSucursalesStringChange={handleSucursalesStringChange}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
         />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useSucursal } from "@/contexts/SucursalContext";
 import { IPaciente } from "@/interfaces/paciente";
 import { useEffect, useState } from "react";
 import PacienteFila from "./componentes/PacienteFila";
@@ -30,6 +31,7 @@ const EMPTY: IPaciente = {
 
 export default function PacientesPage() {
   const { user } = useAuth();
+  const { selectedId } = useSucursal();
   const [pacientes, setPacientes] = useState<IPaciente[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -56,7 +58,7 @@ export default function PacientesPage() {
     }
   };
 
-  useEffect(() => { fetchPacientes(); }, []);
+  useEffect(() => { fetchPacientes(); }, [selectedId]);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });

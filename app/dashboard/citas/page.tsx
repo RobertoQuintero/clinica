@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useSucursal } from "@/contexts/SucursalContext";
 import { ICita } from "@/interfaces/cita";
 import { IPaciente } from "@/interfaces/paciente";
 import { IUser } from "@/interfaces/user";
@@ -25,6 +26,7 @@ const EMPTY: ICita = {
 
 export default function CitasPage() {
   const { user }                  = useAuth();
+  const { selectedId }            = useSucursal();
   const [citas, setCitas]         = useState<ICita[]>([]);
   const [pacientes, setPacientes] = useState<IPaciente[]>([]);
   const [podologos, setPodologos] = useState<IUser[]>([]);
@@ -64,7 +66,8 @@ export default function CitasPage() {
     refreshCitas();
     getPacientes().then(setPacientes);
     getPodologos().then(setPodologos);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });

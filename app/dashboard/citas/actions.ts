@@ -21,7 +21,10 @@ async function getActiveUser(): Promise<IAuthUser> {
 }
 
 export async function getCitas(): Promise<ICita[]> {
-  const { id_sucursal, id_empresa } = await getActiveUser();
+  const cookieStore = await cookies();
+  const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+  const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+  const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
   const data = await db.queryParams(
     `SELECT [id_cita]
            ,[id_paciente]
@@ -43,7 +46,10 @@ export async function getCitas(): Promise<ICita[]> {
 }
 
 export async function getPacientes(): Promise<IPaciente[]> {
-  const { id_sucursal, id_empresa } = await getActiveUser();
+  const cookieStore = await cookies();
+  const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+  const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+  const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
   const data = await db.queryParams(
     `SELECT [id_paciente]
            ,[nombre]
@@ -72,7 +78,10 @@ export async function getPacientes(): Promise<IPaciente[]> {
 }
 
 export async function getPodologos(): Promise<IUser[]> {
-  const { id_sucursal, id_empresa } = await getActiveUser();
+  const cookieStore = await cookies();
+  const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+  const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+  const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
   const data = await db.queryParams(
     `SELECT [id_user]
            ,[nombre]

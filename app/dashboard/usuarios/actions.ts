@@ -22,7 +22,10 @@ async function getActiveUser(): Promise<IAuthUser> {
 }
 
 export async function getUsuarios(): Promise<IUser[]> {
-  const { id_sucursal, id_empresa } = await getActiveUser();
+  const cookieStore = await cookies();
+  const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+  const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+  const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
   const data = await db.queryParams(
     `SELECT [id_user],
             [nombre],
@@ -35,7 +38,8 @@ export async function getUsuarios(): Promise<IUser[]> {
             CONVERT(varchar(19), [updated_at], 120) AS updated_at,
             CONVERT(varchar(19), [deleted_at], 120) AS deleted_at,
             [id_sucursal],
-            [id_empresa]
+            [id_empresa],
+            ISNULL([sucursales_string], '') AS sucursales_string
        FROM [CentroPodologico].[dbo].[users]
       WHERE [id_sucursal] = @id_sucursal
         AND [id_empresa]  = @id_empresa`,
@@ -78,14 +82,14 @@ export async function getSucursalesActivas(): Promise<ISucursal[]> {
 type SaveUsuarioForm = Pick<
   IUser,
   "id_user" | "nombre" | "email" | "telefono" | "password_hash" |
-  "id_role" | "status" | "id_sucursal" | "id_empresa"
+  "id_role" | "status" | "id_sucursal" | "id_empresa" | "sucursales_string"
 >;
 
 export async function saveUsuario(
   form: SaveUsuarioForm
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_user, nombre, email, telefono, password_hash: rawPassword, id_role, status, id_sucursal, id_empresa } = form;
+    const { id_user, nombre, email, telefono, password_hash: rawPassword, id_role, status, id_sucursal, id_empresa, sucursales_string } = form;
 
     if (id_user === 0) {
       if (!rawPassword) return { ok: false, message: "La contraseña es requerida" };
@@ -94,17 +98,17 @@ export async function saveUsuario(
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[users]
            ([id_user], [nombre], [email], [telefono], [password_hash], [id_role],
-            [status], [created_at], [updated_at], [deleted_at], [id_sucursal], [id_empresa])
+            [status], [created_at], [updated_at], [deleted_at], [id_sucursal], [id_empresa], [sucursales_string])
          VALUES (
            (SELECT ISNULL(MAX([id_user]), 0) + 1 FROM [CentroPodologico].[dbo].[users]),
            @nombre, @email, @telefono, @password_hash, @id_role,
-           @status, @created_at, NULL, NULL, @id_sucursal, @id_empresa
+           @status, @created_at, NULL, NULL, @id_sucursal, @id_empresa, @sucursales_string
          )`,
         {
           nombre, email, telefono, password_hash,
           id_role, status: status ? 1 : 0,
           created_at: buildDate(new Date()),
-          id_sucursal, id_empresa,
+          id_sucursal, id_empresa, sucursales_string: sucursales_string ?? "",
         }
       );
     } else {
@@ -119,22 +123,23 @@ export async function saveUsuario(
 
       await db.queryParams(
         `UPDATE [CentroPodologico].[dbo].[users]
-            SET [nombre]      = @nombre,
-                [email]       = @email,
-                [telefono]    = @telefono,
+            SET [nombre]           = @nombre,
+                [email]            = @email,
+                [telefono]         = @telefono,
                 ${passwordClause}
-                [id_role]     = @id_role,
-                [status]      = @status,
-                [updated_at]  = @updated_at,
-                [id_sucursal] = @id_sucursal,
-                [id_empresa]  = @id_empresa
+                [id_role]          = @id_role,
+                [status]           = @status,
+                [updated_at]       = @updated_at,
+                [id_sucursal]      = @id_sucursal,
+                [id_empresa]       = @id_empresa,
+                [sucursales_string] = @sucursales_string
           WHERE [id_user] = @id_user`,
         {
           id_user, nombre, email, telefono,
           ...passwordParam,
           id_role, status: status ? 1 : 0,
           updated_at: buildDate(new Date()),
-          id_sucursal, id_empresa,
+          id_sucursal, id_empresa, sucursales_string: sucursales_string ?? "",
         }
       );
     }

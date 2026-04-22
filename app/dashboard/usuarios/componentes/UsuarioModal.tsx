@@ -3,7 +3,7 @@
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 interface Props {
   form: IUser;
@@ -13,43 +13,22 @@ interface Props {
   error: string | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onStatusChange: (checked: boolean) => void;
-  onSucursalChange: (id: number) => void;
+  onIdSucursalChange: (id: number) => void;
+  onSucursalesStringChange: (id: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
 
-export default function UsuarioModal({ form, roles, sucursales, saving, error, onChange, onStatusChange, onSucursalChange, onSubmit, onClose }: Props) {
-  const sucursalLabel = (id: number) => {
-    const s = sucursales.find((s) => s.id_sucursal === id);
-    return s ? `${s.nombre} — ${s.ciudad}` : "";
-  };
-
-  const [sucursalQuery, setSucursalQuery] = useState(() => sucursalLabel(form.id_sucursal));
-  const [showSugerencias, setShowSugerencias] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const sugerencias = sucursalQuery.trim() === ""
-    ? sucursales
-    : sucursales.filter((s) =>
-        `${s.nombre} ${s.ciudad}`.toLowerCase().includes(sucursalQuery.toLowerCase())
-      );
-
-  const handleSucursalInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSucursalQuery(e.target.value);
-    setShowSugerencias(true);
-    if (e.target.value.trim() === "") onSucursalChange(0);
-  };
-
-  const selectSucursal = (s: ISucursal) => {
-    setSucursalQuery(`${s.nombre} — ${s.ciudad}`);
-    onSucursalChange(s.id_sucursal);
-    setShowSugerencias(false);
-  };
-
-  const handleSucursalBlur = () => {
-    // pequeño delay para permitir click en sugerencia
-    setTimeout(() => setShowSugerencias(false), 150);
-  };
+export default function UsuarioModal({ form, roles, sucursales, saving, error, onChange, onStatusChange, onIdSucursalChange, onSucursalesStringChange, onSubmit, onClose }: Props) {
+  const selectedIds = (form.sucursales_string ?? "").split(",").filter(Boolean);
+  const [sucursalQuery, setSucursalQuery] = useState("");
+  const [showSucursalList, setShowSucursalList] = useState(false);
+  const selectedSucursal = sucursales.find((s) => s.id_sucursal === Number(form.id_sucursal));
+  const filteredSucursales = sucursales.filter((s) =>
+    sucursalQuery === "" ||
+    s.nombre.toLowerCase().includes(sucursalQuery.toLowerCase()) ||
+    (s.ciudad ?? "").toLowerCase().includes(sucursalQuery.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -97,36 +76,61 @@ export default function UsuarioModal({ form, roles, sucursales, saving, error, o
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursal</span>
-            <div ref={containerRef} className="relative">
-              <input
-                type="text"
-                value={sucursalQuery}
-                onChange={handleSucursalInput}
-                onFocus={() => setShowSugerencias(true)}
-                onBlur={handleSucursalBlur}
-                placeholder="Buscar sucursal..."
-                autoComplete="off"
-                required={form.id_sucursal === 0}
-                className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              />
-              {showSugerencias && sugerencias.length > 0 && (
-                <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-zinc-200 dark:border-zinc-600 bg-white dark:bg-zinc-800 shadow-lg text-sm">
-                  {sugerencias.map((s) => (
-                    <li
-                      key={s.id_sucursal}
-                      onMouseDown={() => selectSucursal(s)}
-                      className="cursor-pointer px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100"
-                    >
-                      {s.nombre} — {s.ciudad}
-                    </li>
-                  ))}
-                </ul>
+          <div className="col-span-1 sm:col-span-2 flex flex-col gap-1 relative">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursal principal</span>
+            <input
+              type="text"
+              placeholder={selectedSucursal ? `${selectedSucursal.nombre} — ${selectedSucursal.ciudad ?? ""}` : "Buscar sucursal..."}
+              value={sucursalQuery}
+              onChange={(e) => { setSucursalQuery(e.target.value); setShowSucursalList(true); }}
+              onFocus={() => setShowSucursalList(true)}
+              onBlur={() => setTimeout(() => setShowSucursalList(false), 150)}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            />
+            {showSucursalList && filteredSucursales.length > 0 && (
+              <ul className="absolute top-full left-0 right-0 z-50 mt-1 max-h-40 overflow-y-auto rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg">
+                {filteredSucursales.map((s) => (
+                  <li
+                    key={s.id_sucursal}
+                    onMouseDown={() => {
+                      onIdSucursalChange(s.id_sucursal);
+                      setSucursalQuery("");
+                      setShowSucursalList(false);
+                    }}
+                    className={`cursor-pointer px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 ${
+                      s.id_sucursal === Number(form.id_sucursal)
+                        ? "font-semibold text-zinc-900 dark:text-zinc-50"
+                        : "text-zinc-700 dark:text-zinc-300"
+                    }`}
+                  >
+                    {s.nombre} — {s.ciudad}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="col-span-1 sm:col-span-2 flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursales</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2">
+              {sucursales.length === 0 && (
+                <p className="text-sm text-zinc-400 col-span-2">Sin sucursales disponibles</p>
               )}
+              {sucursales.map((s) => (
+                <label key={s.id_sucursal} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(String(s.id_sucursal))}
+                    onChange={() => onSucursalesStringChange(s.id_sucursal)}
+                    className="h-4 w-4 rounded border-zinc-300"
+                  />
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                    {s.nombre} — {s.ciudad}
+                  </span>
+                </label>
+              ))}
             </div>
-          </label>
-          <label className="flex items-center gap-2 pt-5">
+          </div>
+          <label className="flex items-center gap-2 pt-1">
             <input type="checkbox" name="status" checked={!!form.status}
               onChange={(e) => onStatusChange(e.target.checked)}
               className="h-4 w-4 rounded border-zinc-300" />
@@ -153,3 +157,4 @@ export default function UsuarioModal({ form, roles, sucursales, saving, error, o
     </div>
   );
 }
+

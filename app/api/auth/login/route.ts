@@ -63,7 +63,8 @@ export const POST = async (req: Request) => {
     // Buscar usuario por email
     const rows = await db.queryParams(
       `SELECT u.[id_user],u.[nombre],u.[email],u.[telefono],u.[password_hash],
-              u.[id_role],r.[nombre] AS role_nombre,u.[status],u.[id_sucursal],u.[id_empresa]
+              u.[id_role],r.[nombre] AS role_nombre,u.[status],u.[id_sucursal],u.[id_empresa],
+              ISNULL(u.[sucursales_string], '') AS sucursales_string
          FROM [CentroPodologico].[dbo].[users] u
          LEFT JOIN [CentroPodologico].[dbo].[roles] r ON r.[id_role] = u.[id_role]
         WHERE u.[email] = @email AND u.[deleted_at] IS NULL`,
@@ -91,6 +92,7 @@ export const POST = async (req: Request) => {
       status: boolean;
       id_sucursal: number;
       id_empresa: number;
+      sucursales_string: string;
     };
 
     // Comparar password con bcryptjs
@@ -114,14 +116,15 @@ export const POST = async (req: Request) => {
 
     // Payload del JWT
     const payload: IAuthUser = {
-      id_user:     userRow.id_user,
-      nombre:      userRow.nombre,
-      email:       userRow.email,
-      id_role:     userRow.id_role,
-      role_nombre: userRow.role_nombre ?? "",
-      status:      userRow.status,
-      id_sucursal: userRow.id_sucursal,
-      id_empresa:  userRow.id_empresa,
+      id_user:           userRow.id_user,
+      nombre:            userRow.nombre,
+      email:             userRow.email,
+      id_role:           userRow.id_role,
+      role_nombre:       userRow.role_nombre ?? "",
+      status:            userRow.status,
+      id_sucursal:       userRow.id_sucursal,
+      id_empresa:        userRow.id_empresa,
+      sucursales_string: userRow.sucursales_string ?? "",
     };
 
     // Firmar JWT

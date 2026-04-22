@@ -12,14 +12,15 @@ export interface IRegisterPayload {
 
 /** Payload que vive dentro del JWT y se expone al cliente (sin password_hash) */
 export interface IAuthUser {
-  id_user:     number;
-  nombre:      string;
-  email:       string;
-  id_role:     number;
-  role_nombre: string;
-  status:      boolean;
-  id_sucursal: number;
-  id_empresa:  number;
+  id_user:           number;
+  nombre:            string;
+  email:             string;
+  id_role:           number;
+  role_nombre:       string;
+  status:            boolean;
+  id_sucursal:       number;
+  id_empresa:        number;
+  sucursales_string: string;
 }
 
 export interface IAuthContext {
