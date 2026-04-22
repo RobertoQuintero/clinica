@@ -114,8 +114,9 @@ export const POST = async (req: Request) => {
       id_role:     newUser.id_role,
       role_nombre,
       status:      newUser.status,
-      id_sucursal: newUser.id_sucursal,
-      id_empresa:  newUser.id_empresa,
+      id_sucursal:       newUser.id_sucursal,
+      id_empresa:        newUser.id_empresa,
+      sucursales_string: String(newUser.id_sucursal ?? ""),
     };
 
     // Firmar JWT y auto-login
