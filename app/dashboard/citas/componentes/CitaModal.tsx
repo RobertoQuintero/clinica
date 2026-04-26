@@ -28,12 +28,12 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, o
   const podologoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const p = pacientes.find((p) => p.id_paciente === form.id_paciente);
+    const p = pacientes.find((p) => p.id_paciente === Number(form.id_paciente));
     setPacienteQuery(p ? `${p.nombre} ${p.apellido_paterno}` : "");
   }, [form.id_paciente, pacientes]);
 
   useEffect(() => {
-    const u = podologos.find((u) => u.id_user === form.id_podologo);
+    const u = podologos.find((u) => u.id_user === Number(form.id_podologo));
     setPodologoQuery(u ? u.nombre : "");
   }, [form.id_podologo, podologos]);
 

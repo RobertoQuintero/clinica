@@ -46,6 +46,7 @@ const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> 
 
 export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria, locked, onContinuar }: Props) {
   const fileInputRef                       = useRef<HTMLInputElement>(null);
+  const cameraInputRef                     = useRef<HTMLInputElement>(null);
   const [uploadingFile,  setUploadingFile] = useState(false);
   const [uploadError,    setUploadError  ] = useState<string | null>(null);
 
@@ -94,7 +95,8 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
       setUploadError(err instanceof Error ? err.message : "Error al subir el archivo");
     } finally {
       setUploadingFile(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current)   fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
     }
   };
 
@@ -103,7 +105,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
 
       {/* upload */}
       {!locked && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -111,6 +113,26 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
             className="hidden"
             onChange={handleFileUpload}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <button
+            type="button"
+            disabled={uploadingFile}
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex items-center gap-2 rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Tomar foto
+          </button>
           <button
             type="button"
             disabled={uploadingFile}
@@ -130,7 +152,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4m0 0L8 8m4-4l4 4" />
                 </svg>
-                Subir imagen / PDF
+                Subir imagen
               </>
             )}
           </button>
@@ -178,7 +200,8 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
           <button
             type="button"
             onClick={onContinuar}
-            className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500"
+            disabled={visibleArchivos.length < 2}
+            className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500"
           >
             Continuar
           </button>

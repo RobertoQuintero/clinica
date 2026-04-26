@@ -12,13 +12,13 @@ interface Props {
 
 const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
   ["anoniquia",           "Anoniquia"          ],
-  ["microniquia",         "Microniquia"        ],
-  ["onicolisis",          "Onicolisis"         ],
-  ["onicauxis",           "Onicauxis"          ],
   ["hematoma_subungueal", "Hematoma subungueal"],
+  ["microniquia",         "Microniquia"        ],
+  ["onicauxis",           "Onicauxis"          ],
   ["onicofosis",          "Onicofosis"         ],
-  ["paquioniquia",        "Paquioniquia"       ],
+  ["onicolisis",          "Onicolisis"         ],
   ["onicomicosis",        "Onicomicosis"       ],
+  ["paquioniquia",        "Paquioniquia"       ],
 ];
 
 export default function TabPatologia({ form, onChange, saving, error, onSubmit, locked }: Props) {

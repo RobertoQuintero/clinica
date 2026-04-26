@@ -80,6 +80,7 @@ export default function ProductoRow({ producto, onUpdate, onDelete }: Props) {
               className={`w-24 ${inputCls}`}
               value={form.precio}
               onChange={(e) => setForm((f) => ({ ...f, precio: Number(e.target.value) }))}
+              disabled
             />
           </td>
           <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">

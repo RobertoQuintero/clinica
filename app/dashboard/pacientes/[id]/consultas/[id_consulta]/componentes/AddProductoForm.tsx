@@ -123,6 +123,7 @@ export default function AddProductoForm({ id_consulta, catalogo, onAdd }: Props)
             onChange={(e) => setPrecio(Number(e.target.value))}
             className={inputCls}
             required
+            disabled
           />
         </div>
 

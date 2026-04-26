@@ -11,14 +11,14 @@ interface Props {
 }
 
 const CONDITIONS: [keyof IValoracionPiel, string][] = [
-  ["edema",           "Edema"          ],
-  ["dermatomicosis",  "Dermatomicosis" ],
-  ["pie_atleta",      "Pie de atleta"  ],
-  ["bromhidrosis",    "Bromhidrosis"   ],
-  ["hiperdrosis",     "Hiperhidrosis"  ],
   ["anhidrosis",      "Anhidrosis"     ],
-  ["hiperqueratosis", "Hiperqueratosis"],
+  ["bromhidrosis",    "Bromhidrosis"   ],
+  ["dermatomicosis",  "Dermatomicosis" ],
+  ["edema",           "Edema"          ],
   ["helomas",         "Helomas"        ],
+  ["hiperdrosis",     "Hiperhidrosis"  ],
+  ["hiperqueratosis", "Hiperqueratosis"],
+  ["pie_atleta",      "Pie de atleta"  ],
   ["verrugas",        "Verrugas"       ],
 ];
 

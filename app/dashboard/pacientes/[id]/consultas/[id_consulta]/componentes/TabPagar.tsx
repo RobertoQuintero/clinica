@@ -106,7 +106,8 @@ export default function TabPagar({
                 value={pagoForm.monto !== 0 ? pagoForm.monto : saldo}
                 onChange={(e) => onPagoFormChange((f) => ({ ...f, monto: Number(e.target.value) }))}
                 required
-                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                disabled
+                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
             <div>
