@@ -15,17 +15,17 @@ interface Props {
 const BOOLEAN_FIELDS: { name: keyof IAntecedenteMedico; label: string }[] = [
   { name: "alergia_anestesia",           label: "Alergia a anestesia" },
   { name: "alergia_antibioticos",        label: "Alergia a antibióticos" },
-  { name: "alergia_sulfas",              label: "Alergia a sulfas" },
   { name: "alergia_latex",               label: "Alergia a látex" },
-  { name: "alergia_ninguna",             label: "Sin alergias" },
+  { name: "alergia_sulfas",              label: "Alergia a sulfas" },
+  { name: "antecedentes_dermatologicos", label: "Antecedentes dermatológicos" },
+  { name: "cancer",                      label: "Cáncer" },
   { name: "diabetico",                   label: "Diabético/a" },
+  { name: "embarazada",                  label: "Embarazada" },
+  { name: "fracturas",                   label: "Fracturas" },
   { name: "hipertenso",                  label: "Hipertenso/a" },
   { name: "hipotiroidismo",              label: "Hipotiroidismo" },
-  { name: "cancer",                      label: "Cáncer" },
-  { name: "embarazada",                  label: "Embarazada" },
   { name: "lactando",                    label: "Lactando" },
-  { name: "fracturas",                   label: "Fracturas" },
-  { name: "antecedentes_dermatologicos", label: "Antecedentes dermatológicos" },
+  { name: "alergia_ninguna",             label: "Sin alergias" },
 ];
 
 const TIPO_SANGRE_OPTIONS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];

@@ -6,4 +6,5 @@ export interface IProducto {
     created_at:  Date | string;
     id_empresa:  number;
     descripcion: string;
+    id_sucursal: number;
 }

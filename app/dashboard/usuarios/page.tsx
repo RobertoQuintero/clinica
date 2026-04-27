@@ -52,7 +52,7 @@ export default function UsuariosPage() {
   };
 
   useEffect(() => {
-    if (user && user.id_role !== 1) {
+    if (user && user.id_role !== 1 && user.id_role !== 4) {
       router.replace("/dashboard");
     }
   }, [user, router]);

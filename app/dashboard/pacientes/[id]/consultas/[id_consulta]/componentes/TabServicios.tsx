@@ -7,6 +7,7 @@ import {
   ServicioConOpciones,
 } from "../actions";
 import { IConsultaServicio } from "@/interfaces/consulta_servicio";
+import { useSucursal } from "@/contexts/SucursalContext";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ interface Props {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function TabServicios({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
+  const { selectedId: id_sucursal } = useSucursal();
   const [servicios,         setServicios        ] = useState<ServicioConOpciones[]>([]);
   const [consultaServicios, setConsultaServicios] = useState<IConsultaServicio[]>([]);
   const [loading,           setLoading          ] = useState(true);
@@ -38,7 +40,7 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getServiciosTabData(id_consulta).then((data) => {
+    getServiciosTabData(id_consulta, id_sucursal).then((data) => {
       if (cancelled) return;
       setServicios(data.servicios);
       setConsultaServicios(data.consultaServicios);
@@ -49,7 +51,7 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [id_consulta]);
+  }, [id_consulta, id_sucursal]);
 
   // Returns the currently selected id_servicio_opcion for a given servicio
   const getSelected = (id_servicio: number): number => {
@@ -62,18 +64,8 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
     );
   };
 
-  // Normalise: lowercase, trim, strip diacritics ("Clínico" → "clinico")
-  const norm = (s: string) =>
-    s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  // Names (accent-insensitive, case-insensitive) that are mandatory before continuing
-  const REQUIRED_SERVICE_NAMES = ["pedicure clinico", "extras", "onicocriptosis"];
-
-  const canContinuar = REQUIRED_SERVICE_NAMES.every((reqName) => {
-    const servicio = servicios.find((s) => norm(s.nombre) === reqName);
-    if (!servicio) return false;
-    return getSelected(servicio.id_servicio) !== 0;
-  });
+  // All services loaded for this sucursal must have a selection before continuing
+  const canContinuar = servicios.length > 0 && servicios.every((s) => getSelected(s.id_servicio) !== 0);
 
   const handleSelect = (
     id_servicio:        number,
@@ -115,7 +107,7 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
   if (servicios.length === 0) {
     return (
       <p className="text-zinc-400 text-sm">
-        No hay servicios configurados para esta empresa.
+        Debe agregar servicios y las opciones.
       </p>
     );
   }

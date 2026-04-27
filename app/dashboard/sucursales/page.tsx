@@ -34,8 +34,10 @@ export default function SucursalesPage() {
   };
 
   useEffect(() => {
-    if (user && user.id_role !== 1) router.replace("/dashboard");
+    if (user && user.id_role !== 1 && user.id_role !== 2 && user.id_role !== 3 && user.id_role !== 4) router.replace("/dashboard");
   }, [user, router]);
+
+  const readOnly = user?.id_role === 2 || user?.id_role === 3;
 
   const fetchSucursales = async () => {
     setLoading(true);
@@ -120,12 +122,14 @@ export default function SucursalesPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Sucursales</h2>
-        <button
-          onClick={openNew}
-          className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-        >
-          + Nueva sucursal
-        </button>
+        {!readOnly && (
+          <button
+            onClick={openNew}
+            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            + Nueva sucursal
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -178,6 +182,7 @@ export default function SucursalesPage() {
                     sucursal={s}
                     onEdit={openEdit}
                     onDeleted={fetchSucursales}
+                    readOnly={readOnly}
                   />
                 ))
               )}

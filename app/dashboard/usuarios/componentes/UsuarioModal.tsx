@@ -4,6 +4,7 @@ import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   form: IUser;
@@ -20,6 +21,8 @@ interface Props {
 }
 
 export default function UsuarioModal({ form, roles, sucursales, saving, error, onChange, onStatusChange, onIdSucursalChange, onSucursalesStringChange, onSubmit, onClose }: Props) {
+  const { user: currentUser } = useAuth();
+  const visibleRoles = roles.filter((r) => r.id_role !== 4 || currentUser?.id_role === 4);
   const selectedIds = (form.sucursales_string ?? "").split(",").filter(Boolean);
   const [sucursalQuery, setSucursalQuery] = useState("");
   const [showSucursalList, setShowSucursalList] = useState(false);
@@ -71,7 +74,7 @@ export default function UsuarioModal({ form, roles, sucursales, saving, error, o
             <select name="id_role" value={form.id_role} onChange={onChange} required
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400">
               <option value={0}>Seleccionar</option>
-              {roles.map((r) => (
+              {visibleRoles.map((r) => (
                 <option key={r.id_role} value={r.id_role}>{r.nombre}</option>
               ))}
             </select>

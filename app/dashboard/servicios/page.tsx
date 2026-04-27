@@ -4,16 +4,18 @@ import { IServicio } from "@/interfaces/servicio";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSucursal } from "@/contexts/SucursalContext";
 import { getServicios, saveServicio } from "./actions";
 import ServicioFila from "./componentes/ServicioFila";
 import ServicioModal from "./componentes/ServicioModal";
 
-type FormData = Pick<IServicio, "id_servicio" | "nombre" | "descripcion">;
+type FormData = Pick<IServicio, "id_servicio" | "nombre" | "descripcion" | "id_sucursal">;
 
-const EMPTY: FormData = { id_servicio: 0, nombre: "", descripcion: "" };
+const EMPTY: FormData = { id_servicio: 0, nombre: "", descripcion: "", id_sucursal: 0 };
 
 export default function ServiciosPage() {
   const { user }                  = useAuth();
+  const { selectedId }            = useSucursal();
   const router                    = useRouter();
   const [servicios, setServicios] = useState<IServicio[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -32,30 +34,28 @@ export default function ServiciosPage() {
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  useEffect(() => {
-    if (user && user.id_role === 3) router.replace("/dashboard");
-  }, [user, router]);
+  const readOnly = user?.id_role === 2 || user?.id_role === 3;
 
   const fetchServicios = async () => {
     setLoading(true);
     try {
-      const data = await getServicios();
+      const data = await getServicios(selectedId);
       setServicios(data);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchServicios(); }, []);
+  useEffect(() => { fetchServicios(); }, [selectedId]);
 
   const openNew = () => {
-    setForm({ ...EMPTY });
+    setForm({ ...EMPTY, id_sucursal: selectedId });
     setError(null);
     setShowModal(true);
   };
 
   const openEdit = (s: IServicio) => {
-    setForm({ id_servicio: s.id_servicio, nombre: s.nombre, descripcion: s.descripcion ?? "" });
+    setForm({ id_servicio: s.id_servicio, nombre: s.nombre, descripcion: s.descripcion ?? "",id_sucursal: s.id_sucursal });
     setError(null);
     setShowModal(true);
   };
@@ -93,12 +93,14 @@ export default function ServiciosPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Servicios</h2>
-        <button
-          onClick={openNew}
-          className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-        >
-          + Nuevo servicio
-        </button>
+        {!readOnly && (
+          <button
+            onClick={openNew}
+            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            + Nuevo servicio
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -145,6 +147,7 @@ export default function ServiciosPage() {
                     servicio={s}
                     onEdit={openEdit}
                     onDeleted={fetchServicios}
+                    readOnly={readOnly}
                   />
                 ))
               )}

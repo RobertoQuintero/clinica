@@ -380,7 +380,7 @@ export interface ServicioConOpciones extends IServicio {
   opciones: IServicioOpcion[];
 }
 
-export async function getServiciosTabData(id_consulta: number): Promise<{
+export async function getServiciosTabData(id_consulta: number, id_sucursal: number): Promise<{
   servicios:         ServicioConOpciones[];
   consultaServicios: IConsultaServicio[];
 }> {
@@ -395,10 +395,12 @@ export async function getServiciosTabData(id_consulta: number): Promise<{
          FROM [CentroPodologico].[dbo].[servicios] s
          LEFT JOIN [CentroPodologico].[dbo].[servicio_opciones] so
                 ON so.[id_servicio] = s.[id_servicio] AND so.[status] = 1
+               AND so.[id_sucursal] = @id_sucursal
         WHERE s.[status] = 1
           AND s.[id_empresa] = @id_empresa
+          AND s.[id_sucursal] = @id_sucursal
         ORDER BY s.[id_servicio], so.[id_servicio_opcion]`,
-      { id_empresa },
+      { id_empresa, id_sucursal },
     ),
     db.queryParams(
       `SELECT [id_consulta_servicio],[id_consulta],[id_servicio_opcion],[precio_aplicado]
@@ -426,6 +428,7 @@ export async function getServiciosTabData(id_consulta: number): Promise<{
         status:      r.status,
         cretated_at: r.cretated_at,
         id_empresa:  r.id_empresa,
+        id_sucursal: r.id_sucursal ?? 0,
         opciones:    [],
       });
     }
@@ -513,14 +516,15 @@ export async function getConsultaProductos(
   return rows as ConsultaProductoExtended[];
 }
 
-export async function getProductosCatalogo(): Promise<ProductoCatalogo[]> {
+export async function getProductosCatalogo(id_sucursal: number): Promise<ProductoCatalogo[]> {
   const id_empresa = await getIdEmpresa();
   const rows = await db.queryParams(
     `SELECT [id_producto],[nombre],[precio]
        FROM [CentroPodologico].[dbo].[productos]
       WHERE [status] = 1 AND [id_empresa] = @id_empresa
+        AND [id_sucursal] = @id_sucursal
       ORDER BY [nombre]`,
-    { id_empresa },
+    { id_empresa, id_sucursal },
   );
   return rows as ProductoCatalogo[];
 }

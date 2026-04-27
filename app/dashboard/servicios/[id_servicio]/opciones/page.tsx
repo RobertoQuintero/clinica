@@ -4,6 +4,7 @@ import { IServicioOpcion } from "@/interfaces/servicio_opcion";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getServicio,
   getOpcionesServicio,
@@ -25,6 +26,9 @@ interface Props {
 export default function OpcionesServicioPage({ params }: Props) {
   const { id_servicio: id_servicio_str } = use(params);
   const id_servicio = Number(id_servicio_str);
+
+  const { user } = useAuth();
+  const readOnly = user?.id_role === 2 || user?.id_role === 3;
 
   const router = useRouter();
 
@@ -133,12 +137,14 @@ export default function OpcionesServicioPage({ params }: Props) {
             Opciones — <span className="text-zinc-500 dark:text-zinc-400">{nombreServicio}</span>
           </h2>
         </div>
-        <button
-          onClick={openNew}
-          className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-        >
-          + Nueva opción
-        </button>
+        {!readOnly && (
+          <button
+            onClick={openNew}
+            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            + Nueva opción
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -202,6 +208,7 @@ export default function OpcionesServicioPage({ params }: Props) {
                     opcion={o}
                     onEdit={openEdit}
                     onDeleted={fetchData}
+                    readOnly={readOnly}
                   />
                 ))
               )}

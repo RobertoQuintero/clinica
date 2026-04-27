@@ -9,11 +9,11 @@ import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordMod
 
 const ALL_NAV_LINKS = [
   { href: "/dashboard/pacientes",  label: "Pacientes",  minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 1, excludeRoles: [] as number[] },
+  { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 0, excludeRoles: [2, 3] },
   { href: "/dashboard/citas",      label: "Citas",      minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0, excludeRoles: [3] },
+  { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0, excludeRoles: [] as number[] },
   { href: "/dashboard/productos",  label: "Productos",  minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/sucursales", label: "Sucursales", minRole: 1, excludeRoles: [] as number[] },
+  { href: "/dashboard/sucursales", label: "Sucursales", minRole: 0, excludeRoles: [] as number[] },
   { href: "/dashboard/enlaces",    label: "Enlaces",    minRole: 0, excludeRoles: [3] },
 ];
 

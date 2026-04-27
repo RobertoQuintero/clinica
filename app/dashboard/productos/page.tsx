@@ -2,15 +2,20 @@
 
 import { IProducto } from "@/interfaces/producto";
 import { useEffect, useState } from "react";
+import { useSucursal } from "@/contexts/SucursalContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { getProductos, saveProducto } from "./actions";
 import ProductoFila from "./componentes/ProductoFila";
 import ProductoModal from "./componentes/ProductoModal";
 
-type FormData = Pick<IProducto, "id_producto" | "nombre" | "precio" | "descripcion">;
+type FormData = Pick<IProducto, "id_producto" | "nombre" | "precio" | "descripcion" | "id_sucursal">;
 
-const EMPTY: FormData = { id_producto: 0, nombre: "", precio: 0, descripcion: "" };
+const EMPTY: FormData = { id_producto: 0, nombre: "", precio: 0, descripcion: "", id_sucursal: 0 };
 
 export default function ProductosPage() {
+  const { selectedId }            = useSucursal();
+  const { user }                  = useAuth();
+  const readOnly                  = user?.id_role === 2 || user?.id_role === 3;
   const [productos, setProductos] = useState<IProducto[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -31,23 +36,23 @@ export default function ProductosPage() {
   const fetchProductos = async () => {
     setLoading(true);
     try {
-      const data = await getProductos();
+      const data = await getProductos(selectedId);
       setProductos(data);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchProductos(); }, []);
+  useEffect(() => { fetchProductos(); }, [selectedId]);
 
   const openNew = () => {
-    setForm({ ...EMPTY });
+    setForm({ ...EMPTY, id_sucursal: selectedId });
     setError(null);
     setShowModal(true);
   };
 
   const openEdit = (p: IProducto) => {
-    setForm({ id_producto: p.id_producto, nombre: p.nombre, precio: p.precio, descripcion: p.descripcion ?? "" });
+    setForm({ id_producto: p.id_producto, nombre: p.nombre, precio: p.precio, descripcion: p.descripcion ?? "",id_sucursal: p.id_sucursal });
     setError(null);
     setShowModal(true);
   };
@@ -92,12 +97,14 @@ export default function ProductosPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Productos</h2>
-        <button
-          onClick={openNew}
-          className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-        >
-          + Nuevo producto
-        </button>
+        {!readOnly && (
+          <button
+            onClick={openNew}
+            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            + Nuevo producto
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -153,6 +160,7 @@ export default function ProductosPage() {
                     producto={p}
                     onEdit={openEdit}
                     onDeleted={fetchProductos}
+                    readOnly={readOnly}
                   />
                 ))
               )}

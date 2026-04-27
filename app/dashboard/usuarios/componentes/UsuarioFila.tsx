@@ -3,6 +3,7 @@
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   usuario: IUser;
@@ -12,6 +13,8 @@ interface Props {
 }
 
 export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit }: Props) {
+  const { user: currentUser } = useAuth();
+  const canEdit = !(u.id_role === 4 && currentUser?.id_role !== 4);
   const roleName = (id: number) => roles.find((r) => r.id_role === id)?.nombre ?? id;
   const sucursalName = (id: number) => {
     const s = sucursales.find((s) => s.id_sucursal === id);
@@ -33,7 +36,8 @@ export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit }: P
       <td className="px-4 py-3">
         <button
           onClick={() => onEdit(u)}
-          className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+          disabled={!canEdit}
+          className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Editar
         </button>

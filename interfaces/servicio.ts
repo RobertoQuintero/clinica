@@ -5,4 +5,5 @@ export interface IServicio {
     cretated_at: string;
     id_empresa:  number;
     descripcion: string;
+    id_sucursal: number;
 }

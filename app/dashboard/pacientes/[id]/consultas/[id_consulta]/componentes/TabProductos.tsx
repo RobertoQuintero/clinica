@@ -9,6 +9,7 @@ import {
 } from "../actions";
 import AddProductoForm from "./AddProductoForm";
 import ProductoRow from "./ProductoRow";
+import { useSucursal } from "@/contexts/SucursalContext";
 
 interface Props {
   id_consulta:   number;
@@ -20,6 +21,7 @@ interface Props {
 const HEADERS = ["Producto", "Cantidad", "Precio unit.", "Subtotal", ""];
 
 export default function TabProductos({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
+  const { selectedId: id_sucursal } = useSucursal();
   const [productos, setProductos] = useState<ConsultaProductoExtended[]>([]);
   const [catalogo,  setCatalogo ] = useState<ProductoCatalogo[]>([]);
   const [loading,   setLoading  ] = useState(true);
@@ -30,7 +32,7 @@ export default function TabProductos({ id_consulta, locked, onContinuar, onTotal
     setLoading(true);
     Promise.all([
       getConsultaProductos(id_consulta),
-      getProductosCatalogo(),
+      getProductosCatalogo(id_sucursal),
     ]).then(([cp, cat]) => {
       if (cancelled) return;
       setProductos(cp);
@@ -53,6 +55,10 @@ export default function TabProductos({ id_consulta, locked, onContinuar, onTotal
 
   if (loading) return <p className="text-zinc-400 text-sm">Cargando productos…</p>;
   if (error)   return <p className="text-sm text-red-500">{error}</p>;
+
+  if (catalogo.length === 0) {
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">Debe agregar productos al stock</p>;
+  }
 
   return (
     <div className="space-y-4">
