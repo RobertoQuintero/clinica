@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { createPrivateKey } from "crypto";
 
 export interface CalendarEventData {
   summary: string;
@@ -8,15 +9,19 @@ export interface CalendarEventData {
 }
 
 function getCalendarClient() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key   = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const calId = process.env.GOOGLE_CALENDAR_ID;
+  const email  = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const rawKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const calId  = process.env.GOOGLE_CALENDAR_ID;
 
-  if (!email || !key || !calId) {
+  if (!email || !rawKey || !calId) {
     throw new Error(
       "Google Calendar: faltan variables de entorno (GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_CALENDAR_ID)"
     );
   }
+
+  // Normalize the private key to PKCS#8 PEM — required for OpenSSL 3 (Node.js 18+)
+  const key = createPrivateKey({ key: rawKey, format: "pem" })
+    .export({ type: "pkcs8", format: "pem" }) as string;
 
   const auth = new google.auth.JWT({
     email,
