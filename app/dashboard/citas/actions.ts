@@ -9,6 +9,11 @@ import { toDBString, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import {
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+} from "@/lib/googleCalendar";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
@@ -37,6 +42,7 @@ export async function getCitas(): Promise<ICita[]> {
            ,CONVERT(varchar(19), [deleted_at],   120) AS deleted_at
            ,[id_sucursal]
            ,[id_empresa]
+           ,[google_event_id]
        FROM [CentroPodologico].[dbo].[citas]
       WHERE [id_sucursal] = @id_sucursal
         AND [id_empresa]  = @id_empresa`,
@@ -119,6 +125,7 @@ export async function saveCita(
       deleted_at,
       id_sucursal,
       id_empresa,
+      google_event_id,
     } = form;
 
     const commonParams = {
@@ -134,11 +141,34 @@ export async function saveCita(
       id_empresa,
     };
 
+    // --- Resolve names for the calendar event summary ---
+    const [pacienteRows, podologoRows] = await Promise.all([
+      db.queryParams(
+        `SELECT [nombre], [apellido_paterno], [whatsapp], [telefono] FROM [CentroPodologico].[dbo].[pacientes] WHERE [id_paciente] = @id_paciente`,
+        { id_paciente }
+      ),
+      db.queryParams(
+        `SELECT [nombre] FROM [CentroPodologico].[dbo].[users] WHERE [id_user] = @id_user`,
+        { id_user: id_podologo }
+      ),
+    ]);
+    const paciente = pacienteRows[0] as { nombre: string; apellido_paterno: string; whatsapp?: string; telefono?: string } | undefined;
+    const podologo = podologoRows[0] as { nombre: string } | undefined;
+    const summary = `Cita: ${paciente ? `${paciente.nombre} ${paciente.apellido_paterno}` : `Paciente #${id_paciente}`} con ${podologo ? podologo.nombre : `Podólogo #${id_podologo}`}`;
+    const telefono = paciente?.whatsapp || paciente?.telefono || "";
+    const calEventData = {
+      summary,
+      description: telefono,
+      startDateTime: String(commonParams.fecha_inicio ?? "").replace(" ", "T"),
+      endDateTime:   String(commonParams.fecha_fin   ?? "").replace(" ", "T"),
+    };
+
     if (id_cita === 0) {
-      await db.queryParams(
+      const inserted = await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[citas]
            ([id_cita],[id_paciente],[id_podologo],[fecha_inicio],[fecha_fin],
             [estado],[motivo_cancelacion],[created_at],[deleted_at],[id_sucursal],[id_empresa])
+         OUTPUT INSERTED.[id_cita]
          VALUES (
            (SELECT ISNULL(MAX([id_cita]),0)+1 FROM [CentroPodologico].[dbo].[citas]),
            @id_paciente,@id_podologo,@fecha_inicio,@fecha_fin,
@@ -146,6 +176,18 @@ export async function saveCita(
          )`,
         commonParams
       );
+      const newId = (inserted[0] as { id_cita: number }).id_cita;
+
+      // Sync to Google Calendar (non-blocking)
+      try {
+        const eventId = await createCalendarEvent(calEventData);
+        await db.queryParams(
+          `UPDATE [CentroPodologico].[dbo].[citas] SET [google_event_id] = @eventId WHERE [id_cita] = @id_cita`,
+          { eventId, id_cita: newId }
+        );
+      } catch (gcalErr) {
+        console.error("[GoogleCalendar] Error al crear evento:", gcalErr);
+      }
     } else {
       await db.queryParams(
         `UPDATE [CentroPodologico].[dbo].[citas] SET
@@ -162,6 +204,28 @@ export async function saveCita(
          WHERE [id_cita] = @id_cita`,
         { id_cita, ...commonParams }
       );
+
+      // Sync to Google Calendar (non-blocking)
+      try {
+        if (google_event_id && estado === "cancelada") {
+          await deleteCalendarEvent(google_event_id);
+          await db.queryParams(
+            `UPDATE [CentroPodologico].[dbo].[citas] SET [google_event_id] = NULL WHERE [id_cita] = @id_cita`,
+            { id_cita }
+          );
+        } else if (google_event_id) {
+          await updateCalendarEvent(google_event_id, calEventData);
+        } else if (estado !== "cancelada") {
+          // Cita pre-integración sin event_id: crear el evento ahora
+          const eventId = await createCalendarEvent(calEventData);
+          await db.queryParams(
+            `UPDATE [CentroPodologico].[dbo].[citas] SET [google_event_id] = @eventId WHERE [id_cita] = @id_cita`,
+            { eventId, id_cita }
+          );
+        }
+      } catch (gcalErr) {
+        console.error("[GoogleCalendar] Error al sincronizar evento:", gcalErr);
+      }
     }
 
     revalidatePath("/dashboard/citas");

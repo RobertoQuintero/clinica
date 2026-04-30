@@ -8,7 +8,7 @@ import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
-import { getConsultaData, savePago, savePatologia, saveValoracion, updateConsultaCosto, updateProcesoField } from "./actions";
+import { getConsultaData, savePago, savePatologia, saveValoracion, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -175,6 +175,9 @@ export default function ConsultaPage() {
     setPagoError(null);
     try {
       await updateConsultaCosto(id_consulta, totalGeneral);
+      const fechaFin = buildDate(new Date());
+      await updateConsultaFechaFin(id_consulta, fechaFin);
+      setConsulta((prev) => prev ? { ...prev, fecha_fin: fechaFin } : prev);
       const result = await savePago(pagoForm);
       if (!result.ok) throw new Error(result.data);
       setPagos((prev) => [result.data, ...prev]);
@@ -275,6 +278,16 @@ export default function ConsultaPage() {
           {consulta?.fecha && (
             <span className="ml-2 text-sm font-normal text-zinc-500">
               — {fmtDatetime(consulta.fecha)}
+              {consulta.fecha_fin && (() => {
+                const ms = new Date(String(consulta.fecha_fin).replace(" ", "T")).getTime()
+                         - new Date(String(consulta.fecha).replace(" ", "T")).getTime();
+                const mins = Math.round(ms / 60000);
+                if (mins <= 0) return null;
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const dur = h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m} min`;
+                return <span className="ml-2 text-zinc-400">({dur})</span>;
+              })()}
             </span>
           )}
         </h1>

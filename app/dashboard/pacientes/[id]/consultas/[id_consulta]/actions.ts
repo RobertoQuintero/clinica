@@ -74,7 +74,8 @@ export async function getConsultaData(
   const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_consulta],[id_paciente],[id_podologo]
-              ,CONVERT(varchar(19), [fecha], 120)      AS fecha
+              ,CONVERT(varchar(19), [fecha],     120) AS fecha
+              ,CONVERT(varchar(19), [fecha_fin], 120) AS fecha_fin
               ,[diagnostico],[tratamiento_aplicado],[observaciones]
               ,CONVERT(varchar(19), [created_at], 120) AS created_at
               ,[deleted_at],[costo_total],[id_sucursal],[id_empresa]
@@ -325,6 +326,23 @@ export async function updateConsultaCosto(
     return { ok: true, data: undefined };
   } catch {
     return { ok: false, data: "Error al actualizar el costo total" };
+  }
+}
+
+export async function updateConsultaFechaFin(
+  id_consulta: number,
+  fecha_fin: string,
+): Promise<ActionResult<void>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[consultas]
+          SET [fecha_fin] = @fecha_fin
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta, fecha_fin },
+    );
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, data: "Error al actualizar fecha fin" };
   }
 }
 

@@ -10,4 +10,5 @@ export interface ICita {
     deleted_at:         Date | string;
     id_sucursal:        number;
     id_empresa:         number;
+    google_event_id?:   string | null;
 }
