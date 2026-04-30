@@ -7,6 +7,7 @@ import { IConsulta } from "@/interfaces/consulta";
 import { IConsultaProducto } from "@/interfaces/consulta_producto";
 import { IConsultaServicio } from "@/interfaces/consulta_servicio";
 import { IPaciente } from "@/interfaces/paciente";
+import { IMetodoPago } from "@/interfaces/metodo_pago";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IProceso } from "@/interfaces/proceso";
@@ -122,14 +123,15 @@ export async function getConsultaData(
       { id_consulta },
     ),
     db.queryParams(
-      `SELECT [id_pago],[id_consulta],[monto],[metodo_pago]
+      `SELECT [id_pago],[id_consulta],[monto]
               ,CONVERT(varchar(10), [fecha_pago], 120) AS fecha_pago
               ,[referencia]
               ,CONVERT(varchar(19), [created_at], 120) AS created_at
-              ,[id_empresa]
+              ,[id_empresa],[idMetodoPago]
          FROM [CentroPodologico].[dbo].[pagos]
         WHERE [id_consulta] = @id_consulta
         ORDER BY [id_pago] DESC`,
+
       { id_consulta },
     ),
     db.queryParams(
@@ -357,28 +359,28 @@ export async function savePago(
 
     await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[pagos]
-         ([id_pago],[id_consulta],[monto],[metodo_pago],[fecha_pago],[referencia],[created_at],[id_empresa])
+         ([id_pago],[id_consulta],[monto],[fecha_pago],[referencia],[created_at],[id_empresa],[idMetodoPago])
        VALUES (
          (SELECT ISNULL(MAX([id_pago]),0)+1 FROM [CentroPodologico].[dbo].[pagos]),
-         @id_consulta,@monto,@metodo_pago,@fecha_pago,@referencia,@created_at,@id_empresa
+         @id_consulta,@monto,@fecha_pago,@referencia,@created_at,@id_empresa,@idMetodoPago
        )`,
       {
         id_consulta:  form.id_consulta,
         monto:        form.monto,
-        metodo_pago:  form.metodo_pago,
         fecha_pago:   form.fecha_pago,
         referencia:   form.referencia,
         created_at,
         id_empresa,
+        idMetodoPago: form.idMetodoPago ?? null,
       },
     );
 
     const rows = await db.queryParams(
-      `SELECT TOP 1 [id_pago],[id_consulta],[monto],[metodo_pago]
+      `SELECT TOP 1 [id_pago],[id_consulta],[monto]
               ,CONVERT(varchar(10), [fecha_pago], 120) AS fecha_pago
               ,[referencia]
               ,CONVERT(varchar(19), [created_at], 120) AS created_at
-              ,[id_empresa]
+              ,[id_empresa],[idMetodoPago]
          FROM [CentroPodologico].[dbo].[pagos]
         WHERE [id_consulta] = @id_consulta
         ORDER BY [id_pago] DESC`,
@@ -390,6 +392,18 @@ export async function savePago(
     console.error(err);
     return { ok: false, data: "Error al registrar el pago" };
   }
+}
+
+// ─── métodos de pago ──────────────────────────────────────────────────────────
+
+export async function getMetodosPago(): Promise<IMetodoPago[]> {
+  const rows = await db.query(
+    `SELECT [idMetodoPago],[descripcion],[clave],[eliminado],[activo]
+       FROM [CentroPodologico].[dbo].[MetodosPagos]
+      WHERE [activo] = 1 AND ([eliminado] IS NULL OR [eliminado] = 0)
+      ORDER BY [descripcion]`,
+  );
+  return rows as IMetodoPago[];
 }
 
 // ─── servicios con opciones ───────────────────────────────────────────────────

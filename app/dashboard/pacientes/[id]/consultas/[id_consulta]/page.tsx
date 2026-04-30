@@ -2,13 +2,14 @@
 
 import { IArchivo } from "@/interfaces/archivos";
 import { IConsulta } from "@/interfaces/consulta";
+import { IMetodoPago } from "@/interfaces/metodo_pago";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
-import { getConsultaData, savePago, savePatologia, saveValoracion, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField } from "./actions";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -45,6 +46,7 @@ export default function ConsultaPage() {
   const [loading,    setLoading   ] = useState(true);
   const [patologia,  setPatologia ] = useState<IPatologiaUngueal | null>(null);
   const [proceso,    setProceso   ] = useState<IProceso | null>(null);
+  const [metodosPago, setMetodosPago] = useState<IMetodoPago[]>([]);
 
   // valoracion form
   const VALORACION_DEFAULTS: IValoracionPiel = {
@@ -88,10 +90,10 @@ export default function ConsultaPage() {
   // pago form
   const [pagoForm, setPagoForm] = useState<Omit<IPago, "id_pago" | "created_at" | "id_empresa">>({
     id_consulta,
-    monto:       0,
-    metodo_pago: "efectivo",
-    fecha_pago:  addZeroToday(new Date()),
-    referencia:  "",
+    monto:        0,
+    idMetodoPago: 0,
+    fecha_pago:   addZeroToday(new Date()),
+    referencia:   "",
   });
   const [savingPago, setSavingPago] = useState(false);
   const [pagoError,  setPagoError ] = useState<string | null>(null);
@@ -101,7 +103,10 @@ export default function ConsultaPage() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const data = await getConsultaData(id_consulta, id_paciente);
+      const [data, mp] = await Promise.all([
+        getConsultaData(id_consulta, id_paciente),
+        getMetodosPago(),
+      ]);
       if (data.consulta)   setConsulta(data.consulta);
       if (data.paciente)   setPaciente(data.paciente);
       if (data.valoracion) { setValoracion(data.valoracion); setValoracionForm(data.valoracion); }
@@ -109,6 +114,7 @@ export default function ConsultaPage() {
       setArchivos(data.archivos);
       setPagos(data.pagos);
       setProceso(data.proceso);
+      setMetodosPago(mp);
     } finally {
       setLoading(false);
     }
@@ -171,6 +177,10 @@ export default function ConsultaPage() {
       setPagoError("El monto debe ser mayor a 0");
       return;
     }
+    if (!pagoForm.idMetodoPago || pagoForm.idMetodoPago === 0) {
+      setPagoError("Selecciona un método de pago de la lista");
+      return;
+    }
     setSavingPago(true);
     setPagoError(null);
     try {
@@ -183,10 +193,10 @@ export default function ConsultaPage() {
       setPagos((prev) => [result.data, ...prev]);
       setPagoForm({
         id_consulta,
-        monto:       0,
-        metodo_pago: "efectivo",
-        fecha_pago:  addZeroToday(new Date()),
-        referencia:  "",
+        monto:        0,
+        idMetodoPago: 0,
+        fecha_pago:   addZeroToday(new Date()),
+        referencia:   "",
       });
     } catch (err: unknown) {
       setPagoError(err instanceof Error ? err.message : "Error al guardar");
@@ -420,6 +430,7 @@ export default function ConsultaPage() {
               locked={locked}
               onFinalizar={handleFinalizar}
               procesoPagado={!!proceso?.pagar}
+              metodoPagoOptions={metodosPago}
             />
           )}
         </>

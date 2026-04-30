@@ -1,3 +1,4 @@
+import { IMetodoPago } from "@/interfaces/metodo_pago";
 import { IPago } from "@/interfaces/pago";
 import React from "react";
 import { fmtDate } from "./helpers";
@@ -16,6 +17,7 @@ interface Props {
   locked?:            boolean;
   onFinalizar?:       () => void;
   procesoPagado?:     boolean;
+  metodoPagoOptions:  IMetodoPago[];
 }
 
 export default function TabPagar({
@@ -32,7 +34,32 @@ export default function TabPagar({
   locked,
   onFinalizar,
   procesoPagado,
+  metodoPagoOptions,
 }: Props) {
+  const [mpSearch,   setMpSearch  ] = React.useState("");
+  const [mpOpen,     setMpOpen    ] = React.useState(false);
+  const mpRef = React.useRef<HTMLDivElement>(null);
+
+  // sync search label when pagoForm.idMetodoPago changes externally (e.g. reset)
+  React.useEffect(() => {
+    if (!pagoForm.idMetodoPago) { setMpSearch(""); return; }
+    const found = metodoPagoOptions.find((m) => m.idMetodoPago === pagoForm.idMetodoPago);
+    if (found) setMpSearch(found.descripcion);
+  }, [pagoForm.idMetodoPago, metodoPagoOptions]);
+
+  // close dropdown on outside click
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (mpRef.current && !mpRef.current.contains(e.target as Node)) setMpOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filteredMp = metodoPagoOptions.filter((m) =>
+    m.descripcion.toLowerCase().includes(mpSearch.toLowerCase()) ||
+    m.clave.toLowerCase().includes(mpSearch.toLowerCase()),
+  );
   React.useEffect(() => {
     if (saldo > 0) {
       onPagoFormChange((f) => ({ ...f, monto: saldo }));
@@ -74,7 +101,9 @@ export default function TabPagar({
                 <tr key={pg.id_pago} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                   <td className="px-4 py-3 text-zinc-500">{pg.id_pago}</td>
                   <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">{fmtDate(pg.fecha_pago)}</td>
-                  <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 capitalize">{pg.metodo_pago}</td>
+                  <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 capitalize">
+                    {metodoPagoOptions.find((m) => m.idMetodoPago === pg.idMetodoPago)?.descripcion ?? "—"}
+                  </td>
                   <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 font-medium">${Number(pg.monto).toFixed(2)}</td>
                   <td className="px-4 py-3 text-zinc-500">{pg.referencia || "—"}</td>
                 </tr>
@@ -112,16 +141,50 @@ export default function TabPagar({
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Método de pago</label>
-              <select
-                value={pagoForm.metodo_pago}
-                onChange={(e) => onPagoFormChange((f) => ({ ...f, metodo_pago: e.target.value }))}
-                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500"
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="otro">Otro</option>
-              </select>
+              <div ref={mpRef} className="relative">
+                <input
+                  type="text"
+                  autoComplete="off"
+                  value={mpSearch}
+                  onFocus={() => setMpOpen(true)}
+                  onChange={(e) => {
+                    setMpSearch(e.target.value);
+                    setMpOpen(true);
+                    // clear selection if user edits the text
+                    onPagoFormChange((f) => ({ ...f, idMetodoPago: 0 }));
+                  }}
+                  placeholder="Buscar método..."
+                  required
+                  className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                />
+                {mpOpen && filteredMp.length > 0 && (
+                  <ul className="absolute z-20 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-600 dark:bg-zinc-800 max-h-48 overflow-y-auto text-sm">
+                    {filteredMp.map((m) => (
+                      <li
+                        key={m.idMetodoPago}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setMpSearch(m.descripcion);
+                          setMpOpen(false);
+                          onPagoFormChange((f) => ({
+                            ...f,
+                            idMetodoPago: m.idMetodoPago,
+                          }));
+                        }}
+                        className="cursor-pointer px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100"
+                      >
+                        <span className="font-medium">{m.descripcion}</span>
+                        <span className="ml-2 text-xs text-zinc-400">{m.clave}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {mpOpen && filteredMp.length === 0 && mpSearch.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-400 dark:border-zinc-600 dark:bg-zinc-800">
+                    Sin resultados
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Fecha de pago</label>
