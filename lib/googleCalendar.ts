@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { createPrivateKey } from "crypto";
+import { importPKCS8, SignJWT } from "jose";
 
 export interface CalendarEventData {
   summary: string;
@@ -8,9 +9,54 @@ export interface CalendarEventData {
   endDateTime: string;   // "YYYY-MM-DDTHH:mm:ss"
 }
 
-function getCalendarClient() {
+/**
+ * Obtains a Google OAuth2 access token using a service account JWT.
+ * Uses `jose` (Web Crypto) instead of google-auth-library's jws signer,
+ * which avoids the ERR_OSSL_UNSUPPORTED error in Node.js 18+ (OpenSSL 3).
+ */
+async function getAccessToken(email: string, rawKey: string): Promise<string> {
+  // Normalize: strip surrounding quotes Railway may add, convert \n sequences
+  let pem = rawKey.trim().replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
+
+  // Convert PKCS#1 → PKCS#8 so jose's importPKCS8 can parse it
+  pem = createPrivateKey({ key: pem, format: "pem" })
+    .export({ type: "pkcs8", format: "pem" }) as string;
+
+  const privateKey = await importPKCS8(pem, "RS256");
+  const now = Math.floor(Date.now() / 1000);
+
+  const assertion = await new SignJWT({
+    scope: "https://www.googleapis.com/auth/calendar.events",
+  })
+    .setProtectedHeader({ alg: "RS256" })
+    .setIssuer(email)
+    .setAudience("https://oauth2.googleapis.com/token")
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(privateKey);
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Google OAuth2 token error ${res.status}: ${body}`);
+  }
+
+  const { access_token } = (await res.json()) as { access_token?: string };
+  if (!access_token) throw new Error("Google OAuth2: no access_token in response");
+  return access_token;
+}
+
+async function getCalendarClient() {
   const email  = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const rawKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const rawKey = process.env.GOOGLE_PRIVATE_KEY;
   const calId  = process.env.GOOGLE_CALENDAR_ID;
 
   if (!email || !rawKey || !calId) {
@@ -19,22 +65,17 @@ function getCalendarClient() {
     );
   }
 
-  // Normalize the private key to PKCS#8 PEM — required for OpenSSL 3 (Node.js 18+)
-  const key = createPrivateKey({ key: rawKey, format: "pem" })
-    .export({ type: "pkcs8", format: "pem" }) as string;
+  const accessToken = await getAccessToken(email, rawKey);
 
-  const auth = new google.auth.JWT({
-    email,
-    key,
-    scopes: ["https://www.googleapis.com/auth/calendar.events"],
-  });
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
 
   return { calendar: google.calendar({ version: "v3", auth }), calId };
 }
 
 /** Creates a new event and returns the Google event ID. */
 export async function createCalendarEvent(data: CalendarEventData): Promise<string> {
-  const { calendar, calId } = getCalendarClient();
+  const { calendar, calId } = await getCalendarClient();
 
   const res = await calendar.events.insert({
     calendarId: calId,
@@ -56,7 +97,7 @@ export async function updateCalendarEvent(
   eventId: string,
   data: CalendarEventData
 ): Promise<void> {
-  const { calendar, calId } = getCalendarClient();
+  const { calendar, calId } = await getCalendarClient();
 
   await calendar.events.patch({
     calendarId: calId,
@@ -72,7 +113,7 @@ export async function updateCalendarEvent(
 
 /** Deletes an event from Google Calendar by its event ID. */
 export async function deleteCalendarEvent(eventId: string): Promise<void> {
-  const { calendar, calId } = getCalendarClient();
+  const { calendar, calId } = await getCalendarClient();
 
   await calendar.events.delete({
     calendarId: calId,
