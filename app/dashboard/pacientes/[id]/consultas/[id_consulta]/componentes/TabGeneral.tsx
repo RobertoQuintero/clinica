@@ -260,7 +260,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     const phone  = digits.startsWith("52") ? digits : `52${digits}`;
 
     const lines: string[] = [
-      "*VALORACIÓN DEL PIE*",
+      "*RECIBO Y RESUMEN DE CONSULTA*",
       "",
       `*Paciente:* ${nombreCompleto}`,
     ];
@@ -299,7 +299,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     }
 
     if (valoracion) {
-      lines.push("", "*VALORACIÓN DE LA PIEL*");
+      lines.push("", "*VALORACIÓN DE LA PIEL(CONSEJOS DE CUIDADO)*");
       if (valoracionChips.length > 0) {
         const valoracionKeys: (keyof IValoracionPiel)[] = [
           "edema","dermatomicosis","pie_atleta","bromhidrosis",
@@ -326,7 +326,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     }
 
     if (patologia) {
-      lines.push("", "*PATOLOGÍA UNGUEAL*");
+      lines.push("", "*PATOLOGÍA UNGUEAL(CONSEJOS DE CUIDADO)*");
       if (patChips.length > 0) {
         const patologiaKeys: (keyof IPatologiaUngueal)[] = [
           "anoniquia","microniquia","onicolisis","onicauxis",
