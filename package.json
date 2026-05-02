@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "googleapis": "^171.4.0",

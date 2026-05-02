@@ -7,6 +7,8 @@ export interface CalendarEventData {
   description?: string;
   startDateTime: string; // "YYYY-MM-DDTHH:mm:ss"
   endDateTime: string;   // "YYYY-MM-DDTHH:mm:ss"
+  /** Private extended properties stored on the GCal event (invisible to end users). */
+  privateProperties?: Record<string, string>;
 }
 
 /**
@@ -84,6 +86,10 @@ export async function createCalendarEvent(data: CalendarEventData): Promise<stri
       description: data.description,
       start: { dateTime: data.startDateTime, timeZone: "America/Mexico_City" },
       end:   { dateTime: data.endDateTime,   timeZone: "America/Mexico_City" },
+      ...(data.privateProperties &&
+        Object.keys(data.privateProperties).length > 0 && {
+          extendedProperties: { private: data.privateProperties },
+        }),
     },
   });
 
@@ -107,6 +113,10 @@ export async function updateCalendarEvent(
       description: data.description,
       start: { dateTime: data.startDateTime, timeZone: "America/Mexico_City" },
       end:   { dateTime: data.endDateTime,   timeZone: "America/Mexico_City" },
+      ...(data.privateProperties &&
+        Object.keys(data.privateProperties).length > 0 && {
+          extendedProperties: { private: data.privateProperties },
+        }),
     },
   });
 }
@@ -119,4 +129,42 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
     calendarId: calId,
     eventId,
   });
+}
+
+export interface GCalEventRaw {
+  id: string;
+  summary: string;
+  description?: string;
+  start: string; // "YYYY-MM-DDTHH:mm:ss"
+  end: string;   // "YYYY-MM-DDTHH:mm:ss"
+  /** Private extended properties attached to the event (e.g. { id_sucursal: "1" }). */
+  extendedPrivate?: Record<string, string>;
+}
+
+/** Lists events in a time range. Returns normalised flat objects. */
+export async function listCalendarEvents(
+  timeMin: string,
+  timeMax: string
+): Promise<GCalEventRaw[]> {
+  const { calendar, calId } = await getCalendarClient();
+
+  const res = await calendar.events.list({
+    calendarId: calId,
+    timeMin,
+    timeMax,
+    singleEvents: true,
+    orderBy: "startTime",
+    maxResults: 500,
+  });
+
+  return (res.data.items ?? [])
+    .filter((e) => e.id && (e.start?.dateTime || e.start?.date))
+    .map((e) => ({
+      id: e.id!,
+      summary: e.summary ?? "(sin título)",
+      description: e.description ?? undefined,
+      start: (e.start?.dateTime ?? e.start?.date ?? "").replace(/([+-]\d{2}:\d{2}|Z)$/, ""),
+      end:   (e.end?.dateTime   ?? e.end?.date   ?? "").replace(/([+-]\d{2}:\d{2}|Z)$/, ""),
+      extendedPrivate: (e.extendedProperties?.private as Record<string, string> | undefined) ?? undefined,
+    }));
 }

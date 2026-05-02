@@ -61,7 +61,7 @@ export default function PacientesPage() {
   useEffect(() => { fetchPacientes(); }, [selectedId]);
 
   const openNew = () => {
-    setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });
+    setForm({ ...EMPTY, id_sucursal: selectedId, id_empresa: user!.id_empresa });
     setError(null);
     setShowModal(true);
   };
@@ -80,6 +80,8 @@ export default function PacientesPage() {
     e.preventDefault();
     setSaving(true);
     setError(null);
+    // console.log(form)
+    // return
     try {
       const result = await savePaciente(form);
       if (!result.ok) throw new Error(result.message ?? "Error al guardar");

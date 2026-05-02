@@ -13,6 +13,8 @@ import {
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,
+  listCalendarEvents,
+  type GCalEventRaw,
 } from "@/lib/googleCalendar";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
@@ -161,9 +163,13 @@ export async function saveCita(
       description: telefono,
       startDateTime: String(commonParams.fecha_inicio ?? "").replace(" ", "T"),
       endDateTime:   String(commonParams.fecha_fin   ?? "").replace(" ", "T"),
+      privateProperties: { id_sucursal: String(id_sucursal) },
     };
 
     if (id_cita === 0) {
+      // If an external Google Calendar event is being imported, skip creating a new GCal event
+      const isExternalImport = Boolean(google_event_id);
+
       const inserted = await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[citas]
            ([id_cita],[id_paciente],[id_podologo],[fecha_inicio],[fecha_fin],
@@ -178,15 +184,21 @@ export async function saveCita(
       );
       const newId = (inserted[0] as { id_cita: number }).id_cita;
 
-      // Sync to Google Calendar (non-blocking)
       try {
-        const eventId = await createCalendarEvent(calEventData);
+        let eventId: string;
+        if (isExternalImport) {
+          // External event already exists in GCal — just link it
+          eventId = google_event_id!;
+          await updateCalendarEvent(eventId, calEventData);
+        } else {
+          eventId = await createCalendarEvent(calEventData);
+        }
         await db.queryParams(
           `UPDATE [CentroPodologico].[dbo].[citas] SET [google_event_id] = @eventId WHERE [id_cita] = @id_cita`,
           { eventId, id_cita: newId }
         );
       } catch (gcalErr) {
-        console.error("[GoogleCalendar] Error al crear evento:", gcalErr);
+        console.error("[GoogleCalendar] Error al sincronizar evento:", gcalErr);
       }
     } else {
       await db.queryParams(
@@ -232,5 +244,63 @@ export async function saveCita(
     return { ok: true };
   } catch {
     return { ok: false, message: "Error al guardar la cita" };
+  }
+}
+
+export interface IExternalEvent {
+  google_event_id: string;
+  summary: string;
+  description?: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+}
+
+/**
+ * Returns Google Calendar events in [timeMin, timeMax] that do NOT yet exist
+ * as a row in the [citas] table for the current sucursal/empresa.
+ * These are events created by external agents outside this system.
+ */
+export async function getExternalCalendarEvents(
+  timeMin: string,
+  timeMax: string
+): Promise<IExternalEvent[]> {
+  try {
+    const cookieStore = await cookies();
+    const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+    const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+    const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
+
+    const [gcalEvents, dbRows] = await Promise.all([
+      listCalendarEvents(timeMin, timeMax),
+      db.queryParams(
+        `SELECT [google_event_id] FROM [CentroPodologico].[dbo].[citas]
+          WHERE [google_event_id] IS NOT NULL
+            AND [id_empresa]  = @id_empresa`,
+        { id_empresa }
+      ),
+    ]);
+
+    const knownIds = new Set(
+      (dbRows as { google_event_id: string }[]).map((r) => r.google_event_id)
+    );
+
+    return (gcalEvents as GCalEventRaw[])
+      .filter((e) => !knownIds.has(e.id))
+      .filter((e) => {
+        // Events with no id_sucursal property are truly external (created outside the app) → show to all sucursales
+        const eventSucursal = e.extendedPrivate?.id_sucursal;
+        if (!eventSucursal) return true;
+        return eventSucursal === String(id_sucursal);
+      })
+      .map((e) => ({
+        google_event_id: e.id,
+        summary:         e.summary,
+        description:     e.description,
+        fecha_inicio:    e.start,
+        fecha_fin:       e.end,
+      }));
+  } catch {
+    // Non-critical: if GCal is unreachable return empty list
+    return [];
   }
 }
