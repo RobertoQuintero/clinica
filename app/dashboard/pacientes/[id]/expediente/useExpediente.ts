@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useSucursal } from "@/contexts/SucursalContext";
 import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
@@ -47,10 +48,11 @@ export function formatDate(val: Date | string) {
 }
 
 export function useExpediente() {
-  const { user }    = useAuth();
-  const router      = useRouter();
-  const params      = useParams();
-  const id_paciente = Number(params.id);
+  const { user }       = useAuth();
+  const { selectedId } = useSucursal();
+  const router         = useRouter();
+  const params         = useParams();
+  const id_paciente    = Number(params.id);
 
   const [consultas,          setConsultas         ] = useState<IConsulta[]>([]);
   const [paciente,           setPaciente          ] = useState<IPaciente | null>(null);
@@ -109,11 +111,16 @@ export function useExpediente() {
     }
   }, [user, id_paciente]);
 
-  const openNew = () => {
+  const openNew = async () => {
     if (!user) return;
-    setForm(buildEmpty(id_paciente, user.id_user, user.id_sucursal, user.id_empresa));
+    const id_sucursal_new = selectedId || user.id_sucursal;
+    setForm(buildEmpty(id_paciente, user.id_user, id_sucursal_new, user.id_empresa));
     setError(null);
     setShowModal(true);
+    if (id_sucursal_new) {
+      const data = await getPodologosBySucursal(id_sucursal_new);
+      setPodologos(data);
+    }
   };
 
   const openEdit = (c: IConsulta) => {
@@ -142,9 +149,14 @@ export function useExpediente() {
     setSaving(true);
     setError(null);
     try {
+      const isNew = form.id_consulta === 0;
       const result = await saveConsulta(form);
       if (!result.ok) throw new Error(typeof result.data === "string" ? result.data : "Error al guardar");
       setShowModal(false);
+      if (isNew && result.data && typeof result.data !== "string") {
+        router.push(`/dashboard/pacientes/${id_paciente}/consultas/${result.data.id_consulta}`);
+        return;
+      }
       await fetchConsultas();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");

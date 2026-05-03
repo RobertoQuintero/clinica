@@ -65,7 +65,7 @@ export default function Navbar() {
             >
               {sucursales.map((s) => (
                 <option key={s.id_sucursal} value={s.id_sucursal}>
-                  {s.nombre}{s.ciudad ? ` — ${s.ciudad}` : ""}
+                  {s.nombre}
                 </option>
               ))}
             </select>

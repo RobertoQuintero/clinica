@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
-import { getServicios, saveServicio } from "./actions";
+import { getServicios, saveServicio, copiarServicios } from "./actions";
 import ServicioFila from "./componentes/ServicioFila";
 import ServicioModal from "./componentes/ServicioModal";
 
@@ -23,6 +23,8 @@ export default function ServiciosPage() {
   const [form, setForm]           = useState<FormData>(EMPTY);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
+  const [copying, setCopying]     = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [search, setSearch]       = useState("");
 
   type SortKey = "nombre";
@@ -34,7 +36,8 @@ export default function ServiciosPage() {
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  const readOnly = user?.id_role === 2 || user?.id_role === 3;
+  const readOnly  = user?.id_role === 2 || user?.id_role === 3;
+  const canCopy   = user?.id_role === 4 && !loading && servicios.length === 0;
 
   const fetchServicios = async () => {
     setLoading(true);
@@ -52,6 +55,20 @@ export default function ServiciosPage() {
     setForm({ ...EMPTY, id_sucursal: selectedId });
     setError(null);
     setShowModal(true);
+  };
+
+  const handleCopiar = async () => {
+    setCopying(true);
+    setCopyError(null);
+    try {
+      const res = await copiarServicios(selectedId);
+      if (!res.ok) throw new Error(res.message ?? "Error al copiar");
+      await fetchServicios();
+    } catch (err: unknown) {
+      setCopyError(err instanceof Error ? err.message : "Error inesperado");
+    } finally {
+      setCopying(false);
+    }
   };
 
   const openEdit = (s: IServicio) => {
@@ -93,15 +110,29 @@ export default function ServiciosPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Servicios</h2>
-        {!readOnly && (
-          <button
-            onClick={openNew}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-          >
-            + Nuevo servicio
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canCopy && (
+            <button
+              onClick={handleCopiar}
+              disabled={copying}
+              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+            >
+              {copying ? "Copiando…" : "Copiar"}
+            </button>
+          )}
+          {!readOnly && (
+            <button
+              onClick={openNew}
+              className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+            >
+              Nuevo servicio
+            </button>
+          )}
+        </div>
       </div>
+      {copyError && (
+        <p className="mb-4 text-sm text-red-600 dark:text-red-400">{copyError}</p>
+      )}
 
       <div className="mb-4">
         <input

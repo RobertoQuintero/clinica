@@ -144,7 +144,7 @@ export async function saveCita(
     };
 
     // --- Resolve names for the calendar event summary ---
-    const [pacienteRows, podologoRows] = await Promise.all([
+    const [pacienteRows, podologoRows, sucursalRows] = await Promise.all([
       db.queryParams(
         `SELECT [nombre], [apellido_paterno], [whatsapp], [telefono] FROM [CentroPodologico].[dbo].[pacientes] WHERE [id_paciente] = @id_paciente`,
         { id_paciente }
@@ -153,10 +153,15 @@ export async function saveCita(
         `SELECT [nombre] FROM [CentroPodologico].[dbo].[users] WHERE [id_user] = @id_user`,
         { id_user: id_podologo }
       ),
+      db.queryParams(
+        `SELECT [nombre] FROM [CentroPodologico].[dbo].[sucursales] WHERE [id_sucursal] = @id_sucursal`,
+        { id_sucursal }
+      ),
     ]);
     const paciente = pacienteRows[0] as { nombre: string; apellido_paterno: string; whatsapp?: string; telefono?: string } | undefined;
     const podologo = podologoRows[0] as { nombre: string } | undefined;
-    const summary = `Cita: ${paciente ? `${paciente.nombre} ${paciente.apellido_paterno}` : `Paciente #${id_paciente}`} con ${podologo ? podologo.nombre : `Podólogo #${id_podologo}`}`;
+    const sucursal = sucursalRows[0] as { nombre: string } | undefined;
+    const summary = `Cita: ${paciente ? `${paciente.nombre} ${paciente.apellido_paterno}` : `Paciente #${id_paciente}`} con ${podologo ? podologo.nombre : `Podólogo #${id_podologo}`} — ${sucursal ? sucursal.nombre : `Sucursal #${id_sucursal}`}`;
     const telefono = paciente?.whatsapp || paciente?.telefono || "";
     const calEventData = {
       summary,
@@ -270,12 +275,17 @@ export async function getExternalCalendarEvents(
     const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
     const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
 
-    const [gcalEvents, dbRows] = await Promise.all([
+    const [gcalEvents, dbRows, sucursalRows] = await Promise.all([
       listCalendarEvents(timeMin, timeMax),
       db.queryParams(
         `SELECT [google_event_id] FROM [CentroPodologico].[dbo].[citas]
           WHERE [google_event_id] IS NOT NULL
             AND [id_empresa]  = @id_empresa`,
+        { id_empresa }
+      ),
+      db.queryParams(
+        `SELECT [id_sucursal], [nombre] FROM [CentroPodologico].[dbo].[sucursales]
+          WHERE [id_empresa] = @id_empresa AND [activo] = 1`,
         { id_empresa }
       ),
     ]);
@@ -284,13 +294,23 @@ export async function getExternalCalendarEvents(
       (dbRows as { google_event_id: string }[]).map((r) => r.google_event_id)
     );
 
+    const sucursales = sucursalRows as { id_sucursal: number; nombre: string }[];
+
     return (gcalEvents as GCalEventRaw[])
       .filter((e) => !knownIds.has(e.id))
       .filter((e) => {
-        // Events with no id_sucursal property are truly external (created outside the app) → show to all sucursales
         const eventSucursal = e.extendedPrivate?.id_sucursal;
-        if (!eventSucursal) return true;
-        return eventSucursal === String(id_sucursal);
+        // Events with id_sucursal in extended properties → filter by exact match
+        if (eventSucursal) return eventSucursal === String(id_sucursal);
+        // Events without id_sucursal → check if the summary contains any known sucursal name
+        const summary = e.summary ?? "";
+        const matchedSucursal = sucursales.find((s) =>
+          summary.includes(s.nombre)
+        );
+        // If the title references a specific sucursal, only show it to that one
+        if (matchedSucursal) return matchedSucursal.id_sucursal === id_sucursal;
+        // Truly external (no sucursal reference) → show to all sucursales
+        return true;
       })
       .map((e) => ({
         google_event_id: e.id,

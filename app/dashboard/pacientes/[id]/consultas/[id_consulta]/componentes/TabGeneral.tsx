@@ -76,6 +76,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [sucursalNombre,  setSucursalNombre ] = useState<string | null>(null);
   const [sucursalCiudad,  setSucursalCiudad ] = useState<string | null>(null);
   const [patologiaUrls,   setPatologiaUrls  ] = useState<Record<string, string>>({});
+  const [pagoWebId,       setPagoWebId      ] = useState<string | null>(null);
   const [loading,         setLoading        ] = useState(true);
   const [exporting,       setExporting      ] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -96,6 +97,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       setSucursalNombre(d.sucursalNombre);
       setSucursalCiudad(d.sucursalCiudad);
       setPatologiaUrls(d.patologiaUrls);
+      setPagoWebId(d.pagoWebId);
       setLoading(false);
     });
   }, [consulta?.id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -283,6 +285,8 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
         `*Sucursal:* ${sucursalNombre}${sucursalCiudad ? ` — ${sucursalCiudad}` : ""}`,
       );
     }
+    if (pagoWebId) lines.push(`*Folio de pago:* ${pagoWebId}`);
+    if (consulta?.id_consulta) lines.push(`*Número de consulta:* ${consulta.id_consulta}`);
 
     if (antecedentes) {
       const chips = antChips;

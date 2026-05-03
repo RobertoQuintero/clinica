@@ -7,4 +7,7 @@ export interface IPago {
     created_at:   Date | string;
     id_empresa:   number;
     idMetodoPago: number;
+    webid:       string;
+    facturado:    boolean;
+    uuid_cfdi: string | null;
 }

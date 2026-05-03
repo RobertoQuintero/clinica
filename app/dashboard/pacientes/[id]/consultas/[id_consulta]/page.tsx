@@ -9,7 +9,8 @@ import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
-import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField } from "./actions";
+import { createWebId } from "@/utils/random";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -94,6 +95,9 @@ export default function ConsultaPage() {
     idMetodoPago: 0,
     fecha_pago:   addZeroToday(new Date()),
     referencia:   "",
+    webid:        createWebId(20),
+    facturado:    false,
+    uuid_cfdi:    null,
   });
   const [savingPago, setSavingPago] = useState(false);
   const [pagoError,  setPagoError ] = useState<string | null>(null);
@@ -191,12 +195,18 @@ export default function ConsultaPage() {
       const result = await savePago(pagoForm);
       if (!result.ok) throw new Error(result.data);
       setPagos((prev) => [result.data, ...prev]);
+      if (consulta?.id_cita) {
+        await updateCitaEstado(consulta.id_cita, "atendida");
+      }
       setPagoForm({
         id_consulta,
         monto:        0,
         idMetodoPago: 0,
         fecha_pago:   addZeroToday(new Date()),
         referencia:   "",
+        webid:        createWebId(20),
+        facturado:    false,
+        uuid_cfdi:    null,
       });
     } catch (err: unknown) {
       setPagoError(err instanceof Error ? err.message : "Error al guardar");

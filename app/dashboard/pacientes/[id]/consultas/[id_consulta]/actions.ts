@@ -15,6 +15,7 @@ import { IServicio } from "@/interfaces/servicio";
 import { IServicioOpcion } from "@/interfaces/servicio_opcion";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { buildDate } from "@/utils/date_helpper";
+import { createWebId } from "@/utils/random";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
@@ -79,7 +80,7 @@ export async function getConsultaData(
               ,CONVERT(varchar(19), [fecha_fin], 120) AS fecha_fin
               ,[diagnostico],[tratamiento_aplicado],[observaciones]
               ,CONVERT(varchar(19), [created_at], 120) AS created_at
-              ,[deleted_at],[costo_total],[id_sucursal],[id_empresa]
+              ,[deleted_at],[costo_total],[id_sucursal],[id_empresa],[id_cita]
          FROM [CentroPodologico].[dbo].[consultas]
         WHERE [id_consulta] = @id_consulta AND [deleted_at] IS NULL`,
       { id_consulta },
@@ -357,12 +358,14 @@ export async function savePago(
     const id_empresa = await getIdEmpresa();
     const created_at = buildDate(new Date());
 
+    const webid = createWebId(20);
+
     await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[pagos]
-         ([id_pago],[id_consulta],[monto],[fecha_pago],[referencia],[created_at],[id_empresa],[idMetodoPago])
+         ([id_pago],[id_consulta],[monto],[fecha_pago],[referencia],[created_at],[id_empresa],[idMetodoPago],[webid],[facturado],[uuid_cfdi])
        VALUES (
          (SELECT ISNULL(MAX([id_pago]),0)+1 FROM [CentroPodologico].[dbo].[pagos]),
-         @id_consulta,@monto,@fecha_pago,@referencia,@created_at,@id_empresa,@idMetodoPago
+         @id_consulta,@monto,@fecha_pago,@referencia,@created_at,@id_empresa,@idMetodoPago,@webid,@facturado,@uuid_cfdi
        )`,
       {
         id_consulta:  form.id_consulta,
@@ -372,6 +375,9 @@ export async function savePago(
         created_at,
         id_empresa,
         idMetodoPago: form.idMetodoPago ?? null,
+        webid,
+        facturado:    false,
+        uuid_cfdi:    null,
       },
     );
 
@@ -380,7 +386,7 @@ export async function savePago(
               ,CONVERT(varchar(10), [fecha_pago], 120) AS fecha_pago
               ,[referencia]
               ,CONVERT(varchar(19), [created_at], 120) AS created_at
-              ,[id_empresa],[idMetodoPago]
+              ,[id_empresa],[idMetodoPago],[webid],[facturado],[uuid_cfdi]
          FROM [CentroPodologico].[dbo].[pagos]
         WHERE [id_consulta] = @id_consulta
         ORDER BY [id_pago] DESC`,
@@ -391,6 +397,25 @@ export async function savePago(
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al registrar el pago" };
+  }
+}
+
+// ─── cita estado ─────────────────────────────────────────────────────────────
+
+export async function updateCitaEstado(
+  id_cita: number,
+  estado: string,
+): Promise<ActionResult<void>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[citas]
+          SET [estado] = @estado
+        WHERE [id_cita] = @id_cita`,
+      { id_cita, estado },
+    );
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, data: "Error al actualizar el estado de la cita" };
   }
 }
 
@@ -653,6 +678,7 @@ export interface GeneralTabData {
   sucursalNombre:  string | null;
   sucursalCiudad:  string | null;
   patologiaUrls:   Record<string, string>;
+  pagoWebId:       string | null;
 }
 
 export async function getGeneralTabData(
@@ -661,7 +687,7 @@ export async function getGeneralTabData(
   id_podologo:  number,
   id_sucursal:  number,
 ): Promise<GeneralTabData> {
-  const [antRows, sRows, pRows, podRows, sucRows, urlRows] = await Promise.all([
+  const [antRows, sRows, pRows, podRows, sucRows, urlRows, pagoRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_antecedente_medico],[id_paciente]
               ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
@@ -706,6 +732,12 @@ export async function getGeneralTabData(
          FROM [CentroPodologico].[dbo].[patologia_urls]
         WHERE [status] = 1 AND [url] IS NOT NULL AND [url] <> ''`,
     ),
+    db.queryParams(
+      `SELECT TOP 1 [webid]
+         FROM [CentroPodologico].[dbo].[pagos]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
   ]);
 
   const pod = (podRows[0] as { nombre?: string } | undefined);
@@ -716,6 +748,8 @@ export async function getGeneralTabData(
     patologiaUrls[r.nombre_patologia] = r.url;
   });
 
+  const pago = (pagoRows[0] as { webid?: string } | undefined);
+
   return {
     antecedentes:    (antRows[0] as IAntecedenteMedico) ?? null,
     serviciosUsados: sRows as ServicioResumen[],
@@ -724,6 +758,7 @@ export async function getGeneralTabData(
     sucursalNombre:  suc?.nombre ?? null,
     sucursalCiudad:  suc?.ciudad ?? null,
     patologiaUrls,
+    pagoWebId:       pago?.webid ?? null,
   };
 }
 

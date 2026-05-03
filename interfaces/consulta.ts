@@ -13,4 +13,5 @@ export interface IConsulta {
     id_empresa:           number;
     nombre_podologo?:     string;
     fecha_fin?:           Date | string | null;
+    id_cita?:                number | null;
 }
