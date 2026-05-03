@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -20,6 +21,7 @@ const ALL_NAV_LINKS = [
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { sucursales, selectedId, setSelected } = useSucursal();
+  const { theme, toggle } = useTheme();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [passwordModal, setPasswordModal] = useState(false);
@@ -74,6 +76,24 @@ export default function Navbar() {
 
         {/* User + logout — only on large screens */}
         <div className="hidden lg:flex items-center gap-4">
+          {/* Theme toggle */}
+          <button
+            onClick={toggle}
+            aria-label="Cambiar tema"
+            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors"
+          >
+            {theme === "dark" ? (
+              /* Sun icon */
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
+              </svg>
+            ) : (
+              /* Moon icon */
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+              </svg>
+            )}
+          </button>
           <button
             onClick={() => setPasswordModal(true)}
             className="flex flex-col items-end hover:underline underline-offset-2 transition-colors"
@@ -191,10 +211,25 @@ export default function Navbar() {
         </nav>
 
         {/* Logout */}
-        <div className="px-3 py-4 border-t border-zinc-200 dark:border-zinc-700">
+        <div className="px-3 py-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center gap-2">
+          <button
+            onClick={toggle}
+            aria-label="Cambiar tema"
+            className="rounded-lg border border-zinc-300 dark:border-zinc-600 p-2.5 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors shrink-0"
+          >
+            {theme === "dark" ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+              </svg>
+            )}
+          </button>
           <button
             onClick={logout}
-            className="w-full rounded-lg bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+            className="flex-1 rounded-lg bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
           >
             Cerrar sesión
           </button>

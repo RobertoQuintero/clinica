@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DatesSetArg, EventClickArg, EventContentArg, EventInput } from "@fullcalendar/core";
 import esLocale from "@fullcalendar/core/locales/es";
@@ -50,6 +52,20 @@ export default function CalendarioCitas({
   onDatesChange,
   loadingGCal,
 }: Props) {
+  const calendarRef = useRef<FullCalendar>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => {
+      const mobile = e.matches;
+      setIsMobile(mobile);
+      calendarRef.current?.getApi().changeView(mobile ? "timeGridDay" : "dayGridMonth");
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const dbEvents: EventInput[] = citas.map((c) => {
     const color = ESTADO_COLORS[c.estado] ?? ESTADO_COLORS.agendada;
@@ -106,48 +122,63 @@ export default function CalendarioCitas({
   };
 
   return (
-    <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-sm">
+    <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 sm:p-4 shadow-sm">
       {/* Spinner while fetching external events */}
       {loadingGCal && (
-        <div className="absolute right-5 top-5 z-10 flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
+        <div className="absolute right-3 top-3 sm:right-5 sm:top-5 z-10 flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500">
           <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
-          Sincronizando GCal…
+          <span className="hidden sm:inline">Sincronizando GCal…</span>
         </div>
       )}
 
       {/* Legend */}
-      <div className="mb-3 flex flex-wrap gap-3 text-xs">
+      <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1.5 text-xs">
         {(["agendada", "confirmada", "atendida", "cancelada", "externo"] as const).map((e) => (
           <span key={e} className="flex items-center gap-1.5">
             <span
-              className="inline-block h-3 w-3 rounded-sm"
+              className="inline-block h-3 w-3 shrink-0 rounded-sm"
               style={{ backgroundColor: ESTADO_COLORS[e].bg }}
             />
             <span className="capitalize text-zinc-600 dark:text-zinc-400">
-              {e === "externo" ? "GCal (ext)" : e}
+              {e === "externo" ? "GCal" : e}
             </span>
           </span>
         ))}
       </div>
 
       <FullCalendar
-        plugins={[dayGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
+        ref={calendarRef}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView={isMobile ? "timeGridDay" : "dayGridMonth"}
         locale={esLocale}
         events={[...dbEvents, ...extEvents]}
         eventClick={handleEventClick}
         datesSet={handleDatesSet}
         eventContent={renderEventContent}
-        headerToolbar={{
-          left:   "prev,next today",
-          center: "title",
-          right:  "dayGridMonth,dayGridWeek",
+        headerToolbar={
+          isMobile
+            ? { left: "prev,next", center: "title", right: "today" }
+            : { left: "prev,next today", center: "title", right: "dayGridMonth,dayGridWeek,timeGridDay" }
+        }
+        footerToolbar={
+          isMobile
+            ? { center: "dayGridMonth,dayGridWeek,timeGridDay" }
+            : false
+        }
+        views={{
+          dayGridMonth: { buttonText: "Mes" },
+          dayGridWeek:  { buttonText: "Sem" },
+          timeGridDay:  { buttonText: "Día" },
         }}
+        slotMinTime="07:00:00"
+        slotMaxTime="21:00:00"
+        slotDuration="00:30:00"
+        nowIndicator
         height="auto"
-        dayMaxEvents={4}
+        dayMaxEvents={isMobile ? 2 : 4}
         eventDisplay="block"
       />
     </div>
