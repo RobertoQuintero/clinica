@@ -1,23 +1,16 @@
-export const addZeroToday = (today:Date):string => {
-  const date=[today.getFullYear(),today.getMonth()+1,today.getDate()]
-  const converted= date.map(d=>{
-    if(+d<10){
-      return `0${d}`
-    }
-    return d
-  }).join('-')
-  return converted
+// Clinic timezone — used for all wall-clock date/time helpers so the
+// app behaves correctly even when hosted on a UTC server (e.g. Railway).
+const CLINIC_TZ = 'America/Mexico_City';
+
+export const addZeroToday = (today: Date): string => {
+  // toLocaleDateString with 'en-CA' returns "YYYY-MM-DD" in the clinic timezone.
+  return today.toLocaleDateString('en-CA', { timeZone: CLINIC_TZ });
 };
 
-export const buildDate=(date:Date)=>{
-  const hours=[date.getHours(),date.getMinutes(),date.getSeconds()]
-  const zeros=hours.map(d=>{
-    if(+d<10){
-      return `0${d}`
-    }
-    return d
-  }).join(':')
-  return `${addZeroToday(date)} ${zeros}`
+export const buildDate = (date: Date): string => {
+  const d = date.toLocaleDateString('en-CA', { timeZone: CLINIC_TZ });         // "YYYY-MM-DD"
+  const t = date.toLocaleTimeString('en-GB', { timeZone: CLINIC_TZ, hour12: false }); // "HH:mm:ss"
+  return `${d} ${t}`;
 }
 
 export const buildDateReverse=(date:string)=>{
