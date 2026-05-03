@@ -344,24 +344,28 @@ export default function EstadisticasCharts() {
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-6">
               {isMultiMonth ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart
-                    data={data.ventas_mensuales}
-                    margin={{ left: 16, right: 32, top: 8, bottom: 24 }}
-                  >
-                    <XAxis dataKey="mes" tick={MonthTickWithTotal(mesTotalMap)} interval={0} height={50} />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v: number) =>
-                        v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`
-                      }
-                    />
-                    <Tooltip content={<BarTooltipVentasMensuales />} />
-                    <Legend formatter={(value: string) => <span className="text-xs">{value}</span>} />
-                    <Bar dataKey="total_servicios" name="Servicios" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="total_productos" name="Productos" fill="#22c55e" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="overflow-x-auto w-full">
+                  <div style={{ minWidth: `${Math.max(data.ventas_mensuales.length * 90, 360)}px` }}>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart
+                        data={data.ventas_mensuales}
+                        margin={{ left: 16, right: 32, top: 8, bottom: 24 }}
+                      >
+                        <XAxis dataKey="mes" tick={MonthTickWithTotal(mesTotalMap)} interval={0} height={50} />
+                        <YAxis
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v: number) =>
+                            v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`
+                          }
+                        />
+                        <Tooltip content={<BarTooltipVentasMensuales />} />
+                        <Legend formatter={(value: string) => <span className="text-xs">{value}</span>} />
+                        <Bar dataKey="total_servicios" name="Servicios" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="total_productos" name="Productos" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart

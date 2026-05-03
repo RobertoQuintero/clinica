@@ -64,13 +64,13 @@ export default function CitasHoy() {
       ) : citas.length === 0 ? (
         <p className="text-sm text-zinc-400">No hay citas agendadas para hoy.</p>
       ) : (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs uppercase">
               <tr>
                 <th className="px-4 py-2 text-left">Hora</th>
                 <th className="px-4 py-2 text-left">Paciente</th>
-                <th className="px-4 py-2 text-left">Podólogo</th>
+                <th className="px-4 py-2 text-left hidden sm:table-cell">Podólogo</th>
                 <th className="px-4 py-2 text-right">Acciones</th>
               </tr>
             </thead>

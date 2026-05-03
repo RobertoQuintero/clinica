@@ -22,8 +22,8 @@ export default function CitaHoyFila({ cita, busy, onCancelar, onEmpezar }: Props
           <span className="text-zinc-400 font-normal"> – {fmtHora(cita.fecha_fin)}</span>
         )}
       </td>
-      <td className="px-4 py-2 text-zinc-800 dark:text-zinc-100">{cita.nombre_paciente}</td>
-      <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300">{cita.nombre_podologo}</td>
+      <td className="px-4 py-2 text-zinc-800 dark:text-zinc-100 max-w-35 truncate">{cita.nombre_paciente}</td>
+      <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 hidden sm:table-cell">{cita.nombre_podologo}</td>
       <td className="px-4 py-2 text-right space-x-2 whitespace-nowrap">
         <button
           disabled={busy}
