@@ -69,7 +69,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
         : `paciente${id_paciente}_consulta${id_consulta}`;
       const seq      = visibleArchivos.length + 1;
       const ext      = isImage ? ".jpg" : ".pdf";
-      const fileName = `${baseName}_${seq}${ext}`;
+      const fileName = `${baseName}_${categoria}_${seq}${ext}`;
 
       const uploadRes  = await fetch(`/api/upload?name=${encodeURIComponent(fileName)}`, {
         method: "POST",
