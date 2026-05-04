@@ -15,6 +15,7 @@ function useIsLargeScreen() {
 }
 import { addZeroToday } from "@/utils/date_helpper";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { getEstadisticas, IEstadisticasData } from "@/app/dashboard/actions";
 import {
   BarChart,
   Bar,
@@ -28,36 +29,11 @@ import {
   Legend,
 } from "recharts";
 
-interface ServicioStat {
-  nombre: string;
-  total_usos: number;
-  total_ingresos: number;
-}
-
-interface ProductoStat {
-  nombre: string;
-  total_cantidad: number;
-  total_ingresos: number;
-}
-
-interface MetodoPagoStat {
-  nombre: string;
-  total_pagos: number;
-  total_monto: number;
-}
-
-interface VentaMensualStat {
-  mes: string; // "YYYY-MM"
-  total_servicios: number;
-  total_productos: number;
-}
-
-interface EstadisticasData {
-  servicios: ServicioStat[];
-  productos: ProductoStat[];
-  metodos_pago: MetodoPagoStat[];
-  ventas_mensuales: VentaMensualStat[];
-}
+type ServicioStat = IEstadisticasData["servicios"][number];
+type ProductoStat = IEstadisticasData["productos"][number];
+type MetodoPagoStat = IEstadisticasData["metodos_pago"][number];
+type VentaMensualStat = IEstadisticasData["ventas_mensuales"][number];
+type EstadisticasData = Omit<IEstadisticasData, "ok">;
 
 // Analogous color palette (blue → sky → cyan → teal → emerald → green → lime)
 const PIE_COLORS = [
@@ -90,6 +66,13 @@ const METODO_ABREV: Record<string, string> = {
 
 function abbrevMetodo(nombre: string): string {
   return METODO_ABREV[nombre.toLowerCase()] ?? nombre;
+}
+function abbrevMetodoInicial(nombre: string): string {
+  return nombre
+    .split(" ")
+    .map(word => word.charAt(0))
+    .join("")
+    .toUpperCase();
 }
 
 const EmptyState = () => (
@@ -235,11 +218,8 @@ export default function EstadisticasCharts() {
   const fetchData = async (inicio: string, fin: string, sucursalId: number) => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/estadisticas?fecha_inicio=${inicio}&fecha_fin=${fin}&id_sucursal=${sucursalId}`
-      );
-      const json = await res.json();
-      if (json.ok) setData(json);
+      const result = await getEstadisticas(inicio, fin, sucursalId);
+      if (result.ok) setData(result);
     } catch (e) {
       console.error(e);
     } finally {
@@ -531,7 +511,7 @@ export default function EstadisticasCharts() {
                     label={
                       isLargeScreen
                         ? (props: { nombre?: string; percent?: number }) =>
-                            `${abbrevMetodo(props.nombre ?? "")}(${((props.percent ?? 0) * 100).toFixed(0)}%)`
+                            `${abbrevMetodoInicial(props.nombre ?? "")}(${((props.percent ?? 0) * 100).toFixed(0)}%)`
                         : false
                     }
                     labelLine={isLargeScreen}
@@ -548,7 +528,7 @@ export default function EstadisticasCharts() {
                     <Legend
                       formatter={(value) => (
                         <span className="text-xs text-zinc-600 dark:text-zinc-300">
-                          {abbrevMetodo(value)} — {value}
+                          {abbrevMetodo(value)}
                         </span>
                       )}
                     />

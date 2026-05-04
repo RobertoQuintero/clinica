@@ -169,6 +169,160 @@ export async function buscarConsultaPorId(
   }
 }
 
+export interface IServicioStat {
+  nombre: string;
+  total_usos: number;
+  total_ingresos: number;
+}
+
+export interface IProductoStat {
+  nombre: string;
+  total_cantidad: number;
+  total_ingresos: number;
+}
+
+export interface IMetodoPagoStat {
+  nombre: string;
+  total_pagos: number;
+  total_monto: number;
+}
+
+export interface IVentaMensualStat {
+  mes: string;
+  total_servicios: number;
+  total_productos: number;
+}
+
+export interface IEstadisticasData {
+  ok: boolean;
+  servicios: IServicioStat[];
+  productos: IProductoStat[];
+  metodos_pago: IMetodoPagoStat[];
+  ventas_mensuales: IVentaMensualStat[];
+}
+
+export async function getEstadisticas(
+  fecha_inicio: string,
+  fecha_fin: string,
+  id_sucursal: number,
+): Promise<IEstadisticasData> {
+  try {
+    const { id_empresa } = await getActiveUser();
+
+    const [servicios, productos, metodos_pago, ventas_mensuales] = await Promise.all([
+      db.queryParams(
+        `SELECT
+           s.[nombre]                          AS nombre,
+           COUNT(cs.[id_consulta_servicio])    AS total_usos,
+           SUM(cs.[precio_aplicado])           AS total_ingresos
+         FROM [CentroPodologico].[dbo].[consulta_servicios] cs
+         INNER JOIN [CentroPodologico].[dbo].[servicio_opciones] so
+           ON cs.[id_servicio_opcion] = so.[id_servicio_opcion]
+         INNER JOIN [CentroPodologico].[dbo].[servicios] s
+           ON so.[id_servicio] = s.[id_servicio]
+         INNER JOIN [CentroPodologico].[dbo].[consultas] c
+           ON cs.[id_consulta] = c.[id_consulta]
+         WHERE c.[deleted_at] IS NULL
+           AND c.[id_empresa]   = @id_empresa
+           AND c.[id_sucursal]  = @id_sucursal
+           AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
+           AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
+         GROUP BY s.[nombre]
+         ORDER BY total_usos DESC`,
+        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
+      ),
+
+      db.queryParams(
+        `SELECT
+           p.[nombre]                       AS nombre,
+           SUM(cp.[cantidad])               AS total_cantidad,
+           SUM(cp.[precio] * cp.[cantidad]) AS total_ingresos
+         FROM [CentroPodologico].[dbo].[consulta_productos] cp
+         INNER JOIN [CentroPodologico].[dbo].[productos] p
+           ON cp.[id_producto] = p.[id_producto]
+         INNER JOIN [CentroPodologico].[dbo].[consultas] c
+           ON cp.[id_consulta] = c.[id_consulta]
+         WHERE c.[deleted_at] IS NULL
+           AND c.[id_empresa]  = @id_empresa
+           AND c.[id_sucursal] = @id_sucursal
+           AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
+           AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
+         GROUP BY p.[nombre]
+         ORDER BY total_cantidad DESC`,
+        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
+      ),
+
+      db.queryParams(
+        `SELECT
+           mp.[descripcion]         AS nombre,
+           COUNT(pg.[id_pago])      AS total_pagos,
+           SUM(pg.[monto])          AS total_monto
+         FROM [CentroPodologico].[dbo].[pagos] pg
+         INNER JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
+           ON pg.[idMetodoPago] = mp.[idMetodoPago]
+         INNER JOIN [CentroPodologico].[dbo].[consultas] c
+           ON pg.[id_consulta] = c.[id_consulta]
+         WHERE c.[deleted_at] IS NULL
+           AND c.[id_empresa]  = @id_empresa
+           AND c.[id_sucursal] = @id_sucursal
+           AND CONVERT(varchar(10), pg.[fecha_pago], 120) >= @fecha_inicio
+           AND CONVERT(varchar(10), pg.[fecha_pago], 120) <= @fecha_fin
+         GROUP BY mp.[descripcion]
+         ORDER BY total_monto DESC`,
+        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
+      ),
+
+      db.queryParams(
+        `SELECT
+           COALESCE(s.mes, p.mes)          AS mes,
+           COALESCE(s.total_servicios, 0)  AS total_servicios,
+           COALESCE(p.total_productos, 0)  AS total_productos
+         FROM (
+           SELECT
+             CONVERT(varchar(7), c.[fecha], 120)  AS mes,
+             SUM(cs.[precio_aplicado])             AS total_servicios
+           FROM [CentroPodologico].[dbo].[consulta_servicios] cs
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON cs.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] = @id_sucursal
+             AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
+             AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
+           GROUP BY CONVERT(varchar(7), c.[fecha], 120)
+         ) s
+         FULL OUTER JOIN (
+           SELECT
+             CONVERT(varchar(7), c.[fecha], 120)   AS mes,
+             SUM(cp.[precio] * cp.[cantidad])       AS total_productos
+           FROM [CentroPodologico].[dbo].[consulta_productos] cp
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON cp.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] = @id_sucursal
+             AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
+             AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
+           GROUP BY CONVERT(varchar(7), c.[fecha], 120)
+         ) p ON s.mes = p.mes
+         ORDER BY mes`,
+        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
+      ),
+    ]);
+
+    return {
+      ok: true,
+      servicios: servicios as IServicioStat[],
+      productos: productos as IProductoStat[],
+      metodos_pago: metodos_pago as IMetodoPagoStat[],
+      ventas_mensuales: ventas_mensuales as IVentaMensualStat[],
+    };
+  } catch (error) {
+    console.error({ error });
+    return { ok: false, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [] };
+  }
+}
+
 export async function crearConsultaDesdeCita(
   id_cita:     number,
   id_paciente: number,
@@ -222,5 +376,100 @@ export async function crearConsultaDesdeCita(
   } catch (err) {
     console.error(err);
     return { ok: false, message: "Error al crear la consulta" };
+  }
+}
+
+export interface IPacienteFaltante {
+  id_paciente:      number;
+  nombre_paciente:  string;
+  telefono:         string;
+  whatsapp:         string;
+  ultima_consulta:  string | null;
+}
+
+export async function getPacientesFaltantes(): Promise<IPacienteFaltante[]> {
+  try {
+    const cookieStore = await cookies();
+    const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+    const selCookie   = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+    const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
+
+    const data = await db.queryParams(
+      `SELECT
+           p.[id_paciente]
+          ,LTRIM(RTRIM(p.[nombre] + ' ' + p.[apellido_paterno]
+            + CASE WHEN p.[apellido_materno] IS NOT NULL AND p.[apellido_materno] <> ''
+              THEN ' ' + p.[apellido_materno] ELSE '' END)) AS nombre_paciente
+          ,ISNULL(p.[telefono],  '') AS telefono
+          ,ISNULL(p.[whatsapp],  '') AS whatsapp
+          ,CONVERT(varchar(19), MAX(con.[fecha]), 120)      AS ultima_consulta
+       FROM [CentroPodologico].[dbo].[pacientes] p
+       LEFT JOIN [CentroPodologico].[dbo].[consultas] con
+         ON con.[id_paciente]  = p.[id_paciente]
+        AND con.[id_sucursal]  = @id_sucursal
+        AND con.[deleted_at]  IS NULL
+      WHERE p.[id_sucursal] = @id_sucursal
+        AND p.[id_empresa]  = @id_empresa
+        AND p.[deleted_at]  IS NULL
+      GROUP BY
+           p.[id_paciente], p.[nombre], p.[apellido_paterno], p.[apellido_materno],
+           p.[telefono], p.[whatsapp]
+      HAVING MAX(con.[fecha]) IS NULL
+          OR MAX(con.[fecha]) <= DATEADD(MONTH, -2, GETDATE())
+      ORDER BY MAX(con.[fecha]) ASC`,
+      { id_sucursal, id_empresa }
+    );
+
+    return data as IPacienteFaltante[];
+  } catch {
+    return [];
+  }
+}
+
+export interface IPacienteCumpleanos {
+  id_paciente:      number;
+  nombre_paciente:  string;
+  telefono:         string;
+  whatsapp:         string;
+  fecha_nacimiento: string;
+}
+
+export async function getPacientesCumpleanos(): Promise<IPacienteCumpleanos[]> {
+  try {
+    const cookieStore = await cookies();
+    const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+    const selCookie   = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+    const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
+
+    const data = await db.queryParams(
+      `SELECT
+           p.[id_paciente]
+          ,LTRIM(RTRIM(p.[nombre] + ' ' + p.[apellido_paterno]
+            + CASE WHEN p.[apellido_materno] IS NOT NULL AND p.[apellido_materno] <> ''
+              THEN ' ' + p.[apellido_materno] ELSE '' END)) AS nombre_paciente
+          ,ISNULL(p.[telefono],  '') AS telefono
+          ,ISNULL(p.[whatsapp],  '') AS whatsapp
+          ,CONVERT(varchar(10), p.[fecha_nacimiento], 120)  AS fecha_nacimiento
+       FROM [CentroPodologico].[dbo].[pacientes] p
+      WHERE p.[id_sucursal]      = @id_sucursal
+        AND p.[id_empresa]       = @id_empresa
+        AND p.[deleted_at]       IS NULL
+        AND p.[fecha_nacimiento] IS NOT NULL
+        AND (
+          DATEADD(YEAR, DATEDIFF(YEAR, p.[fecha_nacimiento], GETDATE()),     p.[fecha_nacimiento])
+            BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(DAY, 7, CAST(GETDATE() AS DATE))
+          OR
+          DATEADD(YEAR, DATEDIFF(YEAR, p.[fecha_nacimiento], GETDATE()) + 1, p.[fecha_nacimiento])
+            BETWEEN CAST(GETDATE() AS DATE) AND DATEADD(DAY, 7, CAST(GETDATE() AS DATE))
+        )
+      ORDER BY
+           DATEPART(MONTH, p.[fecha_nacimiento]),
+           DATEPART(DAY,   p.[fecha_nacimiento])`,
+      { id_sucursal, id_empresa }
+    );
+
+    return data as IPacienteCumpleanos[];
+  } catch {
+    return [];
   }
 }
