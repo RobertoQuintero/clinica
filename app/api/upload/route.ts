@@ -10,7 +10,7 @@ export const POST = async (req: Request) => {
     const { searchParams } = new URL(req.url);
     const fileName = searchParams.get("name") ?? "archivo";
     // Strip extension to use as public_id; Cloudinary adds the extension itself.
-    const publicId = `clinica/consultas/${fileName.replace(/\.[^.]+$/, "")}`;
+    const publicId = fileName.replace(/\.[^.]+$/, "");
 
     const buffer = Buffer.from(await req.arrayBuffer());
     if (!buffer.length) {
@@ -19,7 +19,7 @@ export const POST = async (req: Request) => {
 
     const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { public_id: publicId, resource_type: "auto", overwrite: false },
+        { public_id: publicId, folder: "clinica/consultas", resource_type: "auto", overwrite: false },
         (error, result) => {
           if (error || !result) reject(error ?? new Error("Upload falló"));
           else resolve(result as { secure_url: string });

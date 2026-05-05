@@ -217,8 +217,8 @@ export default function ConsultaPage() {
 
   // ── ui helpers ─────────────────────────────────────────────────────────────
 
-  /** True when proceso is paid and current user is not admin */
-  const locked = !!proceso?.pagar && user?.id_role !== 1;
+  /** True when proceso is paid and current user is not admin or supervisor */
+  const locked = !!proceso?.pagar && user?.id_role !== 1 && user?.id_role !== 4;
 
   /** Returns whether a tab is accessible based on proceso progress */
   const isTabAccessible = (tab: Tab): boolean => {
