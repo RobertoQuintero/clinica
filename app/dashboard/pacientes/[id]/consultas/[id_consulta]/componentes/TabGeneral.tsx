@@ -77,6 +77,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [sucursalCiudad,  setSucursalCiudad ] = useState<string | null>(null);
   const [patologiaUrls,   setPatologiaUrls  ] = useState<Record<string, string>>({});
   const [pagoWebId,       setPagoWebId      ] = useState<string | null>(null);
+  const [phoneCode,       setPhoneCode      ] = useState<string | null>(null);
   const [loading,         setLoading        ] = useState(true);
   const [exporting,       setExporting      ] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -98,6 +99,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       setSucursalCiudad(d.sucursalCiudad);
       setPatologiaUrls(d.patologiaUrls);
       setPagoWebId(d.pagoWebId);
+      setPhoneCode(d.phoneCode);
       setLoading(false);
     });
   }, [consulta?.id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -257,9 +259,10 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const onSendWhatsApp = () => {
     if (!paciente?.whatsapp || loading) return;
 
-    // Strip non-digits; prepend 52 (MX) if not already present
+    // Strip non-digits; prepend the patient's country code if not already present
     const digits = paciente.whatsapp.replace(/\D/g, "");
-    const phone  = digits.startsWith("52") ? digits : `52${digits}`;
+    const code   = phoneCode ?? "52";
+    const phone  = digits.startsWith(code) ? digits : `${code}${digits}`;
 
     const lines: string[] = [
       "*RECIBO Y RESUMEN DE CONSULTA*",

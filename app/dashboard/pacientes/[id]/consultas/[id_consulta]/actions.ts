@@ -358,7 +358,7 @@ export async function savePago(
     const id_empresa = await getIdEmpresa();
     const created_at = buildDate(new Date());
 
-    const webid = createWebId(20);
+    const webid = createWebId(8);
 
     await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[pagos]
@@ -679,6 +679,7 @@ export interface GeneralTabData {
   sucursalCiudad:  string | null;
   patologiaUrls:   Record<string, string>;
   pagoWebId:       string | null;
+  phoneCode:       string | null;
 }
 
 export async function getGeneralTabData(
@@ -687,7 +688,7 @@ export async function getGeneralTabData(
   id_podologo:  number,
   id_sucursal:  number,
 ): Promise<GeneralTabData> {
-  const [antRows, sRows, pRows, podRows, sucRows, urlRows, pagoRows] = await Promise.all([
+  const [antRows, sRows, pRows, podRows, sucRows, urlRows, pagoRows, phoneRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_antecedente_medico],[id_paciente]
               ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
@@ -738,6 +739,14 @@ export async function getGeneralTabData(
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
     ),
+    db.queryParams(
+      `SELECT ct.[codigo]
+         FROM [CentroPodologico].[dbo].[pacientes] p
+         LEFT JOIN [CentroPodologico].[dbo].[codigos_telefonicos] ct
+           ON ct.[id_phone_code] = p.[id_phone_code]
+        WHERE p.[id_paciente] = @id_paciente`,
+      { id_paciente },
+    ),
   ]);
 
   const pod = (podRows[0] as { nombre?: string } | undefined);
@@ -748,7 +757,8 @@ export async function getGeneralTabData(
     patologiaUrls[r.nombre_patologia] = r.url;
   });
 
-  const pago = (pagoRows[0] as { webid?: string } | undefined);
+  const pago  = (pagoRows[0]  as { webid?:  string } | undefined);
+  const phone = (phoneRows[0] as { codigo?: string } | undefined);
 
   return {
     antecedentes:    (antRows[0] as IAntecedenteMedico) ?? null,
@@ -758,7 +768,8 @@ export async function getGeneralTabData(
     sucursalNombre:  suc?.nombre ?? null,
     sucursalCiudad:  suc?.ciudad ?? null,
     patologiaUrls,
-    pagoWebId:       pago?.webid ?? null,
+    pagoWebId:       pago?.webid  ?? null,
+    phoneCode:       phone?.codigo ?? null,
   };
 }
 

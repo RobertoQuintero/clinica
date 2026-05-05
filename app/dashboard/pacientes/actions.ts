@@ -2,6 +2,7 @@
 
 import db from "@/database/connection";
 import { IPaciente } from "@/interfaces/paciente";
+import { IPhoneCode } from "@/interfaces/phone_code";
 import { IAuthUser } from "@/interfaces/auth";
 import { toDBString, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
@@ -16,6 +17,16 @@ async function getActiveUser(): Promise<IAuthUser> {
   if (!token) throw new Error("No autenticado");
   const { payload } = await jwtVerify(token, JWT_SECRET);
   return payload as unknown as IAuthUser;
+}
+
+export async function getPhoneCodes(): Promise<IPhoneCode[]> {
+  const data = await db.queryParams(
+    `SELECT [id_phone_code],[pais],[codigo],[bandera]
+       FROM [CentroPodologico].[dbo].[codigos_telefonicos]
+      ORDER BY [pais]`,
+    {}
+  );
+  return data as IPhoneCode[];
 }
 
 export async function getPacientes(): Promise<IPaciente[]> {
@@ -42,6 +53,7 @@ export async function getPacientes(): Promise<IPaciente[]> {
             p.[contacto_emergencia_whatsapp],
             p.[id_sucursal],
             p.[id_empresa],
+            p.[id_phone_code],
             s.[nombre] AS nombre_sucursal
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
@@ -73,6 +85,7 @@ export async function savePaciente(
       contacto_emergencia_whatsapp,
       id_sucursal,
       id_empresa,
+      id_phone_code,
     } = form;
 
     const commonParams = {
@@ -90,6 +103,7 @@ export async function savePaciente(
       contacto_emergencia_whatsapp,
       id_sucursal,
       id_empresa,
+      id_phone_code: id_phone_code ?? null,
     };
 
     if (id_paciente === 0) {
@@ -98,13 +112,15 @@ export async function savePaciente(
            ([id_paciente],[nombre],[telefono],[fecha_nacimiento],[direccion],
             [observaciones_generales],[created_at],[updated_at],[deleted_at],
             [apellido_paterno],[apellido_materno],[sexo],[whatsapp],[ciudad_preferida],
-            [contacto_emergencia_nombre],[contacto_emergencia_whatsapp],[id_sucursal],[id_empresa])
+            [contacto_emergencia_nombre],[contacto_emergencia_whatsapp],[id_sucursal],[id_empresa],
+            [id_phone_code])
          VALUES (
            (SELECT ISNULL(MAX([id_paciente]),0)+1 FROM [CentroPodologico].[dbo].[pacientes]),
            @nombre,@telefono,@fecha_nacimiento,@direccion,
            @observaciones_generales,@created_at,NULL,NULL,
            @apellido_paterno,@apellido_materno,@sexo,@whatsapp,@ciudad_preferida,
-           @contacto_emergencia_nombre,@contacto_emergencia_whatsapp,@id_sucursal,@id_empresa
+           @contacto_emergencia_nombre,@contacto_emergencia_whatsapp,@id_sucursal,@id_empresa,
+           @id_phone_code
          )`,
         { ...commonParams, created_at: buildDate(new Date()) }
       );
@@ -125,7 +141,8 @@ export async function savePaciente(
            [contacto_emergencia_nombre]   = @contacto_emergencia_nombre,
            [contacto_emergencia_whatsapp] = @contacto_emergencia_whatsapp,
            [id_sucursal]                  = @id_sucursal,
-           [id_empresa]                   = @id_empresa
+           [id_empresa]                   = @id_empresa,
+           [id_phone_code]                = @id_phone_code
          WHERE [id_paciente] = @id_paciente`,
         { id_paciente, ...commonParams, updated_at: buildDate(new Date()) }
       );
@@ -170,6 +187,7 @@ export async function buscarPacientesExternos(query: string): Promise<IPaciente[
             p.[contacto_emergencia_whatsapp],
             p.[id_sucursal],
             p.[id_empresa],
+            p.[id_phone_code],
             s.[nombre] AS nombre_sucursal
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s

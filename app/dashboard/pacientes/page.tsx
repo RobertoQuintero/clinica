@@ -3,10 +3,11 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { IPaciente } from "@/interfaces/paciente";
+import { IPhoneCode } from "@/interfaces/phone_code";
 import { useEffect, useState } from "react";
 import PacienteFila from "./componentes/PacienteFila";
 import PacienteModal from "./componentes/PacienteModal";
-import { getPacientes, savePaciente, buscarPacientesExternos } from "./actions";
+import { getPacientes, savePaciente, buscarPacientesExternos, getPhoneCodes } from "./actions";
 
 const EMPTY: IPaciente = {
   id_paciente:                  0,
@@ -27,12 +28,14 @@ const EMPTY: IPaciente = {
   deleted_at:                   "",
   id_sucursal:                  0,
   id_empresa:                   0,
+  id_phone_code:                52,
 };
 
 export default function PacientesPage() {
   const { user } = useAuth();
   const { selectedId } = useSucursal();
   const [pacientes, setPacientes] = useState<IPaciente[]>([]);
+  const [phoneCodes, setPhoneCodes] = useState<IPhoneCode[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]           = useState<IPaciente>(EMPTY);
@@ -75,6 +78,7 @@ export default function PacientesPage() {
   };
 
   useEffect(() => { fetchPacientes(); }, [selectedId]);
+  useEffect(() => { getPhoneCodes().then(setPhoneCodes); }, []);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: selectedId, id_empresa: user!.id_empresa });
@@ -89,7 +93,11 @@ export default function PacientesPage() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "id_phone_code" ? (value === "" ? null : Number(value)) : value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,6 +247,7 @@ export default function PacientesPage() {
           form={form}
           saving={saving}
           error={error}
+          phoneCodes={phoneCodes}
           onChange={handleChange}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}

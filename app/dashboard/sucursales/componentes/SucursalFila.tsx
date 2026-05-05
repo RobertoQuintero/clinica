@@ -33,6 +33,7 @@ export default function SucursalFila({ sucursal: s, onEdit, onDeleted, readOnly 
   return (
     <>
       <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+        <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.id_sucursal}</td>
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.nombre}</td>
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.estado ?? "—"}</td>
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.ciudad ?? "—"}</td>

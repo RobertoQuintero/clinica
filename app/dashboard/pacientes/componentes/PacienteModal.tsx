@@ -1,17 +1,19 @@
 "use client";
 
 import { IPaciente } from "@/interfaces/paciente";
+import { IPhoneCode } from "@/interfaces/phone_code";
 
 interface Props {
   form: IPaciente;
   saving: boolean;
   error: string | null;
+  phoneCodes: IPhoneCode[];
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
 
-export default function PacienteModal({ form, saving, error, onChange, onSubmit, onClose }: Props) {
+export default function PacienteModal({ form, saving, error, phoneCodes, onChange, onSubmit, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
@@ -27,14 +29,54 @@ export default function PacienteModal({ form, saving, error, onChange, onSubmit,
           )}
           {(
             [
-              { name: "nombre",                       label: "Nombre",                       type: "text" },
-              { name: "apellido_paterno",             label: "Apellido paterno",             type: "text" },
-              { name: "apellido_materno",             label: "Apellido materno",             type: "text" },
+              { name: "nombre",           label: "Nombre",              type: "text" },
+              { name: "apellido_paterno", label: "Apellido paterno",    type: "text" },
+              { name: "apellido_materno", label: "Apellido materno",    type: "text" },
+              { name: "fecha_nacimiento", label: "Fecha de nacimiento", type: "date" },
+            ] as { name: keyof IPaciente; label: string; type: string }[]
+          ).map(({ name, label, type }) => (
+            <label key={name} className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
+              <input
+                type={type}
+                name={name}
+                value={String(form[name] ?? "")}
+                onChange={onChange}
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              />
+            </label>
+          ))}
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Código telefónico (WhatsApp)</span>
+            <select
+              name="id_phone_code"
+              value={form.id_phone_code ?? ""}
+              onChange={onChange}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            >
+              <option value="">Seleccionar</option>
+              {phoneCodes.map((pc) => (
+                <option key={pc.id_phone_code} value={pc.id_phone_code}>
+                  {pc.bandera} {pc.pais} ({pc.codigo})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">WhatsApp</span>
+            <input
+              type="text"
+              name="whatsapp"
+              value={String(form.whatsapp ?? "")}
+              onChange={onChange}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            />
+          </label>
+          {(
+            [
               { name: "telefono",                     label: "Teléfono",                     type: "text" },
-              { name: "whatsapp",                     label: "WhatsApp",                     type: "text" },
-              { name: "fecha_nacimiento",             label: "Fecha de nacimiento",          type: "date" },
-              { name: "direccion",                    label: "Dirección",                    type: "text" },
               { name: "ciudad_preferida",             label: "Ciudad preferida",             type: "text" },
+              { name: "direccion",                    label: "Dirección",                    type: "text" },
               { name: "contacto_emergencia_nombre",   label: "Nombre(Contacto emergencia)",   type: "text" },
               { name: "contacto_emergencia_whatsapp", label: "WhatsApp(Contacto emergencia)", type: "text" },
             ] as { name: keyof IPaciente; label: string; type: string }[]
@@ -44,7 +86,7 @@ export default function PacienteModal({ form, saving, error, onChange, onSubmit,
               <input
                 type={type}
                 name={name}
-                value={form[name] as string ?? ""}
+                value={String(form[name] ?? "")}
                 onChange={onChange}
                 className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               />
