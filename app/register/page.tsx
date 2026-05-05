@@ -3,12 +3,10 @@
 import { useState, FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function RegisterPage() {
-  const { login } = useAuth();
-  const router    = useRouter();
+  const { register } = useAuth();
 
   const [nombre,   setNombre]   = useState("");
   const [email,    setEmail]    = useState("");
@@ -29,23 +27,9 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ nombre, email, password, telefono }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message ?? "Error al registrarse");
-        return;
-      }
-
-      // Auto-login: el endpoint ya seteó la cookie; sincronizar el context
-      await login(email, password);
-    } catch {
-      setError("Error de red, intenta de nuevo");
+      await register(nombre, email, password, telefono);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al registrarse");
     } finally {
       setLoading(false);
     }

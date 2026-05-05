@@ -26,6 +26,7 @@ export interface IAuthUser {
 export interface IAuthContext {
   user:      IAuthUser | null;
   isLoading: boolean;
-  login:  (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  login:    (email: string, password: string) => Promise<void>;
+  logout:   () => Promise<void>;
+  register: (nombre: string, email: string, password: string, telefono: string) => Promise<void>;
 }

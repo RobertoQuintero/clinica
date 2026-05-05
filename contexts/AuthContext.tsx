@@ -9,8 +9,14 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { IAuthUser, IAuthContext } from "@/interfaces/auth";
+import {
+  loginAction,
+  logoutAction,
+  registerAction,
+  getMeAction,
+} from "@/app/actions/auth";
 
-const AuthContext = createContext<IAuthContext | null>(null); 
+const AuthContext = createContext<IAuthContext | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser]           = useState<IAuthUser | null>(null);
@@ -19,47 +25,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Restaurar sesión desde la cookie al cargar la app
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok) setUser(data.user);
-        }
-      } catch {
-        // sin sesión activa
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    restoreSession();
+    getMeAction()
+      .then((u) => { if (u) setUser(u); })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await fetch("/api/auth/login", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.message ?? "Error al iniciar sesión");
-    }
-
-    setUser(data.user);
+    const result = await loginAction(email, password);
+    if (!result.ok) throw new Error(result.message);
+    setUser(result.data);
     router.push("/dashboard");
   };
 
   const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await logoutAction();
     setUser(null);
     window.location.href = "/login";
   };
 
+  const register = async (
+    nombre:   string,
+    email:    string,
+    password: string,
+    telefono: string
+  ) => {
+    const result = await registerAction(nombre, email, password, telefono);
+    if (!result.ok) throw new Error(result.message);
+    setUser(result.data);
+    router.push("/pending");
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );
