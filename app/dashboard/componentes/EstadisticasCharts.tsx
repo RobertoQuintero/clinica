@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 
 function useIsLargeScreen() {
   const [isLarge, setIsLarge] = useState(false);
@@ -15,7 +15,9 @@ function useIsLargeScreen() {
 }
 import { addZeroToday } from "@/utils/date_helpper";
 import { useSucursal } from "@/contexts/SucursalContext";
-import { getEstadisticas, IEstadisticasData } from "@/app/dashboard/actions";
+import { getEstadisticas, getEstadisticasMultiple, IEstadisticasData } from "@/app/dashboard/actions";
+import { useAuth } from "@/contexts/AuthContext";
+import { ISucursal } from "@/interfaces/sucursal";
 import {
   BarChart,
   Bar,
@@ -206,14 +208,54 @@ const BarTooltipVentasMensuales = ({
   );
 };
 
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  className,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: () => void;
+  className?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      type="checkbox"
+      ref={ref}
+      checked={checked}
+      onChange={onChange}
+      className={className}
+    />
+  );
+}
+
 export default function EstadisticasCharts() {
-  const { selectedId } = useSucursal();
+  const { user } = useAuth();
+  const isGlobal = user?.id_role === 4;
+  const { sucursales, selectedId } = useSucursal();
   const [fechaInicio, setFechaInicio] = useState(getFirstDayOfMonth());
   const [fechaFin, setFechaFin] = useState(addZeroToday(new Date()));
   const [data, setData] = useState<EstadisticasData | null>(null);
   const [loading, setLoading] = useState(false);
   const [metricaProductos, setMetricaProductos] = useState<"cantidad" | "ingresos">("cantidad");
+  const [selectedSucursalIds, setSelectedSucursalIds] = useState<number[]>([]);
+  const globalInitialized = useRef(false);
   const isLargeScreen = useIsLargeScreen();
+
+  const sucursalesByEstado = useMemo(() => {
+    const map: Record<string, ISucursal[]> = {};
+    for (const s of sucursales) {
+      const key = s.estado ?? "Sin estado";
+      if (!map[key]) map[key] = [];
+      map[key].push(s);
+    }
+    return map;
+  }, [sucursales]);
 
   const fetchData = async (inicio: string, fin: string, sucursalId: number) => {
     setLoading(true);
@@ -227,21 +269,68 @@ export default function EstadisticasCharts() {
     }
   };
 
+  const fetchDataMulti = async (inicio: string, fin: string, ids: number[]) => {
+    if (ids.length === 0) { setData(null); return; }
+    setLoading(true);
+    try {
+      const result = await getEstadisticasMultiple(inicio, fin, ids);
+      if (result.ok) setData(result);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Non-global: react to branch switch
   useEffect(() => {
-    fetchData(fechaInicio, fechaFin, selectedId);
+    if (!isGlobal) fetchData(fechaInicio, fechaFin, selectedId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
+  // Global: initialize once when sucursales loads
+  useEffect(() => {
+    if (isGlobal && sucursales.length > 0 && !globalInitialized.current) {
+      globalInitialized.current = true;
+      const allIds = sucursales.map(s => s.id_sucursal);
+      setSelectedSucursalIds(allIds);
+      fetchDataMulti(fechaInicio, fechaFin, allIds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGlobal, sucursales]);
+
   const handleAplicar = () => {
-    fetchData(fechaInicio, fechaFin, selectedId);
+    if (isGlobal) {
+      fetchDataMulti(fechaInicio, fechaFin, selectedSucursalIds);
+    } else {
+      fetchData(fechaInicio, fechaFin, selectedId);
+    }
+  };
+
+  const toggleSucursal = (id: number) => {
+    setSelectedSucursalIds(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
+
+  const toggleEstado = (sucList: ISucursal[]) => {
+    const ids = sucList.map(s => s.id_sucursal);
+    const allChecked = ids.every(id => selectedSucursalIds.includes(id));
+    if (allChecked) {
+      setSelectedSucursalIds(prev => prev.filter(id => !ids.includes(id)));
+    } else {
+      setSelectedSucursalIds(prev => [...new Set([...prev, ...ids])]);
+    }
   };
 
   const productosOrdenados = data
-    ? [...data.productos].sort((a, b) =>
-        metricaProductos === "cantidad"
-          ? b.total_cantidad - a.total_cantidad
-          : b.total_ingresos - a.total_ingresos
-      )
+    ? [...data.productos]
+        .sort((a, b) =>
+          metricaProductos === "cantidad"
+            ? b.total_cantidad - a.total_cantidad
+            : b.total_ingresos - a.total_ingresos
+        )
+        .slice(0, 7)
     : [];
 
   const totalServicios = data?.servicios.reduce((acc, s) => acc + s.total_ingresos, 0) ?? 0;
@@ -299,6 +388,74 @@ export default function EstadisticasCharts() {
           </div>
         </div>
       </div>
+
+      {/* Selector de sucursales — solo para role=4 */}
+      {isGlobal && (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-700 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+              Sucursales{" "}
+              <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500">
+                ({selectedSucursalIds.length}/{sucursales.length} seleccionadas)
+              </span>
+            </h4>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSelectedSucursalIds(sucursales.map(s => s.id_sucursal))}
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setSelectedSucursalIds([])}
+                className="text-xs text-zinc-400 dark:text-zinc-500 hover:underline"
+              >
+                Ninguna
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-x-8 gap-y-4">
+            {Object.entries(sucursalesByEstado).map(([estado, sucList]) => {
+              const ids = sucList.map(s => s.id_sucursal);
+              const allChecked = ids.every(id => selectedSucursalIds.includes(id));
+              const someChecked = ids.some(id => selectedSucursalIds.includes(id));
+              return (
+                <div key={estado}>
+                  <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+                    <IndeterminateCheckbox
+                      checked={allChecked}
+                      indeterminate={someChecked && !allChecked}
+                      onChange={() => toggleEstado(sucList)}
+                      className="accent-indigo-600 w-3.5 h-3.5"
+                    />
+                    <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wide">
+                      {estado}
+                    </span>
+                    <span className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-full px-1.5 leading-5 font-medium">
+                      {sucList.length}
+                    </span>
+                  </label>
+                  <div className="flex flex-col gap-1.5 ml-5">
+                    {sucList.map(s => (
+                      <label key={s.id_sucursal} className="flex items-center gap-1.5 cursor-pointer select-none group">
+                        <input
+                          type="checkbox"
+                          checked={selectedSucursalIds.includes(s.id_sucursal)}
+                          onChange={() => toggleSucursal(s.id_sucursal)}
+                          className="accent-indigo-600 w-3.5 h-3.5"
+                        />
+                        <span className="text-xs text-zinc-600 dark:text-zinc-300 group-hover:text-zinc-800 dark:group-hover:text-zinc-100 transition-colors">
+                          {s.nombre}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Grid de gráficas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -408,7 +565,13 @@ export default function EstadisticasCharts() {
                 layout="vertical"
                 margin={{ left: 8, right: 24, top: 4, bottom: 4 }}
               >
-                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: number) =>
+                    v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`
+                  }
+                />
                 <YAxis
                   type="category"
                   dataKey="nombre"
@@ -416,7 +579,7 @@ export default function EstadisticasCharts() {
                   tick={{ fontSize: 11 }}
                 />
                 <Tooltip content={<BarTooltipServicios />} />
-                <Bar dataKey="total_usos" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="total_ingresos" fill="#22c55e" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

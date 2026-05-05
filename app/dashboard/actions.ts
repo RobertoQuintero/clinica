@@ -225,29 +225,40 @@ export async function getEstadisticas(
          WHERE c.[deleted_at] IS NULL
            AND c.[id_empresa]   = @id_empresa
            AND c.[id_sucursal]  = @id_sucursal
-           AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
-           AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
+           AND c.[fecha] >= @fecha_inicio
+           AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
          GROUP BY s.[nombre]
          ORDER BY total_usos DESC`,
         { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
       ),
 
       db.queryParams(
-        `SELECT
-           p.[nombre]                       AS nombre,
-           SUM(cp.[cantidad])               AS total_cantidad,
-           SUM(cp.[precio] * cp.[cantidad]) AS total_ingresos
-         FROM [CentroPodologico].[dbo].[consulta_productos] cp
-         INNER JOIN [CentroPodologico].[dbo].[productos] p
-           ON cp.[id_producto] = p.[id_producto]
-         INNER JOIN [CentroPodologico].[dbo].[consultas] c
-           ON cp.[id_consulta] = c.[id_consulta]
-         WHERE c.[deleted_at] IS NULL
-           AND c.[id_empresa]  = @id_empresa
-           AND c.[id_sucursal] = @id_sucursal
-           AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
-           AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
-         GROUP BY p.[nombre]
+        `WITH agg AS (
+           SELECT
+             p.[nombre]                       AS nombre,
+             SUM(cp.[cantidad])               AS total_cantidad,
+             SUM(cp.[precio] * cp.[cantidad]) AS total_ingresos
+           FROM [CentroPodologico].[dbo].[consulta_productos] cp
+           INNER JOIN [CentroPodologico].[dbo].[productos] p
+             ON cp.[id_producto] = p.[id_producto]
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON cp.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] = @id_sucursal
+             AND c.[fecha] >= @fecha_inicio
+             AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY p.[nombre]
+         ),
+         ranked AS (
+           SELECT *,
+             ROW_NUMBER() OVER (ORDER BY total_cantidad DESC) AS rn_cantidad,
+             ROW_NUMBER() OVER (ORDER BY total_ingresos DESC) AS rn_ingresos
+           FROM agg
+         )
+         SELECT nombre, total_cantidad, total_ingresos
+         FROM ranked
+         WHERE rn_cantidad <= 7 OR rn_ingresos <= 7
          ORDER BY total_cantidad DESC`,
         { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
       ),
@@ -265,8 +276,8 @@ export async function getEstadisticas(
          WHERE c.[deleted_at] IS NULL
            AND c.[id_empresa]  = @id_empresa
            AND c.[id_sucursal] = @id_sucursal
-           AND CONVERT(varchar(10), pg.[fecha_pago], 120) >= @fecha_inicio
-           AND CONVERT(varchar(10), pg.[fecha_pago], 120) <= @fecha_fin
+           AND pg.[fecha_pago] >= @fecha_inicio
+           AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date))
          GROUP BY mp.[descripcion]
          ORDER BY total_monto DESC`,
         { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
@@ -287,8 +298,8 @@ export async function getEstadisticas(
            WHERE c.[deleted_at] IS NULL
              AND c.[id_empresa]  = @id_empresa
              AND c.[id_sucursal] = @id_sucursal
-             AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
-             AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
+             AND c.[fecha] >= @fecha_inicio
+             AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
            GROUP BY CONVERT(varchar(7), c.[fecha], 120)
          ) s
          FULL OUTER JOIN (
@@ -301,12 +312,152 @@ export async function getEstadisticas(
            WHERE c.[deleted_at] IS NULL
              AND c.[id_empresa]  = @id_empresa
              AND c.[id_sucursal] = @id_sucursal
-             AND CONVERT(varchar(10), c.[fecha], 120) >= @fecha_inicio
-             AND CONVERT(varchar(10), c.[fecha], 120) <= @fecha_fin
+             AND c.[fecha] >= @fecha_inicio
+             AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
            GROUP BY CONVERT(varchar(7), c.[fecha], 120)
          ) p ON s.mes = p.mes
          ORDER BY mes`,
         { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
+      ),
+    ]);
+
+    return {
+      ok: true,
+      servicios: servicios as IServicioStat[],
+      productos: productos as IProductoStat[],
+      metodos_pago: metodos_pago as IMetodoPagoStat[],
+      ventas_mensuales: ventas_mensuales as IVentaMensualStat[],
+    };
+  } catch (error) {
+    console.error({ error });
+    return { ok: false, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [] };
+  }
+}
+
+export async function getEstadisticasMultiple(
+  fecha_inicio: string,
+  fecha_fin: string,
+  sucursal_ids: number[],
+): Promise<IEstadisticasData> {
+  if (sucursal_ids.length === 0) {
+    return { ok: true, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [] };
+  }
+  try {
+    const { id_empresa } = await getActiveUser();
+    const placeholders = sucursal_ids.map((_, i) => `@sid${i}`).join(", ");
+    const sucursalParams: Record<string, number> = {};
+    sucursal_ids.forEach((id, i) => { sucursalParams[`sid${i}`] = id; });
+    const commonParams = { id_empresa, fecha_inicio, fecha_fin, ...sucursalParams };
+
+    const [servicios, productos, metodos_pago, ventas_mensuales] = await Promise.all([
+      db.queryParams(
+        `SELECT
+           s.[nombre]                          AS nombre,
+           COUNT(cs.[id_consulta_servicio])    AS total_usos,
+           SUM(cs.[precio_aplicado])           AS total_ingresos
+         FROM [CentroPodologico].[dbo].[consulta_servicios] cs
+         INNER JOIN [CentroPodologico].[dbo].[servicio_opciones] so
+           ON cs.[id_servicio_opcion] = so.[id_servicio_opcion]
+         INNER JOIN [CentroPodologico].[dbo].[servicios] s
+           ON so.[id_servicio] = s.[id_servicio]
+         INNER JOIN [CentroPodologico].[dbo].[consultas] c
+           ON cs.[id_consulta] = c.[id_consulta]
+         WHERE c.[deleted_at] IS NULL
+           AND c.[id_empresa]  = @id_empresa
+           AND c.[id_sucursal] IN (${placeholders})
+           AND c.[fecha] >= @fecha_inicio
+           AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+         GROUP BY s.[nombre]
+         ORDER BY total_usos DESC`,
+        commonParams
+      ),
+
+      db.queryParams(
+        `WITH agg AS (
+           SELECT
+             p.[nombre]                       AS nombre,
+             SUM(cp.[cantidad])               AS total_cantidad,
+             SUM(cp.[precio] * cp.[cantidad]) AS total_ingresos
+           FROM [CentroPodologico].[dbo].[consulta_productos] cp
+           INNER JOIN [CentroPodologico].[dbo].[productos] p
+             ON cp.[id_producto] = p.[id_producto]
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON cp.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] IN (${placeholders})
+             AND c.[fecha] >= @fecha_inicio
+             AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY p.[nombre]
+         ),
+         ranked AS (
+           SELECT *,
+             ROW_NUMBER() OVER (ORDER BY total_cantidad DESC) AS rn_cantidad,
+             ROW_NUMBER() OVER (ORDER BY total_ingresos DESC) AS rn_ingresos
+           FROM agg
+         )
+         SELECT nombre, total_cantidad, total_ingresos
+         FROM ranked
+         WHERE rn_cantidad <= 7 OR rn_ingresos <= 7
+         ORDER BY total_cantidad DESC`,
+        commonParams
+      ),
+
+      db.queryParams(
+        `SELECT
+           mp.[descripcion]         AS nombre,
+           COUNT(pg.[id_pago])      AS total_pagos,
+           SUM(pg.[monto])          AS total_monto
+         FROM [CentroPodologico].[dbo].[pagos] pg
+         INNER JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
+           ON pg.[idMetodoPago] = mp.[idMetodoPago]
+         INNER JOIN [CentroPodologico].[dbo].[consultas] c
+           ON pg.[id_consulta] = c.[id_consulta]
+         WHERE c.[deleted_at] IS NULL
+           AND c.[id_empresa]  = @id_empresa
+           AND c.[id_sucursal] IN (${placeholders})
+           AND pg.[fecha_pago] >= @fecha_inicio
+           AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+         GROUP BY mp.[descripcion]
+         ORDER BY total_monto DESC`,
+        commonParams
+      ),
+
+      db.queryParams(
+        `SELECT
+           COALESCE(s.mes, p.mes)          AS mes,
+           COALESCE(s.total_servicios, 0)  AS total_servicios,
+           COALESCE(p.total_productos, 0)  AS total_productos
+         FROM (
+           SELECT
+             CONVERT(varchar(7), c.[fecha], 120)  AS mes,
+             SUM(cs.[precio_aplicado])             AS total_servicios
+           FROM [CentroPodologico].[dbo].[consulta_servicios] cs
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON cs.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] IN (${placeholders})
+             AND c.[fecha] >= @fecha_inicio
+             AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY CONVERT(varchar(7), c.[fecha], 120)
+         ) s
+         FULL OUTER JOIN (
+           SELECT
+             CONVERT(varchar(7), c.[fecha], 120)   AS mes,
+             SUM(cp.[precio] * cp.[cantidad])       AS total_productos
+           FROM [CentroPodologico].[dbo].[consulta_productos] cp
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON cp.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] IN (${placeholders})
+             AND c.[fecha] >= @fecha_inicio
+             AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY CONVERT(varchar(7), c.[fecha], 120)
+         ) p ON s.mes = p.mes
+         ORDER BY mes`,
+        commonParams
       ),
     ]);
 
@@ -387,7 +538,7 @@ export interface IPacienteFaltante {
   ultima_consulta:  string | null;
 }
 
-export async function getPacientesFaltantes(): Promise<IPacienteFaltante[]> {
+export async function getPacientesFaltantes(dias: number = 60): Promise<IPacienteFaltante[]> {
   try {
     const cookieStore = await cookies();
     const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
@@ -415,9 +566,9 @@ export async function getPacientesFaltantes(): Promise<IPacienteFaltante[]> {
            p.[id_paciente], p.[nombre], p.[apellido_paterno], p.[apellido_materno],
            p.[telefono], p.[whatsapp]
       HAVING MAX(con.[fecha]) IS NULL
-          OR MAX(con.[fecha]) <= DATEADD(MONTH, -2, GETDATE())
+          OR MAX(con.[fecha]) <= DATEADD(DAY, -@dias, GETDATE())
       ORDER BY MAX(con.[fecha]) ASC`,
-      { id_sucursal, id_empresa }
+      { id_sucursal, id_empresa, dias }
     );
 
     return data as IPacienteFaltante[];

@@ -21,6 +21,28 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit }: Props
         {c.nombre_podologo ?? "—"}
       </td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+        {c.nombre_sucursal ?? "—"}
+      </td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+        {c.created_at ? String(c.created_at).slice(11, 16) : "—"}
+      </td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+        {c.fecha_fin ? String(c.fecha_fin).slice(11, 16) : "—"}
+      </td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+        {c.created_at && c.fecha_fin
+          ? (() => {
+              const inicio = new Date(String(c.created_at).replace(" ", "T"));
+              const fin    = new Date(String(c.fecha_fin).replace(" ", "T"));
+              const mins   = Math.round((fin.getTime() - inicio.getTime()) / 60000);
+              if (mins < 0) return "—";
+              const h = Math.floor(mins / 60);
+              const m = mins % 60;
+              return h > 0 ? `${h}h ${m}min` : `${m}min`;
+            })()
+          : "—"}
+      </td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
         ${Number(c.costo_total).toFixed(2)}
       </td>
       <td className="px-4 py-3">

@@ -17,4 +17,5 @@ export interface IPaciente {
     contacto_emergencia_whatsapp: string;
     id_sucursal:                  number;
     id_empresa:                   number;
+    nombre_sucursal?:             string;
 }

@@ -35,8 +35,8 @@ export default function PacienteModal({ form, saving, error, onChange, onSubmit,
               { name: "fecha_nacimiento",             label: "Fecha de nacimiento",          type: "date" },
               { name: "direccion",                    label: "Dirección",                    type: "text" },
               { name: "ciudad_preferida",             label: "Ciudad preferida",             type: "text" },
-              { name: "contacto_emergencia_nombre",   label: "Contacto emergencia nombre",   type: "text" },
-              { name: "contacto_emergencia_whatsapp", label: "Contacto emergencia WhatsApp", type: "text" },
+              { name: "contacto_emergencia_nombre",   label: "Nombre(Contacto emergencia)",   type: "text" },
+              { name: "contacto_emergencia_whatsapp", label: "WhatsApp(Contacto emergencia)", type: "text" },
             ] as { name: keyof IPaciente; label: string; type: string }[]
           ).map(({ name, label, type }) => (
             <label key={name} className="flex flex-col gap-1">

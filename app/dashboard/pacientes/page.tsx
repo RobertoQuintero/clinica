@@ -44,7 +44,7 @@ export default function PacientesPage() {
   const [extLoading, setExtLoading] = useState(false);
   const [extSearched, setExtSearched] = useState(false);
 
-  type SortKey = "nombre" | "apellido_paterno" | "apellido_materno" | "telefono" | "sexo" | "ciudad_preferida";
+  type SortKey = "nombre" | "apellido_paterno" | "apellido_materno" | "telefono" | "sexo" | "nombre_sucursal";
   const [sortKey, setSortKey]   = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc]   = useState(true);
 
@@ -167,7 +167,7 @@ export default function PacientesPage() {
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Ap. materno</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Teléfono</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sexo</th>
-                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Ciudad</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sucursal</th>
                     <th className="px-4 py-2" />
                   </tr>
                 </thead>
@@ -205,7 +205,7 @@ export default function PacientesPage() {
                   { label: "Apellido materno",  key: "apellido_materno"  },
                   { label: "Teléfono",          key: "telefono"          },
                   { label: "Sexo",              key: "sexo"              },
-                  { label: "Ciudad",            key: "ciudad_preferida"  },
+                  { label: "Sucursal",          key: "nombre_sucursal"   },
                 ] as { label: string; key: SortKey }[]).map(({ label, key }) => (
                   <th
                     key={key}

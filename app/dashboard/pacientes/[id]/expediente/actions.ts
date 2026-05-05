@@ -56,10 +56,14 @@ export async function getConsultasByPaciente(id_paciente: number): Promise<ICons
     `SELECT c.[id_consulta], c.[id_paciente], c.[id_podologo],
             CONVERT(varchar(19), c.[fecha], 120) AS fecha,
             c.[diagnostico], c.[tratamiento_aplicado], c.[observaciones],
-            c.[created_at], c.[deleted_at], c.[costo_total], c.[id_sucursal], c.[id_empresa],
-            u.[nombre] AS nombre_podologo
+            CONVERT(varchar(19), c.[created_at], 120) AS created_at,
+            CONVERT(varchar(19), c.[fecha_fin],  120) AS fecha_fin,
+            c.[deleted_at], c.[costo_total], c.[id_sucursal], c.[id_empresa],
+            u.[nombre] AS nombre_podologo,
+            s.[nombre] AS nombre_sucursal
        FROM [CentroPodologico].[dbo].[consultas] c
        LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = c.[id_podologo]
+       LEFT JOIN [CentroPodologico].[dbo].[sucursales] s ON s.[id_sucursal] = c.[id_sucursal]
       WHERE c.[id_paciente] = @id_paciente
         AND c.[deleted_at] IS NULL
       ORDER BY c.[fecha] DESC`,

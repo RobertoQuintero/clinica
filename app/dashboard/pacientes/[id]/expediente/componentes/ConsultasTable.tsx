@@ -18,7 +18,7 @@ export default function ConsultasTable({ id_paciente, consultas, loading, onEdit
       <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
         <thead className="bg-zinc-100 dark:bg-zinc-800">
           <tr>
-            {["#", "Fecha", "Podólogo",  "Costo total", ""].map((h) => (
+            {["#", "Fecha", "Podólogo", "Sucursal", "H. Inicio", "H. Fin", "Duración", "Costo total", ""].map((h) => (
               <th
                 key={h}
                 className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap"

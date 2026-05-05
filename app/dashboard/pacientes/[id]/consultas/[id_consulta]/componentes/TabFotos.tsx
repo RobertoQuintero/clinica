@@ -12,7 +12,7 @@ interface Props {
   paciente:       IPaciente | null;
   id_paciente:    number;
   id_consulta:    number;
-  /** Fixed category assigned to every upload; only items with this category are shown. */
+  /** Prefix used to derive sub-categories: `${categoria}_U` and `${categoria}_P`. */
   categoria:      string;
   locked?:        boolean;
   onContinuar?:   () => void;
@@ -44,13 +44,26 @@ const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> 
     img.src = objectUrl;
   });
 
-export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria, locked, onContinuar }: Props) {
+// ─── inner section ────────────────────────────────────────────────────────────
+
+interface SectionProps {
+  title:        string;
+  categoriaKey: string;
+  archivos:     IArchivo[];
+  onAddArchivo: (a: IArchivo) => void;
+  paciente:     IPaciente | null;
+  id_paciente:  number;
+  id_consulta:  number;
+  locked?:      boolean;
+}
+
+function FotosSection({ title, categoriaKey, archivos, onAddArchivo, paciente, id_paciente, id_consulta, locked }: SectionProps) {
   const fileInputRef                       = useRef<HTMLInputElement>(null);
   const cameraInputRef                     = useRef<HTMLInputElement>(null);
   const [uploadingFile,  setUploadingFile] = useState(false);
   const [uploadError,    setUploadError  ] = useState<string | null>(null);
 
-  const visibleArchivos = archivos.filter((a) => a.categoria === categoria);
+  const visibleArchivos = archivos.filter((a) => a.categoria === categoriaKey);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -69,7 +82,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
         : `paciente${id_paciente}_consulta${id_consulta}`;
       const seq      = visibleArchivos.length + 1;
       const ext      = isImage ? ".jpg" : ".pdf";
-      const fileName = `${baseName}_${categoria}_${seq}${ext}`;
+      const fileName = `${baseName}_${categoriaKey}_${seq}${ext}`;
 
       const uploadRes  = await fetch(`/api/upload?name=${encodeURIComponent(fileName)}`, {
         method: "POST",
@@ -86,7 +99,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
         ruta:       String(uploadData.data),
         tipo,
         created_at: buildDate(new Date()),
-        categoria,
+        categoria:  categoriaKey,
       });
       if (!archivoData.ok) throw new Error(archivoData.data ?? "Error al registrar el archivo");
 
@@ -101,7 +114,8 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{title}</h3>
 
       {/* upload */}
       {!locked && (
@@ -158,6 +172,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
           </button>
         </div>
       )}
+
       {uploadError && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/30 dark:text-red-400">
           {uploadError}
@@ -171,7 +186,7 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {["Categoría", "Tipo", "Ruta"].map((h) => (
+                {["Categoría", "Tipo", "Enlace foto"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
                     {h}
                   </th>
@@ -194,16 +209,52 @@ export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── main component ───────────────────────────────────────────────────────────
+
+export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria, locked, onContinuar }: Props) {
+  const catU = `${categoria}_U`;
+  const catP = `${categoria}_P`;
+
+  const archivosU    = archivos.filter((a) => a.categoria === catU);
+  const archivosP    = archivos.filter((a) => a.categoria === catP);
+  const canContinuar = archivosU.length >= 1 && archivosP.length >= 1;
+
+  return (
+    <div className="space-y-6">
+      <FotosSection
+        title="Fotos Uñas"
+        categoriaKey={catU}
+        archivos={archivos}
+        onAddArchivo={onAddArchivo}
+        paciente={paciente}
+        id_paciente={id_paciente}
+        id_consulta={id_consulta}
+        locked={locked}
+      />
+
+      <hr className="border-zinc-200 dark:border-zinc-700" />
+
+      <FotosSection
+        title="Fotos Plantas"
+        categoriaKey={catP}
+        archivos={archivos}
+        onAddArchivo={onAddArchivo}
+        paciente={paciente}
+        id_paciente={id_paciente}
+        id_consulta={id_consulta}
+        locked={locked}
+      />
 
       {!locked && onContinuar && (
         <div className="flex justify-end pt-2">
           <button
             type="button"
             onClick={onContinuar}
-            disabled={
-              visibleArchivos.length < 2 
-              // false
-            }
+            disabled={!canContinuar}
             className="rounded-md bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:bg-zinc-600 dark:hover:bg-zinc-500"
           >
             Continuar

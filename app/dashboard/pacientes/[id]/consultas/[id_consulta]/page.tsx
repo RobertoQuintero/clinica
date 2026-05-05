@@ -300,7 +300,7 @@ export default function ConsultaPage() {
               — {fmtDatetime(consulta.fecha)}
               {consulta.fecha_fin && (() => {
                 const ms = new Date(String(consulta.fecha_fin).replace(" ", "T")).getTime()
-                         - new Date(String(consulta.fecha).replace(" ", "T")).getTime();
+                         - new Date(String(consulta.created_at).replace(" ", "T")).getTime();
                 const mins = Math.round(ms / 60000);
                 if (mins <= 0) return null;
                 const h = Math.floor(mins / 60);

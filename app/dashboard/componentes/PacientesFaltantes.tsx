@@ -16,14 +16,17 @@ export default function PacientesFaltantes() {
   const { selectedId } = useSucursal();
   const [pacientes, setPacientes] = useState<IPacienteFaltante[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [dias, setDias]         = useState(60);
+  const [inputDias, setInputDias] = useState(60);
 
   useEffect(() => {
+    if (!dias || dias < 1) return;
     setLoading(true);
-    getPacientesFaltantes().then((data) => {
+    getPacientesFaltantes(dias).then((data) => {
       setPacientes(data);
       setLoading(false);
     });
-  }, [selectedId]);
+  }, [selectedId, dias]);
 
   if (loading) return <p className="text-sm text-zinc-400">Cargando...</p>;
 
@@ -36,7 +39,21 @@ export default function PacientesFaltantes() {
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-x-auto">
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <label className="text-sm text-zinc-600 dark:text-zinc-400">
+          Días sin consulta:
+        </label>
+        <input
+          type="number"
+          min={1}
+          value={inputDias}
+          onChange={(e) => setInputDias(Number(e.target.value))}
+          onKeyDown={(e) => { if (e.key === "Enter" && inputDias >= 1) setDias(inputDias); }}
+          className="w-20 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-2 py-1 text-sm text-zinc-800 dark:text-zinc-100"
+        />
+      </div>
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs uppercase">
           <tr>
@@ -69,6 +86,7 @@ export default function PacientesFaltantes() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
