@@ -134,3 +134,43 @@ export async function savePaciente(
     return { ok: false, message: "Error al guardar el paciente" };
   }
 }
+
+export async function buscarPacientesExternos(query: string): Promise<IPaciente[]> {
+  if (!query.trim()) return [];
+  const { id_empresa } = await getActiveUser();
+
+  // Split into words so "Alejandra Quiroz" matches nombre="Alejandra" + apellido_paterno="Quiroz"
+  const words = query.trim().split(/\s+/).slice(0, 5); // cap at 5 words
+  const params: Record<string, unknown> = { id_empresa };
+  const wordClauses = words.map((word, i) => {
+    params[`q${i}`] = `%${word}%`;
+    return `([nombre] LIKE @q${i} OR [apellido_paterno] LIKE @q${i} OR [apellido_materno] LIKE @q${i} OR [telefono] LIKE @q${i})`;
+  });
+
+  const data = await db.queryParams(
+    `SELECT TOP 20
+            [id_paciente],
+            [nombre],
+            [telefono],
+            CONVERT(varchar(10), [fecha_nacimiento], 120) AS fecha_nacimiento,
+            [direccion],
+            [observaciones_generales],
+            CONVERT(varchar(19), [created_at], 120) AS created_at,
+            CONVERT(varchar(19), [updated_at], 120) AS updated_at,
+            CONVERT(varchar(19), [deleted_at], 120) AS deleted_at,
+            [apellido_paterno],
+            [apellido_materno],
+            [sexo],
+            [whatsapp],
+            [ciudad_preferida],
+            [contacto_emergencia_nombre],
+            [contacto_emergencia_whatsapp],
+            [id_sucursal],
+            [id_empresa]
+       FROM [CentroPodologico].[dbo].[pacientes]
+      WHERE [id_empresa] = @id_empresa
+        AND ${wordClauses.join(" AND ")}`,
+    params
+  );
+  return data as IPaciente[];
+}

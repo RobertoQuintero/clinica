@@ -6,7 +6,7 @@ import { IPaciente } from "@/interfaces/paciente";
 import { useEffect, useState } from "react";
 import PacienteFila from "./componentes/PacienteFila";
 import PacienteModal from "./componentes/PacienteModal";
-import { getPacientes, savePaciente } from "./actions";
+import { getPacientes, savePaciente, buscarPacientesExternos } from "./actions";
 
 const EMPTY: IPaciente = {
   id_paciente:                  0,
@@ -39,10 +39,26 @@ export default function PacientesPage() {
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [search, setSearch]         = useState("");
+  const [extSearch, setExtSearch]   = useState("");
+  const [extResults, setExtResults] = useState<IPaciente[]>([]);
+  const [extLoading, setExtLoading] = useState(false);
+  const [extSearched, setExtSearched] = useState(false);
 
   type SortKey = "nombre" | "apellido_paterno" | "apellido_materno" | "telefono" | "sexo" | "ciudad_preferida";
   const [sortKey, setSortKey]   = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc]   = useState(true);
+
+  const handleExtSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    setExtLoading(true);
+    setExtSearched(true);
+    try {
+      const data = await buscarPacientesExternos(extSearch);
+      setExtResults(data);
+    } finally {
+      setExtLoading(false);
+    }
+  };
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((prev) => !prev);
@@ -113,8 +129,19 @@ export default function PacientesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex items-center gap-4">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Pacientes</h2>
+        <div className="flex flex-1 items-center gap-2">
+          <input
+            type="text"
+            placeholder="Buscar externos (Enter)…"
+            value={extSearch}
+            onChange={(e) => setExtSearch(e.target.value)}
+            onKeyDown={handleExtSearch}
+            className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
+          />
+          {extLoading && <span className="text-xs text-zinc-400">Buscando…</span>}
+        </div>
         <button
           onClick={openNew}
           className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
@@ -122,6 +149,38 @@ export default function PacientesPage() {
           + Nuevo paciente
         </button>
       </div>
+
+      {extSearched && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+          <div className="px-4 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 border-b border-blue-200 dark:border-blue-800">
+            Resultados externos{extResults.length > 0 ? ` — ${extResults.length} encontrado${extResults.length !== 1 ? "s" : ""}` : ""}
+          </div>
+          {extResults.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-zinc-400">Sin coincidencias</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-blue-100 dark:divide-blue-800 text-sm">
+                <thead className="bg-blue-100/60 dark:bg-blue-900/30">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Nombre</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Ap. paterno</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Ap. materno</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Teléfono</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sexo</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Ciudad</th>
+                    <th className="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-blue-50 dark:divide-blue-900">
+                  {extResults.map((p) => (
+                    <PacienteFila key={`ext-${p.id_paciente}`} paciente={p} onEdit={openEdit} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mb-4">
         <input
