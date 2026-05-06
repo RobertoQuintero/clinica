@@ -22,13 +22,21 @@ interface Props {
 }
 
 export default function ConsultaModal({ form, saving, error, podologos, sucursales, currentUser, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
-  const isSucursalLocked = currentUser?.id_role === 3;
+  const isSucursalLocked  = currentUser?.id_role === 2;
+  const isPodologoLocked  = currentUser?.id_role === 2;
+  const isNew             = form.id_consulta === 0;
   const [podologoInput, setPodologoInput] = useState("");
   const [sucursalInput, setSucursalInput] = useState("");
 
   useEffect(() => {
-    const found = podologos.find((p) => p.id_user === form.id_podologo);
-    setPodologoInput(found?.nombre ?? "");
+    if (currentUser?.id_role === 2) {
+      setPodologoInput(currentUser.nombre ?? "");
+      onPodologoChange(currentUser.id_user);
+    } else {
+      const found = podologos.find((p) => p.id_user === form.id_podologo);
+      setPodologoInput(found?.nombre ?? "");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.id_podologo, podologos]);
 
   useEffect(() => {
@@ -84,17 +92,19 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
             </p>
           )}
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Fecha</span>
-            <input
-              type="datetime-local"
-              name="fecha"
-              value={toDateTimeLocal(String(form.fecha ?? ""))}
-              onChange={onChange}
-              required
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </label>
+          {!isNew && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Fecha</span>
+              <input
+                type="datetime-local"
+                name="fecha"
+                value={toDateTimeLocal(String(form.fecha ?? ""))}
+                onChange={onChange}
+                required
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              />
+            </label>
+          )}
 
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursal</span>
@@ -123,19 +133,22 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Podólogo</span>
             <input
               type="text"
-              list="podologos-list"
+              list={isPodologoLocked ? undefined : "podologos-list"}
               value={podologoInput}
-              onChange={handlePodologoInput}
+              onChange={isPodologoLocked ? undefined : handlePodologoInput}
               placeholder={form.id_sucursal ? "Buscar podólogo…" : "Selecciona una sucursal primero"}
-              disabled={!form.id_sucursal}
+              disabled={!isPodologoLocked && !form.id_sucursal}
+              readOnly={isPodologoLocked}
               required
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400${isPodologoLocked ? " opacity-60 cursor-not-allowed" : " disabled:opacity-50 disabled:cursor-not-allowed"}`}
             />
-            <datalist id="podologos-list">
-              {podologos.map((p) => (
-                <option key={p.id_user} value={p.nombre} />
-              ))}
-            </datalist>
+            {!isPodologoLocked && (
+              <datalist id="podologos-list">
+                {podologos.map((p) => (
+                  <option key={p.id_user} value={p.nombre} />
+                ))}
+              </datalist>
+            )}
           </label>
 
           <div className="col-span-1 sm:col-span-2 flex justify-end gap-3 pt-2">

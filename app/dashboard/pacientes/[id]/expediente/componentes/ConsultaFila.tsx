@@ -24,6 +24,9 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit }: Props
         {c.nombre_sucursal ?? "—"}
       </td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+        {c.fecha ? String(c.fecha).slice(11, 16) : "—"}
+      </td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
         {c.created_at ? String(c.created_at).slice(11, 16) : "—"}
       </td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">

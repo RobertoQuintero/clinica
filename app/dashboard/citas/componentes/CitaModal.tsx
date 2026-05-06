@@ -8,6 +8,24 @@ import { useEffect, useRef, useState } from "react";
 
 const ESTADOS = ["agendada", "atendida", "cancelada"];
 
+const TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
+  const h = String(Math.floor(i / 2)).padStart(2, "0");
+  const m = i % 2 === 0 ? "00" : "30";
+  return `${h}:${m}`;
+});
+
+function splitDateTime(val: string): { date: string; time: string } {
+  const s = toDateTimeLocal(String(val ?? ""));
+  if (!s) return { date: "", time: "" };
+  const [date, time] = s.split("T");
+  return { date: date ?? "", time: time ? time.slice(0, 5) : "" };
+}
+
+function joinDateTime(date: string, time: string): string {
+  if (!date || !time) return "";
+  return `${date}T${time}`;
+}
+
 interface Props {
   form: ICita;
   pacientes: IPaciente[];
@@ -68,14 +86,34 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, o
     onChange({ target: { name: "id_podologo", value: String(u.id_user) } } as React.ChangeEvent<HTMLSelectElement>);
   };
 
-  const handleFechaInicio = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e);
-    if (e.target.value) {
-      const end = new Date(new Date(e.target.value).getTime() + 60 * 60 * 1000);
+  const fireFechaInicio = (value: string) => {
+    onChange({ target: { name: "fecha_inicio", value } } as React.ChangeEvent<HTMLInputElement>);
+    if (value) {
+      const end = new Date(new Date(value).getTime() + 60 * 60 * 1000);
       const pad = (n: number) => String(n).padStart(2, "0");
       const fechaFin = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
       onChange({ target: { name: "fecha_fin", value: fechaFin } } as React.ChangeEvent<HTMLInputElement>);
     }
+  };
+
+  const handleFechaInicioDate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { time } = splitDateTime(String(form.fecha_inicio ?? ""));
+    fireFechaInicio(joinDateTime(e.target.value, time || "08:00"));
+  };
+
+  const handleFechaInicioTime = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { date } = splitDateTime(String(form.fecha_inicio ?? ""));
+    fireFechaInicio(joinDateTime(date, e.target.value));
+  };
+
+  const handleFechaFinDate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { time } = splitDateTime(String(form.fecha_fin ?? ""));
+    onChange({ target: { name: "fecha_fin", value: joinDateTime(e.target.value, time || "09:00") } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  const handleFechaFinTime = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { date } = splitDateTime(String(form.fecha_fin ?? ""));
+    onChange({ target: { name: "fecha_fin", value: joinDateTime(date, e.target.value) } } as React.ChangeEvent<HTMLSelectElement>);
   };
 
   return (
@@ -149,17 +187,43 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, o
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Fecha inicio</span>
-            <input type="datetime-local" name="fecha_inicio"
-              value={toDateTimeLocal(String(form.fecha_inicio ?? ""))}
-              onChange={handleFechaInicio} required
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400" />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={splitDateTime(String(form.fecha_inicio ?? "")).date}
+                onChange={handleFechaInicioDate}
+                required
+                className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              />
+              <select
+                value={splitDateTime(String(form.fecha_inicio ?? "")).time}
+                onChange={handleFechaInicioTime}
+                required
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              >
+                <option value="">--:--</option>
+                {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Fecha fin</span>
-            <input type="datetime-local" name="fecha_fin"
-              value={toDateTimeLocal(String(form.fecha_fin ?? ""))}
-              onChange={onChange}
-              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400" />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={splitDateTime(String(form.fecha_fin ?? "")).date}
+                onChange={handleFechaFinDate}
+                className="flex-1 rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              />
+              <select
+                value={splitDateTime(String(form.fecha_fin ?? "")).time}
+                onChange={handleFechaFinTime}
+                className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              >
+                <option value="">--:--</option>
+                {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Estado</span>
