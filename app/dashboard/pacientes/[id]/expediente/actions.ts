@@ -131,7 +131,6 @@ export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data
            [diagnostico]          = @diagnostico,
            [tratamiento_aplicado] = @tratamiento_aplicado,
            [observaciones]        = @observaciones,
-           [created_at]           = @created_at,
            [deleted_at]           = @deleted_at,
            [costo_total]          = @costo_total,
            [id_sucursal]          = @id_sucursal,
@@ -143,7 +142,8 @@ export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data
     }
 
     return { ok: true, data: (result as IConsulta[])?.[0] ?? undefined };
-  } catch {
+  } catch(error) {
+    console.error(error);
     return { ok: false, data: "Error al guardar la consulta" };
   }
 }

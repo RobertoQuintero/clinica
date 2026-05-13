@@ -5,7 +5,7 @@ import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
-import { toDateTimeLocal } from "@/utils/date_helpper";
+import { buildDate, toDateTimeLocal } from "@/utils/date_helpper";
 import {
   getAntecedentesByPaciente,
   getConsultasByPaciente,
@@ -150,6 +150,11 @@ export function useExpediente() {
     setError(null);
     try {
       const isNew = form.id_consulta === 0;
+      if(isNew){
+        const date=buildDate(new Date());
+        form.fecha = date
+        form.created_at = date
+      }
       const result = await saveConsulta(form);
       if (!result.ok) throw new Error(typeof result.data === "string" ? result.data : "Error al guardar");
       setShowModal(false);

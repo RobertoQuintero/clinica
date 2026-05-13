@@ -37,15 +37,12 @@ type MetodoPagoStat = IEstadisticasData["metodos_pago"][number];
 type VentaMensualStat = IEstadisticasData["ventas_mensuales"][number];
 type EstadisticasData = Omit<IEstadisticasData, "ok">;
 
-// Analogous color palette (blue → sky → cyan → teal → emerald → green → lime)
 const PIE_COLORS = [
-  "#3b82f6",
-  "#0ea5e9",
-  "#06b6d4",
-  "#14b8a6",
-  "#10b981",
-  "#22c55e",
-  "#84cc16",
+  "#587CD6",
+  "#58A4D6",
+  "#5C58D6",
+  "#58CBD6",
+  "#8558D6",
 ];
 
 function getFirstDayOfMonth(): string {
@@ -336,8 +333,8 @@ export default function EstadisticasCharts() {
   const totalServicios = data?.servicios.reduce((acc, s) => acc + s.total_ingresos, 0) ?? 0;
   const totalProductos = data?.productos.reduce((acc, p) => acc + p.total_ingresos, 0) ?? 0;
   const ventasTotalesData = [
-    { nombre: "Servicios", total: totalServicios, fill: "#6366f1" },
-    { nombre: "Productos", total: totalProductos, fill: "#22c55e" },
+    { nombre: "Servicios", total: totalServicios, fill: "#587CD6" },
+    { nombre: "Productos", total: totalProductos, fill: "#58A4D6" },
   ];
   const isMultiMonth = (data?.ventas_mensuales.length ?? 0) > 1;
   const mesTotalMap: Record<string, number> = {};
@@ -497,8 +494,8 @@ export default function EstadisticasCharts() {
                         />
                         <Tooltip content={<BarTooltipVentasMensuales />} />
                         <Legend formatter={(value: string) => <span className="text-xs">{value}</span>} />
-                        <Bar dataKey="total_servicios" name="Servicios" fill="#6366f1" radius={[6, 6, 0, 0]} />
-                        <Bar dataKey="total_productos" name="Productos" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="total_servicios" name="Servicios" fill="#587CD6" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="total_productos" name="Productos" fill="#58A4D6" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -527,7 +524,7 @@ export default function EstadisticasCharts() {
               )}
               <div className="flex sm:flex-col gap-3 shrink-0">
                 <div className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl px-4 py-3 min-w-40">
-                  <span className="w-3 h-3 rounded-full bg-indigo-500 shrink-0" />
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: "#587CD6" }} />
                   <div>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">Servicios</p>
                     <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
@@ -536,7 +533,7 @@ export default function EstadisticasCharts() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl px-4 py-3 min-w-40">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: "#58A4D6" }} />
                   <div>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">Productos</p>
                     <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
@@ -579,7 +576,7 @@ export default function EstadisticasCharts() {
                   tick={{ fontSize: 11 }}
                 />
                 <Tooltip content={<BarTooltipServicios />} />
-                <Bar dataKey="total_ingresos" fill="#22c55e" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="total_ingresos" fill="#587CD6" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -643,7 +640,7 @@ export default function EstadisticasCharts() {
                       ? "total_cantidad"
                       : "total_ingresos"
                   }
-                  fill={metricaProductos === "cantidad" ? "#6366f1" : "#22c55e"}
+                  fill={metricaProductos === "cantidad" ? "#5C58D6" : "#58A4D6"}
                   radius={[0, 4, 4, 0]}
                 />
               </BarChart>

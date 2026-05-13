@@ -358,14 +358,17 @@ export async function savePago(
     const id_empresa = await getIdEmpresa();
     const created_at = buildDate(new Date());
 
-    const webid = createWebId(8);
+    const webid =createWebId(8);
 
     await db.queryParams(
-      `INSERT INTO [CentroPodologico].[dbo].[pagos]
+      
+      `
+      declare @const int=(SELECT ISNULL(MAX([id_pago]),0)+1 FROM [CentroPodologico].[dbo].[pagos])
+      INSERT INTO [CentroPodologico].[dbo].[pagos]
          ([id_pago],[id_consulta],[monto],[fecha_pago],[referencia],[created_at],[id_empresa],[idMetodoPago],[webid],[facturado],[uuid_cfdi])
        VALUES (
-         (SELECT ISNULL(MAX([id_pago]),0)+1 FROM [CentroPodologico].[dbo].[pagos]),
-         @id_consulta,@monto,@fecha_pago,@referencia,@created_at,@id_empresa,@idMetodoPago,@webid,@facturado,@uuid_cfdi
+         @const,
+         @id_consulta,@monto,@fecha_pago,@referencia,@created_at,@id_empresa,@idMetodoPago,CONVERT(varchar,@const)+'-'+@webid,@facturado,@uuid_cfdi
        )`,
       {
         id_consulta:  form.id_consulta,
