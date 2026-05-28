@@ -3,7 +3,6 @@ export interface IValoracionPiel {
     id_consulta:        number;
     fecha_valoracion:   Date | string;
     edema:              boolean;
-    dermatomicosis:     boolean;
     pie_atleta:         boolean;
     bromhidrosis:       boolean;
     hiperdrosis:        boolean;

@@ -22,9 +22,10 @@ interface Props {
 }
 
 export default function ConsultaModal({ form, saving, error, podologos, sucursales, currentUser, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
-  const isSucursalLocked  = currentUser?.id_role === 2;
-  const isPodologoLocked  = currentUser?.id_role === 2;
   const isNew             = form.id_consulta === 0;
+  const isFinalized       = !isNew && !!form.fecha_fin;
+  const isSucursalLocked  = isFinalized || currentUser?.id_role === 2;
+  const isPodologoLocked  = isFinalized || currentUser?.id_role === 2;
   const [podologoInput, setPodologoInput] = useState("");
   const [sucursalInput, setSucursalInput] = useState("");
 
@@ -85,7 +86,12 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
             &times;
           </button>
         </div>
-        <form onSubmit={onSubmit} className="p-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form onSubmit={isFinalized ? (e) => e.preventDefault() : onSubmit} className="p-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {isFinalized && (
+            <p className="col-span-2 rounded-md bg-amber-50 dark:bg-amber-900/30 px-4 py-2 text-sm text-amber-700 dark:text-amber-300">
+              Esta consulta ya fue finalizada y no puede modificarse.
+            </p>
+          )}
           {error && (
             <p className="col-span-2 rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">
               {error}
@@ -99,9 +105,10 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
                 type="datetime-local"
                 name="fecha"
                 value={toDateTimeLocal(String(form.fecha ?? ""))}
-                onChange={onChange}
+                onChange={isFinalized ? undefined : onChange}
+                readOnly={isFinalized}
                 required
-                className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                className={`rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400${isFinalized ? " opacity-60 cursor-not-allowed" : ""}`}
               />
             </label>
           )}
@@ -157,15 +164,17 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
               onClick={onClose}
               className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
             >
-              Cancelar
+              {isFinalized ? "Cerrar" : "Cancelar"}
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 disabled:opacity-50"
-            >
-              {saving ? "Guardando…" : "Guardar"}
-            </button>
+            {!isFinalized && (
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 disabled:opacity-50"
+              >
+                {saving ? "Guardando…" : "Guardar"}
+              </button>
+            )}
           </div>
         </form>
       </div>

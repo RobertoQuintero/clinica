@@ -16,7 +16,7 @@ export default function PacienteFila({ paciente: p, onEdit }: Props) {
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.nombre}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.apellido_paterno}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.apellido_materno}</td>
-      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.telefono}</td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.whatsapp}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.sexo}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.nombre_sucursal ?? "—"}</td>
       <td className="px-4 py-3 flex gap-2">

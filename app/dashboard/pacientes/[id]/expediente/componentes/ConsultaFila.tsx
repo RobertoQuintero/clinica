@@ -8,11 +8,19 @@ interface Props {
   consulta:    IConsulta;
   id_paciente: number;
   onEdit:      (c: IConsulta) => void;
+  onCancel:    (c: IConsulta) => void;
 }
 
-export default function ConsultaFila({ consulta: c, id_paciente, onEdit }: Props) {
+export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCancel }: Props) {
+  const cancelled  = Boolean(c.cancelada);
+  const finalizada = Boolean(c.fecha_fin);
+
   return (
-    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+    <tr className={
+      cancelled
+        ? "bg-rose-50 dark:bg-rose-900/20 opacity-75"
+        : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+    }>
       <td className="px-4 py-3 text-zinc-500">{c.id_consulta}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
         {formatDate(c.fecha)}
@@ -50,12 +58,26 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit }: Props
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => onEdit(c)}
-            className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
-          >
-            Editar
-          </button>
+          {!cancelled && !finalizada && (
+            <button
+              onClick={() => onCancel(c)}
+              className="rounded-md bg-rose-100 px-3 py-1 text-xs font-medium text-rose-700 hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:hover:bg-rose-900/70 transition-colors"
+            >
+              Cancelar
+            </button>
+          )}
+          {cancelled ? (
+            <span className="rounded-md bg-rose-100 px-3 py-1 text-xs font-medium text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
+              Cancelada
+            </span>
+          ) : (
+            <button
+              onClick={() => onEdit(c)}
+              className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+            >
+              Editar
+            </button>
+          )}
           <Link
             href={`/dashboard/pacientes/${id_paciente}/consultas/${c.id_consulta}`}
             className="flex items-center justify-center rounded-md p-1.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-100 transition-colors"
@@ -70,3 +92,4 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit }: Props
     </tr>
   );
 }
+

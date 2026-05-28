@@ -29,6 +29,8 @@ export default function ExpedientePage() {
     closeModal,
     goBack,
     goToExpedienteMedico,
+    refreshConsultas,
+    cancelarConsulta,
   } = useExpediente();
 
   return (
@@ -50,6 +52,8 @@ export default function ExpedientePage() {
         consultas={consultas}
         loading={loading}
         onEdit={openEdit}
+        onCancelled={refreshConsultas}
+        cancelarConsulta={cancelarConsulta}
       />
 
       {showModal && form && (

@@ -10,4 +10,7 @@ export interface IPago {
     webid:       string;
     facturado:    boolean;
     uuid_cfdi: string | null;
+    id_usuario_elimino: number | null;
+    status: boolean;
+    nombre_usuario_elimino?: string | null;
 }

@@ -59,6 +59,7 @@ export async function getConsultasByPaciente(id_paciente: number): Promise<ICons
             CONVERT(varchar(19), c.[created_at], 120) AS created_at,
             CONVERT(varchar(19), c.[fecha_fin],  120) AS fecha_fin,
             c.[deleted_at], c.[costo_total], c.[id_sucursal], c.[id_empresa],
+            c.[cancelada], c.[motivo_cancelada],
             u.[nombre] AS nombre_podologo,
             s.[nombre] AS nombre_sucursal
        FROM [CentroPodologico].[dbo].[consultas] c
@@ -70,6 +71,24 @@ export async function getConsultasByPaciente(id_paciente: number): Promise<ICons
     { id_paciente }
   );
   return data as IConsulta[];
+}
+
+export async function cancelarConsulta(
+  id_consulta: number,
+  motivo_cancelada: string,
+): Promise<{ ok: boolean; data?: string }> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[consultas]
+          SET [cancelada] = 1, [motivo_cancelada] = @motivo_cancelada
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta, motivo_cancelada },
+    );
+    return { ok: true };
+  } catch (error) {
+    console.error(error);
+    return { ok: false, data: "Error al cancelar la consulta" };
+  }
 }
 
 export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data?: IConsulta | string }> {

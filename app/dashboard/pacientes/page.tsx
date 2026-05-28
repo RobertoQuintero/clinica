@@ -47,7 +47,7 @@ export default function PacientesPage() {
   const [extLoading, setExtLoading] = useState(false);
   const [extSearched, setExtSearched] = useState(false);
 
-  type SortKey = "nombre" | "apellido_paterno" | "apellido_materno" | "telefono" | "sexo" | "nombre_sucursal";
+  type SortKey = "nombre" | "apellido_paterno" | "apellido_materno" | "whatsapp" | "sexo" | "nombre_sucursal";
   const [sortKey, setSortKey]   = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc]   = useState(true);
 
@@ -125,7 +125,7 @@ export default function PacientesPage() {
         p.nombre.toLowerCase().includes(q) ||
         p.apellido_paterno.toLowerCase().includes(q) ||
         p.apellido_materno.toLowerCase().includes(q) ||
-        p.telefono.includes(q)
+        p.whatsapp.includes(q)
       );
     })
     .sort((a, b) => {
@@ -193,7 +193,7 @@ export default function PacientesPage() {
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Buscar por nombre, apellidos o teléfono..."
+          placeholder="Buscar por nombre, apellidos o whatsapp..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
@@ -211,7 +211,7 @@ export default function PacientesPage() {
                   { label: "Nombre",           key: "nombre"            },
                   { label: "Apellido paterno",  key: "apellido_paterno"  },
                   { label: "Apellido materno",  key: "apellido_materno"  },
-                  { label: "Teléfono",          key: "telefono"          },
+                  { label: "Whatsapp",           key: "whatsapp"          },
                   { label: "Sexo",              key: "sexo"              },
                   { label: "Sucursal",          key: "nombre_sucursal"   },
                 ] as { label: string; key: SortKey }[]).map(({ label, key }) => (

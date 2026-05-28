@@ -225,7 +225,6 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const valoracionChips = valoracion
     ? trueBoolLabels(valoracion, {
         edema:           "Edema",
-        dermatomicosis:  "Dermatomicosis",
         pie_atleta:      "Pie de atleta",
         bromhidrosis:    "Bromhidrosis",
         hiperdrosis:     "Hiperhidrosis",
@@ -291,32 +290,32 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     if (pagoWebId) lines.push(`*Folio de pago:* ${pagoWebId}`);
     if (consulta?.id_consulta) lines.push(`*Número de consulta:* ${consulta.id_consulta}`);
 
-    if (antecedentes) {
-      const chips = antChips;
-      lines.push("", "*ANTECEDENTES MÉDICOS*");
-      if (chips.length > 0) {
-        lines.push(chips.map((c) => `• ${c}`).join("\n"));
-      }
-      if (antecedentes.tipo_sangre)          lines.push(`*Tipo de sangre:* ${antecedentes.tipo_sangre}`);
-      if (antecedentes.medicamentos_actuales) lines.push(`*Medicamentos:* ${antecedentes.medicamentos_actuales}`);
-      if (antecedentes.otros)                lines.push(`*Otros:* ${antecedentes.otros}`);
-      if (chips.length === 0 && !antecedentes.tipo_sangre && !antecedentes.medicamentos_actuales && !antecedentes.otros) {
-        lines.push("_Sin antecedentes relevantes._");
-      }
-    }
+    // if (antecedentes) {
+    //   const chips = antChips;
+    //   lines.push("", "*ANTECEDENTES MÉDICOS*");
+    //   if (chips.length > 0) {
+    //     lines.push(chips.map((c) => `• ${c}`).join("\n"));
+    //   }
+    //   if (antecedentes.tipo_sangre)          lines.push(`*Tipo de sangre:* ${antecedentes.tipo_sangre}`);
+    //   if (antecedentes.medicamentos_actuales) lines.push(`*Medicamentos:* ${antecedentes.medicamentos_actuales}`);
+    //   if (antecedentes.otros)                lines.push(`*Otros:* ${antecedentes.otros}`);
+    //   if (chips.length === 0 && !antecedentes.tipo_sangre && !antecedentes.medicamentos_actuales && !antecedentes.otros) {
+    //     lines.push("_Sin antecedentes relevantes._");
+    //   }
+    // }
 
     if (valoracion) {
       lines.push("", "*VALORACIÓN DE LA PIEL(CONSEJOS DE CUIDADO)*");
       if (valoracionChips.length > 0) {
         const valoracionKeys: (keyof IValoracionPiel)[] = [
-          "edema","dermatomicosis","pie_atleta","bromhidrosis",
+          "edema","pie_atleta","bromhidrosis",
           "hiperdrosis","anhidrosis","hiperqueratosis","helomas","verrugas",
         ];
         valoracionKeys.forEach((k) => {
           if (valoracion[k] === true || (valoracion[k] as unknown) === 1) {
             const label = valoracionChips.find(
               (c) => c === ({
-                edema:"Edema",dermatomicosis:"Dermatomicosis",pie_atleta:"Pie de atleta",
+                edema:"Edema",pie_atleta:"Pie de atleta",
                 bromhidrosis:"Bromhidrosis",hiperdrosis:"Hiperhidrosis",anhidrosis:"Anhidrosis",
                 hiperqueratosis:"Hiperqueratosis",helomas:"Helomas",verrugas:"Verrugas",
               } as Record<string, string>)[k as string]
@@ -336,16 +335,14 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       lines.push("", "*PATOLOGÍA UNGUEAL(CONSEJOS DE CUIDADO)*");
       if (patChips.length > 0) {
         const patologiaKeys: (keyof IPatologiaUngueal)[] = [
-          "anoniquia","microniquia","onicolisis","onicauxis",
-          "hematoma_subungueal","onicofosis","paquioniquia","onicomicosis",
+          "onicomicosis", "onicomicosis_grado_1", "onicomicosis_grado_2"
         ];
         patologiaKeys.forEach((k) => {
           if (patologia[k] === true || (patologia[k] as unknown) === 1) {
             const label = patChips.find(
               (c) => c === ({
-                anoniquia:"Anoniquia",microniquia:"Microniquia",onicolisis:"Onicolisis",
-                onicauxis:"Onicauxis",hematoma_subungueal:"Hematoma subungueal",
-                onicofosis:"Onicofosis",paquioniquia:"Paquioniquia",onicomicosis:"Onicomicosis",
+                onicomicosis:"Onicomicosis",
+                onicomicosis_grado_1:"Onicomicosis Grado 1", onicomicosis_grado_2:"Onicomicosis Grado 2"
               } as Record<string, string>)[k as string]
             ) ?? k;
             lines.push(`• ${label}`);
@@ -397,7 +394,18 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     <div className="space-y-4">
 
       {/* export / share buttons */}
-      <div className="flex justify-end gap-2">
+      <div  style={{display:'flex',justifyContent:"space-between",alignItems:"center"}}>
+        <div id="cancelada">
+          {consulta?.cancelada && (
+            <div className="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636L5.636 18.364M5.636 5.636l12.728 12.728" />
+              </svg>
+              Consulta cancelada{consulta.motivo_cancelada ? `: ${consulta.motivo_cancelada}` : ""}
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2" >
         <button
           type="button"
           onClick={onSendWhatsApp}
@@ -421,6 +429,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
           </svg>
           {exporting ? "Exportando…" : "Exportar PDF"}
         </button>
+      </div>
       </div>
 
       <div ref={contentRef} className="space-y-4">

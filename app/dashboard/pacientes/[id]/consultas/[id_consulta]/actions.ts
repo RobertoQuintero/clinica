@@ -80,7 +80,7 @@ export async function getConsultaData(
               ,CONVERT(varchar(19), [fecha_fin], 120) AS fecha_fin
               ,[diagnostico],[tratamiento_aplicado],[observaciones]
               ,CONVERT(varchar(19), [created_at], 120) AS created_at
-              ,[deleted_at],[costo_total],[id_sucursal],[id_empresa],[id_cita]
+              ,[deleted_at],[costo_total],[id_sucursal],[id_empresa],[id_cita],cancelada,motivo_cancelada,is_onicomicosis,id_tratamiento,id_buzon
          FROM [CentroPodologico].[dbo].[consultas]
         WHERE [id_consulta] = @id_consulta AND [deleted_at] IS NULL`,
       { id_consulta },
@@ -88,7 +88,7 @@ export async function getConsultaData(
     db.queryParams(
       `SELECT [id_valoracion_piel],[id_consulta]
               ,CONVERT(varchar(10), [fecha_valoracion], 120) AS fecha_valoracion
-              ,[edema],[dermatomicosis],[pie_atleta],[bromhidrosis]
+              ,[edema],[pie_atleta],[bromhidrosis]
               ,[hiperdrosis],[anhidrosis],[hiperqueratosis]
               ,[helomas],[verrugas],[observaciones],[status]
               ,CONVERT(varchar(19), [created_at], 120) AS created_at
@@ -98,7 +98,8 @@ export async function getConsultaData(
     ),
     db.queryParams(
       `SELECT [id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
-              [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis]
+              [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis],
+              [onicomicosis_grado_1],[onicomicosis_grado_2]
          FROM [CentroPodologico].[dbo].[patologia_ungueal]
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
@@ -124,15 +125,17 @@ export async function getConsultaData(
       { id_consulta },
     ),
     db.queryParams(
-      `SELECT [id_pago],[id_consulta],[monto]
-              ,CONVERT(varchar(10), [fecha_pago], 120) AS fecha_pago
-              ,[referencia]
-              ,CONVERT(varchar(19), [created_at], 120) AS created_at
-              ,[id_empresa],[idMetodoPago]
-         FROM [CentroPodologico].[dbo].[pagos]
-        WHERE [id_consulta] = @id_consulta
-        ORDER BY [id_pago] DESC`,
-
+      `SELECT p.[id_pago],p.[id_consulta],p.[monto]
+              ,CONVERT(varchar(10), p.[fecha_pago], 120) AS fecha_pago
+              ,p.[referencia]
+              ,CONVERT(varchar(19), p.[created_at], 120) AS created_at
+              ,p.[id_empresa],p.[idMetodoPago],p.[webid],p.[facturado],p.[uuid_cfdi]
+              ,p.[id_usuario_elimino],p.[status]
+              ,u.[nombre] AS nombre_usuario_elimino
+         FROM [CentroPodologico].[dbo].[pagos] p
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = p.[id_usuario_elimino]
+        WHERE p.[id_consulta] = @id_consulta
+        ORDER BY p.[id_pago] DESC`,
       { id_consulta },
     ),
     db.queryParams(
@@ -199,7 +202,7 @@ export async function saveValoracion(
   try {
     const {
       id_valoracion_piel, id_consulta,
-      fecha_valoracion, edema, dermatomicosis, pie_atleta, bromhidrosis,
+      fecha_valoracion, edema, pie_atleta, bromhidrosis,
       hiperdrosis, anhidrosis, hiperqueratosis, helomas, verrugas,
       observaciones, status,
     } = form;
@@ -207,7 +210,7 @@ export async function saveValoracion(
     const created_at = form.created_at || buildDate(new Date());
 
     const commonParams = {
-      id_consulta, fecha_valoracion, edema, dermatomicosis, pie_atleta,
+      id_consulta, fecha_valoracion, edema, pie_atleta,
       bromhidrosis, hiperdrosis, anhidrosis, hiperqueratosis, helomas,
       verrugas, observaciones, status, created_at,
     };
@@ -216,13 +219,13 @@ export async function saveValoracion(
     if (id_valoracion_piel === 0) {
       result = await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[valoracion_piel]
-           ([id_valoracion_piel],[id_consulta],[fecha_valoracion],[edema],[dermatomicosis],
+           ([id_valoracion_piel],[id_consulta],[fecha_valoracion],[edema],
             [pie_atleta],[bromhidrosis],[hiperdrosis],[anhidrosis],[hiperqueratosis],
             [helomas],[verrugas],[observaciones],[status],[created_at])
          OUTPUT INSERTED.*
          VALUES (
            (SELECT ISNULL(MAX([id_valoracion_piel]),0)+1 FROM [CentroPodologico].[dbo].[valoracion_piel]),
-           @id_consulta,@fecha_valoracion,@edema,@dermatomicosis,
+           @id_consulta,@fecha_valoracion,@edema,
            @pie_atleta,@bromhidrosis,@hiperdrosis,@anhidrosis,@hiperqueratosis,
            @helomas,@verrugas,@observaciones,@status,@created_at
          )`,
@@ -234,7 +237,6 @@ export async function saveValoracion(
            [id_consulta]      = @id_consulta,
            [fecha_valoracion] = @fecha_valoracion,
            [edema]            = @edema,
-           [dermatomicosis]   = @dermatomicosis,
            [pie_atleta]       = @pie_atleta,
            [bromhidrosis]     = @bromhidrosis,
            [hiperdrosis]      = @hiperdrosis,
@@ -267,11 +269,13 @@ export async function savePatologia(
     const {
       id_patologia, id_consulta, anoniquia, microniquia, onicolisis,
       onicauxis, hematoma_subungueal, onicofosis, paquioniquia, onicomicosis,
+      onicomicosis_grado_1, onicomicosis_grado_2,
     } = form;
 
     const commonParams = {
       id_consulta, anoniquia, microniquia, onicolisis,
       onicauxis, hematoma_subungueal, onicofosis, paquioniquia, onicomicosis,
+      onicomicosis_grado_1, onicomicosis_grado_2,
     };
 
     let result;
@@ -279,12 +283,14 @@ export async function savePatologia(
       result = await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[patologia_ungueal]
            ([id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
-            [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis])
+            [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis],
+            [onicomicosis_grado_1],[onicomicosis_grado_2])
          OUTPUT INSERTED.*
          VALUES (
            (SELECT ISNULL(MAX([id_patologia]),0)+1 FROM [CentroPodologico].[dbo].[patologia_ungueal]),
            @id_consulta,@anoniquia,@microniquia,@onicolisis,
-           @onicauxis,@hematoma_subungueal,@onicofosis,@paquioniquia,@onicomicosis
+           @onicauxis,@hematoma_subungueal,@onicofosis,@paquioniquia,@onicomicosis,
+           @onicomicosis_grado_1,@onicomicosis_grado_2
          )`,
         commonParams,
       );
@@ -299,7 +305,9 @@ export async function savePatologia(
            [hematoma_subungueal] = @hematoma_subungueal,
            [onicofosis]          = @onicofosis,
            [paquioniquia]        = @paquioniquia,
-           [onicomicosis]        = @onicomicosis
+           [onicomicosis]        = @onicomicosis,
+           [onicomicosis_grado_1] = @onicomicosis_grado_1,
+           [onicomicosis_grado_2] = @onicomicosis_grado_2
          OUTPUT INSERTED.*
          WHERE [id_patologia] = @id_patologia`,
         { id_patologia, ...commonParams },
@@ -365,10 +373,10 @@ export async function savePago(
       `
       declare @const int=(SELECT ISNULL(MAX([id_pago]),0)+1 FROM [CentroPodologico].[dbo].[pagos])
       INSERT INTO [CentroPodologico].[dbo].[pagos]
-         ([id_pago],[id_consulta],[monto],[fecha_pago],[referencia],[created_at],[id_empresa],[idMetodoPago],[webid],[facturado],[uuid_cfdi])
+         ([id_pago],[id_consulta],[monto],[fecha_pago],[referencia],[created_at],[id_empresa],[idMetodoPago],[webid],[facturado],[uuid_cfdi],[status],[id_usuario_elimino])
        VALUES (
          @const,
-         @id_consulta,@monto,@fecha_pago,@referencia,@created_at,@id_empresa,@idMetodoPago,CONVERT(varchar,@const)+'-'+@webid,@facturado,@uuid_cfdi
+         @id_consulta,@monto,@fecha_pago,@referencia,@created_at,@id_empresa,@idMetodoPago,CONVERT(varchar,@const)+'-'+@webid,@facturado,@uuid_cfdi,1,NULL
        )`,
       {
         id_consulta:  form.id_consulta,
@@ -385,13 +393,16 @@ export async function savePago(
     );
 
     const rows = await db.queryParams(
-      `SELECT TOP 1 [id_pago],[id_consulta],[monto]
-              ,CONVERT(varchar(10), [fecha_pago], 120) AS fecha_pago
-              ,[referencia]
-              ,CONVERT(varchar(19), [created_at], 120) AS created_at
-              ,[id_empresa],[idMetodoPago],[webid],[facturado],[uuid_cfdi]
-         FROM [CentroPodologico].[dbo].[pagos]
-        WHERE [id_consulta] = @id_consulta
+      `SELECT TOP 1 p.[id_pago],p.[id_consulta],p.[monto]
+              ,CONVERT(varchar(10), p.[fecha_pago], 120) AS fecha_pago
+              ,p.[referencia]
+              ,CONVERT(varchar(19), p.[created_at], 120) AS created_at
+              ,p.[id_empresa],p.[idMetodoPago],p.[webid],p.[facturado],p.[uuid_cfdi]
+              ,p.[id_usuario_elimino],p.[status]
+              ,u.[nombre] AS nombre_usuario_elimino
+         FROM [CentroPodologico].[dbo].[pagos] p
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = p.[id_usuario_elimino]
+        WHERE p.[id_consulta] = @id_consulta
         ORDER BY [id_pago] DESC`,
       { id_consulta: form.id_consulta },
     );
@@ -803,5 +814,40 @@ export async function saveArchivo(
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al registrar el archivo" };
+  }
+}
+
+// ─── eliminar pago (soft-delete) ─────────────────────────────────────────────
+
+export async function eliminarPago(
+  id_pago: number,
+  id_usuario: number,
+): Promise<ActionResult<IPago>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[pagos]
+          SET [status] = 0, [id_usuario_elimino] = @id_usuario
+        WHERE [id_pago] = @id_pago`,
+      { id_pago, id_usuario },
+    );
+
+    const rows = await db.queryParams(
+      `SELECT TOP 1 p.[id_pago],p.[id_consulta],p.[monto]
+              ,CONVERT(varchar(10), p.[fecha_pago], 120) AS fecha_pago
+              ,p.[referencia]
+              ,CONVERT(varchar(19), p.[created_at], 120) AS created_at
+              ,p.[id_empresa],p.[idMetodoPago],p.[webid],p.[facturado],p.[uuid_cfdi]
+              ,p.[id_usuario_elimino],p.[status]
+              ,u.[nombre] AS nombre_usuario_elimino
+         FROM [CentroPodologico].[dbo].[pagos] p
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = p.[id_usuario_elimino]
+        WHERE p.[id_pago] = @id_pago`,
+      { id_pago },
+    );
+
+    return { ok: true, data: rows?.[0] as IPago };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al eliminar el pago" };
   }
 }

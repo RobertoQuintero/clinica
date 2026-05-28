@@ -14,6 +14,7 @@ import {
   getPodologosBySucursal,
   getSucursalesActivas,
   saveConsulta,
+  cancelarConsulta as cancelarConsultaAction,
 } from "./actions";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -36,6 +37,11 @@ const buildEmpty = (
   costo_total:          0,
   id_sucursal,
   id_empresa,
+  cancelada:            false,
+  motivo_cancelada:     null,
+  is_onicomicosis:      false,
+  id_tratamiento:       null,
+  id_buzon:             null,
 });
 
 export function formatDate(val: Date | string) {
@@ -192,5 +198,7 @@ export function useExpediente() {
     closeModal:            () => setShowModal(false),
     goBack:                () => router.back(),
     goToExpedienteMedico:  () => router.push(`/dashboard/pacientes/${id_paciente}/expediente_medico`),
+    refreshConsultas:      fetchConsultas,
+    cancelarConsulta:      cancelarConsultaAction,
   };
 }

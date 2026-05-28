@@ -10,7 +10,7 @@ import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
-import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField } from "./actions";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -55,7 +55,6 @@ export default function ConsultaPage() {
     id_consulta,
     fecha_valoracion:   addZeroToday(new Date()),
     edema:              false,
-    dermatomicosis:     false,
     pie_atleta:         false,
     bromhidrosis:       false,
     hiperdrosis:        false,
@@ -83,6 +82,8 @@ export default function ConsultaPage() {
     onicofosis:          false,
     paquioniquia:        false,
     onicomicosis:        false,
+    onicomicosis_grado_1: false,
+    onicomicosis_grado_2: false,
   };
   const [patologiaForm,   setPatologiaForm  ] = useState<IPatologiaUngueal>(PATOLOGIA_DEFAULTS);
   const [savingPatologia, setSavingPatologia] = useState(false);
@@ -98,9 +99,12 @@ export default function ConsultaPage() {
     webid:        createWebId(20),
     facturado:    false,
     uuid_cfdi:    null,
+id_usuario_elimino: null,
+    status:       true,
   });
   const [savingPago, setSavingPago] = useState(false);
   const [pagoError,  setPagoError ] = useState<string | null>(null);
+  const [deletingPagoId, setDeletingPagoId] = useState<number | null>(null);
 
   // ── fetch ──────────────────────────────────────────────────────────────────
 
@@ -207,6 +211,8 @@ export default function ConsultaPage() {
         webid:        createWebId(20),
         facturado:    false,
         uuid_cfdi:    null,
+        id_usuario_elimino: null,
+        status:       true,
       });
     } catch (err: unknown) {
       setPagoError(err instanceof Error ? err.message : "Error al guardar");
@@ -218,7 +224,7 @@ export default function ConsultaPage() {
   // ── ui helpers ─────────────────────────────────────────────────────────────
 
   /** True when proceso is paid and current user is not admin or supervisor */
-  const locked = !!proceso?.pagar && user?.id_role !== 1 && user?.id_role !== 4;
+  const locked = (!!proceso?.pagar && user?.id_role !== 1 && user?.id_role !== 4) || !!consulta?.cancelada;
 
   /** Returns whether a tab is accessible based on proceso progress */
   const isTabAccessible = (tab: Tab): boolean => {
@@ -255,6 +261,19 @@ export default function ConsultaPage() {
     if (procResult.ok) {
       setProceso(procResult.data);
       setActiveTab("general");
+    }
+  };
+
+  const handleEliminarPago = async (id_pago: number) => {
+    if (!user) return;
+    setDeletingPagoId(id_pago);
+    try {
+      const result = await eliminarPago(id_pago, user.id_user);
+      if (result.ok) {
+        setPagos((prev) => prev.map((p) => p.id_pago === id_pago ? result.data : p));
+      }
+    } finally {
+      setDeletingPagoId(null);
     }
   };
 
@@ -441,6 +460,9 @@ export default function ConsultaPage() {
               onFinalizar={handleFinalizar}
               procesoPagado={!!proceso?.pagar}
               metodoPagoOptions={metodosPago}
+              canDelete={user?.id_role === 1 || user?.id_role === 4}
+              onEliminarPago={handleEliminarPago}
+              deletingPagoId={deletingPagoId}
             />
           )}
         </>

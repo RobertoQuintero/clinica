@@ -18,6 +18,8 @@ const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
   ["onicofosis",          "Onicofosis"         ],
   ["onicolisis",          "Onicolisis"         ],
   ["onicomicosis",        "Onicomicosis"       ],
+  ["onicomicosis_grado_1", "Onicomicosis Grado 1"],
+  ["onicomicosis_grado_2", "Onicomicosis Grado 2"],
   ["paquioniquia",        "Paquioniquia"       ],
 ];
 

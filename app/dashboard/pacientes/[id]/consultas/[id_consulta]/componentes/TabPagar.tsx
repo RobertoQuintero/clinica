@@ -1,7 +1,7 @@
 import { IMetodoPago } from "@/interfaces/metodo_pago";
 import { IPago } from "@/interfaces/pago";
 import React from "react";
-import { fmtDate } from "./helpers";
+import PagoFila from "./PagoFila";
 
 interface Props {
   costoTotal:         number;
@@ -18,6 +18,9 @@ interface Props {
   onFinalizar?:       () => void;
   procesoPagado?:     boolean;
   metodoPagoOptions:  IMetodoPago[];
+  canDelete:          boolean;
+  onEliminarPago:     (id_pago: number) => void;
+  deletingPagoId:     number | null;
 }
 
 export default function TabPagar({
@@ -35,6 +38,9 @@ export default function TabPagar({
   onFinalizar,
   procesoPagado,
   metodoPagoOptions,
+  canDelete,
+  onEliminarPago,
+  deletingPagoId,
 }: Props) {
   const [mpSearch,   setMpSearch  ] = React.useState("");
   const [mpOpen,     setMpOpen    ] = React.useState(false);
@@ -89,8 +95,8 @@ export default function TabPagar({
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
-                {["#", "Fecha", "Método", "Monto", "Referencia"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                {["#", "Fecha", "Método", "Monto", "Referencia", ""].map((h, i) => (
+                  <th key={i} className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
                     {h}
                   </th>
                 ))}
@@ -98,15 +104,14 @@ export default function TabPagar({
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
               {pagos.map((pg) => (
-                <tr key={pg.id_pago} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3 text-zinc-500">{pg.id_pago}</td>
-                  <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">{fmtDate(pg.fecha_pago)}</td>
-                  <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 capitalize">
-                    {metodoPagoOptions.find((m) => m.idMetodoPago === pg.idMetodoPago)?.descripcion ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 font-medium">${Number(pg.monto).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-zinc-500">{pg.referencia || "—"}</td>
-                </tr>
+                <PagoFila
+                  key={pg.id_pago}
+                  pago={pg}
+                  metodoPagoOptions={metodoPagoOptions}
+                  canDelete={canDelete}
+                  onEliminar={onEliminarPago}
+                  deletingId={deletingPagoId}
+                />
               ))}
             </tbody>
           </table>

@@ -15,4 +15,10 @@ export interface IConsulta {
     nombre_sucursal?:     string;
     fecha_fin?:           Date | string | null;
     id_cita?:                number | null;
+    cancelada:boolean;
+    motivo_cancelada:string | null;
+    is_onicomicosis:boolean;
+    id_tratamiento:number | null;
+    id_buzon:number | null;
+
 }
