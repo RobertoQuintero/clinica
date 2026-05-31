@@ -10,7 +10,7 @@ import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
-import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago } from "./actions";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -81,7 +81,6 @@ export default function ConsultaPage() {
     hematoma_subungueal: false,
     onicofosis:          false,
     paquioniquia:        false,
-    onicomicosis:        false,
     onicomicosis_grado_1: false,
     onicomicosis_grado_2: false,
   };
@@ -277,6 +276,12 @@ id_usuario_elimino: null,
     }
   };
 
+  const handleEditarPago = async (id_pago: number, data: EditarPagoData) => {
+    const result = await editarPago(id_pago, data);
+    if (!result.ok) throw new Error(typeof result.data === "string" ? result.data : "Error al editar el pago");
+    setPagos((prev) => prev.map((p) => p.id_pago === id_pago ? result.data as IPago : p));
+  };
+
   const TABS: { key: Tab; label: string }[] = [
     { key: "general",         label: "1. General"              },
     { key: "valoracion",      label: "2. Valoración de piel"   },
@@ -288,7 +293,7 @@ id_usuario_elimino: null,
     { key: "pagar",           label: "8. Pagar"                },
   ];
 
-  const totalPagado    = pagos.reduce((s, p) => s + Number(p.monto), 0);
+  const totalPagado    = pagos.filter((p) => p.status).reduce((s, p) => s + Number(p.monto), 0);
   const costoTotal     = Number(consulta?.costo_total ?? 0);
   const [totalServicios, setTotalServicios] = useState(costoTotal);
   const [totalProductos, setTotalProductos] = useState(0);
@@ -463,6 +468,8 @@ id_usuario_elimino: null,
               canDelete={user?.id_role === 1 || user?.id_role === 4}
               onEliminarPago={handleEliminarPago}
               deletingPagoId={deletingPagoId}
+              canEdit={user?.id_role === 1 || user?.id_role === 4}
+              onEditarPago={handleEditarPago}
             />
           )}
         </>

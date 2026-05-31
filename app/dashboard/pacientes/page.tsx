@@ -33,6 +33,7 @@ const EMPTY: IPaciente = {
 
 export default function PacientesPage() {
   const { user } = useAuth();
+  const canSeeWhatsapp = user?.id_role === 1 || user?.id_role === 4;
   const { selectedId } = useSucursal();
   const [pacientes, setPacientes] = useState<IPaciente[]>([]);
   const [phoneCodes, setPhoneCodes] = useState<IPhoneCode[]>([]);
@@ -173,7 +174,7 @@ export default function PacientesPage() {
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Nombre</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Ap. paterno</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Ap. materno</th>
-                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Teléfono</th>
+                    {canSeeWhatsapp && <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Teléfono</th>}
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sexo</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sucursal</th>
                     <th className="px-4 py-2" />
@@ -181,7 +182,7 @@ export default function PacientesPage() {
                 </thead>
                 <tbody className="divide-y divide-blue-50 dark:divide-blue-900">
                   {extResults.map((p) => (
-                    <PacienteFila key={`ext-${p.id_paciente}`} paciente={p} onEdit={openEdit} />
+                    <PacienteFila key={`ext-${p.id_paciente}`} paciente={p} onEdit={openEdit} showWhatsapp={canSeeWhatsapp} />
                   ))}
                 </tbody>
               </table>
@@ -211,7 +212,7 @@ export default function PacientesPage() {
                   { label: "Nombre",           key: "nombre"            },
                   { label: "Apellido paterno",  key: "apellido_paterno"  },
                   { label: "Apellido materno",  key: "apellido_materno"  },
-                  { label: "Whatsapp",           key: "whatsapp"          },
+                  ...(canSeeWhatsapp ? [{ label: "Whatsapp", key: "whatsapp" as SortKey }] : []),
                   { label: "Sexo",              key: "sexo"              },
                   { label: "Sucursal",          key: "nombre_sucursal"   },
                 ] as { label: string; key: SortKey }[]).map(({ label, key }) => (
@@ -235,7 +236,7 @@ export default function PacientesPage() {
                   <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
               ) : pacientesFiltrados.map((p) => (
-                <PacienteFila key={p.id_paciente} paciente={p} onEdit={openEdit} />
+                <PacienteFila key={p.id_paciente} paciente={p} onEdit={openEdit} showWhatsapp={canSeeWhatsapp} />
               ))}
             </tbody>
           </table>

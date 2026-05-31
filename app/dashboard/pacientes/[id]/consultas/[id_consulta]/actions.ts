@@ -14,7 +14,7 @@ import { IProceso } from "@/interfaces/proceso";
 import { IServicio } from "@/interfaces/servicio";
 import { IServicioOpcion } from "@/interfaces/servicio_opcion";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
-import { buildDate } from "@/utils/date_helpper";
+import { buildDate, toDBString } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
 import { jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -98,7 +98,7 @@ export async function getConsultaData(
     ),
     db.queryParams(
       `SELECT [id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
-              [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis],
+              [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],
               [onicomicosis_grado_1],[onicomicosis_grado_2]
          FROM [CentroPodologico].[dbo].[patologia_ungueal]
         WHERE [id_consulta] = @id_consulta`,
@@ -268,13 +268,13 @@ export async function savePatologia(
   try {
     const {
       id_patologia, id_consulta, anoniquia, microniquia, onicolisis,
-      onicauxis, hematoma_subungueal, onicofosis, paquioniquia, onicomicosis,
+      onicauxis, hematoma_subungueal, onicofosis, paquioniquia,
       onicomicosis_grado_1, onicomicosis_grado_2,
     } = form;
 
     const commonParams = {
       id_consulta, anoniquia, microniquia, onicolisis,
-      onicauxis, hematoma_subungueal, onicofosis, paquioniquia, onicomicosis,
+      onicauxis, hematoma_subungueal, onicofosis, paquioniquia, 
       onicomicosis_grado_1, onicomicosis_grado_2,
     };
 
@@ -283,13 +283,13 @@ export async function savePatologia(
       result = await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[patologia_ungueal]
            ([id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
-            [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],[onicomicosis],
+            [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],
             [onicomicosis_grado_1],[onicomicosis_grado_2])
          OUTPUT INSERTED.*
          VALUES (
            (SELECT ISNULL(MAX([id_patologia]),0)+1 FROM [CentroPodologico].[dbo].[patologia_ungueal]),
            @id_consulta,@anoniquia,@microniquia,@onicolisis,
-           @onicauxis,@hematoma_subungueal,@onicofosis,@paquioniquia,@onicomicosis,
+           @onicauxis,@hematoma_subungueal,@onicofosis,@paquioniquia,
            @onicomicosis_grado_1,@onicomicosis_grado_2
          )`,
         commonParams,
@@ -305,7 +305,7 @@ export async function savePatologia(
            [hematoma_subungueal] = @hematoma_subungueal,
            [onicofosis]          = @onicofosis,
            [paquioniquia]        = @paquioniquia,
-           [onicomicosis]        = @onicomicosis,
+          
            [onicomicosis_grado_1] = @onicomicosis_grado_1,
            [onicomicosis_grado_2] = @onicomicosis_grado_2
          OUTPUT INSERTED.*
@@ -814,6 +814,57 @@ export async function saveArchivo(
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al registrar el archivo" };
+  }
+}
+
+// ─── editar pago ─────────────────────────────────────────────────────────────
+
+export interface EditarPagoData {
+  monto:        number;
+  idMetodoPago: number;
+  fecha_pago:   string;
+  referencia:   string;
+}
+
+export async function editarPago(
+  id_pago: number,
+  data: EditarPagoData,
+): Promise<ActionResult<IPago>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[pagos]
+          SET [monto]        = @monto,
+              [idMetodoPago] = @idMetodoPago,
+              [fecha_pago]   = @fecha_pago,
+              [referencia]   = @referencia
+        WHERE [id_pago] = @id_pago`,
+      {
+        id_pago,
+        monto:        data.monto,
+        idMetodoPago: data.idMetodoPago,
+        fecha_pago:   toDBString(String(data.fecha_pago ?? "")) ?? data.fecha_pago,
+        referencia:   data.referencia,
+      },
+    );
+
+    const rows = await db.queryParams(
+      `SELECT TOP 1 p.[id_pago],p.[id_consulta],p.[monto]
+              ,CONVERT(varchar(10), p.[fecha_pago], 120) AS fecha_pago
+              ,p.[referencia]
+              ,CONVERT(varchar(19), p.[created_at], 120) AS created_at
+              ,p.[id_empresa],p.[idMetodoPago],p.[webid],p.[facturado],p.[uuid_cfdi]
+              ,p.[id_usuario_elimino],p.[status]
+              ,u.[nombre] AS nombre_usuario_elimino
+         FROM [CentroPodologico].[dbo].[pagos] p
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = p.[id_usuario_elimino]
+        WHERE p.[id_pago] = @id_pago`,
+      { id_pago },
+    );
+
+    return { ok: true, data: rows?.[0] as IPago };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al editar el pago" };
   }
 }
 

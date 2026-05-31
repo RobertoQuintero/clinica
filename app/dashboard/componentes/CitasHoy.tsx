@@ -7,14 +7,16 @@ import CitaHoyFila from "./CitaHoyFila";
 import ConfirmarConsultaModal from "./ConfirmarConsultaModal";
 import PacientesFaltantes from "./PacientesFaltantes";
 import PacientesCumpleanos from "./PacientesCumpleanos";
+import ConsultasRango from "./ConsultasRango";
 import { useSucursal } from "@/contexts/SucursalContext";
 
-type Tab = "citas" | "faltantes" | "cumpleanos";
+type Tab = "citas" | "faltantes" | "cumpleanos" | "consultas";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "citas",      label: "Citas de hoy" },
   { key: "faltantes",  label: "Faltantes" },
   { key: "cumpleanos", label: "Cumpleaños" },
+  { key: "consultas",  label: "Consultas" },
 ];
 
 export default function CitasHoy() {
@@ -120,6 +122,7 @@ export default function CitasHoy() {
 
       {tab === "faltantes"  && <PacientesFaltantes />}
       {tab === "cumpleanos" && <PacientesCumpleanos />}
+      {tab === "consultas"  && <ConsultasRango />}
 
       {confirm && (
         <ConfirmarConsultaModal

@@ -1,5 +1,6 @@
 import { IMetodoPago } from "@/interfaces/metodo_pago";
 import { IPago } from "@/interfaces/pago";
+import { EditarPagoData } from "../actions";
 import React from "react";
 import PagoFila from "./PagoFila";
 
@@ -21,6 +22,8 @@ interface Props {
   canDelete:          boolean;
   onEliminarPago:     (id_pago: number) => void;
   deletingPagoId:     number | null;
+  canEdit:            boolean;
+  onEditarPago:       (id_pago: number, data: EditarPagoData) => Promise<void>;
 }
 
 export default function TabPagar({
@@ -41,6 +44,8 @@ export default function TabPagar({
   canDelete,
   onEliminarPago,
   deletingPagoId,
+  canEdit,
+  onEditarPago,
 }: Props) {
   const [mpSearch,   setMpSearch  ] = React.useState("");
   const [mpOpen,     setMpOpen    ] = React.useState(false);
@@ -111,6 +116,8 @@ export default function TabPagar({
                   canDelete={canDelete}
                   onEliminar={onEliminarPago}
                   deletingId={deletingPagoId}
+                  canEdit={canEdit}
+                  onEditar={onEditarPago}
                 />
               ))}
             </tbody>

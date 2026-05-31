@@ -237,14 +237,8 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
 
   const patChips = patologia
     ? trueBoolLabels(patologia, {
-        anoniquia:           "Anoniquia",
-        microniquia:         "Microniquia",
-        onicolisis:          "Onicolisis",
-        onicauxis:           "Onicauxis",
-        hematoma_subungueal: "Hematoma subungueal",
-        onicofosis:          "Onicofosis",
-        paquioniquia:        "Paquioniquia",
-        onicomicosis:        "Onicomicosis",
+        onicomicosis_grado_1: "Onicomicosis Grado 1",
+        onicomicosis_grado_2: "Onicomicosis Grado 2",
       })
     : [];
 
@@ -335,13 +329,13 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       lines.push("", "*PATOLOGÍA UNGUEAL(CONSEJOS DE CUIDADO)*");
       if (patChips.length > 0) {
         const patologiaKeys: (keyof IPatologiaUngueal)[] = [
-          "onicomicosis", "onicomicosis_grado_1", "onicomicosis_grado_2"
+           "onicomicosis_grado_1", "onicomicosis_grado_2"
         ];
         patologiaKeys.forEach((k) => {
           if (patologia[k] === true || (patologia[k] as unknown) === 1) {
             const label = patChips.find(
               (c) => c === ({
-                onicomicosis:"Onicomicosis",
+               
                 onicomicosis_grado_1:"Onicomicosis Grado 1", onicomicosis_grado_2:"Onicomicosis Grado 2"
               } as Record<string, string>)[k as string]
             ) ?? k;

@@ -40,7 +40,7 @@ export default function AntecedenteSummary({ antecedente }: Props) {
           antecedente[key] ? (
             <span
               key={key}
-              className="inline-block rounded-full bg-zinc-200 dark:bg-zinc-700 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-200"
+              className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs text-amber-800 dark:text-amber-300"
             >
               {label}
             </span>

@@ -624,3 +624,53 @@ export async function getPacientesCumpleanos(): Promise<IPacienteCumpleanos[]> {
     return [];
   }
 }
+
+export interface IConsultaRango {
+  id_consulta:     number;
+  id_paciente:     number;
+  nombre_paciente: string;
+  nombre_podologo: string;
+  fecha:           string;       // "YYYY-MM-DD HH:mm:ss"
+  fecha_fin:       string | null;
+  cancelada:       boolean;
+}
+
+export async function getConsultasPorRango(
+  fechaInicio: string,
+  fechaFin: string,
+): Promise<IConsultaRango[]> {
+  try {
+    const cookieStore = await cookies();
+    const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+    const selCookie   = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+    const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
+
+    const data = await db.queryParams(
+      `SELECT con.[id_consulta]
+             ,con.[id_paciente]
+             ,LTRIM(RTRIM(p.[nombre] + ' ' + p.[apellido_paterno]
+               + CASE WHEN p.[apellido_materno] IS NOT NULL AND p.[apellido_materno] <> ''
+                 THEN ' ' + p.[apellido_materno] ELSE '' END)) AS nombre_paciente
+             ,u.[nombre] AS nombre_podologo
+             ,CONVERT(varchar(19), con.[fecha],     120) AS fecha
+             ,CONVERT(varchar(19), con.[fecha_fin], 120) AS fecha_fin
+             ,con.[cancelada]
+         FROM [CentroPodologico].[dbo].[consultas] con
+         LEFT JOIN [CentroPodologico].[dbo].[pacientes] p ON p.[id_paciente] = con.[id_paciente]
+         LEFT JOIN [CentroPodologico].[dbo].[users]     u ON u.[id_user]     = con.[id_podologo]
+        WHERE con.[id_sucursal] = @id_sucursal
+          AND con.[id_empresa]  = @id_empresa
+          AND con.[deleted_at]  IS NULL
+          AND CONVERT(varchar(10), con.[fecha], 120) BETWEEN @fechaInicio AND @fechaFin
+        ORDER BY con.[fecha] ASC`,
+      { id_sucursal, id_empresa, fechaInicio, fechaFin }
+    );
+
+    return (data as (Omit<IConsultaRango, "cancelada"> & { cancelada: number | boolean })[]).map((r) => ({
+      ...r,
+      cancelada: r.cancelada === 1 || r.cancelada === true,
+    }));
+  } catch {
+    return [];
+  }
+}
