@@ -5,6 +5,7 @@ import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   ConsultaProductoExtended,
@@ -75,10 +76,11 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [nombrePodologo,  setNombrePodologo ] = useState<string | null>(null);
   const [sucursalNombre,  setSucursalNombre ] = useState<string | null>(null);
   const [sucursalCiudad,  setSucursalCiudad ] = useState<string | null>(null);
-  const [patologiaUrls,   setPatologiaUrls  ] = useState<Record<string, string>>({});
-  const [pagoWebId,       setPagoWebId      ] = useState<string | null>(null);
-  const [phoneCode,       setPhoneCode      ] = useState<string | null>(null);
-  const [loading,         setLoading        ] = useState(true);
+  const [patologiaUrls,      setPatologiaUrls     ] = useState<Record<string, string>>({});
+  const [pagoWebId,          setPagoWebId         ] = useState<string | null>(null);
+  const [phoneCode,          setPhoneCode         ] = useState<string | null>(null);
+  const [tratamientoExiste,  setTratamientoExiste ] = useState(false);
+  const [loading,            setLoading           ] = useState(true);
   const [exporting,       setExporting      ] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +102,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       setPatologiaUrls(d.patologiaUrls);
       setPagoWebId(d.pagoWebId);
       setPhoneCode(d.phoneCode);
+      setTratamientoExiste(d.tratamientoExiste);
       setLoading(false);
     });
   }, [consulta?.id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -389,7 +392,18 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
 
       {/* export / share buttons */}
       <div  style={{display:'flex',justifyContent:"space-between",alignItems:"center"}}>
-        <div id="cancelada">
+        <div id="cancelada" className="flex items-center gap-2">
+          {(patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1) && !tratamientoExiste && (
+            <Link
+              href={`/dashboard/pacientes/${consulta.id_paciente}/consultas/${consulta.id_consulta}/tratamiento`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Tratamiento
+            </Link>
+          )}
           {consulta?.cancelada && (
             <div className="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

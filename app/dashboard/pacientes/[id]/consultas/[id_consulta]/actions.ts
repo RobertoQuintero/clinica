@@ -685,15 +685,16 @@ export interface ServicioResumen {
 }
 
 export interface GeneralTabData {
-  antecedentes:    IAntecedenteMedico | null;
-  serviciosUsados: ServicioResumen[];
-  productos:       ConsultaProductoExtended[];
-  nombrePodologo:  string | null;
-  sucursalNombre:  string | null;
-  sucursalCiudad:  string | null;
-  patologiaUrls:   Record<string, string>;
-  pagoWebId:       string | null;
-  phoneCode:       string | null;
+  antecedentes:      IAntecedenteMedico | null;
+  serviciosUsados:   ServicioResumen[];
+  productos:         ConsultaProductoExtended[];
+  nombrePodologo:    string | null;
+  sucursalNombre:    string | null;
+  sucursalCiudad:    string | null;
+  patologiaUrls:     Record<string, string>;
+  pagoWebId:         string | null;
+  phoneCode:         string | null;
+  tratamientoExiste: boolean;
 }
 
 export async function getGeneralTabData(
@@ -702,7 +703,7 @@ export async function getGeneralTabData(
   id_podologo:  number,
   id_sucursal:  number,
 ): Promise<GeneralTabData> {
-  const [antRows, sRows, pRows, podRows, sucRows, urlRows, pagoRows, phoneRows] = await Promise.all([
+  const [antRows, sRows, pRows, podRows, sucRows, urlRows, pagoRows, phoneRows, tratRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_antecedente_medico],[id_paciente]
               ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
@@ -761,6 +762,12 @@ export async function getGeneralTabData(
         WHERE p.[id_paciente] = @id_paciente`,
       { id_paciente },
     ),
+    db.queryParams(
+      `SELECT TOP 1 1 AS existe
+         FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
   ]);
 
   const pod = (podRows[0] as { nombre?: string } | undefined);
@@ -775,15 +782,16 @@ export async function getGeneralTabData(
   const phone = (phoneRows[0] as { codigo?: string } | undefined);
 
   return {
-    antecedentes:    (antRows[0] as IAntecedenteMedico) ?? null,
-    serviciosUsados: sRows as ServicioResumen[],
-    productos:       pRows as ConsultaProductoExtended[],
-    nombrePodologo:  pod?.nombre ?? null,
-    sucursalNombre:  suc?.nombre ?? null,
-    sucursalCiudad:  suc?.ciudad ?? null,
+    antecedentes:      (antRows[0] as IAntecedenteMedico) ?? null,
+    serviciosUsados:   sRows as ServicioResumen[],
+    productos:         pRows as ConsultaProductoExtended[],
+    nombrePodologo:    pod?.nombre ?? null,
+    sucursalNombre:    suc?.nombre ?? null,
+    sucursalCiudad:    suc?.ciudad ?? null,
     patologiaUrls,
-    pagoWebId:       pago?.webid  ?? null,
-    phoneCode:       phone?.codigo ?? null,
+    pagoWebId:         pago?.webid  ?? null,
+    phoneCode:         phone?.codigo ?? null,
+    tratamientoExiste: tratRows.length > 0,
   };
 }
 

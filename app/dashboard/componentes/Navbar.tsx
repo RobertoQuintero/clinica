@@ -16,7 +16,8 @@ const ALL_NAV_LINKS = [
   { href: "/dashboard/productos",  label: "Productos",  minRole: 0, excludeRoles: [] as number[] },
   { href: "/dashboard/sucursales", label: "Sucursales", minRole: 0, excludeRoles: [] as number[] },
   { href: "/dashboard/enlaces",    label: "Enlaces",    minRole: 0, excludeRoles: [3] },
-  { href: "/dashboard/ventas",     label: "Ventas",     minRole: 0, excludeRoles: [] as number[] },
+  { href: "/dashboard/ventas",          label: "Ventas",          minRole: 0, excludeRoles: [] as number[] },
+  { href: "/dashboard/tratamientos",    label: "Tratamientos",    minRole: 0, excludeRoles: [] as number[] },
 ];
 
 export default function Navbar() {
