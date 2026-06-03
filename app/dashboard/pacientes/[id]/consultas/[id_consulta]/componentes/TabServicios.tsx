@@ -16,11 +16,12 @@ interface Props {
   locked?:       boolean;
   onContinuar?:  () => void;
   onTotalChange?: (total: number) => void;
+  is_onicomicosis?: boolean;
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export default function TabServicios({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
+export default function TabServicios({ id_consulta, locked, onContinuar, onTotalChange, is_onicomicosis }: Props) {
   const { selectedId: id_sucursal } = useSucursal();
   const [servicios,         setServicios        ] = useState<ServicioConOpciones[]>([]);
   const [consultaServicios, setConsultaServicios] = useState<IConsultaServicio[]>([]);
@@ -65,7 +66,7 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
   };
 
   // All services loaded for this sucursal must have a selection before continuing
-  const canContinuar = servicios.length > 0 && servicios.every((s) => getSelected(s.id_servicio) !== 0);
+  const canContinuar = is_onicomicosis || (servicios.length > 0 && servicios.every((s) => getSelected(s.id_servicio) !== 0));
 
   const handleSelect = (
     id_servicio:        number,

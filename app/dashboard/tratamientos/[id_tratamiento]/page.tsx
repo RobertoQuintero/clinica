@@ -3,37 +3,51 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
-import { getTratamientoDetalle } from "@/app/dashboard/tratamientos/actions";
+import {
+  getTratamientoDetalle,
+  getArchivosByConsulta,
+  markTratamientoRevisado,
+} from "@/app/dashboard/tratamientos/actions";
 import { ITratamientoOnicomicosis } from "@/interfaces/tratamiento_onicomicosis";
+import AccordionSolicitud from "./componentes/AccordionSolicitud";
+import AccordionPagos from "./componentes/AccordionPagos";
+import AccordionRecetas from "./componentes/AccordionRecetas";
+import AccordionConsultas from "./componentes/AccordionConsultas";
+
+import { useAuth } from "@/contexts/AuthContext";
+import { useSucursal } from "@/contexts/SucursalContext";
+import { ICita } from "@/interfaces/cita";
+import { IPaciente } from "@/interfaces/paciente";
+import { IUser } from "@/interfaces/user";
+import { buildDate } from "@/utils/date_helpper";
+import { getPacientes, getPodologos, saveCita } from "@/app/dashboard/citas/actions";
+import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
 
 type DetailRow = ITratamientoOnicomicosis & {
   nombre_paciente:     string;
   nombre_especialista: string;
   nombre_usuario:      string;
   nombre_stage:        string;
+  id_paciente:         number;
+  id_podologo:         number;
+};
+
+const EMPTY: ICita = {
+  id_cita:            0,
+  id_paciente:        0,
+  id_podologo:        0,
+  fecha_inicio:       "",
+  fecha_fin:          "",
+  estado:             "agendada",
+  motivo_cancelacion: "",
+  created_at:         "",
+  deleted_at:         "",
+  id_sucursal:        0,
+  id_empresa:         0,
 };
 
 interface Props {
   params: Promise<{ id_tratamiento: string }>;
-}
-
-const fmtDatetime = (val: string) => {
-  if (!val) return "—";
-  return new Date(String(val).replace(" ", "T"))
-    .toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
-};
-
-function Campo({ label, value }: { label: string; value: string | number | null | undefined }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm text-zinc-800 dark:text-zinc-100">
-        {value ?? "—"}
-      </dd>
-    </div>
-  );
 }
 
 export default function TratamientoDetallePage({ params }: Props) {
@@ -41,17 +55,77 @@ export default function TratamientoDetallePage({ params }: Props) {
   const id_tratamiento = Number(id_str);
   const router = useRouter();
 
-  const [detalle, setDetalle] = useState<DetailRow | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user }                          = useAuth();
+  const { selectedId }                    = useSucursal();
+
+  const [detalle, setDetalle]   = useState<DetailRow | null>(null);
+  const [marking, setMarking]   = useState(false);
+  const [archivos, setArchivos] = useState<{ id_archivo: number; ruta: string; categoria: string }[]>([]);
+  const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // States for CitaModal
+  const [pacientes, setPacientes]         = useState<IPaciente[]>([]);
+  const [podologos, setPodologos]         = useState<IUser[]>([]);
+  const [showModal, setShowModal]         = useState(false);
+  const [form, setForm]                   = useState<ICita>(EMPTY);
+  const [savingCita, setSavingCita]       = useState(false);
+  const [errorCita, setErrorCita]         = useState<string | null>(null);
+
   useEffect(() => {
-    getTratamientoDetalle(id_tratamiento).then((row) => {
-      if (!row) setNotFound(true);
-      else setDetalle(row as DetailRow);
+    getTratamientoDetalle(id_tratamiento).then(async (row) => {
+      if (!row) {
+        setNotFound(true);
+      } else {
+        setDetalle(row as DetailRow);
+        const imgs = await getArchivosByConsulta(row.id_consulta);
+        setArchivos(imgs);
+      }
       setLoading(false);
     });
   }, [id_tratamiento]);
+
+  useEffect(() => {
+    getPacientes().then(setPacientes).catch(console.error);
+    getPodologos().then(setPodologos).catch(console.error);
+  }, []);
+
+  const openCrearCitaByTratamiento = () => {
+    if (!detalle) return;
+    setForm({
+      ...EMPTY,
+      id_paciente:    detalle.id_paciente,
+      id_podologo:    detalle.id_podologo,
+      id_tratamiento: id_tratamiento,
+      id_sucursal:    selectedId || user!.id_sucursal,
+      id_empresa:     user!.id_empresa,
+    });
+    setErrorCita(null);
+    setShowModal(true);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingCita(true);
+    setErrorCita(null);
+    try {
+      const payload = {
+        ...form,
+        created_at: form.created_at || buildDate(new Date()),
+      };
+      const result = await saveCita(payload);
+      if (!result.ok) throw new Error(result.message ?? "Error al guardar");
+      setShowModal(false);
+    } catch (err: unknown) {
+      setErrorCita(err instanceof Error ? err.message : "Error inesperado");
+    } finally {
+      setSavingCita(false);
+    }
+  };
 
   if (loading) {
     return <p className="p-6 text-zinc-500 dark:text-zinc-400">Cargando…</p>;
@@ -73,47 +147,71 @@ export default function TratamientoDetallePage({ params }: Props) {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+          >
+            ← Volver
+          </button>
+          <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
+            Detalle del Tratamiento #{detalle.id_tratamiento}
+          </h1>
+          {detalle.new_message && (
+            <>
+              <span className="rounded-md bg-yellow-100 px-3 py-1.5 text-sm text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">
+                {detalle.message}
+              </span>
+              <button
+                disabled={marking}
+                onClick={async () => {
+                  setMarking(true);
+                  await markTratamientoRevisado(id_tratamiento);
+                  setDetalle((prev) => prev ? { ...prev, new_message: false, message: "" } : prev);
+                  setMarking(false);
+                }}
+                className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                {marking ? "…" : "Revisado"}
+              </button>
+            </>
+          )}
+        </div>
+
         <button
-          onClick={() => router.back()}
-          className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+          onClick={openCrearCitaByTratamiento}
+          className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
         >
-          ← Volver
+          Crear cita
         </button>
-        <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
-          Detalle del Tratamiento #{detalle.id_tratamiento}
-        </h1>
       </div>
 
-      {/* General info */}
-      <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Información general
-        </h2>
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Campo label="Fecha"         value={fmtDatetime(detalle.created_at)} />
-          <Campo label="Paciente"      value={detalle.nombre_paciente} />
-          <Campo label="Especialista"  value={detalle.nombre_especialista} />
-          <Campo label="Solicitó"      value={detalle.nombre_usuario} />
-          <Campo label="Estado"        value={detalle.nombre_stage} />
-          <Campo label="Consulta"      value={detalle.id_consulta} />
-        </dl>
+      <div className="flex flex-col gap-4">
+        <AccordionSolicitud detalle={detalle} archivos={archivos} />
+        <AccordionPagos id_tratamiento={id_tratamiento} />
+        <AccordionRecetas
+          id_tratamiento={id_tratamiento}
+          nombre_paciente={detalle.nombre_paciente}
+        />
+        <AccordionConsultas
+          id_tratamiento={id_tratamiento}
+          id_paciente={detalle.id_paciente}
+        />
       </div>
 
-      {/* Clinical data */}
-      <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Datos clínicos
-        </h2>
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Campo label="Peso"                     value={detalle.peso} />
-          <Campo label="Talla"                    value={detalle.talla} />
-          <Campo label="Altura"                   value={detalle.altura} />
-          <Campo label="Antecedentes crónicos"    value={detalle.antecedentes_cronicos} />
-          <Campo label="Antecedentes hepáticos"   value={detalle.antecedentes_hepaticos} />
-          <Campo label="Medicación actual"        value={detalle.medicacion_actual} />
-        </dl>
-      </div>
+      {showModal && (
+        <CitaModal
+          form={form}
+          pacientes={pacientes}
+          podologos={podologos}
+          saving={savingCita}
+          error={errorCita}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 }

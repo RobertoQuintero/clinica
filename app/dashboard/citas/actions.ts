@@ -45,6 +45,7 @@ export async function getCitas(): Promise<ICita[]> {
            ,[id_sucursal]
            ,[id_empresa]
            ,[google_event_id]
+           ,[id_tratamiento]
        FROM [CentroPodologico].[dbo].[citas]
       WHERE [id_sucursal] = @id_sucursal
         AND [id_empresa]  = @id_empresa`,
@@ -128,9 +129,10 @@ export async function saveCita(
       id_sucursal,
       id_empresa,
       google_event_id,
+      id_tratamiento,
     } = form;
 
-    const commonParams = {
+    const commonParams: any = {
       id_paciente,
       id_podologo,
       fecha_inicio:       toDBString(String(fecha_inicio       ?? "")),
@@ -142,6 +144,10 @@ export async function saveCita(
       id_sucursal,
       id_empresa,
     };
+
+    if (id_tratamiento !== undefined) {
+      commonParams.id_tratamiento = id_tratamiento;
+    }
 
     // --- Resolve names for the calendar event summary ---
     const [pacienteRows, podologoRows, sucursalRows] = await Promise.all([
@@ -175,18 +181,27 @@ export async function saveCita(
       // If an external Google Calendar event is being imported, skip creating a new GCal event
       const isExternalImport = Boolean(google_event_id);
 
-      const inserted = await db.queryParams(
-        `INSERT INTO [CentroPodologico].[dbo].[citas]
-           ([id_cita],[id_paciente],[id_podologo],[fecha_inicio],[fecha_fin],
-            [estado],[motivo_cancelacion],[created_at],[deleted_at],[id_sucursal],[id_empresa])
-         OUTPUT INSERTED.[id_cita]
-         VALUES (
-           (SELECT ISNULL(MAX([id_cita]),0)+1 FROM [CentroPodologico].[dbo].[citas]),
-           @id_paciente,@id_podologo,@fecha_inicio,@fecha_fin,
-           @estado,@motivo_cancelacion,@created_at,@deleted_at,@id_sucursal,@id_empresa
-         )`,
-        commonParams
-      );
+      const insertQuery = id_tratamiento !== undefined
+        ? `INSERT INTO [CentroPodologico].[dbo].[citas]
+             ([id_cita],[id_paciente],[id_podologo],[fecha_inicio],[fecha_fin],
+              [estado],[motivo_cancelacion],[created_at],[deleted_at],[id_sucursal],[id_empresa],[id_tratamiento])
+           OUTPUT INSERTED.[id_cita]
+           VALUES (
+             (SELECT ISNULL(MAX([id_cita]),0)+1 FROM [CentroPodologico].[dbo].[citas]),
+             @id_paciente,@id_podologo,@fecha_inicio,@fecha_fin,
+             @estado,@motivo_cancelacion,@created_at,@deleted_at,@id_sucursal,@id_empresa,@id_tratamiento
+           )`
+        : `INSERT INTO [CentroPodologico].[dbo].[citas]
+             ([id_cita],[id_paciente],[id_podologo],[fecha_inicio],[fecha_fin],
+              [estado],[motivo_cancelacion],[created_at],[deleted_at],[id_sucursal],[id_empresa])
+           OUTPUT INSERTED.[id_cita]
+           VALUES (
+             (SELECT ISNULL(MAX([id_cita]),0)+1 FROM [CentroPodologico].[dbo].[citas]),
+             @id_paciente,@id_podologo,@fecha_inicio,@fecha_fin,
+             @estado,@motivo_cancelacion,@created_at,@deleted_at,@id_sucursal,@id_empresa
+           )`;
+
+      const inserted = await db.queryParams(insertQuery, commonParams);
       const newId = (inserted[0] as { id_cita: number }).id_cita;
 
       try {
@@ -206,21 +221,34 @@ export async function saveCita(
         console.error("[GoogleCalendar] Error al sincronizar evento:", gcalErr);
       }
     } else {
-      await db.queryParams(
-        `UPDATE [CentroPodologico].[dbo].[citas] SET
-           [id_paciente]        = @id_paciente,
-           [id_podologo]        = @id_podologo,
-           [fecha_inicio]       = @fecha_inicio,
-           [fecha_fin]          = @fecha_fin,
-           [estado]             = @estado,
-           [motivo_cancelacion] = @motivo_cancelacion,
-           [created_at]         = @created_at,
-           [deleted_at]         = @deleted_at,
-           [id_sucursal]        = @id_sucursal,
-           [id_empresa]         = @id_empresa
-         WHERE [id_cita] = @id_cita`,
-        { id_cita, ...commonParams }
-      );
+      const updateQuery = id_tratamiento !== undefined
+        ? `UPDATE [CentroPodologico].[dbo].[citas] SET
+             [id_paciente]        = @id_paciente,
+             [id_podologo]        = @id_podologo,
+             [fecha_inicio]       = @fecha_inicio,
+             [fecha_fin]          = @fecha_fin,
+             [estado]             = @estado,
+             [motivo_cancelacion] = @motivo_cancelacion,
+             [created_at]         = @created_at,
+             [deleted_at]         = @deleted_at,
+             [id_sucursal]        = @id_sucursal,
+             [id_empresa]         = @id_empresa,
+             [id_tratamiento]     = @id_tratamiento
+           WHERE [id_cita] = @id_cita`
+        : `UPDATE [CentroPodologico].[dbo].[citas] SET
+             [id_paciente]        = @id_paciente,
+             [id_podologo]        = @id_podologo,
+             [fecha_inicio]       = @fecha_inicio,
+             [fecha_fin]          = @fecha_fin,
+             [estado]             = @estado,
+             [motivo_cancelacion] = @motivo_cancelacion,
+             [created_at]         = @created_at,
+             [deleted_at]         = @deleted_at,
+             [id_sucursal]        = @id_sucursal,
+             [id_empresa]         = @id_empresa
+           WHERE [id_cita] = @id_cita`;
+
+      await db.queryParams(updateQuery, { id_cita, ...commonParams });
 
       // Sync to Google Calendar (non-blocking)
       try {

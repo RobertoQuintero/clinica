@@ -194,6 +194,24 @@ export async function updateProcesoField(
   }
 }
 
+export async function updateTratamientoOnicomicosisMessage(
+  id_tratamiento: number,
+): Promise<ActionResult<void>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
+          SET [new_message] = 1,
+              [message]     = 'NUEVA CONSULTA'
+        WHERE [id_tratamiento] = @id_tratamiento`,
+      { id_tratamiento },
+    );
+    return { ok: true, data: undefined };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al actualizar el mensaje del tratamiento de onicomicosis" };
+  }
+}
+
 // ─── valoración de piel ───────────────────────────────────────────────────────
 
 export async function saveValoracion(

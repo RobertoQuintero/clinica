@@ -58,6 +58,7 @@ export default function CitasHoy() {
       cita.fecha_fin,
       cita.id_sucursal,
       cita.id_empresa,
+      cita.id_tratamiento,
     );
     if (res.ok && res.id_consulta) {
       router.push(`/dashboard/pacientes/${cita.id_paciente}/consultas/${res.id_consulta}`);

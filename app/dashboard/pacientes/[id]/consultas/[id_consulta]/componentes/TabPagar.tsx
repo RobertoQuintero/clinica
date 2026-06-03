@@ -24,6 +24,7 @@ interface Props {
   deletingPagoId:     number | null;
   canEdit:            boolean;
   onEditarPago:       (id_pago: number, data: EditarPagoData) => Promise<void>;
+  is_onicomicosis?:   boolean;
 }
 
 export default function TabPagar({
@@ -46,6 +47,7 @@ export default function TabPagar({
   deletingPagoId,
   canEdit,
   onEditarPago,
+  is_onicomicosis = false,
 }: Props) {
   const [mpSearch,   setMpSearch  ] = React.useState("");
   const [mpOpen,     setMpOpen    ] = React.useState(false);
@@ -239,7 +241,7 @@ export default function TabPagar({
       )}
 
       {/* finalizar proceso */}
-      {!procesoPagado && !locked && saldo <= 0 && pagos.length > 0 && onFinalizar && (
+      {!procesoPagado && !locked && onFinalizar && (is_onicomicosis || (saldo <= 0 && pagos.length > 0)) && (
         <div className="flex justify-end">
           <button
             type="button"

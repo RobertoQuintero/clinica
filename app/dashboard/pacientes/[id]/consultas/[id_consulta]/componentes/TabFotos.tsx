@@ -16,6 +16,7 @@ interface Props {
   categoria:      string;
   locked?:        boolean;
   onContinuar?:   () => void;
+  is_onicomicosis?: boolean;
 }
 
 const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> =>
@@ -215,13 +216,15 @@ function FotosSection({ title, categoriaKey, archivos, onAddArchivo, paciente, i
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria, locked, onContinuar }: Props) {
+export default function TabFotos({ archivos, onAddArchivo, paciente, id_paciente, id_consulta, categoria, locked, onContinuar, is_onicomicosis = false }: Props) {
   const catU = `${categoria}_U`;
   const catP = `${categoria}_P`;
 
   const archivosU    = archivos.filter((a) => a.categoria === catU);
   const archivosP    = archivos.filter((a) => a.categoria === catP);
-  const canContinuar = archivosU.length >= 1 && archivosP.length >= 1;
+  const canContinuar = is_onicomicosis
+    ? archivosU.length >= 1
+    : archivosU.length >= 1 && archivosP.length >= 1;
 
   return (
     <div className="space-y-6">

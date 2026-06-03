@@ -11,6 +11,8 @@ export interface ITratamientoOnicomicosis {
   id_stage:               number;
   id_usuario:             number;
   id_especialista:        number;
+  new_message:            boolean;
+  message:                string | null;
 }
 
 export interface ITratamientoOnicomicosisListRow {
@@ -22,6 +24,8 @@ export interface ITratamientoOnicomicosisListRow {
   nombre_especialista: string;
   nombre_usuario:      string;
   nombre_stage:        string;
+  new_message:         boolean;
+  message:             string | null;
 }
 
 export interface ITratamientoPagoOnicomicosis {

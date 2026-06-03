@@ -19,6 +19,7 @@ export interface ICitaHoy {
   id_sucursal:      number;
   id_empresa:       number;
   tiene_consulta:   boolean;
+  id_tratamiento?:  number | null;
 }
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
@@ -85,6 +86,7 @@ export async function getTodaysCitas(): Promise<ICitaHoy[]> {
            ,c.[estado]
            ,c.[id_sucursal]
            ,c.[id_empresa]
+           ,c.[id_tratamiento]
            ,LTRIM(RTRIM(p.[nombre] + ' ' + p.[apellido_paterno]
              + CASE WHEN p.[apellido_materno] IS NOT NULL AND p.[apellido_materno] <> ''
                THEN ' ' + p.[apellido_materno] ELSE '' END)) AS nombre_paciente
@@ -482,25 +484,43 @@ export async function crearConsultaDesdeCita(
   fecha_fin:    string,
   id_sucursal: number,
   id_empresa:  number,
+  id_tratamiento?: number | null,
 ): Promise<{ ok: boolean; id_consulta?: number; message?: string }> {
   try {
     const created_at = buildDate(new Date());
     const fecha      = toDBString(fecha_inicio.replace(" ", "T")) ?? fecha_inicio;
     const fecha_fin_ = toDBString(fecha_fin.replace(" ", "T"))    ?? fecha_fin;
 
+    const hasTratamiento = id_tratamiento !== undefined && id_tratamiento !== null;
+    const is_onicomicosis = hasTratamiento ? true : false;
+    const dbTratamiento   = hasTratamiento ? id_tratamiento : null;
+
     const inserted = await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[consultas]
          ([id_consulta],[id_paciente],[id_podologo],[fecha],[fecha_fin],
           [diagnostico],[tratamiento_aplicado],[observaciones],[created_at],
-          [costo_total],[id_sucursal],[id_empresa],[id_cita])
+          [costo_total],[id_sucursal],[id_empresa],[id_cita],
+          [is_onicomicosis],[id_tratamiento])
        OUTPUT INSERTED.[id_consulta]
        VALUES (
          (SELECT ISNULL(MAX([id_consulta]),0)+1 FROM [CentroPodologico].[dbo].[consultas]),
          @id_paciente,@id_podologo,@fecha,@fecha_fin,
          '','' ,'',@created_at,
-         0,@id_sucursal,@id_empresa,@id_cita
+         0,@id_sucursal,@id_empresa,@id_cita,
+         @is_onicomicosis,@id_tratamiento
        )`,
-      { id_paciente, id_podologo, fecha, fecha_fin: fecha_fin_, created_at, id_sucursal, id_empresa, id_cita }
+      { 
+        id_paciente, 
+        id_podologo, 
+        fecha, 
+        fecha_fin: fecha_fin_, 
+        created_at, 
+        id_sucursal, 
+        id_empresa, 
+        id_cita,
+        is_onicomicosis,
+        id_tratamiento: dbTratamiento
+      }
     );
 
     const newId = (inserted[0] as { id_consulta: number }).id_consulta;

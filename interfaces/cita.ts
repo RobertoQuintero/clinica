@@ -11,4 +11,5 @@ export interface ICita {
     id_sucursal:        number;
     id_empresa:         number;
     google_event_id?:   string | null;
+    id_tratamiento?:    number;
 }

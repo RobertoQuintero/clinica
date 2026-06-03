@@ -10,7 +10,7 @@ import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
-import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData } from "./actions";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -258,6 +258,15 @@ id_usuario_elimino: null,
   const handleFinalizar = async () => {
     const procResult = await updateProcesoField(id_consulta, "pagar", 1);
     if (procResult.ok) {
+      if (consulta?.is_onicomicosis && consulta?.id_tratamiento) {
+        await updateTratamientoOnicomicosisMessage(consulta.id_tratamiento);
+      }
+      // Actualizar fecha_fin con hora actual
+      const fechaFin = buildDate(new Date());
+      const fechaFinResult = await updateConsultaFechaFin(id_consulta, fechaFin);
+      if (fechaFinResult.ok) {
+        setConsulta((prev) => prev ? { ...prev, fecha_fin: fechaFin } : null);
+      }
       setProceso(procResult.data);
       setActiveTab("general");
     }
@@ -415,6 +424,7 @@ id_usuario_elimino: null,
               locked={locked}
               onContinuar={() => handleContinuar("servicios", "productos")}
               onTotalChange={setTotalServicios}
+              is_onicomicosis={!!consulta?.is_onicomicosis}
             />
           )}
           {activeTab === "fotos_valoracion" && (
@@ -427,6 +437,7 @@ id_usuario_elimino: null,
               categoria="VALORACION"
               locked={locked}
               onContinuar={() => handleContinuar("fotos_valoracion", "fotos_pedicure")}
+              is_onicomicosis={!!consulta?.is_onicomicosis}
             />
           )}
           {activeTab === "productos"  && (
@@ -447,6 +458,7 @@ id_usuario_elimino: null,
               categoria="PEDICURE"
               locked={locked}
               onContinuar={() => handleContinuar("fotos_pedicure", "pagar")}
+              is_onicomicosis={!!consulta?.is_onicomicosis}
             />
           )}
           {activeTab === "pagar"      && (
@@ -470,6 +482,7 @@ id_usuario_elimino: null,
               deletingPagoId={deletingPagoId}
               canEdit={user?.id_role === 1 || user?.id_role === 4}
               onEditarPago={handleEditarPago}
+              is_onicomicosis={!!consulta?.is_onicomicosis}
             />
           )}
         </>

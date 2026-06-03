@@ -29,6 +29,9 @@ export default function TratamientoFila({ tratamiento: t }: Props) {
           {t.nombre_stage}
         </span>
       </td>
+      <td className={`px-4 py-3 text-sm${t.new_message ? " font-medium text-amber-500 dark:text-amber-400" : " text-zinc-600 dark:text-zinc-300"}`}>
+        {t.message ?? "—"}
+      </td>
       <td className="px-4 py-3 flex justify-end">
         <button
           onClick={() => router.push(`/dashboard/tratamientos/${t.id_tratamiento}`)}
