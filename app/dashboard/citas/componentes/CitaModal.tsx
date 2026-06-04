@@ -32,12 +32,13 @@ interface Props {
   podologos: IUser[];
   saving: boolean;
   error: string | null;
+  lockPaciente?: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
 
-export default function CitaModal({ form, pacientes, podologos, saving, error, onChange, onSubmit, onClose }: Props) {
+export default function CitaModal({ form, pacientes, podologos, saving, error, lockPaciente = false, onChange, onSubmit, onClose }: Props) {
   const [pacienteQuery, setPacienteQuery] = useState("");
   const [podologoQuery, setPodologoQuery] = useState("");
   const [showPacientes, setShowPacientes] = useState(false);
@@ -135,14 +136,15 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, o
               <input
                 type="text"
                 value={pacienteQuery}
-                onChange={(e) => { setPacienteQuery(e.target.value); setShowPacientes(true); }}
-                onFocus={() => setShowPacientes(true)}
+                onChange={(e) => { if (lockPaciente) return; setPacienteQuery(e.target.value); setShowPacientes(true); }}
+                onFocus={() => { if (!lockPaciente) setShowPacientes(true); }}
                 placeholder="Buscar paciente…"
                 autoComplete="off"
                 required
-                className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                readOnly={lockPaciente}
+                className={`w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400${lockPaciente ? " opacity-60 cursor-not-allowed" : ""}`}
               />
-              {showPacientes && filteredPacientes.length > 0 && (
+              {!lockPaciente && showPacientes && filteredPacientes.length > 0 && (
                 <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg text-sm">
                   {filteredPacientes.map((p) => (
                     <li

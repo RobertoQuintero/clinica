@@ -7,7 +7,7 @@ import { IPhoneCode } from "@/interfaces/phone_code";
 import { useEffect, useState } from "react";
 import PacienteFila from "./componentes/PacienteFila";
 import PacienteModal from "./componentes/PacienteModal";
-import { getPacientes, savePaciente, buscarPacientesExternos, getPhoneCodes } from "./actions";
+import { getPacientes, savePaciente, buscarPacientesExternos, buscarPacientesPorSucursal, getPhoneCodes } from "./actions";
 
 const EMPTY: IPaciente = {
   id_paciente:                  0,
@@ -47,6 +47,8 @@ export default function PacientesPage() {
   const [extResults, setExtResults] = useState<IPaciente[]>([]);
   const [extLoading, setExtLoading] = useState(false);
   const [extSearched, setExtSearched] = useState(false);
+  const [searchResults, setSearchResults]   = useState<IPaciente[] | null>(null);
+  const [searchLoading, setSearchLoading]   = useState(false);
 
   type SortKey = "nombre" | "apellido_paterno" | "apellido_materno" | "whatsapp" | "sexo" | "nombre_sucursal";
   const [sortKey, setSortKey]   = useState<SortKey | null>(null);
@@ -75,6 +77,18 @@ export default function PacientesPage() {
       setPacientes(data);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    if (search.trim().length < 3) { setSearchResults(null); return; }
+    setSearchLoading(true);
+    try {
+      const data = await buscarPacientesPorSucursal(search.trim());
+      setSearchResults(data);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -119,7 +133,8 @@ export default function PacientesPage() {
     }
   };
 
-  const pacientesFiltrados = pacientes
+  const baseList = searchResults ?? pacientes;
+  const pacientesFiltrados = baseList
     .filter((p) => {
       const q = search.toLowerCase();
       return (
@@ -191,14 +206,19 @@ export default function PacientesPage() {
         </div>
       )}
 
-      <div className="mb-4">
+      <div className="mb-4 flex items-center gap-2">
         <input
           type="text"
-          placeholder="Buscar por nombre, apellidos o whatsapp..."
+          placeholder="Buscar por nombre, apellidos o whatsapp… (Enter para buscar en DB)"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); if (!e.target.value) setSearchResults(null); }}
+          onKeyDown={handleSearchKeyDown}
           className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
         />
+        {searchLoading && <span className="text-xs text-zinc-400 whitespace-nowrap">Buscando…</span>}
+        {searchResults !== null && !searchLoading && (
+          <span className="text-xs text-zinc-500 whitespace-nowrap">{searchResults.length} en DB</span>
+        )}
       </div>
 
       {loading ? (

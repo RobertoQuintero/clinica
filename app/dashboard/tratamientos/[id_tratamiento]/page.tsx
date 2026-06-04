@@ -32,6 +32,8 @@ type DetailRow = ITratamientoOnicomicosis & {
   nombre_stage:        string;
   id_paciente:         number;
   id_podologo:         number;
+  whatsapp:            string | null;
+  phone_code:          string | null;
 };
 
 const EMPTY: ICita = {
@@ -221,6 +223,10 @@ export default function TratamientoDetallePage({ params }: Props) {
         <AccordionRecetas
           id_tratamiento={id_tratamiento}
           nombre_paciente={detalle.nombre_paciente}
+          nombre_podologo={detalle.nombre_usuario}
+          nombre_especialista={detalle.nombre_especialista}
+          whatsapp={detalle.whatsapp ?? null}
+          phone_code={detalle.phone_code ?? null}
           id_stage={detalle.id_stage}
           id_role={user?.id_role || 0}
         />

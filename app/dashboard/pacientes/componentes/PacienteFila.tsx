@@ -31,7 +31,7 @@ export default function PacienteFila({ paciente: p, onEdit, showWhatsapp = false
           onClick={() => router.push(`/dashboard/pacientes/${p.id_paciente}/expediente`)}
           className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
         >
-          Expediente
+          Expediente 
         </button>
       </td>
     </tr>

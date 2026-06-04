@@ -35,7 +35,7 @@ export async function getPacientes(): Promise<IPaciente[]> {
   const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
   const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
   const data = await db.queryParams(
-    `SELECT p.[id_paciente],
+    `SELECT TOP 20 p.[id_paciente],
             p.[nombre],
             p.[telefono],
             CONVERT(varchar(10), p.[fecha_nacimiento], 120) AS fecha_nacimiento,
@@ -59,7 +59,8 @@ export async function getPacientes(): Promise<IPaciente[]> {
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
       WHERE p.[id_sucursal] = @id_sucursal
-        AND p.[id_empresa]  = @id_empresa`,
+        AND p.[id_empresa]  = @id_empresa
+        ORDER BY p.[created_at] DESC`,
     { id_sucursal, id_empresa }
   );
   return data as IPaciente[];
@@ -194,6 +195,54 @@ export async function buscarPacientesExternos(query: string): Promise<IPaciente[
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
       WHERE p.[id_empresa] = @id_empresa
         AND ${wordClauses.join(" AND ")}`,
+    params
+  );
+  return data as IPaciente[];
+}
+
+export async function buscarPacientesPorSucursal(query: string): Promise<IPaciente[]> {
+  if (!query.trim()) return [];
+  const cookieStore = await cookies();
+  const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+  const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+  const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
+
+  const words = query.trim().split(/\s+/).slice(0, 5);
+  const params: Record<string, unknown> = { id_sucursal, id_empresa };
+  const wordClauses = words.map((word, i) => {
+    params[`q${i}`] = `%${word}%`;
+    return `(p.[nombre] LIKE @q${i} OR p.[apellido_paterno] LIKE @q${i} OR p.[apellido_materno] LIKE @q${i} OR p.[whatsapp] LIKE @q${i})`;
+  });
+
+  const data = await db.queryParams(
+    `SELECT TOP 100
+            p.[id_paciente],
+            p.[nombre],
+            p.[telefono],
+            CONVERT(varchar(10), p.[fecha_nacimiento], 120) AS fecha_nacimiento,
+            p.[direccion],
+            p.[observaciones_generales],
+            CONVERT(varchar(19), p.[created_at], 120) AS created_at,
+            CONVERT(varchar(19), p.[updated_at], 120) AS updated_at,
+            CONVERT(varchar(19), p.[deleted_at], 120) AS deleted_at,
+            p.[apellido_paterno],
+            p.[apellido_materno],
+            p.[sexo],
+            p.[whatsapp],
+            p.[ciudad_preferida],
+            p.[contacto_emergencia_nombre],
+            p.[contacto_emergencia_whatsapp],
+            p.[id_sucursal],
+            p.[id_empresa],
+            p.[id_phone_code],
+            s.[nombre] AS nombre_sucursal
+       FROM [CentroPodologico].[dbo].[pacientes] p
+       LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
+         ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
+      WHERE p.[id_sucursal] = @id_sucursal
+        AND p.[id_empresa]  = @id_empresa
+        AND ${wordClauses.join(" AND ")}
+      ORDER BY p.[apellido_paterno], p.[nombre]`,
     params
   );
   return data as IPaciente[];

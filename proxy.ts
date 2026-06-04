@@ -49,6 +49,10 @@ export const proxy = async (req: NextRequest) => {
     if (!isAuthenticated) return NextResponse.redirect(new URL("/login", req.url));
     // Usuarios pendientes deben ir a /pending
     if (isPending) return NextResponse.redirect(new URL("/pending", req.url));
+    // id_role=5 solo puede acceder a /dashboard/tratamientos
+    if (userPayload?.id_role === 5 && !pathname.startsWith("/dashboard/tratamientos")) {
+      return NextResponse.redirect(new URL("/dashboard/tratamientos", req.url));
+    }
     // Solo id_role=1 e id_role=4 pueden acceder a /dashboard/usuarios
     if (pathname.startsWith("/dashboard/usuarios") && userPayload?.id_role !== 1 && userPayload?.id_role !== 4) {
       return NextResponse.redirect(new URL("/dashboard", req.url));

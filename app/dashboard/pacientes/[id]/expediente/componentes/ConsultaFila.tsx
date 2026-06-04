@@ -65,7 +65,7 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCance
           {onVerImagenes ? (
             <button
               onClick={() => onVerImagenes(c.id_consulta)}
-              className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors whitespace-nowrap"
+              className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors whitespace-nowrap"
             >
               Ver imágenes
             </button>

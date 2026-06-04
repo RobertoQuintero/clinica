@@ -1,12 +1,16 @@
 "use client";
 
 import { IAntecedenteMedico } from "@/interfaces/antecedentes";
+import { ICita } from "@/interfaces/cita";
 import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
+import { IUser } from "@/interfaces/user";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
+import { getPacientes, getPodologos, saveCita } from "@/app/dashboard/citas/actions";
 import {
   ConsultaProductoExtended,
   GeneralTabData,
@@ -34,6 +38,21 @@ function trueBoolLabels<T extends object>(
     .filter((k) => obj[k] === true || (obj[k] as unknown) === 1)
     .map((k) => map[k] as string);
 }
+
+function addOneMonth(val: Date | string): string {
+  const s = String(val).replace(" ", "T");
+  const d = new Date(s);
+  d.setMonth(d.getMonth() + 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const EMPTY_CITA: ICita = {
+  id_cita: 0, id_paciente: 0, id_podologo: 0,
+  fecha_inicio: "", fecha_fin: "", estado: "agendada",
+  motivo_cancelacion: "", created_at: "", deleted_at: "",
+  id_sucursal: 0, id_empresa: 0,
+};
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
@@ -83,6 +102,14 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [loading,            setLoading           ] = useState(true);
   const [exporting,       setExporting      ] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const [showCitaModal,   setShowCitaModal  ] = useState(false);
+  const [citaForm,        setCitaForm       ] = useState<ICita>(EMPTY_CITA);
+  const [citaPacientes,   setCitaPacientes  ] = useState<IPaciente[]>([]);
+  const [citaPodologos,   setCitaPodologos  ] = useState<IUser[]>([]);
+  const [citaSaving,      setCitaSaving     ] = useState(false);
+  const [citaError,       setCitaError      ] = useState<string | null>(null);
+  const [citaListsLoaded, setCitaListsLoaded] = useState(false);
 
   useEffect(() => {
     if (!consulta) return;
@@ -385,6 +412,54 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   useEffect(() => { onServiciosTotalChange?.(totalServicios); }, [totalServicios]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { onProductosTotalChange?.(totalProductos); }, [totalProductos]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const openCrearCita = async () => {
+    if (!consulta) return;
+    const fechaInicio = addOneMonth(consulta.fecha);
+    const dFin = new Date(fechaInicio);
+    dFin.setHours(dFin.getHours() + 1);
+    const padFin = (n: number) => String(n).padStart(2, "0");
+    const fechaFin = `${dFin.getFullYear()}-${padFin(dFin.getMonth() + 1)}-${padFin(dFin.getDate())}T${padFin(dFin.getHours())}:${padFin(dFin.getMinutes())}`;
+    setCitaForm({
+      ...EMPTY_CITA,
+      id_paciente: consulta.id_paciente,
+      id_podologo: consulta.id_podologo,
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      id_sucursal: consulta.id_sucursal,
+      id_empresa: consulta.id_empresa,
+    });
+    if (!citaListsLoaded) {
+      const [pacs, pods] = await Promise.all([getPacientes(), getPodologos()]);
+      setCitaPacientes(pacs);
+      setCitaPodologos(pods);
+      setCitaListsLoaded(true);
+    }
+    setShowCitaModal(true);
+  };
+
+  const handleCitaChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCitaForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCitaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCitaSaving(true);
+    setCitaError(null);
+    try {
+      const res = await saveCita(citaForm);
+      if (!res.ok) {
+        setCitaError(res.message ?? "Error al guardar");
+      } else {
+        setShowCitaModal(false);
+      }
+    } catch {
+      setCitaError("Error inesperado");
+    } finally {
+      setCitaSaving(false);
+    }
+  };
+
   // ── render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -393,16 +468,31 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       {/* export / share buttons */}
       <div  style={{display:'flex',justifyContent:"space-between",alignItems:"center"}}>
         <div id="cancelada" className="flex items-center gap-2">
-          {(patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1) && !tratamientoExiste && (
-            <Link
-              href={`/dashboard/pacientes/${consulta.id_paciente}/consultas/${consulta.id_consulta}/tratamiento`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Tratamiento
-            </Link>
+          {(patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1) && (
+            consulta?.is_onicomicosis ? (
+              <button
+                type="button"
+                onClick={openCrearCita}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Crear cita
+              </button>
+            ) : (
+              !tratamientoExiste && (
+                <Link
+                  href={`/dashboard/pacientes/${consulta.id_paciente}/consultas/${consulta.id_consulta}/tratamiento`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Tratamiento
+                </Link>
+              )
+            )
           )}
           {consulta?.cancelada && (
             <div className="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-400">
@@ -668,6 +758,20 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       </div>
 
       </div>{/* end contentRef */}
+
+      {showCitaModal && (
+        <CitaModal
+          form={citaForm}
+          pacientes={citaPacientes}
+          podologos={citaPodologos}
+          saving={citaSaving}
+          error={citaError}
+          lockPaciente
+          onChange={handleCitaChange}
+          onSubmit={handleCitaSubmit}
+          onClose={() => setShowCitaModal(false)}
+        />
+      )}
     </div>
   );
 }

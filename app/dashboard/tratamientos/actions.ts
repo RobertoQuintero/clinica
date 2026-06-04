@@ -153,6 +153,8 @@ export async function getTratamientoDetalle(
   nombre_stage:        string;
   id_paciente:         number;
   id_podologo:         number;
+  whatsapp:            string | null;
+  phone_code:          string | null;
 }) | null> {
   const data = await db.queryParams(
     `SELECT t.[id_tratamiento],
@@ -178,7 +180,9 @@ export async function getTratamientoDetalle(
             )) AS nombre_paciente,
             ISNULL(e.[nombre], '—') AS nombre_especialista,
             ISNULL(u.[nombre], '—') AS nombre_usuario,
-            ISNULL(s.[name], '—') AS nombre_stage
+            ISNULL(s.[name], '—') AS nombre_stage,
+            p.[whatsapp]   AS whatsapp,
+            pc.[id_phone_code]      AS phone_code
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
@@ -190,16 +194,20 @@ export async function getTratamientoDetalle(
          ON u.[id_user] = t.[id_usuario]
   LEFT JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis_stages] s
          ON s.[id_stage] = t.[id_stage]
+  LEFT JOIN [CentroPodologico].[dbo].[codigos_telefonicos] pc
+         ON pc.[id_phone_code] = p.[id_phone_code]
       WHERE t.[id_tratamiento] = @id_tratamiento`,
     { id_tratamiento }
   );
   const rows = data as (ITratamientoOnicomicosis & {
-    nombre_paciente: string;
+    nombre_paciente:     string;
     nombre_especialista: string;
-    nombre_usuario: string;
-    nombre_stage: string;
-    id_paciente: number;
-    id_podologo: number;
+    nombre_usuario:      string;
+    nombre_stage:        string;
+    id_paciente:         number;
+    id_podologo:         number;
+    whatsapp:            string | null;
+    phone_code:          string | null;
   })[];
   return rows[0] ?? null;
 }

@@ -9,14 +9,14 @@ import { useState } from "react";
 import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordModal";
 
 const ALL_NAV_LINKS = [
-  { href: "/dashboard/pacientes",  label: "Pacientes",  minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 0, excludeRoles: [2, 3] },
-  { href: "/dashboard/citas",      label: "Citas",      minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/productos",  label: "Productos",  minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/sucursales", label: "Sucursales", minRole: 0, excludeRoles: [] as number[] },
-  { href: "/dashboard/enlaces",    label: "Enlaces",    minRole: 0, excludeRoles: [3] },
-  { href: "/dashboard/ventas",          label: "Ventas",          minRole: 0, excludeRoles: [] as number[] },
+  { href: "/dashboard/pacientes",  label: "Pacientes",  minRole: 0, excludeRoles: [5] as number[] },
+  { href: "/dashboard/usuarios",   label: "Usuarios",   minRole: 0, excludeRoles: [2, 3, 5] },
+  { href: "/dashboard/citas",      label: "Citas",      minRole: 0, excludeRoles: [5] as number[] },
+  { href: "/dashboard/servicios",  label: "Servicios",  minRole: 0, excludeRoles: [5] as number[] },
+  { href: "/dashboard/productos",  label: "Productos",  minRole: 0, excludeRoles: [5] as number[] },
+  { href: "/dashboard/sucursales", label: "Sucursales", minRole: 0, excludeRoles: [5] as number[] },
+  { href: "/dashboard/enlaces",    label: "Enlaces",    minRole: 0, excludeRoles: [3, 5] },
+  { href: "/dashboard/ventas",          label: "Ventas",          minRole: 0, excludeRoles: [5] as number[] },
   { href: "/dashboard/tratamientos",    label: "Tratamientos",    minRole: 0, excludeRoles: [] as number[] },
 ];
 
