@@ -3,27 +3,44 @@
 import { ITratamientoOnicomicosisListRow } from "@/interfaces/tratamiento_onicomicosis";
 import { useEffect, useState } from "react";
 import { useSucursal } from "@/contexts/SucursalContext";
-import { getTratamientos } from "./actions";
+import { useAuth } from "@/contexts/AuthContext";
+import { getTratamientos, searchTratamientos } from "./actions";
 import TratamientoFila from "./componentes/TratamientoFila";
 
 export default function TratamientosPage() {
   const { selectedId } = useSucursal();
+  const { user } = useAuth();
 
   const [tratamientos, setTratamientos] = useState<ITratamientoOnicomicosisListRow[]>([]);
   const [loading, setLoading]           = useState(true);
   const [search, setSearch]             = useState("");
+  const [searched, setSearched]         = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await getTratamientos(selectedId);
+      const id_especialista = user?.id_role === 5 ? user.id_user : undefined;
+      const data = await getTratamientos(selectedId, id_especialista);
       setTratamientos(data);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleSearchEnter = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter" || search.length < 3) return;
+    setLoading(true);
+    setSearched(true);
+    try {
+      const id_especialista = user?.id_role === 5 ? user.id_user : undefined;
+      const data = await searchTratamientos(selectedId, search.trim(), id_especialista);
+      setTratamientos(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); setSearched(false); }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = tratamientos.filter((t) => {
     const q = search.toLowerCase();
@@ -43,9 +60,13 @@ export default function TratamientosPage() {
         </h1>
         <input
           type="search"
-          placeholder="Buscar paciente, especialista…"
+          placeholder="Buscar paciente, especialista… (Enter para buscar en BD)"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            if (e.target.value === "" && searched) { fetchData(); setSearched(false); }
+          }}
+          onKeyDown={handleSearchEnter}
           className="w-full sm:w-72 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 placeholder-zinc-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:placeholder-zinc-500"
         />
       </div>

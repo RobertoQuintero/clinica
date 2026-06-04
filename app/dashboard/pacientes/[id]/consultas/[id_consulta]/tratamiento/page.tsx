@@ -8,6 +8,7 @@ import {
   EspecialistaOption,
   PagoFormData,
   TratamientoFormData,
+  checkOnicomicosisGrado2,
   checkTratamientoExists,
   getDefaultTotalTratamiento,
   getEspecialistas,
@@ -44,8 +45,9 @@ export default function TratamientoPage() {
   const [loadingData,      setLoadingData     ] = useState(true);
   const [saving,           setSaving          ] = useState(false);
   const [error,            setError           ] = useState<string | null>(null);
-  const [confirming,       setConfirming      ] = useState(false);
-  const [tratamientoExiste, setTratamientoExiste] = useState(false);
+  const [confirming,        setConfirming       ] = useState(false);
+  const [tratamientoExiste,  setTratamientoExiste] = useState(false);
+  const [onicomicosisGrado2, setOnicomicosisGrado2] = useState(false);
 
   const [tratamientoForm, setTratamientoForm] = useState<TratamientoFormData>(TRATAMIENTO_DEFAULTS);
   const [pagoForm,        setPagoForm       ] = useState<PagoFormData>(PAGO_DEFAULTS);
@@ -56,11 +58,13 @@ export default function TratamientoPage() {
       getMetodosPago(),
       getDefaultTotalTratamiento(),
       checkTratamientoExists(id_consulta),
-    ]).then(([esp, mp, defaultTotal, existe]) => {
+      checkOnicomicosisGrado2(id_consulta),
+    ]).then(([esp, mp, defaultTotal, existe, grado2]) => {
       setEspecialistas(esp);
       setMetodosPago(mp);
       setPagoForm((prev) => ({ ...prev, total: defaultTotal }));
       setTratamientoExiste(existe);
+      setOnicomicosisGrado2(grado2);
       setLoadingData(false);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -161,6 +165,12 @@ export default function TratamientoPage() {
             </p>
           )}
 
+          {!onicomicosisGrado2 && (
+            <p className="rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2 text-sm text-amber-700 dark:text-amber-400">
+              La consulta no tiene <strong>onicomicosis grado 2</strong> registrada en patología ungueal. El tratamiento no puede solicitarse.
+            </p>
+          )}
+
           {tratamientoExiste && (
             <p className="rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2 text-sm text-amber-700 dark:text-amber-400">
               Ya existe un registro de tratamiento para esta consulta. No se puede guardar de nuevo.
@@ -171,7 +181,7 @@ export default function TratamientoPage() {
             <button
               type="button"
               onClick={handleGuardarClick}
-              disabled={saving || tratamientoExiste}
+              disabled={saving || tratamientoExiste || !onicomicosisGrado2}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-5 py-2 text-sm font-semibold text-white transition-colors"
             >
               {saving ? (

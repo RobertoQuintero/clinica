@@ -20,9 +20,59 @@ async function getActiveUser(): Promise<IAuthUser> {
 }
 
 export async function getTratamientos(
-  id_sucursal: number
+  id_sucursal: number,
+  id_especialista?: number
 ): Promise<ITratamientoOnicomicosisListRow[]> {
   const { id_empresa } = await getActiveUser();
+  const especialistaFilter = id_especialista != null
+    ? `AND t.[id_especialista] = @id_especialista AND t.[id_stage]<5`
+    : ``;
+  const data = await db.queryParams(
+    `SELECT TOP 15 t.[id_tratamiento],
+            t.[id_consulta],
+            t.[id_stage],
+            CONVERT(varchar(19), t.[created_at], 120) AS created_at,
+            LTRIM(RTRIM(
+              p.[nombre] + ' ' + p.[apellido_paterno]
+              + CASE WHEN p.[apellido_materno] IS NOT NULL AND p.[apellido_materno] <> ''
+                     THEN ' ' + p.[apellido_materno] ELSE '' END
+            )) AS nombre_paciente,
+            ISNULL(e.[nombre], '—') AS nombre_especialista,
+            ISNULL(u.[nombre], '—') AS nombre_usuario,
+            ISNULL(s.[name], '—') AS nombre_stage,
+            ISNULL(t.[new_message], 0)  AS new_message,
+            t.[message],
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas
+       FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
+ INNER JOIN [CentroPodologico].[dbo].[consultas] c
+         ON c.[id_consulta] = t.[id_consulta]
+        AND c.[id_sucursal] = @id_sucursal
+        AND c.[id_empresa]  = @id_empresa
+ INNER JOIN [CentroPodologico].[dbo].[pacientes] p
+         ON p.[id_paciente] = c.[id_paciente]
+  LEFT JOIN [CentroPodologico].[dbo].[users] e
+         ON e.[id_user] = t.[id_especialista]
+  LEFT JOIN [CentroPodologico].[dbo].[users] u
+         ON u.[id_user] = t.[id_usuario]
+  LEFT JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis_stages] s
+         ON s.[id_stage] = t.[id_stage]
+      WHERE 1=1
+        ${especialistaFilter}
+      ORDER BY t.[created_at] DESC`,
+    { id_sucursal, id_empresa, ...(id_especialista != null ? { id_especialista } : {}) }
+  );
+  return data as ITratamientoOnicomicosisListRow[];
+}
+
+export async function searchTratamientos(
+  id_sucursal: number,
+  q: string,
+  id_especialista?: number
+): Promise<ITratamientoOnicomicosisListRow[]> {
+  const { id_empresa } = await getActiveUser();
+  const especialistaFilter = id_especialista != null
+    ? `AND t.[id_especialista] = @id_especialista AND t.[id_stage]<5`
+    : ``;
   const data = await db.queryParams(
     `SELECT t.[id_tratamiento],
             t.[id_consulta],
@@ -37,7 +87,8 @@ export async function getTratamientos(
             ISNULL(u.[nombre], '—') AS nombre_usuario,
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
-            t.[message]
+            t.[message],
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
@@ -51,8 +102,20 @@ export async function getTratamientos(
          ON u.[id_user] = t.[id_usuario]
   LEFT JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis_stages] s
          ON s.[id_stage] = t.[id_stage]
+      WHERE (
+        LTRIM(RTRIM(
+          p.[nombre] + ' ' + p.[apellido_paterno]
+          + CASE WHEN p.[apellido_materno] IS NOT NULL AND p.[apellido_materno] <> ''
+                 THEN ' ' + p.[apellido_materno] ELSE '' END
+        )) LIKE '%' + @q + '%'
+        OR ISNULL(e.[nombre], '') LIKE '%' + @q + '%'
+        OR ISNULL(p.[whatsapp], '') LIKE '%' + @q + '%'
+      )
+        AND c.[id_sucursal] = @id_sucursal
+        AND c.[id_empresa]  = @id_empresa
+        ${especialistaFilter}
       ORDER BY t.[created_at] DESC`,
-    { id_sucursal, id_empresa }
+    { id_sucursal, id_empresa, q, ...(id_especialista != null ? { id_especialista } : {}) }
   );
   return data as ITratamientoOnicomicosisListRow[];
 }
@@ -150,6 +213,18 @@ export async function markTratamientoRevisado(
             [message]     = ''
       WHERE [id_tratamiento] = @id_tratamiento`,
     { id_tratamiento }
+  );
+}
+
+export async function updateTratamientoStage(
+  id_tratamiento: number,
+  id_stage: number
+): Promise<void> {
+  await db.queryParams(
+    `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
+        SET [id_stage] = @id_stage
+      WHERE [id_tratamiento] = @id_tratamiento`,
+    { id_tratamiento, id_stage }
   );
 }
 

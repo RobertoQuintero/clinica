@@ -26,6 +26,7 @@ export interface ITratamientoOnicomicosisListRow {
   nombre_stage:        string;
   new_message:         boolean;
   message:             string | null;
+  num_consultas:       number;
 }
 
 export interface ITratamientoPagoOnicomicosis {

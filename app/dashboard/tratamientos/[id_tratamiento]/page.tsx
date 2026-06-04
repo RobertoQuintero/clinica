@@ -7,6 +7,7 @@ import {
   getTratamientoDetalle,
   getArchivosByConsulta,
   markTratamientoRevisado,
+  updateTratamientoStage,
 } from "@/app/dashboard/tratamientos/actions";
 import { ITratamientoOnicomicosis } from "@/interfaces/tratamiento_onicomicosis";
 import AccordionSolicitud from "./componentes/AccordionSolicitud";
@@ -22,6 +23,7 @@ import { IUser } from "@/interfaces/user";
 import { buildDate } from "@/utils/date_helpper";
 import { getPacientes, getPodologos, saveCita } from "@/app/dashboard/citas/actions";
 import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
+import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
 
 type DetailRow = ITratamientoOnicomicosis & {
   nombre_paciente:     string;
@@ -71,6 +73,9 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [form, setForm]                   = useState<ICita>(EMPTY);
   const [savingCita, setSavingCita]       = useState(false);
   const [errorCita, setErrorCita]         = useState<string | null>(null);
+  const [showConfirmCancel, setShowConfirmCancel] = useState(false);
+  const [cancellingStage, setCancellingStage]     = useState(false);
+  const [errorCancel, setErrorCancel]             = useState<string | null>(null);
 
   useEffect(() => {
     getTratamientoDetalle(id_tratamiento).then(async (row) => {
@@ -123,6 +128,9 @@ export default function TratamientoDetallePage({ params }: Props) {
     } catch (err: unknown) {
       setErrorCita(err instanceof Error ? err.message : "Error inesperado");
     } finally {
+      if(detalle && detalle.id_stage===3){
+        await updateTratamientoStage(id_tratamiento, 4);
+      }
       setSavingCita(false);
     }
   };
@@ -178,27 +186,71 @@ export default function TratamientoDetallePage({ params }: Props) {
             </>
           )}
         </div>
-
-        <button
-          onClick={openCrearCitaByTratamiento}
-          className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
-        >
-          Crear cita
-        </button>
+          {
+            user?.id_role !== 5 && (
+              <div className="flex gap-2">
+                <button
+                  onClick={openCrearCitaByTratamiento}
+                  className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
+                >
+                  Crear cita
+                </button>
+                {detalle.id_stage !== 6 && (
+                  <button
+                    onClick={() => { setErrorCancel(null); setShowConfirmCancel(true); }}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 whitespace-nowrap"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            )
+          }
       </div>
 
       <div className="flex flex-col gap-4">
-        <AccordionSolicitud detalle={detalle} archivos={archivos} />
-        <AccordionPagos id_tratamiento={id_tratamiento} />
+        <AccordionSolicitud
+            detalle={detalle}
+            archivos={archivos}
+            onStageUpdated={() => setDetalle((prev) => prev ? { ...prev, id_stage: 2 } : prev)}
+          />
+        {
+          user?.id_role !== 5 && 
+          <AccordionPagos id_tratamiento={id_tratamiento} />
+        }
         <AccordionRecetas
           id_tratamiento={id_tratamiento}
           nombre_paciente={detalle.nombre_paciente}
+          id_stage={detalle.id_stage}
+          id_role={user?.id_role || 0}
         />
         <AccordionConsultas
           id_tratamiento={id_tratamiento}
           id_paciente={detalle.id_paciente}
         />
       </div>
+
+      {showConfirmCancel && (
+        <ConfirmModal
+          message="¿Estás seguro de que deseas cancelar este tratamiento?"
+          loading={cancellingStage}
+          error={errorCancel}
+          onCancel={() => setShowConfirmCancel(false)}
+          onConfirm={async () => {
+            setCancellingStage(true);
+            setErrorCancel(null);
+            try {
+              await updateTratamientoStage(id_tratamiento, 6);
+              setDetalle((prev) => prev ? { ...prev, id_stage: 6 } : prev);
+              setShowConfirmCancel(false);
+            } catch {
+              setErrorCancel("Error al cancelar el tratamiento");
+            } finally {
+              setCancellingStage(false);
+            }
+          }}
+        />
+      )}
 
       {showModal && (
         <CitaModal

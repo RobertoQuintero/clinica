@@ -6,6 +6,7 @@ import {
   getRecetasByTratamiento,
   saveRecetaTratamiento,
   IRecetaTratamiento,
+  updateTratamientoStage,
 } from "@/app/dashboard/tratamientos/actions";
 
 const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1 MB
@@ -48,9 +49,11 @@ const fmtDatetime = (val: string) => {
 interface Props {
   id_tratamiento:  number;
   nombre_paciente: string;
+  id_stage:        number;
+  id_role:         number;
 }
 
-export default function AccordionRecetas({ id_tratamiento, nombre_paciente }: Props) {
+export default function AccordionRecetas({ id_tratamiento, nombre_paciente, id_stage, id_role }: Props) {
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,6 +128,9 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente }: Pr
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al subir el archivo");
     } finally {
+      if((id_stage === 2 || id_stage === 1) && id_role === 4) {
+        await updateTratamientoStage(id_tratamiento, 3);
+      }
       setUploading(false);
       if (fileInputRef.current)   fileInputRef.current.value   = "";
       if (cameraInputRef.current) cameraInputRef.current.value = "";

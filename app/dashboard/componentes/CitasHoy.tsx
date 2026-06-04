@@ -101,7 +101,8 @@ export default function CitasHoy() {
                     <th className="px-4 py-2 text-left">Hora</th>
                     <th className="px-4 py-2 text-left">Paciente</th>
                     <th className="px-4 py-2 text-left hidden sm:table-cell">Podólogo</th>
-                    <th className="px-4 py-2 text-right">Acciones</th>
+                    <th className="px-4 py-2 text-left"></th>
+                    <th className="px-4 py-2 pr-15 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700">

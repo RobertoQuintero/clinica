@@ -44,6 +44,17 @@ export async function getMetodosPago(): Promise<IMetodoPago[]> {
   return rows as IMetodoPago[];
 }
 
+export async function checkOnicomicosisGrado2(id_consulta: number): Promise<boolean> {
+  const rows = await db.queryParams(
+    `SELECT TOP 1 [onicomicosis_grado_2]
+       FROM [CentroPodologico].[dbo].[patologia_ungueal]
+      WHERE [id_consulta] = @id_consulta`,
+    { id_consulta },
+  );
+  if (rows.length === 0) return false;
+  return !!rows[0].onicomicosis_grado_2;
+}
+
 export async function checkTratamientoExists(id_consulta: number): Promise<boolean> {
   const rows = await db.queryParams(
     `SELECT TOP 1 1 AS existe
@@ -100,11 +111,13 @@ export async function saveTratamiento(
            INSERT INTO [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
              ([id_tratamiento],[id_consulta],[peso],[talla],[altura],
               [antecedentes_cronicos],[antecedentes_hepaticos],[medicacion_actual],
-              [created_at],[id_stage],[id_usuario],[id_especialista])
+              [created_at],[id_stage],[id_usuario],[id_especialista],
+              [new_message],[message])
            VALUES
              (@id_tratamiento,@id_consulta,@peso,@talla,@altura,
               @antecedentes_cronicos,@antecedentes_hepaticos,@medicacion_actual,
-              @created_at,1,@id_usuario,@id_especialista)
+              @created_at,1,@id_usuario,@id_especialista,
+              1,'SOLICITUD')
 
            DECLARE @id_pago INT =
              (SELECT ISNULL(MAX([id_tratamiento_pago]), 0) + 1

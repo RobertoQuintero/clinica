@@ -25,8 +25,13 @@ export default function TratamientoFila({ tratamiento: t }: Props) {
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_especialista}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_usuario}</td>
       <td className="px-4 py-3">
-        <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
           {t.nombre_stage}
+          {t.id_stage === 4 && (
+            <span className="text-zinc-500 dark:text-zinc-400">
+              {t.num_consultas}/{Math.max(6, t.num_consultas)}
+            </span>
+          )}
         </span>
       </td>
       <td className={`px-4 py-3 text-sm${t.new_message ? " font-medium text-amber-500 dark:text-amber-400" : " text-zinc-600 dark:text-zinc-300"}`}>

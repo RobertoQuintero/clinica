@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ITratamientoOnicomicosis } from "@/interfaces/tratamiento_onicomicosis";
 import ImageSliderModal from "./ImageSliderModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { updateTratamientoStage } from "@/app/dashboard/tratamientos/actions";
 
 type DetailRow = ITratamientoOnicomicosis & {
   nombre_paciente:     string;
@@ -18,8 +20,9 @@ interface Archivo {
 }
 
 interface Props {
-  detalle:  DetailRow;
-  archivos: Archivo[];
+  detalle:          DetailRow;
+  archivos:         Archivo[];
+  onStageUpdated?:  () => void;
 }
 
 function Campo({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -41,10 +44,22 @@ const fmtDatetime = (val: string) => {
     .toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
 };
 
-export default function AccordionSolicitud({ detalle, archivos }: Props) {
+export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }: Props) {
   const [open, setOpen]             = useState(true);
   const [modalOpen, setModalOpen]   = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [updating, setUpdating]     = useState(false);
+
+  const { user } = useAuth();
+
+  const canApprove = detalle.id_stage === 1 && user?.id_role === 4;
+
+  const handleApprove = async () => {
+    setUpdating(true);
+    await updateTratamientoStage(detalle.id_tratamiento, 2);
+    onStageUpdated?.();
+    setUpdating(false);
+  };
 
   return (
     <>
@@ -87,14 +102,20 @@ export default function AccordionSolicitud({ detalle, archivos }: Props) {
                   <Campo label="Consulta"     value={detalle.id_consulta} />
                 </dl>
 
-                {archivos.length > 0 && (
-                  <div className="mt-4">
-                    <button
-                      onClick={() => { setSlideIndex(0); setModalOpen(true); }}
-                      className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors"
-                    >
-                      Ver imágenes ({archivos.length})
-                    </button>
+                {(archivos.length > 0 || canApprove) && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {archivos.length > 0 && (
+                      <button
+                        onClick={() => { 
+                          setSlideIndex(0); setModalOpen(true);
+                          if(canApprove) handleApprove();
+                         }}
+                        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors"
+                      >
+                        Ver imágenes ({archivos.length})
+                      </button>
+                    )}
+                   
                   </div>
                 )}
               </div>
