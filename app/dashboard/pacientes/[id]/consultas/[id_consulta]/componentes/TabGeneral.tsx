@@ -16,6 +16,7 @@ import {
   GeneralTabData,
   ServicioResumen,
   getGeneralTabData,
+  updateConsultaBuzon,
 } from "../actions";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -84,11 +85,12 @@ interface Props {
   patologia:                   IPatologiaUngueal  | null;
   onServiciosTotalChange?:     (total: number) => void;
   onProductosTotalChange?:     (total: number) => void;
+  pagado:                       boolean;
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export default function TabGeneral({ consulta, paciente, valoracion, patologia, onServiciosTotalChange, onProductosTotalChange }: Props) {
+export default function TabGeneral({ consulta, paciente, valoracion, patologia, onServiciosTotalChange, onProductosTotalChange,pagado }: Props) {
   const [antecedentes,    setAntecedentes   ] = useState<IAntecedenteMedico | null>(null);
   const [serviciosUsados, setServiciosUsados] = useState<ServicioResumen[]>([]);
   const [productos,       setProductos      ] = useState<ConsultaProductoExtended[]>([]);
@@ -99,6 +101,8 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [pagoWebId,          setPagoWebId         ] = useState<string | null>(null);
   const [phoneCode,          setPhoneCode         ] = useState<string | null>(null);
   const [tratamientoExiste,  setTratamientoExiste ] = useState(false);
+  const [idTratamiento,      setIdTratamiento     ] = useState<number | null>(null);
+  const [citaExiste,         setCitaExiste        ] = useState(false);
   const [loading,            setLoading           ] = useState(true);
   const [exporting,       setExporting      ] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -110,6 +114,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [citaSaving,      setCitaSaving     ] = useState(false);
   const [citaError,       setCitaError      ] = useState<string | null>(null);
   const [citaListsLoaded, setCitaListsLoaded] = useState(false);
+  const [citaCreada,      setCitaCreada     ] = useState(false);
 
   useEffect(() => {
     if (!consulta) return;
@@ -130,6 +135,8 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       setPagoWebId(d.pagoWebId);
       setPhoneCode(d.phoneCode);
       setTratamientoExiste(d.tratamientoExiste);
+      setIdTratamiento(d.idTratamiento);
+      setCitaExiste(d.citaExiste);
       setLoading(false);
     });
   }, [consulta?.id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -421,12 +428,14 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     const fechaFin = `${dFin.getFullYear()}-${padFin(dFin.getMonth() + 1)}-${padFin(dFin.getDate())}T${padFin(dFin.getHours())}:${padFin(dFin.getMinutes())}`;
     setCitaForm({
       ...EMPTY_CITA,
-      id_paciente: consulta.id_paciente,
-      id_podologo: consulta.id_podologo,
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-      id_sucursal: consulta.id_sucursal,
-      id_empresa: consulta.id_empresa,
+      id_paciente:    consulta.id_paciente,
+      id_podologo:    consulta.id_podologo,
+      fecha_inicio:   fechaInicio,
+      fecha_fin:      fechaFin,
+      id_sucursal:    consulta.id_sucursal,
+      id_empresa:     consulta.id_empresa,
+      id_tratamiento: consulta.id_tratamiento ?? undefined,
+      id_consulta:    consulta.id_tratamiento ?? undefined,
     });
     if (!citaListsLoaded) {
       const [pacs, pods] = await Promise.all([getPacientes(), getPodologos()]);
@@ -451,6 +460,10 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       if (!res.ok) {
         setCitaError(res.message ?? "Error al guardar");
       } else {
+        if (consulta?.id_consulta) {
+          await updateConsultaBuzon(consulta.id_consulta, 1);
+        }
+        setCitaCreada(true);
         setShowCitaModal(false);
       }
     } catch {
@@ -468,8 +481,38 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       {/* export / share buttons */}
       <div  style={{display:'flex',justifyContent:"space-between",alignItems:"center"}}>
         <div id="cancelada" className="flex items-center gap-2">
-          {(patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1) && (
-            consulta?.is_onicomicosis ? (
+
+          {
+            (patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1)&& pagado && !tratamientoExiste && (
+                <Link
+                  href={`/dashboard/pacientes/${consulta.id_paciente}/consultas/${consulta.id_consulta}/tratamiento`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Tratamiento
+                </Link>
+              )
+            
+          }
+          {
+            consulta?.is_onicomicosis && pagado && !consulta.id_buzon && !citaCreada &&(
+              <button
+                type="button"
+                onClick={openCrearCita}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Crear cita
+              </button>
+            )
+          }
+         
+          {/* {(patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1) && (
+            consulta?.is_onicomicosis && Boolean(consulta?.fecha_fin) ? (
               <button
                 type="button"
                 onClick={openCrearCita}
@@ -493,7 +536,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
                 </Link>
               )
             )
-          )}
+          )} */}
           {consulta?.cancelada && (
             <div className="inline-flex items-center gap-2 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

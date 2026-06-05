@@ -396,6 +396,7 @@ id_usuario_elimino: null,
               patologia={patologia}
               onServiciosTotalChange={setTotalServicios}
               onProductosTotalChange={setTotalProductos}
+              pagado={!!proceso?.pagar}
             />
           )}
           {activeTab === "valoracion" && (

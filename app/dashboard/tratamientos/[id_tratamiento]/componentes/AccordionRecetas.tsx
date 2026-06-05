@@ -160,7 +160,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al subir el archivo");
     } finally {
-      if((id_stage === 2 || id_stage === 1) && id_role === 4) {
+      if((id_stage === 2 || id_stage === 1) && id_role === 5) {
         await updateTratamientoStage(id_tratamiento, 3);
       }
       setUploading(false);

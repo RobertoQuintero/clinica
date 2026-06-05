@@ -52,7 +52,7 @@ export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }
 
   const { user } = useAuth();
 
-  const canApprove = detalle.id_stage === 1 && user?.id_role === 4;
+  const canApprove = detalle.id_stage === 1 && (user?.id_role === 5 );
 
   const handleApprove = async () => {
     setUpdating(true);
@@ -102,7 +102,7 @@ export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }
                   <Campo label="Consulta"     value={detalle.id_consulta} />
                 </dl>
 
-                {(archivos.length > 0 || canApprove) && (
+                {(archivos.length > 0 ) && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {archivos.length > 0 && (
                       <button

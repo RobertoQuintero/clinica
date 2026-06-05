@@ -104,6 +104,7 @@ export default function TratamientoDetallePage({ params }: Props) {
       id_paciente:    detalle.id_paciente,
       id_podologo:    detalle.id_podologo,
       id_tratamiento: id_tratamiento,
+      id_consulta:    undefined,
       id_sucursal:    selectedId || user!.id_sucursal,
       id_empresa:     user!.id_empresa,
     });

@@ -32,9 +32,24 @@ export default function PacientesFaltantes() {
 
   if (pacientes.length === 0) {
     return (
+      <div>
+      <div className="flex items-center gap-2 mb-3">
+        <label className="text-sm text-zinc-600 dark:text-zinc-400">
+          Días sin consulta:
+        </label>
+        <input
+          type="number"
+          min={1}
+          value={inputDias}
+          onChange={(e) => setInputDias(Number(e.target.value))}
+          onKeyDown={(e) => { if (e.key === "Enter" && inputDias >= 1) setDias(inputDias); }}
+          className="w-20 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-2 py-1 text-sm text-zinc-800 dark:text-zinc-100"
+        />
+      </div>
       <p className="text-sm text-zinc-400">
         No hay pacientes faltantes.
       </p>
+      </div>
     );
   }
 

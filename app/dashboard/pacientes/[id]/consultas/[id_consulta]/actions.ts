@@ -375,6 +375,23 @@ export async function updateConsultaFechaFin(
   }
 }
 
+export async function updateConsultaBuzon(
+  id_consulta: number,
+  id_buzon: number,
+): Promise<ActionResult<void>> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[consultas]
+          SET [id_buzon] = @id_buzon
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta, id_buzon },
+    );
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, data: "Error al actualizar buzón" };
+  }
+}
+
 // ─── pagos ────────────────────────────────────────────────────────────────────
 
 export async function savePago(
@@ -713,6 +730,8 @@ export interface GeneralTabData {
   pagoWebId:         string | null;
   phoneCode:         string | null;
   tratamientoExiste: boolean;
+  idTratamiento:     number | null;
+  citaExiste:        boolean;
 }
 
 export async function getGeneralTabData(
@@ -721,7 +740,7 @@ export async function getGeneralTabData(
   id_podologo:  number,
   id_sucursal:  number,
 ): Promise<GeneralTabData> {
-  const [antRows, sRows, pRows, podRows, sucRows, urlRows, pagoRows, phoneRows, tratRows] = await Promise.all([
+  const [antRows, sRows, pRows, podRows, sucRows, urlRows, pagoRows, phoneRows, tratRows, citaRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_antecedente_medico],[id_paciente]
               ,CONVERT(varchar(10), [fecha_registro], 120) AS fecha_registro
@@ -781,8 +800,14 @@ export async function getGeneralTabData(
       { id_paciente },
     ),
     db.queryParams(
-      `SELECT TOP 1 1 AS existe
+      `SELECT TOP 1 [id_tratamiento]
          FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
+    db.queryParams(
+      `SELECT TOP 1 1 AS existe
+         FROM [CentroPodologico].[dbo].[citas]
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
     ),
@@ -799,6 +824,8 @@ export async function getGeneralTabData(
   const pago  = (pagoRows[0]  as { webid?:  string } | undefined);
   const phone = (phoneRows[0] as { codigo?: string } | undefined);
 
+  const trat = (tratRows[0] as { id_tratamiento?: number } | undefined);
+
   return {
     antecedentes:      (antRows[0] as IAntecedenteMedico) ?? null,
     serviciosUsados:   sRows as ServicioResumen[],
@@ -810,6 +837,8 @@ export async function getGeneralTabData(
     pagoWebId:         pago?.webid  ?? null,
     phoneCode:         phone?.codigo ?? null,
     tratamientoExiste: tratRows.length > 0,
+    idTratamiento:     trat?.id_tratamiento ?? null,
+    citaExiste:        citaRows.length > 0,
   };
 }
 
