@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import PacienteFila from "./componentes/PacienteFila";
 import PacienteModal from "./componentes/PacienteModal";
 import { getPacientes, savePaciente, buscarPacientesExternos, buscarPacientesPorSucursal, getPhoneCodes } from "./actions";
+import { SucursalName } from "../componentes/SucursalName";
 
 const EMPTY: IPaciente = {
   id_paciente:                  0,
@@ -153,12 +154,13 @@ export default function PacientesPage() {
 
   return (
     <div>
+      <SucursalName/>
       <div className="mb-4 flex items-center gap-4">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Pacientes</h2>
         <div className="flex flex-1 items-center gap-2">
           <input
             type="text"
-            placeholder="Buscar externos (Enter)…"
+            placeholder="Buscar pacientes en todas las sucursales por nombre, apellidos o whatsapp… (Enter para buscar)"
             value={extSearch}
             onChange={(e) => setExtSearch(e.target.value)}
             onKeyDown={handleExtSearch}
@@ -166,6 +168,7 @@ export default function PacientesPage() {
           />
           {extLoading && <span className="text-xs text-zinc-400">Buscando…</span>}
         </div>
+          
         <button
           onClick={openNew}
           className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
@@ -192,6 +195,7 @@ export default function PacientesPage() {
                     {canSeeWhatsapp && <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Teléfono</th>}
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sexo</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sucursal</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Onicomicosis</th>
                     <th className="px-4 py-2" />
                   </tr>
                 </thead>
@@ -247,6 +251,7 @@ export default function PacientesPage() {
                     </span>
                   </th>
                 ))}
+                <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">Onicomicosis</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>

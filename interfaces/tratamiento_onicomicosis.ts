@@ -13,6 +13,7 @@ export interface ITratamientoOnicomicosis {
   id_especialista:        number;
   new_message:            boolean;
   message:                string | null;
+  id_billing_stage:       number | null;
 }
 
 export interface ITratamientoOnicomicosisListRow {

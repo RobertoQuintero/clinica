@@ -346,6 +346,18 @@ export async function createPagoTratamiento(data: {
   }
 }
 
+export async function hasPagoTipo2(id_tratamiento: number): Promise<boolean> {
+  const rows = await db.queryParams(
+    `SELECT TOP 1 1 AS existe
+       FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
+      WHERE [id_tratamiento] = @id_tratamiento
+        AND [id_tratamiento_pago_tipo] = 2
+        AND [status] = 1`,
+    { id_tratamiento }
+  );
+  return rows.length > 0;
+}
+
 export async function deletePagoTratamiento(
   id_tratamiento_pago: number
 ): Promise<{ ok: boolean; message?: string }> {

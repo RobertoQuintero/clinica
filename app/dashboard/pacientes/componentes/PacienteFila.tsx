@@ -20,6 +20,13 @@ export default function PacienteFila({ paciente: p, onEdit, showWhatsapp = false
       {showWhatsapp && <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.whatsapp}</td>}
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.sexo}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.nombre_sucursal ?? "—"}</td>
+      <td className="px-4 py-3">
+        {p.en_tratamiento_onicomicosis === "Tratamiento" && (
+          <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+            Tratamiento
+          </span>
+        )}
+      </td>
       <td className="px-4 py-3 flex gap-2">
         <button
           onClick={() => onEdit(p)}

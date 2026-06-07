@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import UsuarioFila from "./componentes/UsuarioFila";
 import UsuarioModal from "./componentes/UsuarioModal";
 import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario } from "./actions";
+import { SucursalName } from "../componentes/SucursalName";
 
 const EMPTY: IUser = {
   id_user:           0,
@@ -157,6 +158,7 @@ export default function UsuariosPage() {
 
   return (
     <div>
+      <SucursalName/>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Usuarios</h2>
         {/* <button

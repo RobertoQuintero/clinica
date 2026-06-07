@@ -8,6 +8,7 @@ import {
   getArchivosByConsulta,
   markTratamientoRevisado,
   updateTratamientoStage,
+  hasPagoTipo2,
 } from "@/app/dashboard/tratamientos/actions";
 import { ITratamientoOnicomicosis } from "@/interfaces/tratamiento_onicomicosis";
 import AccordionSolicitud from "./componentes/AccordionSolicitud";
@@ -78,6 +79,7 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [cancellingStage, setCancellingStage]     = useState(false);
   const [errorCancel, setErrorCancel]             = useState<string | null>(null);
+  const [tienePagoTipo2, setTienePagoTipo2]       = useState(false);
 
   useEffect(() => {
     getTratamientoDetalle(id_tratamiento).then(async (row) => {
@@ -85,8 +87,12 @@ export default function TratamientoDetallePage({ params }: Props) {
         setNotFound(true);
       } else {
         setDetalle(row as DetailRow);
-        const imgs = await getArchivosByConsulta(row.id_consulta);
+        const [imgs, tienePago] = await Promise.all([
+          getArchivosByConsulta(row.id_consulta),
+          hasPagoTipo2(id_tratamiento),
+        ]);
         setArchivos(imgs);
+        setTienePagoTipo2(tienePago);
       }
       setLoading(false);
     });
@@ -192,12 +198,14 @@ export default function TratamientoDetallePage({ params }: Props) {
           {
             user?.id_role !== 5 && (
               <div className="flex gap-2">
+                {tienePagoTipo2 && (
                 <button
                   onClick={openCrearCitaByTratamiento}
                   className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
                 >
                   Crear cita
                 </button>
+                )}
                 {detalle.id_stage !== 6 && (
                   <button
                     onClick={() => { setErrorCancel(null); setShowConfirmCancel(true); }}

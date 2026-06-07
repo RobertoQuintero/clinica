@@ -483,7 +483,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
         <div id="cancelada" className="flex items-center gap-2">
 
           {
-            (patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1)&& pagado && !tratamientoExiste && (
+            (patologia?.onicomicosis_grado_2 === true || (patologia?.onicomicosis_grado_2 as unknown) === 1)&& pagado && !tratamientoExiste && !consulta?.is_onicomicosis && (
                 <Link
                   href={`/dashboard/pacientes/${consulta.id_paciente}/consultas/${consulta.id_consulta}/tratamiento`}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"

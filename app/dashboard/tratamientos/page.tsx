@@ -6,6 +6,7 @@ import { useSucursal } from "@/contexts/SucursalContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTratamientos, searchTratamientos } from "./actions";
 import TratamientoFila from "./componentes/TratamientoFila";
+import { SucursalName } from "../componentes/SucursalName";
 
 export default function TratamientosPage() {
   const { selectedId } = useSucursal();
@@ -54,6 +55,7 @@ export default function TratamientosPage() {
 
   return (
     <div className="p-6">
+      <SucursalName/>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
           Tratamientos Onicomicosis

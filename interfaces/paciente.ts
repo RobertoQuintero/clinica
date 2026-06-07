@@ -19,4 +19,5 @@ export interface IPaciente {
     id_empresa:                   number;
     id_phone_code:                number | null;
     nombre_sucursal?:             string;
+    en_tratamiento_onicomicosis?: string;
 }

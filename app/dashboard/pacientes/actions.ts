@@ -54,7 +54,14 @@ export async function getPacientes(): Promise<IPaciente[]> {
             p.[id_sucursal],
             p.[id_empresa],
             p.[id_phone_code],
-            s.[nombre] AS nombre_sucursal
+            s.[nombre] AS nombre_sucursal,
+            ISNULL((SELECT TOP 1 'Tratamiento'
+                      FROM [CentroPodologico].[dbo].[consultas] DC
+                      JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] DT
+                        ON DT.[id_consulta] = DC.[id_consulta]
+                     WHERE DC.[id_paciente] = p.[id_paciente]
+                       AND ISNULL(DT.[id_tratamiento], 0) > 0
+                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
@@ -189,12 +196,20 @@ export async function buscarPacientesExternos(query: string): Promise<IPaciente[
             p.[id_sucursal],
             p.[id_empresa],
             p.[id_phone_code],
-            s.[nombre] AS nombre_sucursal
+            s.[nombre] AS nombre_sucursal,
+            ISNULL((SELECT TOP 1 'Tratamiento'
+                      FROM [CentroPodologico].[dbo].[consultas] DC
+                      JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] DT
+                        ON DT.[id_consulta] = DC.[id_consulta]
+                     WHERE DC.[id_paciente] = p.[id_paciente]
+                       AND ISNULL(DT.[id_tratamiento], 0) > 0
+                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
       WHERE p.[id_empresa] = @id_empresa
         AND ${wordClauses.join(" AND ")}`,
+
     params
   );
   return data as IPaciente[];
@@ -235,7 +250,14 @@ export async function buscarPacientesPorSucursal(query: string): Promise<IPacien
             p.[id_sucursal],
             p.[id_empresa],
             p.[id_phone_code],
-            s.[nombre] AS nombre_sucursal
+            s.[nombre] AS nombre_sucursal,
+            ISNULL((SELECT TOP 1 'Tratamiento'
+                      FROM [CentroPodologico].[dbo].[consultas] DC
+                      JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] DT
+                        ON DT.[id_consulta] = DC.[id_consulta]
+                     WHERE DC.[id_paciente] = p.[id_paciente]
+                       AND ISNULL(DT.[id_tratamiento], 0) > 0
+                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]

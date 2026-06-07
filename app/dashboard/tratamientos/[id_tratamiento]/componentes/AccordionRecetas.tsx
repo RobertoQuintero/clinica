@@ -195,7 +195,9 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
       {open && (
         <div className="border-t border-zinc-200 dark:border-zinc-700 px-5 py-4 space-y-4">
           {/* upload controls */}
-          <div className="flex justify-end gap-2">
+          {
+            id_role === 5 ||id_role === 1 ||id_role === 4 &&
+            <div className="flex justify-end gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -247,6 +249,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
               )}
             </button>
           </div>
+          }
 
           {error && (
             <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/30 dark:text-red-400">
@@ -299,7 +302,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
                         </a>
                       </td>
                       <td className="px-4 py-3">
-                        {waUrl ? (
+                        {id_role!==5? waUrl ? (
                           <a
                             href={waUrl}
                             target="_blank"
@@ -314,7 +317,8 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
                           </a>
                         ) : (
                           <span className="text-xs text-zinc-400">Sin WhatsApp</span>
-                        )}
+                        )
+                        :<></>}
                       </td>
                     </tr>
                     );

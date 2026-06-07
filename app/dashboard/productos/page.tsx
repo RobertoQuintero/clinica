@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getProductos, saveProducto } from "./actions";
 import ProductoFila from "./componentes/ProductoFila";
 import ProductoModal from "./componentes/ProductoModal";
+import { SucursalName } from "../componentes/SucursalName";
 
 type FormData = Pick<IProducto, "id_producto" | "nombre" | "precio" | "descripcion" | "id_sucursal">;
 
@@ -95,6 +96,7 @@ export default function ProductosPage() {
 
   return (
     <div>
+      <SucursalName/>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Productos</h2>
         {!readOnly && (

@@ -112,12 +112,12 @@ export async function saveTratamiento(
              ([id_tratamiento],[id_consulta],[peso],[talla],[altura],
               [antecedentes_cronicos],[antecedentes_hepaticos],[medicacion_actual],
               [created_at],[id_stage],[id_usuario],[id_especialista],
-              [new_message],[message])
+              [new_message],[message],[id_billing_stage])
            VALUES
              (@id_tratamiento,@id_consulta,@peso,@talla,@altura,
               @antecedentes_cronicos,@antecedentes_hepaticos,@medicacion_actual,
               @created_at,1,@id_usuario,@id_especialista,
-              1,'SOLICITUD')
+              1,'SOLICITUD',1)
 
            DECLARE @id_pago INT =
              (SELECT ISNULL(MAX([id_tratamiento_pago]), 0) + 1

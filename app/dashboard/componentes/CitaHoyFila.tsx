@@ -24,12 +24,10 @@ export default function CitaHoyFila({ cita, busy, onCancelar, onEmpezar }: Props
       </td>
       <td className="px-4 py-2 text-zinc-800 dark:text-zinc-100 max-w-35 truncate">{cita.nombre_paciente}</td>
       <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 hidden sm:table-cell">{cita.nombre_podologo}</td>
-      {
-        cita.id_tratamiento&&
-        <td className="px-4 py-2 text-zinc-800 dark:text-zinc-100 max-w-35 truncate">
-          <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs text-amber-800 dark:text-amber-300">Tratamiento</span>
+      <td className="px-4 py-2 text-zinc-800 dark:text-zinc-100 max-w-35 truncate">
+          <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5 text-xs text-amber-800 dark:text-amber-300">{cita.id_tratamiento?'Tratamiento':''}</span>
           </td>
-      }
+      
       <td className="px-4 py-2 text-right space-x-2 whitespace-nowrap">
         <button
           disabled={busy}

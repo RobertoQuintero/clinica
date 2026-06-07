@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getPacientesFaltantes, IPacienteFaltante } from "../actions";
 import { useSucursal } from "@/contexts/SucursalContext";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 const fmtDate = (val: string | null) => {
   if (!val) return "Sin consultas";
@@ -14,6 +15,7 @@ const fmtDate = (val: string | null) => {
 
 export default function PacientesFaltantes() {
   const { selectedId } = useSucursal();
+  const { user } = useAuth();
   const [pacientes, setPacientes] = useState<IPacienteFaltante[]>([]);
   const [loading, setLoading]     = useState(true);
   const [dias, setDias]         = useState(60);
@@ -95,7 +97,7 @@ export default function PacientesFaltantes() {
                 {fmtDate(p.ultima_consulta)}
               </td>
               <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 hidden md:table-cell">
-                {p.whatsapp || p.telefono || "—"}
+                { user?.id_role===1||user?.id_role===4 ? (p.whatsapp || p.telefono || "—") : ""}
               </td>
             </tr>
           ))}

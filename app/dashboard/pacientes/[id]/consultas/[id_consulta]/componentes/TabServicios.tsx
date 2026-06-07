@@ -66,7 +66,9 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
   };
 
   // All services loaded for this sucursal must have a selection before continuing
-  const canContinuar = is_onicomicosis || (servicios.length > 0 && servicios.every((s) => getSelected(s.id_servicio) !== 0));
+  const canContinuar = 
+  // is_onicomicosis || 
+  (servicios.length > 0 && servicios.every((s) => getSelected(s.id_servicio) !== 0));
 
   const handleSelect = (
     id_servicio:        number,

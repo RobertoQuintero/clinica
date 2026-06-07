@@ -10,6 +10,7 @@ import { getVentas, getMetodosPagos, saveVenta, VentaForm } from "./actions";
 import { getProductos } from "@/app/dashboard/productos/actions";
 import VentaFila from "./componentes/VentaFila";
 import VentaModal from "./componentes/VentaModal";
+import { SucursalName } from "../componentes/SucursalName";
 
 const EMPTY: VentaForm = {
   id_venta:    0,
@@ -20,7 +21,7 @@ const EMPTY: VentaForm = {
 };
 
 export default function VentasPage() {
-  const { selectedId } = useSucursal();
+  const { selectedId} = useSucursal();
   const today = addZeroToday(new Date());
 
   const [ventas, setVentas]           = useState<IVenta[]>([]);
@@ -115,6 +116,7 @@ export default function VentasPage() {
 
   return (
     <div className="p-6 flex flex-col gap-6">
+      <SucursalName/>
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-50">Ventas</h1>
