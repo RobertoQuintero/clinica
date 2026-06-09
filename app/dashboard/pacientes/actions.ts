@@ -55,13 +55,15 @@ export async function getPacientes(): Promise<IPaciente[]> {
             p.[id_empresa],
             p.[id_phone_code],
             s.[nombre] AS nombre_sucursal,
-            ISNULL((SELECT TOP 1 'Tratamiento'
+            ISNULL((SELECT TOP 1 iif(dt.id_stage=5,'Finalizado','Tratamiento')
                       FROM [CentroPodologico].[dbo].[consultas] DC
                       JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] DT
                         ON DT.[id_consulta] = DC.[id_consulta]
                      WHERE DC.[id_paciente] = p.[id_paciente]
                        AND ISNULL(DT.[id_tratamiento], 0) > 0
-                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis
+                       AND DT.[id_stage] < 6
+                       order by dt.id_tratamiento desc
+                       ) , '') AS en_tratamiento_onicomicosis
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
@@ -70,6 +72,7 @@ export async function getPacientes(): Promise<IPaciente[]> {
         ORDER BY p.[created_at] DESC`,
     { id_sucursal, id_empresa }
   );
+  console.log(data)
   return data as IPaciente[];
 }
 

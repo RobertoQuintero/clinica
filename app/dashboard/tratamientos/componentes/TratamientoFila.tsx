@@ -23,6 +23,7 @@ export default function TratamientoFila({ tratamiento: t }: Props) {
       </td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{t.nombre_paciente}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_especialista}</td>
+      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.pago_especialista}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_usuario}</td>
       <td className="px-4 py-3">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">

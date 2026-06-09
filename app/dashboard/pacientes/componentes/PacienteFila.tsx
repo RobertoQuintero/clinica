@@ -21,9 +21,9 @@ export default function PacienteFila({ paciente: p, onEdit, showWhatsapp = false
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.sexo}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{p.nombre_sucursal ?? "—"}</td>
       <td className="px-4 py-3">
-        {p.en_tratamiento_onicomicosis === "Tratamiento" && (
+        {p.en_tratamiento_onicomicosis  && (
           <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-            Tratamiento
+            {p.en_tratamiento_onicomicosis}
           </span>
         )}
       </td>

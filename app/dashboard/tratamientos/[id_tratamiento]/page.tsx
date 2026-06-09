@@ -9,10 +9,12 @@ import {
   markTratamientoRevisado,
   updateTratamientoStage,
   hasPagoTipo2,
+  getConsultasByTratamiento,
 } from "@/app/dashboard/tratamientos/actions";
 import { ITratamientoOnicomicosis } from "@/interfaces/tratamiento_onicomicosis";
 import AccordionSolicitud from "./componentes/AccordionSolicitud";
 import AccordionPagos from "./componentes/AccordionPagos";
+import AccordionEgresos from "./componentes/AccordionEgresos";
 import AccordionRecetas from "./componentes/AccordionRecetas";
 import AccordionConsultas from "./componentes/AccordionConsultas";
 
@@ -80,6 +82,10 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [cancellingStage, setCancellingStage]     = useState(false);
   const [errorCancel, setErrorCancel]             = useState<string | null>(null);
   const [tienePagoTipo2, setTienePagoTipo2]       = useState(false);
+  const [numConsultas, setNumConsultas]             = useState(0);
+  const [finalizando, setFinalizando]               = useState(false);
+  const [showConfirmFinalizar, setShowConfirmFinalizar] = useState(false);
+  const [errorFinalizar, setErrorFinalizar]         = useState<string | null>(null);
 
   useEffect(() => {
     getTratamientoDetalle(id_tratamiento).then(async (row) => {
@@ -87,12 +93,14 @@ export default function TratamientoDetallePage({ params }: Props) {
         setNotFound(true);
       } else {
         setDetalle(row as DetailRow);
-        const [imgs, tienePago] = await Promise.all([
+        const [imgs, tienePago, consultas] = await Promise.all([
           getArchivosByConsulta(row.id_consulta),
           hasPagoTipo2(id_tratamiento),
+          getConsultasByTratamiento(id_tratamiento),
         ]);
         setArchivos(imgs);
         setTienePagoTipo2(tienePago);
+        setNumConsultas(consultas.length);
       }
       setLoading(false);
     });
@@ -196,7 +204,7 @@ export default function TratamientoDetallePage({ params }: Props) {
           )}
         </div>
           {
-            user?.id_role !== 5 && (
+            user?.id_role !== 5 && detalle.id_stage!==5 && (
               <div className="flex gap-2">
                 {tienePagoTipo2 && (
                 <button
@@ -205,6 +213,14 @@ export default function TratamientoDetallePage({ params }: Props) {
                 >
                   Crear cita
                 </button>
+                )}
+                {numConsultas >= 6 && detalle.id_stage !== 5 && detalle.id_stage !== 6 && (
+                  <button
+                    onClick={() => { setErrorFinalizar(null); setShowConfirmFinalizar(true); }}
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 whitespace-nowrap"
+                  >
+                    Finalizar
+                  </button>
                 )}
                 {detalle.id_stage !== 6 && (
                   <button
@@ -227,8 +243,11 @@ export default function TratamientoDetallePage({ params }: Props) {
           />
         {
           user?.id_role !== 5 && 
+          <>
           <AccordionPagos id_tratamiento={id_tratamiento} />
+          </>
         }
+        <AccordionEgresos id_tratamiento={id_tratamiento} />
         <AccordionRecetas
           id_tratamiento={id_tratamiento}
           nombre_paciente={detalle.nombre_paciente}
@@ -245,8 +264,32 @@ export default function TratamientoDetallePage({ params }: Props) {
         />
       </div>
 
+      {showConfirmFinalizar && (
+        <ConfirmModal
+          message="¿Estás seguro de que deseas finalizar este tratamiento?"
+          confirmLabel="Aceptar"
+          loading={finalizando}
+          error={errorFinalizar}
+          onCancel={() => setShowConfirmFinalizar(false)}
+          onConfirm={async () => {
+            setFinalizando(true);
+            setErrorFinalizar(null);
+            try {
+              await updateTratamientoStage(id_tratamiento, 5);
+              setDetalle((prev) => prev ? { ...prev, id_stage: 5 } : prev);
+              setShowConfirmFinalizar(false);
+            } catch {
+              setErrorFinalizar("Error al finalizar el tratamiento");
+            } finally {
+              setFinalizando(false);
+            }
+          }}
+        />
+      )}
+
       {showConfirmCancel && (
         <ConfirmModal
+        confirmLabel="Aceptar"
           message="¿Estás seguro de que deseas cancelar este tratamiento?"
           loading={cancellingStage}
           error={errorCancel}

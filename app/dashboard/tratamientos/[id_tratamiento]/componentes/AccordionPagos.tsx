@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   getPagosByTratamiento,
   getMetodosPagoTratamiento,
-  getDefaultTotalTipo2,
+  getDefaultTotalTipo1,
   createPagoTratamiento,
   deletePagoTratamiento,
   updatePagoTratamiento,
@@ -55,7 +55,7 @@ export default function AccordionPagos({ id_tratamiento }: Props) {
     Promise.all([
       getPagosByTratamiento(id_tratamiento),
       getMetodosPagoTratamiento(),
-      getDefaultTotalTipo2(),
+      getDefaultTotalTipo1(),
     ]).then(([payments, mets, defTotal]) => {
       setPagos(payments);
       setMetodos(mets);
@@ -137,7 +137,7 @@ export default function AccordionPagos({ id_tratamiento }: Props) {
           className="flex w-full items-center justify-between px-6 py-4 text-left"
         >
           <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
-            Pagos
+            Pagos (Ingresos)
           </span>
           <svg
             className={`h-4 w-4 text-zinc-500 transition-transform dark:text-zinc-400 ${open ? "rotate-180" : ""}`}

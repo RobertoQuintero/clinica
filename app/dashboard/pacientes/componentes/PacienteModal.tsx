@@ -1,7 +1,9 @@
 "use client";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPhoneCode } from "@/interfaces/phone_code";
+import { buildDateReverse } from "@/utils/date_helpper";
 
 interface Props {
   form: IPaciente;
@@ -13,7 +15,13 @@ interface Props {
   onClose: () => void;
 }
 
+
 export default function PacienteModal({ form, saving, error, phoneCodes, onChange, onSubmit, onClose }: Props) {
+  const {user}= useAuth()
+  const date=new Date(form.created_at)
+  date.setHours(date.getHours()+8)
+ 
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
@@ -46,7 +54,11 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
               />
             </label>
           ))}
-          <label className="flex flex-col gap-1">
+          
+          {
+            ((new Date()< date)||user?.id_role===1||user?.id_role===4|| !form.id_paciente)&&
+            <>
+            <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Código telefónico (WhatsApp)</span>
             <select
               name="id_phone_code"
@@ -62,7 +74,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1">
+            <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">WhatsApp</span>
             <input
               type="text"
@@ -72,6 +84,9 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
           </label>
+            </>
+          }
+          
           {(
             [
               { name: "telefono",                     label: "Teléfono",                     type: "text" },

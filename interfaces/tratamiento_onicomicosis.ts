@@ -28,6 +28,7 @@ export interface ITratamientoOnicomicosisListRow {
   new_message:         boolean;
   message:             string | null;
   num_consultas:       number;
+  pago_especialista:        string;
 }
 
 export interface ITratamientoPagoOnicomicosis {

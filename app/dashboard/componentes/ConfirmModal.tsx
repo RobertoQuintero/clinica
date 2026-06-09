@@ -9,9 +9,10 @@ interface Props {
   onCancel: () => void;
   loading?: boolean;
   error?: string | null;
+  confirmLabel?: string;
 }
 
-export default function ConfirmModal({ message, onConfirm, onCancel, loading, error }: Props) {
+export default function ConfirmModal({ message, onConfirm, onCancel, loading, error, confirmLabel = "Eliminar" }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return null;
@@ -40,7 +41,7 @@ export default function ConfirmModal({ message, onConfirm, onCancel, loading, er
             disabled={loading}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
           >
-            {loading ? "Eliminando…" : "Eliminar"}
+            {loading ? `${confirmLabel}…` : confirmLabel}
           </button>
         </div>
       </div>

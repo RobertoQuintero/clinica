@@ -42,7 +42,14 @@ export async function getTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas,
+            isnull((select 
+                    top 1
+                    es.name
+                    from dbo.egresos DE
+                    left join dbo.egreso_stages ES on ES.id_egreso_stage=DE.id_egreso_stage
+                    where id_tabla_referencia=t.id_tratamiento
+                    order by de.created_at desc),'Por pagar') pago_especialista
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
@@ -284,6 +291,16 @@ export async function getPagosByTratamiento(
   return data as IPagoTratamientoRow[];
 }
 
+export async function getDefaultTotalTipo1(): Promise<number> {
+  const rows = await db.queryParams(
+    `SELECT [total]
+       FROM [CentroPodologico].[dbo].[Tratamiento_pagos_tipos]
+      WHERE [id_tratamiento_pago_tipo] = @id`,
+    { id: 1 }
+  );
+  return rows.length > 0 ? Number(rows[0].total) : 0;
+}
+
 export async function getDefaultTotalTipo2(): Promise<number> {
   const rows = await db.queryParams(
     `SELECT [total]
@@ -470,6 +487,260 @@ export async function saveRecetaTratamiento(data: {
     return { ok: false, message: "Error al guardar la receta" };
   }
 }
+
+// ─── egresos ──────────────────────────────────────────────────────────────────
+
+export interface IEgresoRow {
+  id_egreso:          number;
+  id_egreso_tipo:     number;
+  nombre_tipo:        string;
+  id_tabla_referencia: number;
+  idMetodoPago:       number;
+  metodo_pago:        string;
+  iva_bit:            number;
+  iva:                number;
+  monto:              number;
+  created_at:         string;
+  deleted_at:         string | null;
+  id_user_capturo:    number;
+  user:               string;
+  id_user_elimino:    number | null;
+  id_egreso_stage:    number;
+  stage:              string;
+  referencia:         string;
+  status:             number;
+}
+
+export interface IEgresoArchivoRow {
+  id_egreso_archivo: number;
+  id_egreso:         number;
+  url:               string;
+  created_at:        string;
+  status:            number;
+  id_user:           number;
+  user:              string;
+}
+
+export async function getEgresosByTratamiento(
+  id_tratamiento: number
+): Promise<IEgresoRow[]> {
+  const data = await db.queryParams(
+    `SELECT DE.[id_egreso],
+            DE.[id_egreso_tipo],
+            ISNULL(ET.[name], '—') AS nombre_tipo,
+            DE.[id_tabla_referencia],
+            DE.[idMetodoPago],
+            ISNULL(MP.[descripcion], '—') AS metodo_pago,
+            DE.[iva_bit],
+            DE.[iva],
+            DE.[monto],
+            CONVERT(varchar(19), DE.[created_at], 120) AS created_at,
+            CONVERT(varchar(19), DE.[deleted_at],  120) AS deleted_at,
+            DE.[id_user_capturo],
+            ISNULL(DU.[nombre], '—') AS [user],
+            DE.[id_user_elimino],
+            DE.[id_egreso_stage],
+            ISNULL(ES.[name], '—') AS stage,
+            ISNULL(DE.[referencia], '') AS referencia,
+            DE.[status]
+       FROM [CentroPodologico].[dbo].[Egresos] DE
+  LEFT JOIN [CentroPodologico].[dbo].[egresos_tipos] ET
+         ON ET.[id_egreso_tipo] = DE.[id_egreso_tipo]
+  LEFT JOIN [CentroPodologico].[dbo].[MetodosPagos] MP
+         ON MP.[idMetodoPago] = DE.[idMetodoPago]
+  LEFT JOIN [CentroPodologico].[dbo].[Egreso_stages] ES
+         ON ES.[id_egreso_stage] = DE.[id_egreso_stage]
+  LEFT JOIN [CentroPodologico].[dbo].[Users] DU
+         ON DU.[id_user] = DE.[id_user_capturo]
+      WHERE DE.[status] = 1
+        AND DE.[id_tabla_referencia] = @id_tratamiento
+      ORDER BY DE.[created_at] DESC`,
+    { id_tratamiento }
+  );
+  return data as IEgresoRow[];
+}
+
+export async function getEgresoTipos(): Promise<{ id_egreso_tipo: number; name: string }[]> {
+  const rows = await db.query(
+    `SELECT [id_egreso_tipo], [name]
+       FROM [CentroPodologico].[dbo].[egresos_tipos]`
+  );
+  return rows as { id_egreso_tipo: number; name: string }[];
+}
+
+export async function getEgresoStages(): Promise<{ id_egreso_stage: number; name: string }[]> {
+  const rows = await db.query(
+    `SELECT [id_egreso_stage], [name]
+       FROM [CentroPodologico].[dbo].[Egreso_stages]`
+  );
+  return rows as { id_egreso_stage: number; name: string }[];
+}
+
+export async function createEgreso(data: {
+  id_tratamiento:  number;
+  id_egreso_tipo:  number;
+  idMetodoPago:    number;
+  iva_bit:         number;
+  iva:             number;
+  monto:           number;
+  referencia:      string;
+  id_egreso_stage: number;
+}): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const { id_user } = await getActiveUser();
+    const created_at  = buildDate(new Date());
+    const iva         = data.iva_bit ? Number(data.monto) * 0.16 : 0;
+    await db.queryParams(
+      `
+      declare @id_egreso INT =
+        (SELECT ISNULL(MAX([id_egreso]), 0) + 1 FROM [CentroPodologico].[dbo].[Egresos])
+      INSERT INTO [CentroPodologico].[dbo].[Egresos]
+         ( [id_egreso],[id_egreso_tipo],[id_tabla_referencia],[idMetodoPago],
+          [iva_bit],[iva],[monto],[created_at],[id_user_capturo],
+          [id_egreso_stage],[referencia],[status])
+       VALUES
+         (@id_egreso,@id_egreso_tipo,@id_tratamiento,@idMetodoPago,
+          @iva_bit,@iva,@monto,@created_at,@id_user_capturo,
+          1,@referencia,1)`,
+      {
+       
+        id_egreso_tipo:  Number(data.id_egreso_tipo),
+        id_tratamiento:  Number(data.id_tratamiento),
+        idMetodoPago:    Number(data.idMetodoPago),
+        iva_bit:         Number(data.iva_bit),
+        iva:             String(iva),
+        monto:           String(data.monto),
+        created_at,
+        id_user_capturo: id_user,
+        id_egreso_stage: Number(data.id_egreso_stage),
+        referencia:      data.referencia,
+      }
+    );
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "Error al registrar el egreso" };
+  }
+}
+
+export async function updateEgreso(data: {
+  id_egreso:       number;
+  id_egreso_tipo:  number;
+  idMetodoPago:    number;
+  iva_bit:         number;
+  iva:             number;
+  monto:           number;
+  referencia:      string;
+  id_egreso_stage: number;
+}): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const iva = data.iva_bit ? Number(data.monto) * 0.16 : 0;
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[Egresos]
+          SET [id_egreso_tipo]  = @id_egreso_tipo,
+              [idMetodoPago]    = @idMetodoPago,
+              [iva_bit]         = @iva_bit,
+              [iva]             = @iva,
+              [monto]           = @monto,
+              [referencia]      = @referencia,
+              [id_egreso_stage] = @id_egreso_stage
+        WHERE [id_egreso] = @id_egreso`,
+      {
+        id_egreso:       Number(data.id_egreso),
+        id_egreso_tipo:  Number(data.id_egreso_tipo),
+        idMetodoPago:    Number(data.idMetodoPago),
+        iva_bit:         Number(data.iva_bit),
+        iva:             String(iva),
+        monto:           String(data.monto),
+        referencia:      data.referencia,
+        id_egreso_stage: Number(data.id_egreso_stage),
+      }
+    );
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "Error al actualizar el egreso" };
+  }
+}
+
+export async function deleteEgreso(
+  id_egreso: number
+): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const { id_user } = await getActiveUser();
+    const deleted_at  = buildDate(new Date());
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[Egresos]
+          SET [status]         = 0,
+              [deleted_at]     = @deleted_at,
+              [id_user_elimino] = @id_user_elimino
+        WHERE [id_egreso] = @id_egreso`,
+      { id_egreso, deleted_at, id_user_elimino: id_user }
+    );
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "Error al eliminar el egreso" };
+  }
+}
+
+export async function getArchivosByEgreso(
+  id_egreso: number
+): Promise<IEgresoArchivoRow[]> {
+  const data = await db.queryParams(
+    `SELECT EA.[id_egreso_archivo],
+            EA.[id_egreso],
+            EA.[url],
+            CONVERT(varchar(19), EA.[created_at], 120) AS created_at,
+            EA.[status],
+            EA.[id_user],
+            ISNULL(DU.[nombre], '—') AS [user]
+       FROM [CentroPodologico].[dbo].[Egresos_archivos] EA
+  LEFT JOIN [CentroPodologico].[dbo].[Users] DU
+         ON DU.[id_user] = EA.[id_user]
+      WHERE EA.[status] = 1
+        AND EA.[id_egreso] = @id_egreso
+      ORDER BY EA.[created_at] DESC`,
+    { id_egreso }
+  );
+  return data as IEgresoArchivoRow[];
+}
+
+export async function saveEgresoArchivo(data: {
+  id_egreso:  number;
+  url:        string;
+  id_user:    number;
+  created_at: string;
+}): Promise<{ ok: boolean; data?: IEgresoArchivoRow; message?: string }> {
+  try {
+    const result = await db.queryParams(
+      `
+      declare @id_egreso_archivo INT =
+        (SELECT ISNULL(MAX([id_egreso_archivo]), 0) + 1 FROM [CentroPodologico].[dbo].[Egresos_archivos])
+      INSERT INTO [CentroPodologico].[dbo].[Egresos_archivos]
+         ( [id_egreso_archivo],[id_egreso],[url],[created_at],[status],[id_user])
+       OUTPUT INSERTED.[id_egreso_archivo], INSERTED.[id_egreso],
+              INSERTED.[url],
+              CONVERT(varchar(19), INSERTED.[created_at], 120) AS created_at,
+              INSERTED.[status], INSERTED.[id_user]
+       VALUES (@id_egreso_archivo, @id_egreso, @url, @created_at, 1, @id_user)`,
+      {
+        id_egreso:  Number(data.id_egreso),
+        url:        data.url,
+        created_at: data.created_at,
+        id_user:    Number(data.id_user),
+      }
+    );
+    const row = result?.[0] as IEgresoArchivoRow | undefined;
+    if (row) row.user = "";
+    return { ok: true, data: row };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "Error al guardar el archivo" };
+  }
+}
+
+// ─── consultas ────────────────────────────────────────────────────────────────
 
 export async function getConsultasByTratamiento(
   id_tratamiento: number
