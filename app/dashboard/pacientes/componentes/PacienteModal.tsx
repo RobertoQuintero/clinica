@@ -19,7 +19,7 @@ interface Props {
 export default function PacienteModal({ form, saving, error, phoneCodes, onChange, onSubmit, onClose }: Props) {
   const {user}= useAuth()
   const date=new Date(form.created_at)
-  date.setHours(date.getHours()+8)
+  date.setHours(date.getHours()+24)
  
 
   return (
@@ -56,7 +56,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
           ))}
           
           {
-            ((new Date()< date)||user?.id_role===1||user?.id_role===4|| !form.id_paciente)&&
+            ((new Date()< date)||!form.id_paciente ||( user?.id_role===1||user?.id_role===4))&&
             <>
             <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Código telefónico (WhatsApp)</span>

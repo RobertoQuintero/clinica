@@ -193,6 +193,12 @@ export interface IVentaMensualStat {
   mes: string;
   total_servicios: number;
   total_productos: number;
+  total_tratamientos: number;
+}
+
+export interface ITratamientoStat {
+  total_pagos: number;
+  total_ingresos: number;
 }
 
 export interface IEstadisticasData {
@@ -201,6 +207,7 @@ export interface IEstadisticasData {
   productos: IProductoStat[];
   metodos_pago: IMetodoPagoStat[];
   ventas_mensuales: IVentaMensualStat[];
+  tratamientos: ITratamientoStat;
 }
 
 export async function getEstadisticas(
@@ -211,7 +218,7 @@ export async function getEstadisticas(
   try {
     const { id_empresa } = await getActiveUser();
 
-    const [servicios, productos, metodos_pago, ventas_mensuales] = await Promise.all([
+    const [servicios, productos, metodos_pago, ventas_mensuales, tratamientosRows] = await Promise.all([
       db.queryParams(
         `SELECT
            s.[nombre]                          AS nombre,
@@ -267,19 +274,36 @@ export async function getEstadisticas(
 
       db.queryParams(
         `SELECT
-           mp.[descripcion]         AS nombre,
-           COUNT(pg.[id_pago])      AS total_pagos,
-           SUM(pg.[monto])          AS total_monto
-         FROM [CentroPodologico].[dbo].[pagos] pg
+           mp.[descripcion]  AS nombre,
+           COUNT(*)          AS total_pagos,
+           SUM(src.[monto])  AS total_monto
+         FROM (
+           SELECT pg.[idMetodoPago], pg.[monto]
+           FROM [CentroPodologico].[dbo].[pagos] pg
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON pg.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] = @id_sucursal
+             AND pg.[fecha_pago] >= @fecha_inicio
+             AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date)) and pg.status=1
+           UNION ALL
+           SELECT top2.[idMetodoPago], top2.[total] AS monto
+           FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
+           INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
+             ON top2.[id_tratamiento] = tr.[id_tratamiento]
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON tr.[id_consulta] = c.[id_consulta]
+           WHERE top2.[status] = 1
+             AND top2.[id_tratamiento_pago_tipo] = 2
+             AND c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] = @id_sucursal
+             AND top2.[created_at] >= @fecha_inicio
+             AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+         ) src
          INNER JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
-           ON pg.[idMetodoPago] = mp.[idMetodoPago]
-         INNER JOIN [CentroPodologico].[dbo].[consultas] c
-           ON pg.[id_consulta] = c.[id_consulta]
-         WHERE c.[deleted_at] IS NULL
-           AND c.[id_empresa]  = @id_empresa
-           AND c.[id_sucursal] = @id_sucursal
-           AND pg.[fecha_pago] >= @fecha_inicio
-           AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           ON src.[idMetodoPago] = mp.[idMetodoPago]
          GROUP BY mp.[descripcion]
          ORDER BY total_monto DESC`,
         { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
@@ -287,9 +311,10 @@ export async function getEstadisticas(
 
       db.queryParams(
         `SELECT
-           COALESCE(s.mes, p.mes)          AS mes,
-           COALESCE(s.total_servicios, 0)  AS total_servicios,
-           COALESCE(p.total_productos, 0)  AS total_productos
+           COALESCE(s.mes, p.mes, t.mes)          AS mes,
+           COALESCE(s.total_servicios, 0)          AS total_servicios,
+           COALESCE(p.total_productos, 0)          AS total_productos,
+           COALESCE(t.total_tratamientos, 0)       AS total_tratamientos
          FROM (
            SELECT
              CONVERT(varchar(7), c.[fecha], 120)  AS mes,
@@ -318,21 +343,60 @@ export async function getEstadisticas(
              AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
            GROUP BY CONVERT(varchar(7), c.[fecha], 120)
          ) p ON s.mes = p.mes
+         FULL OUTER JOIN (
+           SELECT
+             CONVERT(varchar(7), top2.[created_at], 120) AS mes,
+             SUM(top2.[total])                            AS total_tratamientos
+           FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
+           INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
+             ON top2.[id_tratamiento] = tr.[id_tratamiento]
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON tr.[id_consulta] = c.[id_consulta]
+           WHERE top2.[status] = 1
+             AND top2.[id_tratamiento_pago_tipo] = 2
+             AND c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] = @id_sucursal
+             AND top2.[created_at] >= @fecha_inicio
+             AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY CONVERT(varchar(7), top2.[created_at], 120)
+         ) t ON COALESCE(s.mes, p.mes) = t.mes
          ORDER BY mes`,
+        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
+      ),
+
+      db.queryParams(
+        `SELECT
+           ISNULL(COUNT(top2.[id_tratamiento_pago]), 0) AS total_pagos,
+           ISNULL(SUM(top2.[total]), 0)                 AS total_ingresos
+         FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
+         INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
+           ON top2.[id_tratamiento] = tr.[id_tratamiento]
+         INNER JOIN [CentroPodologico].[dbo].[consultas] c
+           ON tr.[id_consulta] = c.[id_consulta]
+         WHERE top2.[status] = 1
+           AND top2.[id_tratamiento_pago_tipo] = 2
+           AND c.[deleted_at] IS NULL
+           AND c.[id_empresa]  = @id_empresa
+           AND c.[id_sucursal] = @id_sucursal
+           AND top2.[created_at] >= @fecha_inicio
+           AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))`,
         { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
       ),
     ]);
 
+    const tratRows = tratamientosRows as ITratamientoStat[];
     return {
       ok: true,
       servicios: servicios as IServicioStat[],
       productos: productos as IProductoStat[],
       metodos_pago: metodos_pago as IMetodoPagoStat[],
       ventas_mensuales: ventas_mensuales as IVentaMensualStat[],
+      tratamientos: tratRows[0] ?? { total_pagos: 0, total_ingresos: 0 },
     };
   } catch (error) {
     console.error({ error });
-    return { ok: false, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [] };
+    return { ok: false, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [], tratamientos: { total_pagos: 0, total_ingresos: 0 } };
   }
 }
 
@@ -342,7 +406,7 @@ export async function getEstadisticasMultiple(
   sucursal_ids: number[],
 ): Promise<IEstadisticasData> {
   if (sucursal_ids.length === 0) {
-    return { ok: true, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [] };
+    return { ok: true, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [], tratamientos: { total_pagos: 0, total_ingresos: 0 } };
   }
   try {
     const { id_empresa } = await getActiveUser();
@@ -351,7 +415,7 @@ export async function getEstadisticasMultiple(
     sucursal_ids.forEach((id, i) => { sucursalParams[`sid${i}`] = id; });
     const commonParams = { id_empresa, fecha_inicio, fecha_fin, ...sucursalParams };
 
-    const [servicios, productos, metodos_pago, ventas_mensuales] = await Promise.all([
+    const [servicios, productos, metodos_pago, ventas_mensuales, tratamientosRows] = await Promise.all([
       db.queryParams(
         `SELECT
            s.[nombre]                          AS nombre,
@@ -407,19 +471,36 @@ export async function getEstadisticasMultiple(
 
       db.queryParams(
         `SELECT
-           mp.[descripcion]         AS nombre,
-           COUNT(pg.[id_pago])      AS total_pagos,
-           SUM(pg.[monto])          AS total_monto
-         FROM [CentroPodologico].[dbo].[pagos] pg
+           mp.[descripcion]  AS nombre,
+           COUNT(*)          AS total_pagos,
+           SUM(src.[monto])  AS total_monto
+         FROM (
+           SELECT pg.[idMetodoPago], pg.[monto]
+           FROM [CentroPodologico].[dbo].[pagos] pg
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON pg.[id_consulta] = c.[id_consulta]
+           WHERE c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] IN (${placeholders})
+             AND pg.[fecha_pago] >= @fecha_inicio
+             AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date)) and pg.status=1
+           UNION ALL
+           SELECT top2.[idMetodoPago], top2.[total] AS monto
+           FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
+           INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
+             ON top2.[id_tratamiento] = tr.[id_tratamiento]
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON tr.[id_consulta] = c.[id_consulta]
+           WHERE top2.[status] = 1
+             AND top2.[id_tratamiento_pago_tipo] = 2
+             AND c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] IN (${placeholders})
+             AND top2.[created_at] >= @fecha_inicio
+             AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+         ) src
          INNER JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
-           ON pg.[idMetodoPago] = mp.[idMetodoPago]
-         INNER JOIN [CentroPodologico].[dbo].[consultas] c
-           ON pg.[id_consulta] = c.[id_consulta]
-         WHERE c.[deleted_at] IS NULL
-           AND c.[id_empresa]  = @id_empresa
-           AND c.[id_sucursal] IN (${placeholders})
-           AND pg.[fecha_pago] >= @fecha_inicio
-           AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           ON src.[idMetodoPago] = mp.[idMetodoPago]
          GROUP BY mp.[descripcion]
          ORDER BY total_monto DESC`,
         commonParams
@@ -427,9 +508,10 @@ export async function getEstadisticasMultiple(
 
       db.queryParams(
         `SELECT
-           COALESCE(s.mes, p.mes)          AS mes,
-           COALESCE(s.total_servicios, 0)  AS total_servicios,
-           COALESCE(p.total_productos, 0)  AS total_productos
+           COALESCE(s.mes, p.mes, t.mes)          AS mes,
+           COALESCE(s.total_servicios, 0)          AS total_servicios,
+           COALESCE(p.total_productos, 0)          AS total_productos,
+           COALESCE(t.total_tratamientos, 0)       AS total_tratamientos
          FROM (
            SELECT
              CONVERT(varchar(7), c.[fecha], 120)  AS mes,
@@ -458,21 +540,61 @@ export async function getEstadisticasMultiple(
              AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
            GROUP BY CONVERT(varchar(7), c.[fecha], 120)
          ) p ON s.mes = p.mes
+         FULL OUTER JOIN (
+           SELECT
+             CONVERT(varchar(7), top2.[created_at], 120) AS mes,
+             SUM(top2.[total])                            AS total_tratamientos
+           FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
+           INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
+             ON top2.[id_tratamiento] = tr.[id_tratamiento]
+           INNER JOIN [CentroPodologico].[dbo].[consultas] c
+             ON tr.[id_consulta] = c.[id_consulta]
+           WHERE top2.[status] = 1
+             AND top2.[id_tratamiento_pago_tipo] = 2
+             AND c.[deleted_at] IS NULL
+             AND c.[id_empresa]  = @id_empresa
+             AND c.[id_sucursal] IN (${placeholders})
+             AND top2.[created_at] >= @fecha_inicio
+             AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY CONVERT(varchar(7), top2.[created_at], 120)
+         ) t ON COALESCE(s.mes, p.mes) = t.mes
          ORDER BY mes`,
+        commonParams
+      ),
+
+      db.queryParams(
+        `SELECT
+           ISNULL(COUNT(top2.[id_tratamiento_pago]), 0) AS total_pagos,
+           ISNULL(SUM(top2.[total]), 0)                 AS total_ingresos
+         FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
+         INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
+           ON top2.[id_tratamiento] = tr.[id_tratamiento]
+         INNER JOIN [CentroPodologico].[dbo].[consultas] c
+           ON tr.[id_consulta] = c.[id_consulta]
+         WHERE top2.[status] = 1
+           AND top2.[id_tratamiento_pago_tipo] = 2
+           AND c.[deleted_at] IS NULL
+           AND c.[id_empresa]  = @id_empresa
+           AND c.[id_sucursal] IN (${placeholders})
+           AND top2.[created_at] >= @fecha_inicio
+           AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))`,
         commonParams
       ),
     ]);
 
+    const tratRows = tratamientosRows as ITratamientoStat[];
+    console.log(metodos_pago)
     return {
       ok: true,
       servicios: servicios as IServicioStat[],
       productos: productos as IProductoStat[],
       metodos_pago: metodos_pago as IMetodoPagoStat[],
       ventas_mensuales: ventas_mensuales as IVentaMensualStat[],
+      tratamientos: tratRows[0] ?? { total_pagos: 0, total_ingresos: 0 },
     };
   } catch (error) {
     console.error({ error });
-    return { ok: false, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [] };
+    return { ok: false, servicios: [], productos: [], metodos_pago: [], ventas_mensuales: [], tratamientos: { total_pagos: 0, total_ingresos: 0 } };
   }
 }
 

@@ -265,7 +265,7 @@ export default function EstadisticasCharts() {
       setLoading(false);
     }
   };
-
+// console.log(data?.metodos_pago)
   const fetchDataMulti = async (inicio: string, fin: string, ids: number[]) => {
     if (ids.length === 0) { setData(null); return; }
     setLoading(true);
@@ -332,15 +332,17 @@ export default function EstadisticasCharts() {
 
   const totalServicios = data?.servicios.reduce((acc, s) => acc + s.total_ingresos, 0) ?? 0;
   const totalProductos = data?.productos.reduce((acc, p) => acc + p.total_ingresos, 0) ?? 0;
+  const totalTratamientos = data?.tratamientos.total_ingresos ?? 0;
   const ventasTotalesData = [
     { nombre: "Servicios", total: totalServicios, fill: "#587CD6" },
     { nombre: "Productos", total: totalProductos, fill: "#58A4D6" },
+    { nombre: "Tratamientos", total: totalTratamientos, fill: "#58CBD6" },
   ];
   const isMultiMonth = (data?.ventas_mensuales.length ?? 0) > 1;
   const mesTotalMap: Record<string, number> = {};
   if (data) {
     for (const row of data.ventas_mensuales) {
-      mesTotalMap[row.mes] = (row.total_servicios ?? 0) + (row.total_productos ?? 0);
+      mesTotalMap[row.mes] = (row.total_servicios ?? 0) + (row.total_productos ?? 0) + (row.total_tratamientos ?? 0);
     }
   }
 
@@ -466,14 +468,14 @@ export default function EstadisticasCharts() {
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 Total:{" "}
                 <span className="font-semibold text-zinc-800 dark:text-zinc-100">
-                  {fmtCurrency(totalServicios + totalProductos)}
+                  {fmtCurrency(totalServicios + totalProductos + totalTratamientos)}
                 </span>
               </span>
             )}
           </div>
           {loading ? (
             <LoadingBar />
-          ) : !data || (totalServicios === 0 && totalProductos === 0) ? (
+          ) : !data || (totalServicios === 0 && totalProductos === 0 && totalTratamientos === 0) ? (
             <EmptyState />
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -496,6 +498,7 @@ export default function EstadisticasCharts() {
                         <Legend formatter={(value: string) => <span className="text-xs">{value}</span>} />
                         <Bar dataKey="total_servicios" name="Servicios" fill="#587CD6" radius={[6, 6, 0, 0]} />
                         <Bar dataKey="total_productos" name="Productos" fill="#58A4D6" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="total_tratamientos" name="Tratamientos" fill="#58CBD6" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -538,6 +541,15 @@ export default function EstadisticasCharts() {
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">Productos</p>
                     <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
                       {fmtCurrency(totalProductos)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-xl px-4 py-3 min-w-40">
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: "#58CBD6" }} />
+                  <div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Tratamientos</p>
+                    <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                      {fmtCurrency(totalTratamientos)}
                     </p>
                   </div>
                 </div>
