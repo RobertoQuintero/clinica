@@ -72,7 +72,6 @@ export async function getPacientes(): Promise<IPaciente[]> {
         ORDER BY p.[created_at] DESC`,
     { id_sucursal, id_empresa }
   );
-  console.log(data)
   return data as IPaciente[];
 }
 

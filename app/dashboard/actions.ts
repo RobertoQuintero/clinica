@@ -583,7 +583,6 @@ export async function getEstadisticasMultiple(
     ]);
 
     const tratRows = tratamientosRows as ITratamientoStat[];
-    console.log(metodos_pago)
     return {
       ok: true,
       servicios: servicios as IServicioStat[],
