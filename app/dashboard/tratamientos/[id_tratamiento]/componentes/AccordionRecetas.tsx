@@ -196,7 +196,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
         <div className="border-t border-zinc-200 dark:border-zinc-700 px-5 py-4 space-y-4">
           {/* upload controls */}
           {
-            id_role === 5 ||id_role === 1 ||id_role === 4 &&
+            (id_role === 5 ||id_role === 1 ||id_role === 4) &&
             <div className="flex justify-end gap-2">
             <input
               ref={fileInputRef}

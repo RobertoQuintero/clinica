@@ -73,7 +73,7 @@ export async function getConsultaData(
   id_consulta: number,
   id_paciente: number,
 ): Promise<ConsultaData> {
-  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows] = await Promise.all([
+  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows] = await Promise.all([ 
     db.queryParams(
       `SELECT [id_consulta],[id_paciente],[id_podologo]
               ,CONVERT(varchar(19), [fecha],     120) AS fecha

@@ -111,7 +111,7 @@ id_usuario_elimino: null,
     setLoading(true);
     try {
       const [data, mp] = await Promise.all([
-        getConsultaData(id_consulta, id_paciente),
+        getConsultaData(id_consulta, id_paciente), 
         getMetodosPago(),
       ]);
       if (data.consulta)   setConsulta(data.consulta);
