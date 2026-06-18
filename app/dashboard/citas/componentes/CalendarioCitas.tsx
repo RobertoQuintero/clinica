@@ -136,7 +136,7 @@ export default function CalendarioCitas({
 
       {/* Legend */}
       <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1.5 text-xs">
-        {(["agendada", "confirmada", "atendida", "cancelada", "externo"] as const).map((e) => (
+        {(["agendada",  "atendida", "cancelada", "externo"] as const).map((e) => (
           <span key={e} className="flex items-center gap-1.5">
             <span
               className="inline-block h-3 w-3 shrink-0 rounded-sm"

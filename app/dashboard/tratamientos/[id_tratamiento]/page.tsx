@@ -10,7 +10,10 @@ import {
   updateTratamientoStage,
   hasPagoTipo2,
   getConsultasByTratamiento,
+  createConsultaOnicomicosis,
 } from "@/app/dashboard/tratamientos/actions";
+import { getSucursalesActivas } from "@/app/dashboard/pacientes/[id]/expediente/actions";
+import ConsultaModal from "@/app/dashboard/pacientes/[id]/expediente/componentes/ConsultaModal";
 import { ITratamientoOnicomicosis } from "@/interfaces/tratamiento_onicomicosis";
 import AccordionSolicitud from "./componentes/AccordionSolicitud";
 import AccordionPagos from "./componentes/AccordionPagos";
@@ -21,7 +24,9 @@ import AccordionConsultas from "./componentes/AccordionConsultas";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { ICita } from "@/interfaces/cita";
+import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
+import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
 import { buildDate } from "@/utils/date_helpper";
 import { getPacientes, getPodologos, saveCita } from "@/app/dashboard/citas/actions";
@@ -51,6 +56,26 @@ const EMPTY: ICita = {
   deleted_at:         "",
   id_sucursal:        0,
   id_empresa:         0,
+};
+
+const EMPTY_CONSULTA: IConsulta = {
+  id_consulta:          0,
+  id_paciente:          0,
+  id_podologo:          0,
+  fecha:                "",
+  diagnostico:          "",
+  tratamiento_aplicado: "",
+  observaciones:        "",
+  created_at:           "",
+  deleted_at:           "",
+  costo_total:          0,
+  id_sucursal:          0,
+  id_empresa:           0,
+  cancelada:            false,
+  motivo_cancelada:     null,
+  is_onicomicosis:      true,
+  id_tratamiento:       null,
+  id_buzon:             null,
 };
 
 interface Props {
@@ -87,6 +112,14 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [showConfirmFinalizar, setShowConfirmFinalizar] = useState(false);
   const [errorFinalizar, setErrorFinalizar]         = useState<string | null>(null);
 
+  // States for ConsultaModal
+  const [showConsultaModal,   setShowConsultaModal  ] = useState(false);
+  const [consultaForm,        setConsultaForm       ] = useState<IConsulta>(EMPTY_CONSULTA);
+  const [savingConsulta,      setSavingConsulta     ] = useState(false);
+  const [errorConsulta,       setErrorConsulta      ] = useState<string | null>(null);
+  const [sucursales,          setSucursales         ] = useState<ISucursal[]>([]);
+  const [sucursalesLoaded,    setSucursalesLoaded   ] = useState(false);
+
   useEffect(() => {
     getTratamientoDetalle(id_tratamiento).then(async (row) => {
       if (!row) {
@@ -110,6 +143,66 @@ export default function TratamientoDetallePage({ params }: Props) {
     getPacientes().then(setPacientes).catch(console.error);
     getPodologos().then(setPodologos).catch(console.error);
   }, []);
+
+  const openCrearConsulta = async () => {
+    if (!detalle) return;
+    if (!sucursalesLoaded) {
+      const data = await getSucursalesActivas();
+      setSucursales(data);
+      setSucursalesLoaded(true);
+    }
+    setConsultaForm({
+      ...EMPTY_CONSULTA,
+      id_paciente:    detalle.id_paciente,
+      id_podologo:    user?.id_role === 2 ? user.id_user : detalle.id_podologo,
+      id_sucursal:    selectedId || user!.id_sucursal,
+      id_empresa:     user!.id_empresa,
+      id_tratamiento: id_tratamiento,
+    });
+    setErrorConsulta(null);
+    setShowConsultaModal(true);
+  };
+
+  const handleConsultaChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setConsultaForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleConsultaPodologoChange = (id: number) => {
+    setConsultaForm((prev) => ({ ...prev, id_podologo: id }));
+  };
+
+  const handleConsultaSucursalChange = (id: number) => {
+    setConsultaForm((prev) => ({ ...prev, id_sucursal: id }));
+  };
+
+  const handleConsultaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConsulta(true);
+    setErrorConsulta(null);
+    try {
+      const result = await createConsultaOnicomicosis({
+        id_paciente:          consultaForm.id_paciente,
+        id_podologo:          consultaForm.id_podologo,
+        diagnostico:          consultaForm.diagnostico,
+        tratamiento_aplicado: consultaForm.tratamiento_aplicado,
+        observaciones:        consultaForm.observaciones,
+        costo_total:          Number(consultaForm.costo_total),
+        id_sucursal:          consultaForm.id_sucursal,
+        id_empresa:           consultaForm.id_empresa,
+        id_tratamiento:       id_tratamiento,
+      });
+      if (!result.ok) {
+        setErrorConsulta(result.message ?? "Error al crear la consulta");
+      } else {
+        setShowConsultaModal(false);
+        router.push(`/dashboard/pacientes/${detalle!.id_paciente}/consultas/${result.id_consulta}`);
+      }
+    } catch {
+      setErrorConsulta("Error inesperado");
+    } finally {
+      setSavingConsulta(false);
+    }
+  };
 
   const openCrearCitaByTratamiento = () => {
     if (!detalle) return;
@@ -206,6 +299,12 @@ export default function TratamientoDetallePage({ params }: Props) {
           {
             user?.id_role !== 5 && detalle.id_stage!==5 && (
               <div className="flex gap-2">
+                <button
+                  onClick={openCrearConsulta}
+                  className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
+                >
+                  Crear consulta
+                </button>
                 {tienePagoTipo2 && (
                 <button
                   onClick={openCrearCitaByTratamiento}
@@ -320,6 +419,22 @@ export default function TratamientoDetallePage({ params }: Props) {
           onChange={handleChange}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {showConsultaModal && (
+        <ConsultaModal
+          form={consultaForm}
+          saving={savingConsulta}
+          error={errorConsulta}
+          podologos={podologos}
+          sucursales={sucursales}
+          currentUser={user ?? undefined}
+          onChange={handleConsultaChange}
+          onPodologoChange={handleConsultaPodologoChange}
+          onSucursalChange={handleConsultaSucursalChange}
+          onSubmit={handleConsultaSubmit}
+          onClose={() => setShowConsultaModal(false)}
         />
       )}
     </div>

@@ -241,7 +241,10 @@ export default function TabPagar({
       )}
 
       {/* finalizar proceso */}
-      {!procesoPagado && !locked && onFinalizar && (is_onicomicosis || (saldo <= 0 && pagos.length > 0)) && ( 
+      {
+      // !procesoPagado && !locked && onFinalizar && (is_onicomicosis || (saldo <= 0 && pagos.length > 0)) && 
+      !procesoPagado&&
+      ( 
         <div className="flex justify-end">
           <button
             type="button"
@@ -253,11 +256,16 @@ export default function TabPagar({
         </div>
       )}
 
+      
+
       {procesoPagado && (
         <p className="text-center text-sm font-medium text-zinc-500 dark:text-zinc-400">
           Proceso finalizado
         </p>
       )}
+
+      
+      
     </div>
   );
 }

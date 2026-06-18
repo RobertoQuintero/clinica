@@ -4,7 +4,7 @@ import db from "@/database/connection";
 import { ITratamientoOnicomicosis, ITratamientoOnicomicosisListRow } from "@/interfaces/tratamiento_onicomicosis";
 import { IConsulta } from "@/interfaces/consulta";
 import { IAuthUser } from "@/interfaces/auth";
-import { buildDate } from "@/utils/date_helpper";
+import { buildDate, toDBString } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
@@ -764,4 +764,64 @@ export async function getConsultasByTratamiento(
     { id_tratamiento }
   );
   return data as IConsulta[];
+}
+
+export async function createConsultaOnicomicosis(form: {
+  id_paciente:          number;
+  id_podologo:          number;
+  diagnostico:          string;
+  tratamiento_aplicado: string;
+  observaciones:        string;
+  costo_total:          number;
+  id_sucursal:          number;
+  id_empresa:           number;
+  id_tratamiento:       number;
+}): Promise<{ ok: boolean; id_consulta?: number; message?: string }> {
+  try {
+    const created_at = buildDate(new Date());
+    const result = await db.queryParams(
+      `INSERT INTO [CentroPodologico].[dbo].[consultas]
+         ([id_consulta],[id_paciente],[id_podologo],[fecha],[diagnostico],
+          [tratamiento_aplicado],[observaciones],[created_at],[deleted_at],
+          [costo_total],[id_sucursal],[id_empresa],[is_onicomicosis],[id_tratamiento])
+       OUTPUT INSERTED.*
+       VALUES (
+         (SELECT ISNULL(MAX([id_consulta]),0)+1 FROM [CentroPodologico].[dbo].[consultas]),
+         @id_paciente,@id_podologo,@fecha,@diagnostico,
+         @tratamiento_aplicado,@observaciones,@created_at,NULL,
+         @costo_total,@id_sucursal,@id_empresa,1,@id_tratamiento
+       )`,
+      {
+        id_paciente:          form.id_paciente,
+        id_podologo:          form.id_podologo,
+        fecha:                toDBString(created_at) ?? created_at,
+        diagnostico:          form.diagnostico,
+        tratamiento_aplicado: form.tratamiento_aplicado,
+        observaciones:        form.observaciones,
+        created_at,
+        costo_total:          form.costo_total,
+        id_sucursal:          form.id_sucursal,
+        id_empresa:           form.id_empresa,
+        id_tratamiento:       form.id_tratamiento,
+      }
+    );
+    const newConsulta = (result as IConsulta[])?.[0];
+    if (newConsulta?.id_consulta) {
+      await db.queryParams(
+        `INSERT INTO [CentroPodologico].[dbo].[procesos]
+           ([id_proceso],[id_consulta],[valoracion_piel],[patologia_ungueal],
+            [servicios],[productos],[fotos_valoracion],[fotos_pedicure],[pagar])
+         VALUES (
+           (SELECT ISNULL(MAX([id_proceso]),0)+1 FROM [CentroPodologico].[dbo].[procesos]),
+           @id_consulta,0,0,0,0,0,0,0
+         )`,
+        { id_consulta: newConsulta.id_consulta }
+      );
+      return { ok: true, id_consulta: newConsulta.id_consulta };
+    }
+    return { ok: false, message: "No se pudo crear la consulta" };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, message: "Error al crear la consulta" };
+  }
 }
