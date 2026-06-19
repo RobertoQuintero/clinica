@@ -119,6 +119,28 @@ export default function TratamientoPage() {
       return;
     }
 
+    // Send WhatsApp to specialist
+    if (result.especialistaTelefono) {
+      const digits  = result.especialistaTelefono.replace(/\D/g, "");
+      const phone   = digits.startsWith("52") ? digits : `52${digits}`;
+      const fechaFmt = (() => {
+        if (!result.createdAt) return "";
+        const d = new Date(String(result.createdAt).replace(" ", "T"));
+        const dd   = String(d.getDate()).padStart(2, "0");
+        const mm   = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        const hh   = String(d.getHours()).padStart(2, "0");
+        const min  = String(d.getMinutes()).padStart(2, "0");
+        return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+      })();
+      const msg = [
+        `Hola ${result.nombreEspecialista ?? "especialista"}`,
+        `Usted tiene un nuevo tratamiento de ${result.nombrePaciente ?? "Paciente"}${fechaFmt ? `, ${fechaFmt}` : ""}.`,
+        `Favor de revisar la página de piezen.`,
+      ].join("\n");
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    }
+
     router.push(`/dashboard/pacientes/${id_paciente}/consultas/${id_consulta}`);
   };
 

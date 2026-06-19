@@ -49,7 +49,8 @@ export default function TratamientosPage() {
       t.nombre_paciente.toLowerCase().includes(q) ||
       t.nombre_especialista.toLowerCase().includes(q) ||
       t.nombre_usuario.toLowerCase().includes(q) ||
-      t.nombre_stage.toLowerCase().includes(q)
+      t.nombre_stage.toLowerCase().includes(q) ||
+      (t.whatsapp_paciente ?? "").toLowerCase().includes(q)
     );
   });
 
@@ -92,6 +93,9 @@ export default function TratamientosPage() {
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Especialista
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  WhatsApp
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Pago Especialista

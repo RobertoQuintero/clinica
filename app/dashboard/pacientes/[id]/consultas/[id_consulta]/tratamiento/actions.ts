@@ -95,7 +95,7 @@ export async function saveTratamiento(
   id_consulta:  number,
   tratamiento:  TratamientoFormData,
   pago:         PagoFormData,
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<{ ok: boolean; message?: string; id_tratamiento?: number; especialistaTelefono?: string | null; nombreEspecialista?: string; nombrePaciente?: string; createdAt?: string }> {
   try {
     const { id_user } = await getActiveUser();
     const created_at  = buildDate(new Date());
@@ -133,6 +133,8 @@ export async function saveTratamiento(
               1,@created_at,0,CONVERT(varchar,@id_pago)+'-'+@webid,NULL,
               @id_usuario,NULL,NULL,
               1,@referencia)
+
+           SELECT @id_tratamiento AS id_tratamiento
          COMMIT TRANSACTION
        END TRY
        BEGIN CATCH
@@ -157,7 +159,30 @@ export async function saveTratamiento(
       },
     );
 
-    return { ok: true };
+    const idTratamientoResult = await db.queryParams(
+      `SELECT TOP 1 t.[id_tratamiento],
+              CONVERT(varchar(19), t.[created_at], 120) AS created_at,
+              u.[telefono],
+              u.[nombre] AS nombre_especialista,
+              p.[nombre] + ' ' + ISNULL(p.[apellido_paterno],'') + ' ' + ISNULL(p.[apellido_materno],'') AS nombre_paciente
+         FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
+         JOIN [CentroPodologico].[dbo].[Consultas] c ON c.[id_consulta] = t.[id_consulta]
+         JOIN [CentroPodologico].[dbo].[pacientes] p ON p.[id_paciente] = c.[id_paciente]
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = t.[id_especialista]
+        WHERE t.[id_consulta] = @id_consulta
+        ORDER BY t.[id_tratamiento] DESC`,
+      { id_consulta },
+    );
+
+    const row = idTratamientoResult[0];
+    return {
+      ok: true,
+      id_tratamiento:        row ? Number(row.id_tratamiento) : undefined,
+      especialistaTelefono:  row?.telefono ?? null,
+      nombreEspecialista:    row?.nombre_especialista?.trim() ?? undefined,
+      nombrePaciente:        row?.nombre_paciente?.trim() ?? undefined,
+      createdAt:             row ? String(row.created_at) : undefined,
+    };
   } catch (e) {
     console.error(e);
     return { ok: false, message: "Error al guardar el tratamiento" };

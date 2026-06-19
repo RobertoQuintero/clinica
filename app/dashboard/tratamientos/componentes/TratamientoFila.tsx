@@ -9,8 +9,9 @@ interface Props {
 
 const fmtDatetime = (val: string) => {
   if (!val) return "—";
-  return new Date(String(val).replace(" ", "T"))
-    .toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+  const s = String(val).replace(" ", "T");
+  return new Date(s.includes("T") ? s : s + "T00:00:00")
+    .toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "2-digit" });
 };
 
 export default function TratamientoFila({ tratamiento: t }: Props) {
@@ -23,6 +24,7 @@ export default function TratamientoFila({ tratamiento: t }: Props) {
       </td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{t.nombre_paciente}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_especialista}</td>
+      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.whatsapp_paciente ?? "—"}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.pago_especialista}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_usuario}</td>
       <td className="px-4 py-3">

@@ -28,7 +28,8 @@ export interface ITratamientoOnicomicosisListRow {
   new_message:         boolean;
   message:             string | null;
   num_consultas:       number;
-  pago_especialista:        string;
+  pago_especialista:   string;
+  whatsapp_paciente:   string | null;
 }
 
 export interface ITratamientoPagoOnicomicosis {

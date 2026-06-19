@@ -92,7 +92,7 @@ export default function RegisterPage() {
               htmlFor="telefono"
               className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              Teléfono
+              Whatsapp
             </label>
             <input
               id="telefono"

@@ -49,7 +49,8 @@ export async function getTratamientos(
                     from dbo.egresos DE
                     left join dbo.egreso_stages ES on ES.id_egreso_stage=DE.id_egreso_stage
                     where id_tabla_referencia=t.id_tratamiento
-                    order by de.created_at desc),'Por pagar') pago_especialista
+                    order by de.created_at desc),'Por pagar') pago_especialista,
+            p.[whatsapp] AS whatsapp_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
@@ -95,7 +96,8 @@ export async function searchTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas,
+            p.[whatsapp] AS whatsapp_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
