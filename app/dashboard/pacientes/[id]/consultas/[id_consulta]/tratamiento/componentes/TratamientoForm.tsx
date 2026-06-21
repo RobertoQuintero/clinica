@@ -74,12 +74,13 @@ export default function TratamientoForm({ form, especialistas, onChange, disable
           Antecedentes crónicos
         </label>
         <textarea
+          required
           name="antecedentes_cronicos"
           value={form.antecedentes_cronicos}
           onChange={onChange}
           disabled={disabled}
           rows={3}
-          placeholder="Describe los antecedentes crónicos del paciente…"
+          placeholder="Diabetes, hipertensión, cáncer, obesidad, cardiovasculares, etc…"
           className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 resize-none"
         />
       </div>
@@ -89,12 +90,29 @@ export default function TratamientoForm({ form, especialistas, onChange, disable
           Antecedentes hepáticos
         </label>
         <textarea
+          required
           name="antecedentes_hepaticos"
           value={form.antecedentes_hepaticos}
           onChange={onChange}
           disabled={disabled}
           rows={3}
-          placeholder="Describe los antecedentes hepáticos del paciente…"
+          placeholder=" hepatitis, cirrosis, ictericia, cáncer de hígado, etc…"
+          className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 resize-none"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-zinc-500 mb-1">
+          Alergias
+        </label>
+        <textarea
+          required
+          name="alergias"
+          value={form.alergias}
+          onChange={onChange}
+          disabled={disabled}
+          rows={3}
+          placeholder="Alergias a medicamentos, materiales, alimentos, etc…"
           className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 resize-none"
         />
       </div>
@@ -104,6 +122,7 @@ export default function TratamientoForm({ form, especialistas, onChange, disable
           Medicación actual
         </label>
         <textarea
+          required
           name="medicacion_actual"
           value={form.medicacion_actual}
           onChange={onChange}
@@ -119,6 +138,7 @@ export default function TratamientoForm({ form, especialistas, onChange, disable
           Especialista asignado
         </label>
         <select
+          required
           name="id_especialista"
           value={form.id_especialista}
           onChange={onChange}

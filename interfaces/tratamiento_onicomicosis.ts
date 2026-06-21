@@ -6,6 +6,7 @@ export interface ITratamientoOnicomicosis {
   altura:                 string;
   antecedentes_cronicos:  string;
   antecedentes_hepaticos: string;
+  alergias:               string;
   medicacion_actual:      string;
   created_at:             string;
   id_stage:               number;

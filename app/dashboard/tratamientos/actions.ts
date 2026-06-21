@@ -140,6 +140,7 @@ export async function getTratamiento(
             t.[altura],
             t.[antecedentes_cronicos],
             t.[antecedentes_hepaticos],
+            t.[alergias],
             t.[medicacion_actual],
             CONVERT(varchar(19), t.[created_at], 120) AS created_at,
             t.[id_stage],
@@ -164,6 +165,7 @@ export async function getTratamientoDetalle(
   id_podologo:         number;
   whatsapp:            string | null;
   phone_code:          string | null;
+  edad_paciente:       number | null;
 }) | null> {
   const data = await db.queryParams(
     `SELECT t.[id_tratamiento],
@@ -173,6 +175,7 @@ export async function getTratamientoDetalle(
             t.[altura],
             t.[antecedentes_cronicos],
             t.[antecedentes_hepaticos],
+            t.[alergias],
             t.[medicacion_actual],
             CONVERT(varchar(19), t.[created_at], 120) AS created_at,
             t.[id_stage],
@@ -191,7 +194,9 @@ export async function getTratamientoDetalle(
             ISNULL(u.[nombre], '—') AS nombre_usuario,
             ISNULL(s.[name], '—') AS nombre_stage,
             p.[whatsapp]   AS whatsapp,
-            pc.[id_phone_code]      AS phone_code
+            pc.[id_phone_code]      AS phone_code,
+            DATEDIFF(YEAR, p.[fecha_nacimiento], GETDATE())
+              - CASE WHEN DATEADD(YEAR, DATEDIFF(YEAR, p.[fecha_nacimiento], GETDATE()), p.[fecha_nacimiento]) > GETDATE() THEN 1 ELSE 0 END AS edad_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
@@ -217,6 +222,7 @@ export async function getTratamientoDetalle(
     id_podologo:         number;
     whatsapp:            string | null;
     phone_code:          string | null;
+    edad_paciente:       number | null;
   })[];
   return rows[0] ?? null;
 }

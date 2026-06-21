@@ -11,6 +11,8 @@ type DetailRow = ITratamientoOnicomicosis & {
   nombre_especialista: string;
   nombre_usuario:      string;
   nombre_stage:        string;
+  whatsapp:            string | null;
+  edad_paciente:       number | null;
 };
 
 interface Archivo {
@@ -96,6 +98,8 @@ export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }
                 <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                   <Campo label="Fecha"        value={fmtDatetime(detalle.created_at)} />
                   <Campo label="Paciente"     value={detalle.nombre_paciente} />
+                  <Campo label="Edad"         value={detalle.edad_paciente != null ? `${detalle.edad_paciente} años` : null} />
+                  <Campo label="WhatsApp"     value={detalle.whatsapp} />
                   <Campo label="Especialista" value={detalle.nombre_especialista} />
                   <Campo label="Solicitó"     value={detalle.nombre_usuario} />
                   <Campo label="Estado"       value={detalle.nombre_stage} />
@@ -131,6 +135,7 @@ export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }
                   <Campo label="Altura"                 value={detalle.altura} />
                   <Campo label="Antecedentes crónicos"  value={detalle.antecedentes_cronicos} />
                   <Campo label="Antecedentes hepáticos" value={detalle.antecedentes_hepaticos} />
+                  <Campo label="Alergias"               value={detalle.alergias} />
                   <Campo label="Medicación actual"      value={detalle.medicacion_actual} />
                 </dl>
               </div>

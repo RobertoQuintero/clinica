@@ -42,6 +42,7 @@ type DetailRow = ITratamientoOnicomicosis & {
   id_podologo:         number;
   whatsapp:            string | null;
   phone_code:          string | null;
+  edad_paciente:       number | null;
 };
 
 const EMPTY: ICita = {

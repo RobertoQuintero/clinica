@@ -17,6 +17,7 @@ import {
 } from "./actions";
 import PagoTratamientoForm from "./componentes/PagoTratamientoForm";
 import TratamientoForm from "./componentes/TratamientoForm";
+import { useSucursal } from "@/contexts/SucursalContext";
 
 const TRATAMIENTO_DEFAULTS: TratamientoFormData = {
   peso:                   "",
@@ -24,6 +25,7 @@ const TRATAMIENTO_DEFAULTS: TratamientoFormData = {
   altura:                 "",
   antecedentes_cronicos:  "",
   antecedentes_hepaticos: "",
+  alergias:               "",
   medicacion_actual:      "",
   id_especialista:        0,
 };
@@ -35,6 +37,8 @@ const PAGO_DEFAULTS: PagoFormData = {
 };
 
 export default function TratamientoPage() {
+  const { selectedId, sucursales } = useSucursal();
+  const sucursal = sucursales.find((s) => s.id_sucursal === selectedId);
   const router       = useRouter();
   const params       = useParams();
   const id_paciente  = Number(params.id);
@@ -104,6 +108,10 @@ export default function TratamientoPage() {
       setError("Selecciona un método de pago.");
       return;
     }
+    if (!tratamientoForm.antecedentes_cronicos || !tratamientoForm.antecedentes_hepaticos || !tratamientoForm.  medicacion_actual || !tratamientoForm.alergias) {
+      setError("Todos los antecedentes, alergias y medicación son requeridos.");
+      return;
+    }
 
     setConfirming(true);
   };
@@ -136,7 +144,8 @@ export default function TratamientoPage() {
       const msg = [
         `Hola ${result.nombreEspecialista ?? "especialista"}`,
         `Usted tiene un nuevo tratamiento de ${result.nombrePaciente ?? "Paciente"}${fechaFmt ? `, ${fechaFmt}` : ""}.`,
-        `Favor de revisar la página de piezen.`,
+        `Sucursal: ${sucursal?.nombre ?? "Desconocida"}.`,
+        `Favor de revisar la página de Piezen.`,
       ].join("\n");
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
     }
@@ -164,7 +173,7 @@ export default function TratamientoPage() {
       </div>
 
       {loadingData ? (
-        <p className="text-sm text-zinc-400">Cargando datos…</p>
+        <p className="text-sm text-zinc-400">Cargando datos…</p> 
       ) : (
         <>
           <TratamientoForm

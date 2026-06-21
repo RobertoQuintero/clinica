@@ -81,6 +81,7 @@ export type TratamientoFormData = {
   altura:                 string;
   antecedentes_cronicos:  string;
   antecedentes_hepaticos: string;
+  alergias:               string;
   medicacion_actual:      string;
   id_especialista:        number;
 };
@@ -110,12 +111,12 @@ export async function saveTratamiento(
 
            INSERT INTO [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
              ([id_tratamiento],[id_consulta],[peso],[talla],[altura],
-              [antecedentes_cronicos],[antecedentes_hepaticos],[medicacion_actual],
+              [antecedentes_cronicos],[antecedentes_hepaticos],[alergias],[medicacion_actual],
               [created_at],[id_stage],[id_usuario],[id_especialista],
               [new_message],[message],[id_billing_stage])
            VALUES
              (@id_tratamiento,@id_consulta,@peso,@talla,@altura,
-              @antecedentes_cronicos,@antecedentes_hepaticos,@medicacion_actual,
+              @antecedentes_cronicos,@antecedentes_hepaticos,@alergias,@medicacion_actual,
               @created_at,1,@id_usuario,@id_especialista,
               1,'SOLICITUD',1)
 
@@ -148,6 +149,7 @@ export async function saveTratamiento(
         altura:                 String(tratamiento.altura),
         antecedentes_cronicos:  tratamiento.antecedentes_cronicos,
         antecedentes_hepaticos: tratamiento.antecedentes_hepaticos,
+        alergias:               tratamiento.alergias,
         medicacion_actual:      tratamiento.medicacion_actual,
         id_especialista:        Number(tratamiento.id_especialista),
         total:                  String(pago.total),
