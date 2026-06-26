@@ -304,7 +304,7 @@ export async function getDefaultTotalTipo1(): Promise<number> {
     `SELECT [total]
        FROM [CentroPodologico].[dbo].[Tratamiento_pagos_tipos]
       WHERE [id_tratamiento_pago_tipo] = @id`,
-    { id: 1 }
+    { id: 2 }
   );
   return rows.length > 0 ? Number(rows[0].total) : 0;
 }

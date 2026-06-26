@@ -10,6 +10,7 @@ export interface ISucursal {
     status:            boolean | number | null;
     id_state:          number | null;
     estado: string | null;
+    id_calendar:       string | null;
 }
 
 export interface ICatState {

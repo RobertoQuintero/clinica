@@ -13,11 +13,11 @@ import {
   getCitas,
   getPacientes,
   getPodologos,
+  getServicioOpciones,
   saveCita,
   getExternalCalendarEvents,
   type IExternalEvent,
 } from "./actions";
-import { toDateTimeLocal } from "@/utils/date_helpper";
 
 const EMPTY: ICita = {
   id_cita:            0,
@@ -39,6 +39,7 @@ export default function CitasPage() {
   const [citas, setCitas]                 = useState<ICita[]>([]);
   const [pacientes, setPacientes]         = useState<IPaciente[]>([]);
   const [podologos, setPodologos]         = useState<IUser[]>([]);
+  const [servicioOpciones, setServicioOpciones] = useState<{ id_servicio_opcion: number; nombre: string }[]>([]);
   const [externalEvents, setExternalEvents] = useState<IExternalEvent[]>([]);
   const [loading, setLoading]             = useState(true);
   const [loadingGCal, setLoadingGCal]     = useState(false);
@@ -74,6 +75,7 @@ export default function CitasPage() {
     refreshCitas();
     getPacientes().then(setPacientes);
     getPodologos().then(setPodologos);
+    getServicioOpciones().then(setServicioOpciones);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
@@ -123,20 +125,7 @@ export default function CitasPage() {
     setSaving(true);
     setError(null);
     try {
-      if (form.id_cita === 0) {
-        const normalizedNew = toDateTimeLocal(String(form.fecha_inicio ?? ""));
-        const conflict = citas.find(
-          (c) =>
-            c.estado !== "cancelada" &&
-            Number(c.id_podologo) === Number(form.id_podologo) &&
-            toDateTimeLocal(String(c.fecha_inicio ?? "")) === normalizedNew
-        );
-        if (conflict) {
-          const pod = podologos.find((u) => u.id_user === Number(form.id_podologo));
-          const nombre = pod ? pod.nombre : `Podólogo #${form.id_podologo}`;
-          throw new Error(`${nombre} ya tiene una cita agendada en ese horario`);
-        }
-      }
+
       const payload = {
         ...form,
         created_at: form.created_at || buildDate(new Date()),
@@ -184,7 +173,7 @@ export default function CitasPage() {
           citas={citas}
           externalEvents={externalEvents}
           pacientes={pacientes}
-          podologos={podologos}
+          servicioOpciones={servicioOpciones}
           onCitaClick={openEdit}
           onExternalClick={openExternal}
           onDatesChange={handleDatesChange}
@@ -196,7 +185,7 @@ export default function CitasPage() {
         <CitaModal
           form={form}
           pacientes={pacientes}
-          podologos={podologos}
+          servicioOpciones={servicioOpciones}
           saving={saving}
           error={error}
           onChange={handleChange}

@@ -13,4 +13,5 @@ export interface ICita {
     google_event_id?:   string | null;
     id_tratamiento?:    number;
     id_consulta?:       number;
+    id_servicio_opcion?: number;
 }

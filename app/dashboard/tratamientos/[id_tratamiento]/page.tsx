@@ -300,12 +300,14 @@ export default function TratamientoDetallePage({ params }: Props) {
           {
             user?.id_role !== 5 && detalle.id_stage!==5 && (
               <div className="flex gap-2">
+                {tienePagoTipo2 && (
                 <button
                   onClick={openCrearConsulta}
                   className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
                 >
                   Crear consulta
                 </button>
+                )}
                 {tienePagoTipo2 && (
                 <button
                   onClick={openCrearCitaByTratamiento}

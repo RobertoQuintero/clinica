@@ -56,10 +56,10 @@ async function getAccessToken(email: string, rawKey: string): Promise<string> {
   return access_token;
 }
 
-async function getCalendarClient() {
+export async function getCalendarClient(calendarId?: string) {
   const email  = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY;
-  const calId  = process.env.GOOGLE_CALENDAR_ID;
+  const calId  = calendarId ?? process.env.GOOGLE_CALENDAR_ID;
 
   if (!email || !rawKey || !calId) {
     throw new Error(
@@ -76,9 +76,9 @@ async function getCalendarClient() {
 }
 
 /** Creates a new event and returns the Google event ID. */
-export async function createCalendarEvent(data: CalendarEventData): Promise<string> {
-  const { calendar, calId } = await getCalendarClient();
-
+export async function createCalendarEvent(data: CalendarEventData, calendarId?: string): Promise<string> {
+  const { calendar, calId } = await getCalendarClient(calendarId);
+  console.log({ calendar, calId })
   const res = await calendar.events.insert({
     calendarId: calId,
     requestBody: {
@@ -101,9 +101,10 @@ export async function createCalendarEvent(data: CalendarEventData): Promise<stri
 /** Updates an existing event by its Google event ID. */
 export async function updateCalendarEvent(
   eventId: string,
-  data: CalendarEventData
+  data: CalendarEventData,
+  calendarId?: string
 ): Promise<void> {
-  const { calendar, calId } = await getCalendarClient();
+  const { calendar, calId } = await getCalendarClient(calendarId);
 
   await calendar.events.patch({
     calendarId: calId,
@@ -122,8 +123,8 @@ export async function updateCalendarEvent(
 }
 
 /** Deletes an event from Google Calendar by its event ID. */
-export async function deleteCalendarEvent(eventId: string): Promise<void> {
-  const { calendar, calId } = await getCalendarClient();
+export async function deleteCalendarEvent(eventId: string, calendarId?: string): Promise<void> {
+  const { calendar, calId } = await getCalendarClient(calendarId);
 
   await calendar.events.delete({
     calendarId: calId,
@@ -141,30 +142,60 @@ export interface GCalEventRaw {
   extendedPrivate?: Record<string, string>;
 }
 
-/** Lists events in a time range. Returns normalised flat objects. */
+/** Lists events in a time range across all configured calendars. Returns normalised flat objects.
+ *
+ * Primary calendar: GOOGLE_CALENDAR_ID
+ * Extra calendars:  GOOGLE_EXTRA_CALENDAR_IDS (comma-separated calendar IDs)
+ *
+ * Results are deduplicated by event ID in case the same event appears in more than one calendar.
+ */
 export async function listCalendarEvents(
   timeMin: string,
-  timeMax: string
+  timeMax: string,
+  calendarId?: string
 ): Promise<GCalEventRaw[]> {
-  const { calendar, calId } = await getCalendarClient();
+  const { calendar, calId } = await getCalendarClient(calendarId);
 
-  const res = await calendar.events.list({
-    calendarId: calId,
-    timeMin,
-    timeMax,
-    singleEvents: true,
-    orderBy: "startTime",
-    maxResults: 500,
-  });
+  // Build the full list of calendar IDs to query
+  const extraIds = (process.env.GOOGLE_EXTRA_CALENDAR_IDS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allCalIds = Array.from(new Set([calId, ...extraIds]));
 
-  return (res.data.items ?? [])
-    .filter((e) => e.id && (e.start?.dateTime || e.start?.date))
-    .map((e) => ({
-      id: e.id!,
-      summary: e.summary ?? "(sin título)",
-      description: e.description ?? undefined,
-      start: (e.start?.dateTime ?? e.start?.date ?? "").replace(/([+-]\d{2}:\d{2}|Z)$/, ""),
-      end:   (e.end?.dateTime   ?? e.end?.date   ?? "").replace(/([+-]\d{2}:\d{2}|Z)$/, ""),
-      extendedPrivate: (e.extendedProperties?.private as Record<string, string> | undefined) ?? undefined,
-    }));
+  // Fetch from all calendars in parallel; ignore individual failures
+  const settled = await Promise.allSettled(
+    allCalIds.map((id) =>
+      calendar.events.list({
+        calendarId: id,
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 500,
+      })
+    )
+  );
+
+  const seen = new Set<string>();
+  const events: GCalEventRaw[] = [];
+
+  for (const result of settled) {
+    if (result.status !== "fulfilled") continue;
+    for (const e of result.value.data.items ?? []) {
+      if (!e.id || !(e.start?.dateTime || e.start?.date)) continue;
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      events.push({
+        id: e.id,
+        summary: e.summary ?? "(sin título)",
+        description: e.description ?? undefined,
+        start: (e.start?.dateTime ?? e.start?.date ?? "").replace(/([+-]\d{2}:\d{2}|Z)$/, ""),
+        end:   (e.end?.dateTime   ?? e.end?.date   ?? "").replace(/([+-]\d{2}:\d{2}|Z)$/, ""),
+        extendedPrivate: (e.extendedProperties?.private as Record<string, string> | undefined) ?? undefined,
+      });
+    }
+  }
+
+  return events;
 }

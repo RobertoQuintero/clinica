@@ -2,7 +2,6 @@
 
 import { ICita } from "@/interfaces/cita";
 import { IPaciente } from "@/interfaces/paciente";
-import { IUser } from "@/interfaces/user";
 import { toDateTimeLocal } from "@/utils/date_helpper";
 import { useEffect, useRef, useState } from "react";
 
@@ -29,7 +28,7 @@ function joinDateTime(date: string, time: string): string {
 interface Props {
   form: ICita;
   pacientes: IPaciente[];
-  podologos: IUser[];
+  servicioOpciones: { id_servicio_opcion: number; nombre: string }[];
   saving: boolean;
   error: string | null;
   lockPaciente?: boolean;
@@ -38,13 +37,10 @@ interface Props {
   onClose: () => void;
 }
 
-export default function CitaModal({ form, pacientes, podologos, saving, error, lockPaciente = false, onChange, onSubmit, onClose }: Props) {
+export default function CitaModal({ form, pacientes, servicioOpciones, saving, error, lockPaciente = false, onChange, onSubmit, onClose }: Props) {
   const [pacienteQuery, setPacienteQuery] = useState("");
-  const [podologoQuery, setPodologoQuery] = useState("");
   const [showPacientes, setShowPacientes] = useState(false);
-  const [showPodologos, setShowPodologos] = useState(false);
   const pacienteRef = useRef<HTMLDivElement>(null);
-  const podologoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const p = pacientes.find((p) => p.id_paciente === Number(form.id_paciente));
@@ -52,39 +48,23 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, l
   }, [form.id_paciente, pacientes]);
 
   useEffect(() => {
-    const u = podologos.find((u) => u.id_user === Number(form.id_podologo));
-    setPodologoQuery(u ? u.nombre : "");
-  }, [form.id_podologo, podologos]);
-
-  useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (pacienteRef.current && !pacienteRef.current.contains(e.target as Node))
         setShowPacientes(false);
-      if (podologoRef.current && !podologoRef.current.contains(e.target as Node))
-        setShowPodologos(false);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   const filteredPacientes = pacientes.filter((p) =>
-    `${p.nombre} ${p.apellido_paterno} ${p.apellido_materno}`.toLowerCase().includes(pacienteQuery.toLowerCase())
+    `${p.nombre} ${p.apellido_paterno} ${p.apellido_materno}`.toLowerCase().includes(pacienteQuery.toLowerCase()) ||
+    (p.whatsapp ?? "").replace(/\D/g, "").includes(pacienteQuery.replace(/\D/g, ""))
   );
-
-  const filteredPodologos = podologos
-    .filter((u) => u.id_role === 2)
-    .filter((u) => u.nombre.toLowerCase().includes(podologoQuery.toLowerCase()));
 
   const selectPaciente = (p: IPaciente) => {
     setPacienteQuery(`${p.nombre} ${p.apellido_paterno}`);
     setShowPacientes(false);
     onChange({ target: { name: "id_paciente", value: String(p.id_paciente) } } as React.ChangeEvent<HTMLSelectElement>);
-  };
-
-  const selectPodologo = (u: IUser) => {
-    setPodologoQuery(u.nombre);
-    setShowPodologos(false);
-    onChange({ target: { name: "id_podologo", value: String(u.id_user) } } as React.ChangeEvent<HTMLSelectElement>);
   };
 
   const fireFechaInicio = (value: string) => {
@@ -152,7 +132,8 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, l
                       onMouseDown={() => selectPaciente(p)}
                       className="cursor-pointer px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100"
                     >
-                      {p.nombre} {p.apellido_paterno}
+                      <span>{p.nombre} {p.apellido_paterno}</span>
+                      {p.whatsapp && <span className="ml-2 text-xs text-zinc-400 dark:text-zinc-500" style={{visibility:"hidden"}}>{p.whatsapp}</span>}
                     </li>
                   ))}
                 </ul>
@@ -160,32 +141,19 @@ export default function CitaModal({ form, pacientes, podologos, saving, error, l
             </div>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Podólogo</span>
-            <div ref={podologoRef} className="relative">
-              <input
-                type="text"
-                value={podologoQuery}
-                onChange={(e) => { setPodologoQuery(e.target.value); setShowPodologos(true); }}
-                onFocus={() => setShowPodologos(true)}
-                placeholder="Buscar podólogo…"
-                autoComplete="off"
-                required
-                className="w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-              />
-              {showPodologos && filteredPodologos.length > 0 && (
-                <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg text-sm">
-                  {filteredPodologos.map((u) => (
-                    <li
-                      key={u.id_user}
-                      onMouseDown={() => selectPodologo(u)}
-                      className="cursor-pointer px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100"
-                    >
-                      {u.nombre}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Servicio</span>
+            <select
+              name="id_servicio_opcion"
+              value={form.id_servicio_opcion ?? ""}
+              onChange={onChange}
+              required
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            >
+              <option value="">Seleccionar servicio…</option>
+              {servicioOpciones.map((s) => (
+                <option key={s.id_servicio_opcion} value={s.id_servicio_opcion}>{s.nombre}</option>
+              ))}
+            </select>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Fecha inicio</span>

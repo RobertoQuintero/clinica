@@ -41,6 +41,7 @@ export async function getSucursales(): Promise<ISucursal[]> {
             CONVERT(varchar(19), s.[created_at], 120) AS created_at,
             s.[status],
             s.[id_state],
+            s.[id_calendar],
             cs.[description] AS estado
        FROM [CentroPodologico].[dbo].[sucursales] s
        LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
@@ -53,7 +54,7 @@ export async function getSucursales(): Promise<ISucursal[]> {
 }
 
 export async function saveSucursal(
-  form: Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state">
+  form: Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state" | "id_calendar">
 ): Promise<{ ok: boolean; message?: string }> {
   try {
     const { id_sucursal, nombre, ciudad, direccion, telefono, id_state } = form;
@@ -62,10 +63,10 @@ export async function saveSucursal(
     if (id_sucursal === 0) {
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[sucursales]
-           ([id_sucursal], [id_empresa], [nombre], [ciudad], [direccion], [telefono], [activo], [created_at], [status], [id_state])
+           ([id_sucursal], [id_empresa], [nombre], [ciudad], [direccion], [telefono], [activo], [created_at], [status], [id_state], [id_calendar])
          VALUES (
            (SELECT ISNULL(MAX([id_sucursal]), 0) + 1 FROM [CentroPodologico].[dbo].[sucursales]),
-           @id_empresa, @nombre, @ciudad, @direccion, @telefono, 1, @created_at, 1, @id_state
+           @id_empresa, @nombre, @ciudad, @direccion, @telefono, 1, @created_at, 1, @id_state, @id_calendar
          )`,
         {
           id_empresa,
@@ -75,6 +76,7 @@ export async function saveSucursal(
           telefono: telefono ?? null,
           created_at: buildDate(new Date()),
           id_state: id_state ?? null,
+          id_calendar: form.id_calendar ?? null,
         }
       );
     } else {
@@ -84,9 +86,10 @@ export async function saveSucursal(
                 [ciudad]    = @ciudad,
                 [direccion] = @direccion,
                 [telefono]  = @telefono,
-                [id_state]  = @id_state
+                [id_state]  = @id_state,
+                [id_calendar] = @id_calendar
           WHERE [id_sucursal] = @id_sucursal`,
-        { id_sucursal, nombre, ciudad: ciudad ?? null, direccion: direccion ?? null, telefono: telefono ?? null, id_state: id_state ?? null }
+        { id_sucursal, nombre, ciudad: ciudad ?? null, direccion: direccion ?? null, telefono: telefono ?? null, id_state: id_state ?? null, id_calendar: form.id_calendar ?? null }
       );
     }
 
@@ -135,6 +138,7 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
               CONVERT(varchar(19), s.[created_at], 120) AS created_at,
               s.[status],
               s.[id_state],
+              s.id_calendar,
               cs.[description] AS estado
          FROM [CentroPodologico].[dbo].[sucursales] s
          LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
@@ -143,6 +147,7 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
           AND s.[id_empresa] = @id_empresa`,
       { id_empresa }
     );
+   
     return data as ISucursal[];
   }
 

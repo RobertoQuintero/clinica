@@ -10,7 +10,6 @@ import esLocale from "@fullcalendar/core/locales/es";
 import { ICita } from "@/interfaces/cita";
 import type { IExternalEvent } from "@/app/dashboard/citas/actions";
 import { IPaciente } from "@/interfaces/paciente";
-import { IUser } from "@/interfaces/user";
 
 // ── Colour palette by estado ──────────────────────────────────────────────────
 const ESTADO_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -25,7 +24,7 @@ interface Props {
   citas: ICita[];
   externalEvents: IExternalEvent[];
   pacientes: IPaciente[];
-  podologos: IUser[];
+  servicioOpciones: { id_servicio_opcion: number; nombre: string }[];
   onCitaClick: (cita: ICita) => void;
   onExternalClick: (ext: IExternalEvent) => void;
   onDatesChange: (timeMin: string, timeMax: string) => void;
@@ -37,16 +36,17 @@ function pacienteName(id: number, pacientes: IPaciente[]): string {
   return p ? `${p.nombre} ${p.apellido_paterno}` : `#${id}`;
 }
 
-function podologoName(id: number, podologos: IUser[]): string {
-  const u = podologos.find((x) => x.id_user === id);
-  return u ? u.nombre : `#${id}`;
+function servicioOpcionName(id: number | undefined, opciones: { id_servicio_opcion: number; nombre: string }[]): string {
+  if (!id) return "—";
+  const o = opciones.find((x) => x.id_servicio_opcion === id);
+  return o ? o.nombre : `#${id}`;
 }
 
 export default function CalendarioCitas({
   citas,
   externalEvents,
   pacientes,
-  podologos,
+  servicioOpciones,
   onCitaClick,
   onExternalClick,
   onDatesChange,
@@ -71,7 +71,7 @@ export default function CalendarioCitas({
     const color = ESTADO_COLORS[c.estado] ?? ESTADO_COLORS.agendada;
     return {
       id: String(c.id_cita),
-      title: `${pacienteName(c.id_paciente, pacientes)} · ${podologoName(c.id_podologo, podologos)}`,
+      title: `${pacienteName(c.id_paciente, pacientes)} · ${servicioOpcionName(c.id_servicio_opcion, servicioOpciones)}`,
       start: String(c.fecha_inicio).replace(" ", "T"),
       end:   String(c.fecha_fin   ).replace(" ", "T"),
       backgroundColor: color.bg,

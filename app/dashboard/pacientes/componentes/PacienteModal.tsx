@@ -20,6 +20,16 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
   const {user}= useAuth()
   const date=new Date(form.created_at)
   date.setHours(date.getHours()+24)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name } = e.target;
+    if (["whatsapp", "telefono", "contacto_emergencia_whatsapp"].includes(name)) {
+      e.target.value = e.target.value.replace(/\D/g, "");
+    } else if (["nombre", "apellido_paterno", "apellido_materno"].includes(name)) {
+      e.target.value = e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+    onChange(e);
+  };
  
 
   return (
@@ -49,7 +59,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
                 type={type}
                 name={name}
                 value={String(form[name] ?? "")}
-                onChange={onChange}
+                onChange={handleChange}
                 className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               />
             </label>
@@ -63,7 +73,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
             <select
               name="id_phone_code"
               value={form.id_phone_code ?? ""}
-              onChange={onChange}
+              onChange={handleChange}
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
               <option value="">Seleccionar</option>
@@ -80,7 +90,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
               type="text"
               name="whatsapp"
               value={String(form.whatsapp ?? "")}
-              onChange={onChange}
+              onChange={handleChange}
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
           </label>
@@ -102,7 +112,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
                 type={type}
                 name={name}
                 value={String(form[name] ?? "")}
-                onChange={onChange}
+                onChange={handleChange}
                 className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               />
             </label>
@@ -112,7 +122,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
             <select
               name="sexo"
               value={form.sexo}
-              onChange={onChange}
+              onChange={handleChange}
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
               <option value="">Seleccionar</option>
@@ -125,7 +135,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
             <textarea
               name="observaciones_generales"
               value={form.observaciones_generales ?? ""}
-              onChange={onChange}
+              onChange={handleChange}
               rows={3}
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
             />

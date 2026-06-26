@@ -8,18 +8,19 @@ import bcrypt from "bcryptjs";
 import { buildDate, addZeroToday, toDBString } from "@/utils/date_helpper";
 
 export interface ICitaHoy {
-  id_cita:          number;
-  id_paciente:      number;
-  id_podologo:      number;
-  fecha_inicio:     string;
-  fecha_fin:        string;
-  estado:           string;
-  nombre_paciente:  string;
-  nombre_podologo:  string;
-  id_sucursal:      number;
-  id_empresa:       number;
-  tiene_consulta:   boolean;
-  id_tratamiento?:  number | null;
+  id_cita:               number;
+  id_paciente:           number;
+  id_podologo:           number;
+  fecha_inicio:          string;
+  fecha_fin:             string;
+  estado:                string;
+  nombre_paciente:       string;
+  nombre_podologo:       string;
+  nombre_servicio_opcion?: string | null;
+  id_sucursal:           number;
+  id_empresa:            number;
+  tiene_consulta:        boolean;
+  id_tratamiento?:       number | null;
 }
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
@@ -91,13 +92,15 @@ export async function getTodaysCitas(): Promise<ICitaHoy[]> {
              + CASE WHEN p.[apellido_materno] IS NOT NULL AND p.[apellido_materno] <> ''
                THEN ' ' + p.[apellido_materno] ELSE '' END)) AS nombre_paciente
            ,u.[nombre] AS nombre_podologo
+           ,so.[nombre] AS nombre_servicio_opcion
            ,CASE WHEN EXISTS (
                SELECT 1 FROM [CentroPodologico].[dbo].[consultas] con
                 WHERE con.[id_cita] = c.[id_cita] AND con.[deleted_at] IS NULL
              ) THEN 1 ELSE 0 END AS tiene_consulta
        FROM [CentroPodologico].[dbo].[citas] c
        LEFT JOIN [CentroPodologico].[dbo].[pacientes] p ON p.[id_paciente] = c.[id_paciente]
-       LEFT JOIN [CentroPodologico].[dbo].[users]     u ON u.[id_user]     = c.[id_podologo]
+       LEFT JOIN [CentroPodologico].[dbo].[users]           u  ON u.[id_user]           = c.[id_podologo]
+       LEFT JOIN [CentroPodologico].[dbo].[servicio_opciones] so ON so.[id_servicio_opcion] = c.[id_servicio_opcion]
       WHERE c.[id_sucursal] = @id_sucursal
         AND c.[id_empresa]  = @id_empresa
         AND c.[estado]      = 'agendada'

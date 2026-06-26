@@ -14,6 +14,7 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent,
   listCalendarEvents,
+
   type GCalEventRaw,
 } from "@/lib/googleCalendar";
 
@@ -46,6 +47,7 @@ export async function getCitas(): Promise<ICita[]> {
            ,[id_empresa]
            ,[google_event_id]
            ,[id_tratamiento]
+           ,[id_servicio_opcion]
        FROM [CentroPodologico].[dbo].[citas]
       WHERE [id_sucursal] = @id_sucursal
         AND [id_empresa]  = @id_empresa`,
@@ -112,6 +114,17 @@ export async function getPodologos(): Promise<IUser[]> {
   return data as IUser[];
 }
 
+export async function getServicioOpciones(): Promise<{ id_servicio_opcion: number; nombre: string }[]> {
+  const data = await db.queryParams(
+    `SELECT [id_servicio_opcion], [nombre]
+       FROM [CentroPodologico].[dbo].[servicio_opciones]
+      WHERE [id_servicio] = 2
+        AND [status] = 1`,
+    {}
+  );
+  return data as { id_servicio_opcion: number; nombre: string }[];
+}
+
 export async function saveCita(
   form: ICita
 ): Promise<{ ok: boolean; message?: string }> {
@@ -131,6 +144,7 @@ export async function saveCita(
       google_event_id,
       id_tratamiento,
       id_consulta,
+      id_servicio_opcion,
     } = form;
 
     const commonParams: any = {
@@ -147,31 +161,40 @@ export async function saveCita(
     };
 
     // Optional INT fields — bind only when present so null goes as literal NULL in SQL
-    const sqlIdTratamiento = id_tratamiento != null ? "@id_tratamiento" : "NULL";
-    const sqlIdConsulta    = id_consulta    != null ? "@id_consulta"    : "NULL";
-    if (id_tratamiento != null) commonParams.id_tratamiento = id_tratamiento;
-    if (id_consulta    != null) commonParams.id_consulta    = id_consulta;
+    const sqlIdTratamiento    = id_tratamiento    != null ? "@id_tratamiento"    : "NULL";
+    const sqlIdConsulta       = id_consulta       != null ? "@id_consulta"       : "NULL";
+    const sqlIdServicioOpcion = id_servicio_opcion != null ? "@id_servicio_opcion" : "NULL";
+    if (id_tratamiento    != null) commonParams.id_tratamiento    = id_tratamiento;
+    if (id_consulta       != null) commonParams.id_consulta       = id_consulta;
+    if (id_servicio_opcion != null) commonParams.id_servicio_opcion = id_servicio_opcion;
 
     // --- Resolve names for the calendar event summary ---
-    const [pacienteRows, podologoRows, sucursalRows] = await Promise.all([
+    const [pacienteRows, sucursalRows, servicioRows] = await Promise.all([
       db.queryParams(
         `SELECT [nombre], [apellido_paterno], [whatsapp], [telefono] FROM [CentroPodologico].[dbo].[pacientes] WHERE [id_paciente] = @id_paciente`,
         { id_paciente }
       ),
       db.queryParams(
-        `SELECT [nombre] FROM [CentroPodologico].[dbo].[users] WHERE [id_user] = @id_user`,
-        { id_user: id_podologo }
-      ),
-      db.queryParams(
-        `SELECT [nombre] FROM [CentroPodologico].[dbo].[sucursales] WHERE [id_sucursal] = @id_sucursal`,
+        `SELECT [nombre], [id_calendar] FROM [CentroPodologico].[dbo].[sucursales] WHERE [id_sucursal] = @id_sucursal`,
         { id_sucursal }
       ),
+      id_servicio_opcion != null
+        ? db.queryParams(
+            `SELECT [nombre] FROM [CentroPodologico].[dbo].[servicio_opciones] WHERE [id_servicio_opcion] = @id_servicio_opcion`,
+            { id_servicio_opcion }
+          )
+        : Promise.resolve([]),
     ]);
     const paciente = pacienteRows[0] as { nombre: string; apellido_paterno: string; whatsapp?: string; telefono?: string } | undefined;
-    const podologo = podologoRows[0] as { nombre: string } | undefined;
-    const sucursal = sucursalRows[0] as { nombre: string } | undefined;
-    const summary = `Cita: ${paciente ? `${paciente.nombre} ${paciente.apellido_paterno}` : `Paciente #${id_paciente}`} con ${podologo ? podologo.nombre : `Podólogo #${id_podologo}`} — ${sucursal ? sucursal.nombre : `Sucursal #${id_sucursal}`}`;
+    const sucursal = sucursalRows[0] as { nombre: string; id_calendar: string | null } | undefined;
+    const servicio = (servicioRows[0] as { nombre: string } | undefined)?.nombre ?? null;
+    const calId    = sucursal?.id_calendar ?? undefined;
+    const pacienteNombre = paciente ? `${paciente.nombre} ${paciente.apellido_paterno}` : `Paciente #${id_paciente}`;
+    const summary = servicio
+      ? `${servicio} — ${pacienteNombre}  · ${sucursal ? sucursal.nombre : `Sucursal #${id_sucursal}`}`
+      : `Cita: ${pacienteNombre}  — ${sucursal ? sucursal.nombre : `Sucursal #${id_sucursal}`}`;
     const telefono = paciente?.whatsapp || paciente?.telefono || "";
+    
     const calEventData = {
       summary,
       description: telefono,
@@ -186,12 +209,12 @@ export async function saveCita(
 
       const insertQuery = `INSERT INTO [CentroPodologico].[dbo].[citas]
              ([id_cita],[id_paciente],[id_podologo],[fecha_inicio],[fecha_fin],
-              [estado],[motivo_cancelacion],[created_at],[deleted_at],[id_sucursal],[id_empresa],[id_tratamiento],[id_consulta])
+              [estado],[motivo_cancelacion],[created_at],[deleted_at],[id_sucursal],[id_empresa],[id_tratamiento],[id_consulta],[id_servicio_opcion])
            OUTPUT INSERTED.[id_cita]
            VALUES (
              (SELECT ISNULL(MAX([id_cita]),0)+1 FROM [CentroPodologico].[dbo].[citas]),
              @id_paciente,@id_podologo,@fecha_inicio,@fecha_fin,
-             @estado,@motivo_cancelacion,@created_at,@deleted_at,@id_sucursal,@id_empresa,${sqlIdTratamiento},${sqlIdConsulta}
+             @estado,@motivo_cancelacion,@created_at,@deleted_at,@id_sucursal,@id_empresa,${sqlIdTratamiento},${sqlIdConsulta},${sqlIdServicioOpcion}
            )`;
 
       const inserted = await db.queryParams(insertQuery, commonParams);
@@ -202,9 +225,9 @@ export async function saveCita(
         if (isExternalImport) {
           // External event already exists in GCal — just link it
           eventId = google_event_id!;
-          await updateCalendarEvent(eventId, calEventData);
+          await updateCalendarEvent(eventId, calEventData, calId);
         } else {
-          eventId = await createCalendarEvent(calEventData);
+          eventId = await createCalendarEvent(calEventData, calId);
         }
         await db.queryParams(
           `UPDATE [CentroPodologico].[dbo].[citas] SET [google_event_id] = @eventId WHERE [id_cita] = @id_cita`,
@@ -226,7 +249,8 @@ export async function saveCita(
              [id_sucursal]        = @id_sucursal,
              [id_empresa]         = @id_empresa,
              [id_tratamiento]     = ${sqlIdTratamiento},
-             [id_consulta]        = ${sqlIdConsulta}
+             [id_consulta]        = ${sqlIdConsulta},
+             [id_servicio_opcion] = ${sqlIdServicioOpcion}
            WHERE [id_cita] = @id_cita`;
 
       await db.queryParams(updateQuery, { id_cita, ...commonParams });
@@ -234,16 +258,16 @@ export async function saveCita(
       // Sync to Google Calendar (non-blocking)
       try {
         if (google_event_id && estado === "cancelada") {
-          await deleteCalendarEvent(google_event_id);
+          await deleteCalendarEvent(google_event_id, calId);
           await db.queryParams(
             `UPDATE [CentroPodologico].[dbo].[citas] SET [google_event_id] = NULL WHERE [id_cita] = @id_cita`,
             { id_cita }
           );
         } else if (google_event_id) {
-          await updateCalendarEvent(google_event_id, calEventData);
+          await updateCalendarEvent(google_event_id, calEventData, calId);
         } else if (estado !== "cancelada") {
           // Cita pre-integración sin event_id: crear el evento ahora
-          const eventId = await createCalendarEvent(calEventData);
+          const eventId = await createCalendarEvent(calEventData, calId);
           await db.queryParams(
             `UPDATE [CentroPodologico].[dbo].[citas] SET [google_event_id] = @eventId WHERE [id_cita] = @id_cita`,
             { eventId, id_cita }
@@ -284,8 +308,7 @@ export async function getExternalCalendarEvents(
     const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
     const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
 
-    const [gcalEvents, dbRows, sucursalRows] = await Promise.all([
-      listCalendarEvents(timeMin, timeMax),
+    const [dbRows, sucursalRows] = await Promise.all([
       db.queryParams(
         `SELECT [google_event_id] FROM [CentroPodologico].[dbo].[citas]
           WHERE [google_event_id] IS NOT NULL
@@ -293,19 +316,25 @@ export async function getExternalCalendarEvents(
         { id_empresa }
       ),
       db.queryParams(
-        `SELECT [id_sucursal], [nombre] FROM [CentroPodologico].[dbo].[sucursales]
+        `SELECT [id_sucursal], [nombre], [id_calendar] FROM [CentroPodologico].[dbo].[sucursales]
           WHERE [id_empresa] = @id_empresa AND [activo] = 1`,
         { id_empresa }
       ),
     ]);
 
+    const sucursales = sucursalRows as { id_sucursal: number; nombre: string; id_calendar: string | null }[];
+    const selectedSucursal = sucursales.find((s) => s.id_sucursal === id_sucursal);
+    const sucursalCalId = selectedSucursal?.id_calendar ?? undefined;
+
+    // Fetch calendar events using the selected sucursal's own calendar
+    if (!sucursalCalId) return [];
+    const calEvents = await listCalendarEvents(timeMin, timeMax, sucursalCalId);
+
     const knownIds = new Set(
       (dbRows as { google_event_id: string }[]).map((r) => r.google_event_id)
     );
 
-    const sucursales = sucursalRows as { id_sucursal: number; nombre: string }[];
-
-    return (gcalEvents as GCalEventRaw[])
+    return (calEvents as GCalEventRaw[])
       .filter((e) => !knownIds.has(e.id))
       .filter((e) => {
         const eventSucursal = e.extendedPrivate?.id_sucursal;
