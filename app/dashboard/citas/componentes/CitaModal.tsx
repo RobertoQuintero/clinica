@@ -133,7 +133,7 @@ export default function CitaModal({ form, pacientes, servicioOpciones, saving, e
                       className="cursor-pointer px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100"
                     >
                       <span>{p.nombre} {p.apellido_paterno}</span>
-                      {p.whatsapp && <span className="ml-2 text-xs text-zinc-400 dark:text-zinc-500" style={{visibility:"hidden"}}>{p.whatsapp}</span>}
+                      {p.whatsapp && <span className="ml-2 text-xs text-zinc-400 dark:text-zinc-500" style={{display:'none'}}>{p.whatsapp}</span>}
                     </li>
                   ))}
                 </ul>

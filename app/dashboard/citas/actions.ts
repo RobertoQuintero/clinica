@@ -171,7 +171,10 @@ export async function saveCita(
     // --- Resolve names for the calendar event summary ---
     const [pacienteRows, sucursalRows, servicioRows] = await Promise.all([
       db.queryParams(
-        `SELECT [nombre], [apellido_paterno], [whatsapp], [telefono] FROM [CentroPodologico].[dbo].[pacientes] WHERE [id_paciente] = @id_paciente`,
+        `SELECT p.[nombre], p.[apellido_paterno], p.[whatsapp], p.[telefono], pc.[codigo] AS phone_code
+         FROM [CentroPodologico].[dbo].[pacientes] p
+         LEFT JOIN [CentroPodologico].[dbo].[codigos_telefonicos] pc ON pc.[id_phone_code] = p.[id_phone_code]
+         WHERE p.[id_paciente] = @id_paciente`,
         { id_paciente }
       ),
       db.queryParams(
@@ -185,7 +188,7 @@ export async function saveCita(
           )
         : Promise.resolve([]),
     ]);
-    const paciente = pacienteRows[0] as { nombre: string; apellido_paterno: string; whatsapp?: string; telefono?: string } | undefined;
+    const paciente = pacienteRows[0] as { nombre: string; apellido_paterno: string; whatsapp?: string; telefono?: string; phone_code?: string } | undefined;
     const sucursal = sucursalRows[0] as { nombre: string; id_calendar: string | null } | undefined;
     const servicio = (servicioRows[0] as { nombre: string } | undefined)?.nombre ?? null;
     const calId    = sucursal?.id_calendar ?? undefined;
@@ -193,8 +196,11 @@ export async function saveCita(
     const summary = servicio
       ? `${servicio} — ${pacienteNombre}  · ${sucursal ? sucursal.nombre : `Sucursal #${id_sucursal}`}`
       : `Cita: ${pacienteNombre}  — ${sucursal ? sucursal.nombre : `Sucursal #${id_sucursal}`}`;
-    const telefono = paciente?.whatsapp || paciente?.telefono || "";
-    
+    const rawTelefono = paciente?.whatsapp || paciente?.telefono || "";
+    const telefono = rawTelefono
+      ? paciente?.phone_code ? `${paciente.phone_code}${rawTelefono}` : rawTelefono
+      : "";
+
     const calEventData = {
       summary,
       description: telefono,
@@ -280,7 +286,8 @@ export async function saveCita(
 
     revalidatePath("/dashboard/citas");
     return { ok: true };
-  } catch {
+  } catch(error) {
+    console.log({error})
     return { ok: false, message: "Error al guardar la cita" };
   }
 }
