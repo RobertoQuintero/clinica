@@ -29,7 +29,7 @@ import { IPaciente } from "@/interfaces/paciente";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
 import { buildDate } from "@/utils/date_helpper";
-import { getPacientes, getPodologos, saveCita } from "@/app/dashboard/citas/actions";
+import { getPacientes, getPodologos, getServicioOpciones, saveCita } from "@/app/dashboard/citas/actions";
 import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
 
@@ -98,8 +98,9 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [notFound, setNotFound] = useState(false);
 
   // States for CitaModal
-  const [pacientes, setPacientes]         = useState<IPaciente[]>([]);
-  const [podologos, setPodologos]         = useState<IUser[]>([]);
+  const [pacientes, setPacientes]           = useState<IPaciente[]>([]);
+  const [podologos, setPodologos]           = useState<IUser[]>([]);
+  const [servicioOpciones, setServicioOpciones] = useState<{ id_servicio_opcion: number; nombre: string }[]>([]);
   const [showModal, setShowModal]         = useState(false);
   const [form, setForm]                   = useState<ICita>(EMPTY);
   const [savingCita, setSavingCita]       = useState(false);
@@ -143,6 +144,7 @@ export default function TratamientoDetallePage({ params }: Props) {
   useEffect(() => {
     getPacientes().then(setPacientes).catch(console.error);
     getPodologos().then(setPodologos).catch(console.error);
+    getServicioOpciones().then(setServicioOpciones).catch(console.error);
   }, []);
 
   const openCrearConsulta = async () => {
@@ -416,7 +418,7 @@ export default function TratamientoDetallePage({ params }: Props) {
         <CitaModal
           form={form}
           pacientes={pacientes}
-          podologos={podologos}
+          servicioOpciones={servicioOpciones}
           saving={savingCita}
           error={errorCita}
           onChange={handleChange}

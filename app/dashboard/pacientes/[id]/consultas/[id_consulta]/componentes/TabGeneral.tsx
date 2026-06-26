@@ -5,12 +5,11 @@ import { ICita } from "@/interfaces/cita";
 import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
-import { IUser } from "@/interfaces/user";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
-import { getPacientes, getPodologos, saveCita } from "@/app/dashboard/citas/actions";
+import { getPacientes, getServicioOpciones, saveCita } from "@/app/dashboard/citas/actions";
 import {
   ConsultaProductoExtended,
   GeneralTabData,
@@ -110,7 +109,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [showCitaModal,   setShowCitaModal  ] = useState(false);
   const [citaForm,        setCitaForm       ] = useState<ICita>(EMPTY_CITA);
   const [citaPacientes,   setCitaPacientes  ] = useState<IPaciente[]>([]);
-  const [citaPodologos,   setCitaPodologos  ] = useState<IUser[]>([]);
+  const [citaServicioOpciones, setCitaServicioOpciones] = useState<{ id_servicio_opcion: number; nombre: string }[]>([]);
   const [citaSaving,      setCitaSaving     ] = useState(false);
   const [citaError,       setCitaError      ] = useState<string | null>(null);
   const [citaListsLoaded, setCitaListsLoaded] = useState(false);
@@ -438,9 +437,9 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       id_consulta:    consulta.id_tratamiento ?? undefined,
     });
     if (!citaListsLoaded) {
-      const [pacs, pods] = await Promise.all([getPacientes(), getPodologos()]);
+      const [pacs, opciones] = await Promise.all([getPacientes(), getServicioOpciones()]);
       setCitaPacientes(pacs);
-      setCitaPodologos(pods);
+      setCitaServicioOpciones(opciones);
       setCitaListsLoaded(true);
     }
     setShowCitaModal(true);
@@ -806,7 +805,7 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
         <CitaModal
           form={citaForm}
           pacientes={citaPacientes}
-          podologos={citaPodologos}
+          servicioOpciones={citaServicioOpciones}
           saving={citaSaving}
           error={citaError}
           lockPaciente
