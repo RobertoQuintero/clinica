@@ -18,6 +18,7 @@ import EgresoItem from "./EgresoItem";
 
 interface Props {
   id_tratamiento: number;
+  stage?:          number;
 }
 
 const EMPTY_FORM: EgresoFormValues = {
@@ -30,7 +31,7 @@ const EMPTY_FORM: EgresoFormValues = {
   id_egreso_stage: 0,
 };
 
-export default function AccordionEgresos({ id_tratamiento }: Props) {
+export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
   const { user } = useAuth();
   const canAdd       = user?.id_role === 1 || user?.id_role === 4;
   const canEditStage = user?.id_role === 1 || user?.id_role === 4;
@@ -131,6 +132,7 @@ export default function AccordionEgresos({ id_tratamiento }: Props) {
               {canAdd && (
                 !adding ? (
                   <button
+                  disabled={stage!==undefined && stage>=5}
                     onClick={() => setAdding(true)}
                     className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                   >

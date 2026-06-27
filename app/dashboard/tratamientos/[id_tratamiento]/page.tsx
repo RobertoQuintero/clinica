@@ -303,7 +303,7 @@ export default function TratamientoDetallePage({ params }: Props) {
           )}
         </div>
           {
-            user?.id_role !== 5 && detalle.id_stage!==5 && (
+            user?.id_role !== 5 && detalle.id_stage<5 && (
               <div className="flex gap-2">
                 {tienePagoTipo2 && (
                 <button
@@ -321,7 +321,7 @@ export default function TratamientoDetallePage({ params }: Props) {
                   Crear cita
                 </button>
                 )}
-                {numConsultas >= 6 && detalle.id_stage !== 5 && detalle.id_stage !== 6 && (
+                {numConsultas >= 6 && detalle.id_stage < 5  && (
                   <button
                     onClick={() => { setErrorFinalizar(null); setShowConfirmFinalizar(true); }}
                     className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 whitespace-nowrap"
@@ -354,10 +354,11 @@ export default function TratamientoDetallePage({ params }: Props) {
           <AccordionPagos
               id_tratamiento={id_tratamiento}
               onFirstPago={() => setTienePagoTipo2(true)}
+              stage={detalle.id_stage}
             />
           </>
         }
-        <AccordionEgresos id_tratamiento={id_tratamiento} />
+        <AccordionEgresos id_tratamiento={id_tratamiento} stage={detalle.id_stage}/>
         <AccordionRecetas
           id_tratamiento={id_tratamiento}
           nombre_paciente={detalle.nombre_paciente}

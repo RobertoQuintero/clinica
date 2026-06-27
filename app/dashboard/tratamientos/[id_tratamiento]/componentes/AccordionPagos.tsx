@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface Props {
   id_tratamiento: number;
   onFirstPago?:    () => void;
+  stage?:          number;
 }
 
 const fmtDatetime = (val: string) => {
@@ -24,7 +25,7 @@ const fmtDatetime = (val: string) => {
     .toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 };
 
-export default function AccordionPagos({ id_tratamiento, onFirstPago }: Props) {
+export default function AccordionPagos({ id_tratamiento, onFirstPago,stage }: Props) {
   const { user } = useAuth();
   const canEdit  = user?.id_role === 1 || user?.id_role === 4;
 
@@ -273,12 +274,14 @@ export default function AccordionPagos({ id_tratamiento, onFirstPago }: Props) {
                                 <td className="px-4 py-2">
                                   <div className="flex items-center justify-center gap-2">
                                     <button
+                                      disabled={stage!==undefined && stage>=5}
                                       onClick={() => openEdit(p)}
                                       className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
                                     >
                                       Editar
                                     </button>
                                     <button
+                                      disabled={stage!==undefined && stage>=5}
                                       onClick={() => { setDeleteId(p.id_tratamiento_pago); setDeleteError(""); }}
                                       className="rounded-md bg-red-50 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 transition-colors"
                                     >
@@ -300,6 +303,7 @@ export default function AccordionPagos({ id_tratamiento, onFirstPago }: Props) {
                 {/* Add payment */}
                 {!addingPago ? (
                   <button
+                  disabled={stage!==undefined && stage>=5}
                     onClick={() => setAddingPago(true)}
                     className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                   >

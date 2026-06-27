@@ -96,6 +96,7 @@ export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data
     const {
       id_consulta, id_paciente, id_podologo, fecha, diagnostico,
       tratamiento_aplicado, observaciones, costo_total, id_sucursal, id_empresa,
+      id_tratamiento, is_onicomicosis,
     } = form;
 
     const commonParams = {
@@ -110,6 +111,8 @@ export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data
       costo_total,
       id_sucursal,
       id_empresa,
+      id_tratamiento:       id_tratamiento ?? null,
+      is_onicomicosis:      is_onicomicosis ? 1 : 0,
     };
 
     let result;
@@ -118,13 +121,13 @@ export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data
         `INSERT INTO [CentroPodologico].[dbo].[consultas]
            ([id_consulta],[id_paciente],[id_podologo],[fecha],[diagnostico],
             [tratamiento_aplicado],[observaciones],[created_at],[deleted_at],
-            [costo_total],[id_sucursal],[id_empresa])
+            [costo_total],[id_sucursal],[id_empresa],[id_tratamiento],[is_onicomicosis])
          OUTPUT INSERTED.*
          VALUES (
            (SELECT ISNULL(MAX([id_consulta]),0)+1 FROM [CentroPodologico].[dbo].[consultas]),
            @id_paciente,@id_podologo,@fecha,@diagnostico,
            @tratamiento_aplicado,@observaciones,@created_at,@deleted_at,
-           @costo_total,@id_sucursal,@id_empresa
+           @costo_total,@id_sucursal,@id_empresa,@id_tratamiento,@is_onicomicosis
          )`,
         commonParams
       );
@@ -195,6 +198,23 @@ export async function getPodologosBySucursal(id_sucursal: number): Promise<IUser
     { id_sucursal, id_empresa }
   );
   return data as IUser[];
+}
+
+export async function getTratamientoActivoByPaciente(
+  id_paciente: number
+): Promise<{ id_tratamiento: number } | null> {
+  const data = await db.queryParams(
+    `SELECT TOP 1 TRO.[id_tratamiento]
+       FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] TRO
+       LEFT JOIN [CentroPodologico].[dbo].[consultas] DC ON DC.[id_consulta] = TRO.[id_consulta]
+      WHERE TRO.[id_stage] = 4
+        AND DC.[id_paciente] = @id_paciente 
+        AND (select count(*) from consultas where id_tratamiento=TRO.id_tratamiento)>0
+      ORDER BY TRO.[id_tratamiento] DESC`,
+    { id_paciente }
+  );
+  const rows = data as { id_tratamiento: number }[];
+  return rows.length ? rows[0] : null;
 }
 
 export async function getSucursalesActivas(): Promise<ISucursal[]> {
