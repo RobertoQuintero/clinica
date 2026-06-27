@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   id_tratamiento: number;
+  onFirstPago?:    () => void;
 }
 
 const fmtDatetime = (val: string) => {
@@ -23,7 +24,7 @@ const fmtDatetime = (val: string) => {
     .toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 };
 
-export default function AccordionPagos({ id_tratamiento }: Props) {
+export default function AccordionPagos({ id_tratamiento, onFirstPago }: Props) {
   const { user } = useAuth();
   const canEdit  = user?.id_role === 1 || user?.id_role === 4;
 
@@ -77,6 +78,7 @@ export default function AccordionPagos({ id_tratamiento }: Props) {
     });
     if (result.ok) {
       const updated = await getPagosByTratamiento(id_tratamiento);
+      onFirstPago?.();
       setPagos(updated);
       setPagoForm({ total: defaultTotal, idMetodoPago: metodos[0]?.idMetodoPago ?? 0, referencia: "" });
       setAddingPago(false);

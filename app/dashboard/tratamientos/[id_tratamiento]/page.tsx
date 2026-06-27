@@ -348,7 +348,10 @@ export default function TratamientoDetallePage({ params }: Props) {
         {
           user?.id_role !== 5 && 
           <>
-          <AccordionPagos id_tratamiento={id_tratamiento} />
+          <AccordionPagos
+              id_tratamiento={id_tratamiento}
+              onFirstPago={() => setTienePagoTipo2(true)}
+            />
           </>
         }
         <AccordionEgresos id_tratamiento={id_tratamiento} />

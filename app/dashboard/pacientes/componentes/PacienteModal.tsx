@@ -24,7 +24,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name } = e.target;
     if (["whatsapp", "telefono", "contacto_emergencia_whatsapp"].includes(name)) {
-      e.target.value = e.target.value.replace(/\D/g, "");
+      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
     } else if (["nombre", "apellido_paterno", "apellido_materno"].includes(name)) {
       e.target.value = e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     }
@@ -91,6 +91,9 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
               name="whatsapp"
               value={String(form.whatsapp ?? "")}
               onChange={handleChange}
+              minLength={10}
+              maxLength={10}
+              required
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
           </label>
@@ -99,13 +102,13 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
           
           {(
             [
-              { name: "telefono",                     label: "Teléfono",                     type: "text" },
+              { name: "telefono",                     label: "Teléfono",                     type: "text", minLength: 10, maxLength: 10 },
               { name: "ciudad_preferida",             label: "Ciudad preferida",             type: "text" },
               { name: "direccion",                    label: "Dirección",                    type: "text" },
               { name: "contacto_emergencia_nombre",   label: "Nombre(Contacto emergencia)",   type: "text" },
-              { name: "contacto_emergencia_whatsapp", label: "WhatsApp(Contacto emergencia)", type: "text" },
-            ] as { name: keyof IPaciente; label: string; type: string }[]
-          ).map(({ name, label, type }) => (
+              { name: "contacto_emergencia_whatsapp", label: "WhatsApp(Contacto emergencia)", type: "text", minLength: 10, maxLength: 10 },
+            ] as { name: keyof IPaciente; label: string; type: string; minLength?: number; maxLength?: number }[]
+          ).map(({ name, label, type, minLength, maxLength }) => (
             <label key={name} className="flex flex-col gap-1">
               <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{label}</span>
               <input
@@ -113,6 +116,8 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
                 name={name}
                 value={String(form[name] ?? "")}
                 onChange={handleChange}
+                {...(minLength !== undefined && { minLength })}
+                {...(maxLength !== undefined && { maxLength })}
                 className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               />
             </label>
