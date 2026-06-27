@@ -197,6 +197,9 @@ export default function TratamientoDetallePage({ params }: Props) {
       if (!result.ok) {
         setErrorConsulta(result.message ?? "Error al crear la consulta");
       } else {
+        if (detalle && detalle.id_stage === 3) {
+          await updateTratamientoStage(id_tratamiento, 4);
+        }
         setShowConsultaModal(false);
         router.push(`/dashboard/pacientes/${detalle!.id_paciente}/consultas/${result.id_consulta}`);
       }
