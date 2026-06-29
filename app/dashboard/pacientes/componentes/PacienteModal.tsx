@@ -28,7 +28,8 @@ export default function PacienteModal({ form, saving, error, phoneCodes, sucursa
     if (["whatsapp", "telefono", "contacto_emergencia_whatsapp"].includes(name)) {
       e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
     } else if (["nombre", "apellido_paterno", "apellido_materno"].includes(name)) {
-      e.target.value = e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      // e.target.value = e.target.value.replace(/[^a-zñÑ\s'-]/gi, "");
+      e.target.value = e.target.value.replace(/[^a-zñ\s]/gi, "");
     }
     onChange(e);
   };
