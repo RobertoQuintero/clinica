@@ -192,7 +192,6 @@ export default function UsuariosPage() {
                   { label: "Teléfono",  key: "telefono"    },
                   { label: "Rol",       key: "id_role"     },
                   { label: "Sucursal",  key: "id_sucursal" },
-                  { label: "Activo",    key: "status"      },
                 ] as { label: string; key: SortKey }[]).map(({ label, key }) => (
                   <th
                     key={key}
@@ -205,13 +204,25 @@ export default function UsuariosPage() {
                     </span>
                   </th>
                 ))}
+                <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                  Sucursales con acceso
+                </th>
+                <th
+                  onClick={() => toggleSort("status")}
+                  className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
+                >
+                  Activo
+                  <span className="ml-1 text-xs">
+                    {sortKey === "status" ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
+                  </span>
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
               {usuarios.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
+                  <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
               ) : usuariosFiltrados.map((u) => (
                 <UsuarioFila key={u.id_user} usuario={u} roles={roles} sucursales={sucursales} onEdit={openEdit} />

@@ -18,7 +18,7 @@ export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit }: P
   const roleName = (id: number) => roles.find((r) => r.id_role === id)?.nombre ?? id;
   const sucursalName = (id: number) => {
     const s = sucursales.find((s) => s.id_sucursal === id);
-    return s ? `${s.nombre} — ${s.ciudad}` : id;
+    return s ? `${s.nombre}` : id;
   };
 
   return (
@@ -28,6 +28,18 @@ export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit }: P
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.telefono}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{roleName(u.id_role)}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{sucursalName(u.id_sucursal)}</td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">
+        {u?.id_role === 1 || u?.id_role === 4
+        ?'Todas'
+        :(u.sucursales_string ?? "").split(",").filter(Boolean).length === 0 ? "—" : (
+          <ul className="space-y-0.5">
+            {(u.sucursales_string ?? "").split(",").filter(Boolean).map((id) => (
+              <li key={id}>{sucursalName(Number(id))}</li>
+            ))}
+          </ul>
+        )
+      }
+      </td>
       <td className="px-4 py-3">
         <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${u.status ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400"}`}>
           {u.status ? "Sí" : "No"}

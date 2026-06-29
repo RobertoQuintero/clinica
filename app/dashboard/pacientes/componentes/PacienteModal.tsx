@@ -3,6 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPhoneCode } from "@/interfaces/phone_code";
+import { ISucursal } from "@/interfaces/sucursal";
 import { buildDateReverse } from "@/utils/date_helpper";
 
 interface Props {
@@ -10,13 +11,14 @@ interface Props {
   saving: boolean;
   error: string | null;
   phoneCodes: IPhoneCode[];
+  sucursales: ISucursal[];
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
 
 
-export default function PacienteModal({ form, saving, error, phoneCodes, onChange, onSubmit, onClose }: Props) {
+export default function PacienteModal({ form, saving, error, phoneCodes, sucursales, onChange, onSubmit, onClose }: Props) {
   const {user}= useAuth()
   const date=new Date(form.created_at)
   date.setHours(date.getHours()+24)
@@ -122,6 +124,22 @@ export default function PacienteModal({ form, saving, error, phoneCodes, onChang
               />
             </label>
           ))}
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursal</span>
+            <select
+              name="id_sucursal"
+              value={form.id_sucursal ?? ""}
+              onChange={handleChange}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            >
+              <option value="">Seleccionar</option>
+              {sucursales.map((s) => (
+                <option key={s.id_sucursal} value={s.id_sucursal}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sexo</span>
             <select

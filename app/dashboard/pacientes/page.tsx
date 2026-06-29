@@ -35,7 +35,7 @@ const EMPTY: IPaciente = {
 export default function PacientesPage() {
   const { user } = useAuth();
   const canSeeWhatsapp = user?.id_role === 1 || user?.id_role === 4;
-  const { selectedId } = useSucursal();
+  const { selectedId, sucursales } = useSucursal();
   const [pacientes, setPacientes] = useState<IPaciente[]>([]);
   const [phoneCodes, setPhoneCodes] = useState<IPhoneCode[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -112,7 +112,7 @@ export default function PacientesPage() {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: name === "id_phone_code" ? (value === "" ? null : Number(value)) : value,
+      [name]: name === "id_phone_code" ? (value === "" ? null : Number(value)) : name === "id_sucursal" ? Number(value) : value,
     }));
   };
 
@@ -274,6 +274,7 @@ export default function PacientesPage() {
           saving={saving}
           error={error}
           phoneCodes={phoneCodes}
+          sucursales={sucursales}
           onChange={handleChange}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
