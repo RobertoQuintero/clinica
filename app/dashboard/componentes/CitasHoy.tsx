@@ -24,7 +24,7 @@ import { ISucursal } from "@/interfaces/sucursal";
 type Tab = "citas" | "faltantes" | "cumpleanos" | "consultas";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "citas",      label: "Citas de hoy" },
+  // { key: "citas",      label: "Citas de hoy" },
   { key: "faltantes",  label: "Faltantes" },
   { key: "cumpleanos", label: "Cumpleaños" },
   { key: "consultas",  label: "Consultas" },
@@ -196,7 +196,7 @@ export default function CitasHoy() {
       </div>
 
       {/* Tab content */}
-      {tab === "citas" && (
+      {/* {tab === "citas" && (
         <>
           {loading ? (
             <p className="text-sm text-zinc-400">Cargando...</p>
@@ -229,7 +229,7 @@ export default function CitasHoy() {
             </div>
           )}
         </>
-      )}
+      )} */}
 
       {tab === "faltantes"  && <PacientesFaltantes />}
       {tab === "cumpleanos" && <PacientesCumpleanos />}

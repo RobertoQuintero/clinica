@@ -16,13 +16,18 @@ import {
 export default function CitasPage() {
   const { selectedId }                    = useSucursal();
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-  getSucursalIframe(selectedId).then((sucursal) => {
-    if(sucursal){
+    setLoading(true);
+    getSucursalIframe(selectedId).then((sucursal) => {
+      if(sucursal){
 
       setIframeSrc(sucursal?.iframe ?? null);
+      setLoading(false)
     }
+  }).catch((error) => {
+    setLoading(false)
   })
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [selectedId]);
@@ -35,14 +40,19 @@ export default function CitasPage() {
        
       </div>
       <div className="calendar-container">
-      {
-        iframeSrc ? (
-          <iframe className="google-calendar-iframe" src={iframeSrc}></iframe>
-        ):<></>
-      }
-
+        {loading ? (
+          <p>Espere ...</p>
+        ) : (
+          iframeSrc ? (
+            <iframe className="google-calendar-iframe" src={iframeSrc}></iframe>
+          ) : <></>
+        )}
       </div>
+
+      
     </div>
   );
 }
+
+
 
