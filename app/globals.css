@@ -30,3 +30,20 @@ body {
 .fc {
   --fc-page-bg-color: transparent;
 }
+
+
+.google-calendar-iframe {
+  width: 90vw;
+  height: 75vh;
+  border: none;
+  margin: 0 auto;
+  border-radius: 8px;
+  /* max-width: 1300px; */
+}
+.calendar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}

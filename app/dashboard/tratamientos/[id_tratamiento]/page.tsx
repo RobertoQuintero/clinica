@@ -197,7 +197,7 @@ export default function TratamientoDetallePage({ params }: Props) {
       if (!result.ok) {
         setErrorConsulta(result.message ?? "Error al crear la consulta");
       } else {
-        if (detalle && detalle.id_stage === 3) {
+        if (detalle && detalle.id_stage <= 3) {
           await updateTratamientoStage(id_tratamiento, 4);
         }
         setShowConsultaModal(false);
@@ -244,7 +244,7 @@ export default function TratamientoDetallePage({ params }: Props) {
     } catch (err: unknown) {
       setErrorCita(err instanceof Error ? err.message : "Error inesperado");
     } finally {
-      if(detalle && detalle.id_stage===3){
+      if(detalle && detalle.id_stage<=3){
         await updateTratamientoStage(id_tratamiento, 4);
       }
       setSavingCita(false);

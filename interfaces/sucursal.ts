@@ -11,6 +11,7 @@ export interface ISucursal {
     id_state:          number | null;
     estado: string | null;
     id_calendar:       string | null;
+    iframe: string | null;
 }
 
 export interface ICatState {

@@ -17,6 +17,7 @@ import {
 
   type GCalEventRaw,
 } from "@/lib/googleCalendar";
+import { ISucursal } from "@/interfaces/sucursal";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
@@ -26,6 +27,18 @@ async function getActiveUser(): Promise<IAuthUser> {
   if (!token) throw new Error("No autenticado");
   const { payload } = await jwtVerify(token, JWT_SECRET);
   return payload as unknown as IAuthUser;
+}
+
+export const getSucursalIframe = async (id_sucursal: number): Promise<ISucursal> => {
+
+  const data=await db.queryParams(
+    `SELECT [id_sucursal]
+           , iframe
+       FROM [CentroPodologico].[dbo].[sucursales]
+      WHERE [id_sucursal] = @id_sucursal and [status]=1`,
+    { id_sucursal }
+  ) as ISucursal[];
+  return data[0];
 }
 
 export async function getCitas(): Promise<ICita[]> {
@@ -178,7 +191,7 @@ export async function saveCita(
         { id_paciente }
       ),
       db.queryParams(
-        `SELECT [nombre], [id_calendar] FROM [CentroPodologico].[dbo].[sucursales] WHERE [id_sucursal] = @id_sucursal`,
+        `SELECT [nombre], [id_calendar],[iframe] FROM [CentroPodologico].[dbo].[sucursales] WHERE [id_sucursal] = @id_sucursal`,
         { id_sucursal }
       ),
       id_servicio_opcion != null
@@ -189,7 +202,7 @@ export async function saveCita(
         : Promise.resolve([]),
     ]);
     const paciente = pacienteRows[0] as { nombre: string; apellido_paterno: string; whatsapp?: string; telefono?: string; phone_code?: string } | undefined;
-    const sucursal = sucursalRows[0] as { nombre: string; id_calendar: string | null } | undefined;
+    const sucursal = sucursalRows[0] as { nombre: string; id_calendar: string | null; iframe?: string } | undefined;
     const servicio = (servicioRows[0] as { nombre: string } | undefined)?.nombre ?? null;
     const calId    = sucursal?.id_calendar ?? undefined;
     const pacienteNombre = paciente ? `${paciente.nombre} ${paciente.apellido_paterno}` : `Paciente #${id_paciente}`;
