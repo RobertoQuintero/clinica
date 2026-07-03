@@ -15,7 +15,6 @@ import {
   getSucursalesActivas,
   saveConsulta,
   cancelarConsulta as cancelarConsultaAction,
-  getTratamientoActivoByPaciente,
 } from "./actions";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -162,11 +161,11 @@ export function useExpediente() {
         const date = buildDate(new Date());
         submitForm.fecha = date;
         submitForm.created_at = date;
-        const tratamientoActivo = await getTratamientoActivoByPaciente(id_paciente);
-        if (tratamientoActivo) {
-          submitForm.id_tratamiento = tratamientoActivo.id_tratamiento;
-          submitForm.is_onicomicosis = true;
-        }
+        // const tratamientoActivo = await getTratamientoActivoByPaciente(id_paciente);
+        // if (tratamientoActivo) {
+        //   submitForm.id_tratamiento = tratamientoActivo.id_tratamiento;
+        //   submitForm.is_onicomicosis = true;
+        // }
       }
       const result = await saveConsulta(submitForm);
       if (!result.ok) throw new Error(typeof result.data === "string" ? result.data : "Error al guardar");
