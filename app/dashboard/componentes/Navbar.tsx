@@ -60,24 +60,11 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
-          {/* Sucursal selector */}
-          {sucursales.length > 1 && (
-            <select
-              value={selectedId}
-              onChange={(e) => setSelected(Number(e.target.value))}
-              className="ml-2 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
-            >
-              {sucursales.map((s) => (
-                <option key={s.id_sucursal} value={s.id_sucursal}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
 
         {/* User + logout — only on large screens */}
-        <div className="hidden lg:flex items-center gap-4">
+        <div className="hidden lg:flex flex-col items-end gap-1">
+          <div className="flex items-center gap-4">
           {/* Theme toggle */}
           <button
             onClick={toggle}
@@ -109,6 +96,20 @@ export default function Navbar() {
           >
             Cerrar sesión
           </button>
+          </div>
+          {sucursales.length > 1 && (
+            <select
+              value={selectedId}
+              onChange={(e) => setSelected(Number(e.target.value))}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
+            >
+              {sucursales.map((s) => (
+                <option key={s.id_sucursal} value={s.id_sucursal}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Hamburger button — only on small screens */}
