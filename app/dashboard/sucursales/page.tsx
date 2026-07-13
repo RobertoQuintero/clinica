@@ -8,9 +8,9 @@ import { getStates, getSucursales, saveSucursal } from "./actions";
 import SucursalFila from "./componentes/SucursalFila";
 import SucursalModal from "./componentes/SucursalModal";
 
-type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state"| "id_calendar" | "link_calendar">;
+type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state"| "id_calendar" | "link_calendar" | "iframe">;
 
-const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, id_calendar: null, link_calendar: null };
+const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, id_calendar: null, link_calendar: null, iframe: null };
 
 export default function SucursalesPage() {
   const { user }                    = useAuth();
@@ -71,6 +71,7 @@ export default function SucursalesPage() {
       id_state: s.id_state ?? null,
       id_calendar: s.id_calendar ?? null,
       link_calendar: s.link_calendar ?? null,
+      iframe: s.iframe ?? null,
     });
     setError(null);
     setShowModal(true);
@@ -89,7 +90,7 @@ export default function SucursalesPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await saveSucursal(form);
+      const res = await saveSucursal(form) ;
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
       await fetchSucursales();
