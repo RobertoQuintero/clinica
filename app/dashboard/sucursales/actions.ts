@@ -42,6 +42,8 @@ export async function getSucursales(): Promise<ISucursal[]> {
             s.[status],
             s.[id_state],
             s.[id_calendar],
+            s.link_calendar,
+            s.iframe,
             cs.[description] AS estado
        FROM [CentroPodologico].[dbo].[sucursales] s
        LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
@@ -54,7 +56,7 @@ export async function getSucursales(): Promise<ISucursal[]> {
 }
 
 export async function saveSucursal(
-  form: Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state" | "id_calendar">
+  form: Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state" | "id_calendar" | "link_calendar" | "iframe">
 ): Promise<{ ok: boolean; message?: string }> {
   try {
     const { id_sucursal, nombre, ciudad, direccion, telefono, id_state } = form;
@@ -63,10 +65,10 @@ export async function saveSucursal(
     if (id_sucursal === 0) {
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[sucursales]
-           ([id_sucursal], [id_empresa], [nombre], [ciudad], [direccion], [telefono], [activo], [created_at], [status], [id_state], [id_calendar])
+           ([id_sucursal], [id_empresa], [nombre], [ciudad], [direccion], [telefono], [activo], [created_at], [status], [id_state], [id_calendar], [link_calendar], [iframe])
          VALUES (
            (SELECT ISNULL(MAX([id_sucursal]), 0) + 1 FROM [CentroPodologico].[dbo].[sucursales]),
-           @id_empresa, @nombre, @ciudad, @direccion, @telefono, 1, @created_at, 1, @id_state, @id_calendar
+           @id_empresa, @nombre, @ciudad, @direccion, @telefono, 1, @created_at, 1, @id_state, @id_calendar, @link_calendar, @iframe
          )`,
         {
           id_empresa,
@@ -77,6 +79,8 @@ export async function saveSucursal(
           created_at: buildDate(new Date()),
           id_state: id_state ?? null,
           id_calendar: form.id_calendar ?? null,
+          link_calendar: form.link_calendar ?? null,
+          iframe: form.iframe ?? null,
         }
       );
     } else {
@@ -87,9 +91,11 @@ export async function saveSucursal(
                 [direccion] = @direccion,
                 [telefono]  = @telefono,
                 [id_state]  = @id_state,
-                [id_calendar] = @id_calendar
-          WHERE [id_sucursal] = @id_sucursal`,
-        { id_sucursal, nombre, ciudad: ciudad ?? null, direccion: direccion ?? null, telefono: telefono ?? null, id_state: id_state ?? null, id_calendar: form.id_calendar ?? null }
+                [id_calendar] = @id_calendar,
+                [link_calendar] = @link_calendar,
+                [iframe] = @iframe
+          WHERE [id_sucursal] = @id_sucursal `,
+        { id_sucursal, nombre, ciudad: ciudad ?? null, direccion: direccion ?? null, telefono: telefono ?? null, id_state: id_state ?? null, id_calendar: form.id_calendar ?? null, link_calendar: form.link_calendar ?? null, iframe: form.iframe ?? null }
       );
     }
 
@@ -138,7 +144,9 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
               CONVERT(varchar(19), s.[created_at], 120) AS created_at,
               s.[status],
               s.[id_state],
-              s.id_calendar,
+              s.[id_calendar],
+              s.[link_calendar],
+              s.[iframe],
               cs.[description] AS estado
          FROM [CentroPodologico].[dbo].[sucursales] s
          LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
@@ -174,6 +182,9 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
             CONVERT(varchar(19), s.[created_at], 120) AS created_at,
             s.[status],
             s.[id_state],
+            s.[id_calendar],
+            s.[link_calendar],
+            s.[iframe],
             cs.[description] AS estado
        FROM [CentroPodologico].[dbo].[sucursales] s
        LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
@@ -183,6 +194,7 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
         AND s.[id_sucursal] IN (${placeholders})`,
     params
   );
+  console.log(data)
   return data as ISucursal[];
 }
 

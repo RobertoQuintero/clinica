@@ -8,9 +8,9 @@ import { getStates, getSucursales, saveSucursal } from "./actions";
 import SucursalFila from "./componentes/SucursalFila";
 import SucursalModal from "./componentes/SucursalModal";
 
-type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state"| "id_calendar">;
+type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state"| "id_calendar" | "link_calendar">;
 
-const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, id_calendar: null };
+const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, id_calendar: null, link_calendar: null };
 
 export default function SucursalesPage() {
   const { user }                    = useAuth();
@@ -70,6 +70,7 @@ export default function SucursalesPage() {
       telefono: s.telefono,
       id_state: s.id_state ?? null,
       id_calendar: s.id_calendar ?? null,
+      link_calendar: s.link_calendar ?? null,
     });
     setError(null);
     setShowModal(true);

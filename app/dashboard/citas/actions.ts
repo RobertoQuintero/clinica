@@ -34,6 +34,7 @@ export const getSucursalIframe = async (id_sucursal: number): Promise<ISucursal>
   const data=await db.queryParams(
     `SELECT [id_sucursal]
            , iframe
+           , link_calendar
        FROM [CentroPodologico].[dbo].[sucursales]
       WHERE [id_sucursal] = @id_sucursal and [status]=1`,
     { id_sucursal }

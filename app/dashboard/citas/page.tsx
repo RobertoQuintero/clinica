@@ -16,7 +16,9 @@ import {
 export default function CitasPage() {
   const { selectedId }                    = useSucursal();
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [linkCalendar, setLinkCalendar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false)
+
 
   useEffect(() => {
     setLoading(true);
@@ -24,6 +26,7 @@ export default function CitasPage() {
       if(sucursal){
 
       setIframeSrc(sucursal?.iframe ?? null);
+      setLinkCalendar(sucursal?.link_calendar ?? null);
       setLoading(false)
     }
   }).catch((error) => {
@@ -32,11 +35,23 @@ export default function CitasPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [selectedId]);
 
-// console.log(window.innerWidth)
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Citas</h2>
+     
+        <button
+            onClick={() => {
+              if (linkCalendar) {
+                window.open(linkCalendar, "_blank");
+              }
+            }}
+            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            + Nueva cita
+          </button>
+        
        
       </div>
       <div className="calendar-container">
