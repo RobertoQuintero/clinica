@@ -1,7 +1,11 @@
 "use client";
 
 import { IConsulta } from "@/interfaces/consulta";
+import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
+import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import Link from "next/link";
+import { useState } from "react";
+import { getPatologiaValoracionByConsulta } from "../actions";
 import { formatDate } from "../useExpediente";
 
 interface Props {
@@ -13,11 +17,60 @@ interface Props {
   onVerImagenes?: (id_consulta: number) => void;
 }
 
+const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
+  ["anoniquia",            "Anoniquia"           ],
+  ["hematoma_subungueal",  "Hematoma subungueal" ],
+  ["microniquia",          "Microniquia"         ],
+  ["onicauxis",            "Onicauxis"           ],
+  ["onicofosis",           "Onicofosis"          ],
+  ["onicolisis",           "Onicolisis"          ],
+  ["onicomicosis_grado_1", "Onicomicosis Grado 1"],
+  ["onicomicosis_grado_2", "Onicomicosis Grado 2"],
+  ["paquioniquia",         "Paquioniquia"        ],
+];
+
+const CONDITIONS: [keyof IValoracionPiel, string][] = [
+  ["anhidrosis",      "Anhidrosis"     ],
+  ["bromhidrosis",    "Bromhidrosis"   ],
+  ["edema",           "Edema"          ],
+  ["helomas",         "Helomas"        ],
+  ["hiperdrosis",     "Hiperhidrosis"  ],
+  ["hiperqueratosis", "Hiperqueratosis"],
+  ["pie_atleta",      "Pie de atleta"  ],
+  ["verrugas",        "Verrugas"       ],
+];
+
 export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCancel, hideCostoTotal = false, onVerImagenes }: Props) {
   const cancelled  = Boolean(c.cancelada);
   const finalizada = Boolean(c.fecha_fin);
+  const colSpan    = hideCostoTotal ? 9 : 10;
+
+  const [expanded, setExpanded] = useState(false);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [detalle, setDetalle] = useState<{
+    patologia:  IPatologiaUngueal | null;
+    valoracion: IValoracionPiel  | null;
+  } | null>(null);
+
+  const toggleExpanded = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && detalle === null && !loadingDetalle) {
+      setLoadingDetalle(true);
+      try {
+        const data = await getPatologiaValoracionByConsulta(c.id_consulta);
+        setDetalle(data);
+      } finally {
+        setLoadingDetalle(false);
+      }
+    }
+  };
+
+  const patologiasActivas  = detalle?.patologia  ? PATOLOGIAS.filter(([key]) => !!detalle.patologia![key]) : [];
+  const condicionesActivas = detalle?.valoracion ? CONDITIONS.filter(([key]) => !!detalle.valoracion![key]) : [];
 
   return (
+    <>
     <tr className={
       cancelled
         ? "bg-rose-50 dark:bg-rose-900/20 opacity-75"
@@ -62,6 +115,23 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCance
       )}
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleExpanded}
+            title={expanded ? "Ocultar detalles" : "Ver detalles"}
+            className="flex items-center justify-center rounded-md p-1.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-100 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           {onVerImagenes ? (
             <button
               onClick={() => onVerImagenes(c.id_consulta)}
@@ -107,6 +177,43 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCance
         </div>
       </td>
     </tr>
+    {expanded && (
+      <tr className={cancelled ? "bg-rose-50 dark:bg-rose-900/20" : "bg-zinc-50 dark:bg-zinc-800/30"}>
+        <td colSpan={colSpan} className="px-4 py-3">
+          {loadingDetalle ? (
+            <p className="text-sm text-zinc-400">Cargando detalles...</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2">Patologías</p>
+                {!detalle?.patologia ? (
+                  <p className="text-sm text-zinc-400">Sin datos registrados</p>
+                ) : (
+                  <ul className="list-disc list-inside text-sm text-zinc-700 dark:text-zinc-300 space-y-0.5">
+                    {patologiasActivas.map(([key, label]) => (
+                      <li key={key}>{label}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2">Valoración de piel</p>
+                {!detalle?.valoracion ? (
+                  <p className="text-sm text-zinc-400">Sin datos registrados</p>
+                ) : (
+                  <ul className="list-disc list-inside text-sm text-zinc-700 dark:text-zinc-300 space-y-0.5">
+                    {condicionesActivas.map(([key, label]) => (
+                      <li key={key}>{label}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
 
