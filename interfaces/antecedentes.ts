@@ -15,7 +15,11 @@ export interface IAntecedenteMedico {
     lactando:                    boolean;
     fracturas:                   boolean;
     antecedentes_dermatologicos: boolean;
+    actividad_fisica:            boolean;
+    onicomicosis:                boolean;
+    onicocriptosis:              boolean;
     medicamentos_actuales:       string;
     tipo_sangre:                 string;
+    cirugias:                    string;
     otros:                       string;
 }

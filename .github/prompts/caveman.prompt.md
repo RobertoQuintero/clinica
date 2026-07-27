@@ -1,4 +1,4 @@
-<!-- ---
+---
 name: caveman
 description: >
   Ultra-compressed communication mode. Cuts token usage ~75% by speaking like caveman
@@ -76,4 +76,4 @@ Example — destructive op:
 
 ## boundaries
 
-Code/commits/PRs: write normal. "stop caveman" or "normal mode": revert. Level persist until changed or session end -->
+Code/commits/PRs: write normal. "stop caveman" or "normal mode": revert. Level persist until changed or session end

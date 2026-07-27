@@ -1,4 +1,4 @@
-<!-- ---
+---
 applyTo: "app/api/**/route.ts,app/dashboard/**/*.tsx,app/dashboard/**/*.ts"
 ---
 
@@ -95,4 +95,4 @@ import { buildDate, addZeroToday } from "@/utils/date_helpper";
 
 created_at: buildDate(new Date())     // "YYYY-MM-DD HH:mm:ss"  (local time)
 fecha_registro: addZeroToday(new Date()) // "YYYY-MM-DD"         (local date)
-``` -->
+```

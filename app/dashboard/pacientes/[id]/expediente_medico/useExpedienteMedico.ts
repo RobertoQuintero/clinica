@@ -19,6 +19,9 @@ export const BOOL_LABELS: Record<string, string> = {
   lactando:                    "Lactando",
   fracturas:                   "Fracturas",
   antecedentes_dermatologicos: "Antec. dermatológicos",
+  actividad_fisica:            "Actividad física",
+  onicomicosis:                "Onicomicosis",
+  onicocriptosis:              "Onicocriptosis",
 };
 
 const buildEmpty = (id_paciente: number): IAntecedenteMedico => ({
@@ -38,8 +41,12 @@ const buildEmpty = (id_paciente: number): IAntecedenteMedico => ({
   lactando:                    false,
   fracturas:                   false,
   antecedentes_dermatologicos: false,
+  actividad_fisica:            false,
+  onicomicosis:                false,
+  onicocriptosis:              false,
   medicamentos_actuales:       "",
   tipo_sangre:                 "",
+  cirugias:                    "",
   otros:                       "",
 });
 

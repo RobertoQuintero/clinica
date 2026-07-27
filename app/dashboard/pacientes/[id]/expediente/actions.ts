@@ -4,8 +4,10 @@ import db from "@/database/connection";
 import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IConsulta } from "@/interfaces/consulta";
 import { IPaciente } from "@/interfaces/paciente";
+import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
+import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { IAuthUser } from "@/interfaces/auth";
 import { buildDate, toDBString } from "@/utils/date_helpper";
 import { cookies } from "next/headers";
@@ -43,7 +45,8 @@ export async function getAntecedentesByPaciente(id_paciente: number): Promise<IA
             [alergia_anestesia], [alergia_antibioticos], [alergia_sulfas], [alergia_latex],
             [alergia_ninguna], [diabetico], [hipertenso], [hipotiroidismo], [cancer],
             [embarazada], [lactando], [fracturas], [antecedentes_dermatologicos],
-            [medicamentos_actuales], [tipo_sangre], [otros]
+            [medicamentos_actuales], [tipo_sangre], [otros],
+            [actividad_fisica], [onicomicosis], [onicocriptosis], [cirugias]
        FROM [CentroPodologico].[dbo].[antecedentes_medicos]
       WHERE [id_paciente] = @id_paciente`,
     { id_paciente }
@@ -215,6 +218,40 @@ export async function getTratamientoActivoByPaciente(
   );
   const rows = data as { id_tratamiento: number }[];
   return rows.length ? rows[0] : null;
+}
+
+export async function getPatologiaValoracionByConsulta(
+  id_consulta: number
+): Promise<{
+  patologia:  IPatologiaUngueal | null;
+  valoracion: IValoracionPiel  | null;
+}> {
+  const [patRows, valRows] = await Promise.all([
+    db.queryParams(
+      `SELECT [id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
+              [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],
+              [onicomicosis_grado_1],[onicomicosis_grado_2]
+         FROM [CentroPodologico].[dbo].[patologia_ungueal]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
+    db.queryParams(
+      `SELECT [id_valoracion_piel],[id_consulta]
+              ,CONVERT(varchar(10), [fecha_valoracion], 120) AS fecha_valoracion
+              ,[edema],[pie_atleta],[bromhidrosis]
+              ,[hiperdrosis],[anhidrosis],[hiperqueratosis]
+              ,[helomas],[verrugas],[observaciones],[status]
+              ,CONVERT(varchar(19), [created_at], 120) AS created_at
+         FROM [CentroPodologico].[dbo].[valoracion_piel]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
+  ]);
+
+  return {
+    patologia:  (patRows[0] as IPatologiaUngueal) ?? null,
+    valoracion: (valRows[0] as IValoracionPiel)   ?? null,
+  };
 }
 
 export async function getSucursalesActivas(): Promise<ISucursal[]> {

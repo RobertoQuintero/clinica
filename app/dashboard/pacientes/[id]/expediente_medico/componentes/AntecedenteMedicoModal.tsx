@@ -13,6 +13,7 @@ interface Props {
 }
 
 const BOOLEAN_FIELDS: { name: keyof IAntecedenteMedico; label: string }[] = [
+  { name: "actividad_fisica",            label: "Actividad física" },
   { name: "alergia_anestesia",           label: "Alergia a anestesia" },
   { name: "alergia_antibioticos",        label: "Alergia a antibióticos" },
   { name: "alergia_latex",               label: "Alergia a látex" },
@@ -25,6 +26,8 @@ const BOOLEAN_FIELDS: { name: keyof IAntecedenteMedico; label: string }[] = [
   { name: "hipertenso",                  label: "Hipertenso/a" },
   { name: "hipotiroidismo",              label: "Hipotiroidismo" },
   { name: "lactando",                    label: "Lactando" },
+  { name: "onicocriptosis",              label: "Onicocriptosis" },
+  { name: "onicomicosis",                label: "Onicomicosis" },
   { name: "alergia_ninguna",             label: "Sin alergias" },
 ];
 
@@ -104,6 +107,17 @@ export default function AntecedenteMedicoModal({ form, saving, error, onChange, 
             <textarea
               name="medicamentos_actuales"
               value={form.medicamentos_actuales}
+              onChange={onChange}
+              rows={2}
+              className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Cirugías</span>
+            <textarea
+              name="cirugias"
+              value={form.cirugias}
               onChange={onChange}
               rows={2}
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"

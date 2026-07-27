@@ -46,7 +46,7 @@ export default function AntecedenteFila({ antecedente: a, onEdit }: Props) {
         </div>
       )}
 
-      {(a.medicamentos_actuales || a.otros) && (
+      {(a.medicamentos_actuales || a.cirugias || a.otros) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-zinc-700 dark:text-zinc-300">
           {a.medicamentos_actuales && (
             <div>
@@ -54,6 +54,14 @@ export default function AntecedenteFila({ antecedente: a, onEdit }: Props) {
                 Medicamentos actuales
               </span>
               {a.medicamentos_actuales}
+            </div>
+          )}
+          {a.cirugias && (
+            <div>
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 block mb-0.5">
+                Cirugías
+              </span>
+              {a.cirugias}
             </div>
           )}
           {a.otros && (
