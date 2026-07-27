@@ -1,6 +1,6 @@
 # Mostrar patología ungueal y valoración de piel en ConsultaFila
 
-**Estado:** Aprobado
+**Estado:** Implementado
 **Dependencias:** ninguna
 **Fecha:** 2026-07-27
 
