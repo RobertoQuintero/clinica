@@ -52,8 +52,12 @@ export async function getAntecedentes(id_paciente: number): Promise<IAntecedente
             [lactando],
             [fracturas],
             [antecedentes_dermatologicos],
+            [actividad_fisica],
+            [onicomicosis],
+            [onicocriptosis],
             [medicamentos_actuales],
             [tipo_sangre],
+            [cirugias],
             [otros]
        FROM [CentroPodologico].[dbo].[antecedentes_medicos]
       WHERE [id_paciente] = @id_paciente`,
@@ -83,8 +87,12 @@ export async function saveAntecedente(
       lactando,
       fracturas,
       antecedentes_dermatologicos,
+      actividad_fisica,
+      onicomicosis,
+      onicocriptosis,
       medicamentos_actuales,
       tipo_sangre,
+      cirugias,
       otros,
     } = form;
 
@@ -104,8 +112,12 @@ export async function saveAntecedente(
       lactando,
       fracturas,
       antecedentes_dermatologicos,
+      actividad_fisica,
+      onicomicosis:!!onicomicosis,
+      onicocriptosis:!!onicocriptosis,
       medicamentos_actuales,
       tipo_sangre,
+      cirugias,
       otros,
     };
 
@@ -116,13 +128,15 @@ export async function saveAntecedente(
             [alergia_anestesia],[alergia_antibioticos],[alergia_sulfas],
             [alergia_latex],[alergia_ninguna],[diabetico],[hipertenso],
             [hipotiroidismo],[cancer],[embarazada],[lactando],[fracturas],
-            [antecedentes_dermatologicos],[medicamentos_actuales],[tipo_sangre],[otros])
+            [antecedentes_dermatologicos],[actividad_fisica],[onicomicosis],[onicocriptosis],
+            [medicamentos_actuales],[tipo_sangre],[cirugias],[otros])
          VALUES (
            (SELECT ISNULL(MAX([id_antecedente_medico]),0)+1 FROM [CentroPodologico].[dbo].[antecedentes_medicos]),
            @id_paciente,@fecha_registro,@alergia_anestesia,@alergia_antibioticos,
            @alergia_sulfas,@alergia_latex,@alergia_ninguna,@diabetico,@hipertenso,
            @hipotiroidismo,@cancer,@embarazada,@lactando,@fracturas,
-           @antecedentes_dermatologicos,@medicamentos_actuales,@tipo_sangre,@otros
+           @antecedentes_dermatologicos,@actividad_fisica,@onicomicosis,@onicocriptosis,
+           @medicamentos_actuales,@tipo_sangre,@cirugias,@otros
          )`,
         commonParams
       );
@@ -144,8 +158,12 @@ export async function saveAntecedente(
            [lactando]                    = @lactando,
            [fracturas]                   = @fracturas,
            [antecedentes_dermatologicos] = @antecedentes_dermatologicos,
+           [actividad_fisica]            = @actividad_fisica,
+           [onicomicosis]                = @onicomicosis,
+           [onicocriptosis]              = @onicocriptosis,
            [medicamentos_actuales]       = @medicamentos_actuales,
            [tipo_sangre]                 = @tipo_sangre,
+           [cirugias]                    = @cirugias,
            [otros]                       = @otros
          WHERE [id_antecedente_medico]   = @id_antecedente_medico`,
         { id_antecedente_medico, ...commonParams }
@@ -154,7 +172,8 @@ export async function saveAntecedente(
 
     revalidatePath(`/dashboard/pacientes/${id_paciente}/expediente_medico`);
     return { ok: true };
-  } catch {
+  } catch(error) {
+    console.log(error)
     return { ok: false, message: "Error al guardar el antecedente médico" };
   }
 }

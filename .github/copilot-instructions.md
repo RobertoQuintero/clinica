@@ -1,4 +1,4 @@
-<!-- # Copilot Workspace Instructions — Centro Podológico
+# Copilot Workspace Instructions — Centro Podológico
 
 ## Date/Datetime Handling (mandatory in all forms and API routes)
 
@@ -130,4 +130,4 @@ fecha_registro: new Date().toISOString().slice(0, 10)
 | `new Date().toISOString().slice(0, 10)` | `addZeroToday(new Date())` |
 | `toDate(val)` / `new Date(val)` for user dates in POST | `toDBString(String(val ?? ""))` |
 | `.slice(0, 16)` on a DB date value in form inputs | `toDateTimeLocal(String(val ?? ""))` |
-| Returning raw `[fecha]` column from GET | `CONVERT(varchar(19), [fecha], 120) AS fecha` | -->
+| Returning raw `[fecha]` column from GET | `CONVERT(varchar(19), [fecha], 120) AS fecha` |

@@ -43,7 +43,8 @@ export async function getAntecedentesByPaciente(id_paciente: number): Promise<IA
             [alergia_anestesia], [alergia_antibioticos], [alergia_sulfas], [alergia_latex],
             [alergia_ninguna], [diabetico], [hipertenso], [hipotiroidismo], [cancer],
             [embarazada], [lactando], [fracturas], [antecedentes_dermatologicos],
-            [medicamentos_actuales], [tipo_sangre], [otros]
+            [medicamentos_actuales], [tipo_sangre], [otros],
+            [actividad_fisica], [onicomicosis], [onicocriptosis], [cirugias]
        FROM [CentroPodologico].[dbo].[antecedentes_medicos]
       WHERE [id_paciente] = @id_paciente`,
     { id_paciente }

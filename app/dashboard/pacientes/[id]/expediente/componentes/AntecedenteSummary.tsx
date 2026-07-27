@@ -17,6 +17,9 @@ const BOOL_LABELS: [keyof IAntecedenteMedico, string][] = [
   ["lactando",                    "Lactando"],
   ["fracturas",                   "Fracturas"],
   ["antecedentes_dermatologicos", "Antec. dermatológicos"],
+  ["actividad_fisica",            "Actividad física"],
+  ["onicomicosis",                "Onicomicosis"],
+  ["onicocriptosis",              "Onicocriptosis"],  
 ];
 
 interface Props {
@@ -48,7 +51,7 @@ export default function AntecedenteSummary({ antecedente }: Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-1 text-sm">
         <div>
           <span className="font-medium text-zinc-600 dark:text-zinc-400">Tipo de sangre: </span>
           <span className="text-zinc-800 dark:text-zinc-100">{antecedente.tipo_sangre || "—"}</span>
@@ -56,6 +59,10 @@ export default function AntecedenteSummary({ antecedente }: Props) {
         <div>
           <span className="font-medium text-zinc-600 dark:text-zinc-400">Medicamentos actuales: </span>
           <span className="text-zinc-800 dark:text-zinc-100">{antecedente.medicamentos_actuales || "—"}</span>
+        </div>
+        <div>
+          <span className="font-medium text-zinc-600 dark:text-zinc-400">Cirugías: </span>
+          <span className="text-zinc-800 dark:text-zinc-100">{antecedente.cirugias || "—"}</span>
         </div>
         <div>
           <span className="font-medium text-zinc-600 dark:text-zinc-400">Otros: </span>
