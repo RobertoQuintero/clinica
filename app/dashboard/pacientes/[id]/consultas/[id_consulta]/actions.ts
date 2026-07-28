@@ -33,6 +33,7 @@ export interface ConsultaData {
   productos:  ConsultaProductoExtended[];
   pagos:      IPago[];
   proceso:    IProceso | null;
+  onicocriptosisDetalle: IOnicocriptosisDetalle[];
 }
 
 export type ProcesoField =
@@ -74,7 +75,7 @@ export async function getConsultaData(
   id_consulta: number,
   id_paciente: number,
 ): Promise<ConsultaData> {
-  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows] = await Promise.all([ 
+  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows, onicoRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_consulta],[id_paciente],[id_podologo]
               ,CONVERT(varchar(19), [fecha],     120) AS fecha
@@ -157,6 +158,13 @@ export async function getConsultaData(
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
     ),
+    db.queryParams(
+      `SELECT [id_detalle],[id_consulta],[pie],[dedo],[grado],
+              [lado_medial],[lado_lateral],[dolor]
+         FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
   ]);
 
   return {
@@ -168,6 +176,7 @@ export async function getConsultaData(
     pagos:      (pgRows     as IPago[])                 ?? [],
     paciente:   (pacRows[0] as IPaciente)               ?? null,
     proceso:    (procRows[0] as IProceso)               ?? null,
+    onicocriptosisDetalle: (onicoRows as IOnicocriptosisDetalle[]) ?? [],
   };
 }
 

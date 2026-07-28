@@ -3,6 +3,7 @@
 import { IArchivo } from "@/interfaces/archivos";
 import { IConsulta } from "@/interfaces/consulta";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
+import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
@@ -48,6 +49,7 @@ export default function ConsultaPage() {
   const [patologia,  setPatologia ] = useState<IPatologiaUngueal | null>(null);
   const [proceso,    setProceso   ] = useState<IProceso | null>(null);
   const [metodosPago, setMetodosPago] = useState<IMetodoPago[]>([]);
+  const [onicocriptosisDetalle, setOnicocriptosisDetalle] = useState<IOnicocriptosisDetalle[]>([]);
 
   // valoracion form
   const VALORACION_DEFAULTS: IValoracionPiel = {
@@ -122,6 +124,7 @@ id_usuario_elimino: null,
       setArchivos(data.archivos);
       setPagos(data.pagos);
       setProceso(data.proceso);
+      setOnicocriptosisDetalle(data.onicocriptosisDetalle);
       setMetodosPago(mp);
     } finally {
       setLoading(false);
