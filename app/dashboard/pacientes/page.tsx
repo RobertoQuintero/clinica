@@ -196,6 +196,7 @@ export default function PacientesPage() {
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sexo</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Sucursal</th>
                     <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Onicomicosis</th>
+                    <th className="px-4 py-2 text-left font-medium text-zinc-600 dark:text-zinc-300">Patologias</th>
                     <th className="px-4 py-2" />
                   </tr>
                 </thead>
@@ -252,13 +253,14 @@ export default function PacientesPage() {
                   </th>
                 ))}
                 <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">Onicomicosis</th>
+                <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">Patologias</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
               {pacientesFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
+                  <td colSpan={9} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
               ) : pacientesFiltrados.map((p) => (
                 <PacienteFila key={p.id_paciente} paciente={p} onEdit={openEdit} showWhatsapp={canSeeWhatsapp} />
