@@ -133,7 +133,7 @@ export default function OnicocriptosisPies({ detalle, onDetalleChange, disabled 
         onClick={() => setActiveKey(null)}
       >
         <Image
-          src="/piezen-pain.jpeg"
+          src="/piezen-pain.png"
           alt="Pies (izquierdo y derecho)"
           width={412}
           height={392}

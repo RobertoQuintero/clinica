@@ -92,7 +92,7 @@ export default function OnicomicosisPies({ detalle, onDetalleChange, disabled }:
     <div className="space-y-4">
       <div className="relative mx-auto w-full max-w-md select-none">
         <Image
-          src="/pie-zen-onico.jpeg"
+          src="/pie-zen-onico.png"
           alt="Pies (izquierdo y derecho)"
           width={365}
           height={277}
