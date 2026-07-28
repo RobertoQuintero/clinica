@@ -66,6 +66,21 @@ export function buildDedosVacios(): OnicocriptosisDedoState[] {
   return dedos;
 }
 
+export function formStateToDetalleRows(
+  form: OnicocriptosisFormState,
+): Omit<IOnicocriptosisDetalle, "id_detalle" | "id_consulta">[] {
+  return form.dedos
+    .filter((d): d is OnicocriptosisDedoState & { grado: 1 | 2 | 3 } => d.grado !== null)
+    .map((d) => ({
+      pie:          d.pie,
+      dedo:         d.dedo,
+      grado:        d.grado,
+      lado_medial:  d.lado_medial,
+      lado_lateral: d.lado_lateral,
+      dolor:        form.dolor,
+    }));
+}
+
 export function detalleRowsToFormState(rows: IOnicocriptosisDetalle[]): OnicocriptosisFormState {
   const dedos = buildDedosVacios();
   let dolor = 0;

@@ -1,6 +1,6 @@
 # Detalle de onicocriptosis por dedo en TabPatologia
 
-**Estado:** Aprobado
+**Estado:** Implementado
 **Dependencias:** ninguna
 **Fecha:** 2026-07-27
 
@@ -96,18 +96,18 @@ export async function saveOnicocriptosisDetalle(
 
 ## Criterios de aceptación
 
-- [ ] Al marcar el checkbox "Onicocriptosis" en `TabPatologia.tsx` se muestra la imagen `piezen-pain.jpeg` con controles por cada uno de los 10 dedos (2 pies × 5 dedos).
-- [ ] Cada dedo permite seleccionar Grado 1, 2 o 3, mutuamente excluyentes entre sí (solo uno activo por dedo).
-- [ ] Cada dedo permite marcar el borde medial y/o lateral de forma independiente (no excluyente entre sí).
-- [ ] Existe un único selector de dolor (1-10) para toda la valoración de onicocriptosis, no uno por dedo.
-- [ ] Si ningún dedo tiene grado seleccionado, no se exige el dolor y no se guarda ninguna fila en `onicocriptosis_detalle`.
-- [ ] Si al menos un dedo tiene grado seleccionado y no se eligió dolor, se muestra un error de validación y no se guarda.
-- [ ] Al hacer clic en "Registrar patología"/"Guardar cambios", se guardan en la misma acción tanto `patologia_ungueal` como las filas correspondientes en `onicocriptosis_detalle` (reemplazando el set completo previo de esa consulta).
-- [ ] Al abrir una consulta que ya tiene filas guardadas en `onicocriptosis_detalle`, el formulario se precarga con el grado, lado(s) y dolor general guardados.
-- [ ] En modo `locked`, todos los controles de esta sección aparecen deshabilitados y muestran únicamente los datos guardados.
-- [ ] Desmarcar y volver a marcar el checkbox "Onicocriptosis" sin guardar no borra los datos capturados en el estado local del formulario.
-- [ ] El checkbox "Onicocriptosis" en `patologia_ungueal` conserva su comportamiento actual (controlado manualmente, no derivado del detalle).
-- [ ] No se modifica el comportamiento del resto de checkboxes de `PATOLOGIAS` ni de otros tabs (`TabGeneral`, `TabValoracion`, etc.).
+- [x] Al marcar el checkbox "Onicocriptosis" en `TabPatologia.tsx` se muestra la imagen `piezen-pain.jpeg` con controles por cada uno de los 10 dedos (2 pies × 5 dedos).
+- [x] Cada dedo permite seleccionar Grado 1, 2 o 3, mutuamente excluyentes entre sí (solo uno activo por dedo).
+- [x] Cada dedo permite marcar el borde medial y/o lateral de forma independiente (no excluyente entre sí).
+- [x] Existe un único selector de dolor (1-10) para toda la valoración de onicocriptosis, no uno por dedo.
+- [x] Si ningún dedo tiene grado seleccionado, no se exige el dolor y no se guarda ninguna fila en `onicocriptosis_detalle`.
+- [x] Si al menos un dedo tiene grado seleccionado y no se eligió dolor, se muestra un error de validación y no se guarda.
+- [x] Al hacer clic en "Registrar patología"/"Guardar cambios", se guardan en la misma acción tanto `patologia_ungueal` como las filas correspondientes en `onicocriptosis_detalle` (reemplazando el set completo previo de esa consulta).
+- [x] Al abrir una consulta que ya tiene filas guardadas en `onicocriptosis_detalle`, el formulario se precarga con el grado, lado(s) y dolor general guardados.
+- [x] En modo `locked`, todos los controles de esta sección aparecen deshabilitados y muestran únicamente los datos guardados.
+- [x] Desmarcar y volver a marcar el checkbox "Onicocriptosis" sin guardar no borra los datos capturados en el estado local del formulario.
+- [x] El checkbox "Onicocriptosis" en `patologia_ungueal` conserva su comportamiento actual (controlado manualmente, no derivado del detalle).
+- [x] No se modifica el comportamiento del resto de checkboxes de `PATOLOGIAS` ni de otros tabs (`TabGeneral`, `TabValoracion`, etc.).
 
 ## Decisiones tomadas y descartadas
 

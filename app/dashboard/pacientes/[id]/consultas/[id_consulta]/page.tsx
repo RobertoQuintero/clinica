@@ -11,7 +11,7 @@ import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
-import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveOnicocriptosisDetalle, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -22,6 +22,7 @@ import TabPatologia from "./componentes/TabPatologia";
 import {
   buildDedosVacios,
   detalleRowsToFormState,
+  formStateToDetalleRows,
   OnicocriptosisFormState,
 } from "./componentes/OnicocriptosisPies";
 import TabProductos from "./componentes/TabProductos";
@@ -176,6 +177,13 @@ id_usuario_elimino: null,
 
   const handlePatologiaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const dedosConGrado = onicocriptosisForm.dedos.filter((d) => d.grado !== null);
+    if (dedosConGrado.length > 0 && (onicocriptosisForm.dolor < 1 || onicocriptosisForm.dolor > 10)) {
+      setPatologiaError("Selecciona un nivel de dolor (1-10) para la valoración de onicocriptosis");
+      return;
+    }
+
     setSavingPatologia(true);
     setPatologiaError(null);
     try {
@@ -183,6 +191,14 @@ id_usuario_elimino: null,
       if (!result.ok) throw new Error(result.data);
       setPatologia(result.data);
       setPatologiaForm(result.data);
+
+      const onicoResult = await saveOnicocriptosisDetalle(
+        id_consulta,
+        formStateToDetalleRows(onicocriptosisForm),
+      );
+      if (!onicoResult.ok) throw new Error(onicoResult.data);
+      setOnicocriptosisDetalle(onicoResult.data);
+
       // mark step complete and advance
       const procResult = await updateProcesoField(id_consulta, "patologia_ungueal", 1);
       if (procResult.ok) setProceso(procResult.data);
