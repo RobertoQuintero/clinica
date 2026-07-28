@@ -20,4 +20,6 @@ export interface IPaciente {
     id_phone_code:                number | null;
     nombre_sucursal?:             string;
     en_tratamiento_onicomicosis?: string;
+    onicomicosis_ultima_consulta?:   boolean;
+    onicocriptosis_ultima_consulta?: boolean;
 }
