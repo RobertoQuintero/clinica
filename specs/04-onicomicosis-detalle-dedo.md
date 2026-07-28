@@ -1,6 +1,6 @@
 # Detalle de dedo infectado por onicomicosis en TabPatologia
 
-**Estado:** Aprobado
+**Estado:** Implementado
 **Dependencias:** ninguna
 **Fecha:** 2026-07-28
 
@@ -91,17 +91,17 @@ export async function saveOnicomicosisDetalle(
 
 ## Criterios de aceptación
 
-- [ ] Al marcar "Onicomicosis Grado 1" y/o "Onicomicosis Grado 2" en `TabPatologia.tsx` se muestra la imagen `pie-zen-onico.jpeg` (dos veces, pie izquierdo y derecho) con controles por cada uno de los 10 dedos.
-- [ ] Cada dedo permite marcarse/desmarcarse como infectado mediante un toggle simple (sin grado, sin lado, sin dolor por dedo).
-- [ ] La selección de dedos es única y compartida: si ambos checkboxes de grado están activos, no hay distinción de qué dedos pertenecen a cada uno.
-- [ ] Si ningún checkbox de onicomicosis está marcado, no se exige ningún dedo y no se guarda ninguna fila en `onicomicosis_detalle`.
-- [ ] Si `onicomicosis_grado_1` o `onicomicosis_grado_2` está marcado y no se seleccionó ningún dedo, se muestra un error de validación y no se guarda.
-- [ ] Al hacer clic en "Registrar patología"/"Guardar cambios", se guardan en la misma acción tanto `patologia_ungueal` como las filas correspondientes en `onicomicosis_detalle` (reemplazando el set completo previo de esa consulta).
-- [ ] Al abrir una consulta que ya tiene filas guardadas en `onicomicosis_detalle`, el formulario se precarga con los dedos marcados.
-- [ ] En modo `locked`, todos los controles de esta sección aparecen deshabilitados y muestran únicamente los dedos guardados.
-- [ ] Desmarcar y volver a marcar los checkboxes de onicomicosis sin guardar no borra los dedos capturados en el estado local del formulario.
-- [ ] Los checkboxes "Onicomicosis Grado 1"/"Grado 2" en `patologia_ungueal` conservan su comportamiento actual (controlados manualmente, no derivados del detalle).
-- [ ] No se modifica el comportamiento del resto de checkboxes de `PATOLOGIAS`, de `onicocriptosis`/`OnicocriptosisPies`, ni de otros tabs.
+- [x] Al marcar "Onicomicosis Grado 1" y/o "Onicomicosis Grado 2" en `TabPatologia.tsx` se muestra la imagen `pie-zen-onico.jpeg` (dos veces, pie izquierdo y derecho) con controles por cada uno de los 10 dedos.
+- [x] Cada dedo permite marcarse/desmarcarse como infectado mediante un toggle simple (sin grado, sin lado, sin dolor por dedo).
+- [x] La selección de dedos es única y compartida: si ambos checkboxes de grado están activos, no hay distinción de qué dedos pertenecen a cada uno.
+- [x] Si ningún checkbox de onicomicosis está marcado, no se exige ningún dedo y no se guarda ninguna fila en `onicomicosis_detalle`.
+- [x] Si `onicomicosis_grado_1` o `onicomicosis_grado_2` está marcado y no se seleccionó ningún dedo, se muestra un error de validación y no se guarda.
+- [x] Al hacer clic en "Registrar patología"/"Guardar cambios", se guardan en la misma acción tanto `patologia_ungueal` como las filas correspondientes en `onicomicosis_detalle` (reemplazando el set completo previo de esa consulta).
+- [x] Al abrir una consulta que ya tiene filas guardadas en `onicomicosis_detalle`, el formulario se precarga con los dedos marcados.
+- [x] En modo `locked`, todos los controles de esta sección aparecen deshabilitados y muestran únicamente los dedos guardados.
+- [x] Desmarcar y volver a marcar los checkboxes de onicomicosis sin guardar no borra los dedos capturados en el estado local del formulario.
+- [x] Los checkboxes "Onicomicosis Grado 1"/"Grado 2" en `patologia_ungueal` conservan su comportamiento actual (controlados manualmente, no derivados del detalle).
+- [x] No se modifica el comportamiento del resto de checkboxes de `PATOLOGIAS`, de `onicocriptosis`/`OnicocriptosisPies`, ni de otros tabs.
 
 ## Decisiones tomadas y descartadas
 

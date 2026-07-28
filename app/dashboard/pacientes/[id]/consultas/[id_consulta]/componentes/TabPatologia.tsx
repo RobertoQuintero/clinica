@@ -59,6 +59,19 @@ export default function TabPatologia({
         </div>
       </div>
 
+      {(form.onicomicosis_grado_1 || form.onicomicosis_grado_2) && (
+        <div>
+          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-3 text-center">
+            Detalle de onicomicosis
+          </p>
+          <OnicomicosisPies
+            detalle={detalleOnicomicosis}
+            onDetalleChange={onDetalleOnicomicosisChange}
+            disabled={locked}
+          />
+        </div>
+      )}
+
       {form.onicocriptosis && (
         <div>
           <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-3 text-center">
@@ -72,18 +85,7 @@ export default function TabPatologia({
         </div>
       )}
 
-      {(form.onicomicosis_grado_1 || form.onicomicosis_grado_2) && (
-        <div>
-          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-3 text-center">
-            Detalle de onicomicosis
-          </p>
-          <OnicomicosisPies
-            detalle={detalleOnicomicosis}
-            onDetalleChange={onDetalleOnicomicosisChange}
-            disabled={locked}
-          />
-        </div>
-      )}
+      
 
       {!locked && (
         <div className="flex justify-end">

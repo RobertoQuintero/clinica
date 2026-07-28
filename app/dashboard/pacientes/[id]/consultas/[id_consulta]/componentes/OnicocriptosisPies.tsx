@@ -37,16 +37,16 @@ const NOMBRES_DEDO: Record<number, string> = {
 const POSICIONES: Record<"izquierdo" | "derecho", Record<number, { x: number; y: number }>> = {
   izquierdo: {
     5: { x: 17, y: 32 },
-    4: { x: 21, y: 25 },
-    3: { x: 27, y: 22 },
+    4: { x: 21, y: 26 },
+    3: { x: 27, y: 23 },
     2: { x: 33, y: 20 },
     1: { x: 42, y: 19 },
   },
   derecho: {
     1: { x: 64, y: 19 },
-    2: { x: 72, y: 20 },
-    3: { x: 79, y: 22 },
-    4: { x: 85, y: 25 },
+    2: { x: 73, y: 20 },
+    3: { x: 79, y: 23 },
+    4: { x: 85, y: 26 },
     5: { x: 90, y: 31 },
   },
 };

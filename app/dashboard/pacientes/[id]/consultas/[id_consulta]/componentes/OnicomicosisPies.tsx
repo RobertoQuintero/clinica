@@ -33,18 +33,18 @@ const NOMBRES_DEDO: Record<number, string> = {
 // posiciones aproximadas (% del ancho/alto de la imagen) de cada dedo sobre pie-zen-onico.jpeg
 const POSICIONES: Record<"izquierdo" | "derecho", Record<number, { x: number; y: number }>> = {
   izquierdo: {
-    5: { x: 17, y: 32 },
-    4: { x: 21, y: 25 },
-    3: { x: 27, y: 22 },
-    2: { x: 33, y: 20 },
-    1: { x: 42, y: 19 },
+    5: { x: 8, y: 43 },
+    4: { x: 13, y: 35 },
+    3: { x: 19, y: 30 },
+    2: { x: 27, y: 27 },
+    1: { x: 36, y: 25 },
   },
   derecho: {
-    1: { x: 64, y: 19 },
-    2: { x: 72, y: 20 },
-    3: { x: 79, y: 22 },
-    4: { x: 85, y: 25 },
-    5: { x: 90, y: 31 },
+    1: { x: 62, y: 25 },
+    2: { x: 72, y: 27 },
+    3: { x: 79, y: 31},
+    4: { x: 86, y: 35 },
+    5: { x: 91, y: 43 },
   },
 };
 
