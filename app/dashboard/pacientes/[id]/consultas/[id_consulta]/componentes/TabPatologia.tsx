@@ -1,13 +1,16 @@
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import React from "react";
+import OnicocriptosisPies, { OnicocriptosisFormState } from "./OnicocriptosisPies";
 
 interface Props {
-  form:     IPatologiaUngueal;
-  onChange: React.Dispatch<React.SetStateAction<IPatologiaUngueal>>;
-  saving:   boolean;
-  error:    string | null;
-  onSubmit: (e: React.FormEvent) => void;
-  locked?:  boolean;
+  form:            IPatologiaUngueal;
+  onChange:        React.Dispatch<React.SetStateAction<IPatologiaUngueal>>;
+  saving:          boolean;
+  error:           string | null;
+  onSubmit:        (e: React.FormEvent) => void;
+  locked?:         boolean;
+  detalle:         OnicocriptosisFormState;
+  onDetalleChange: (value: OnicocriptosisFormState) => void;
 }
 
 const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
@@ -23,7 +26,9 @@ const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
   ["paquioniquia",        "Paquioniquia"       ],
 ];
 
-export default function TabPatologia({ form, onChange, saving, error, onSubmit, locked }: Props) {
+export default function TabPatologia({
+  form, onChange, saving, error, onSubmit, locked, detalle, onDetalleChange,
+}: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {error && (
@@ -49,6 +54,19 @@ export default function TabPatologia({ form, onChange, saving, error, onSubmit, 
           ))}
         </div>
       </div>
+
+      {form.onicocriptosis && (
+        <div>
+          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-3">
+            Detalle de onicocriptosis
+          </p>
+          <OnicocriptosisPies
+            detalle={detalle}
+            onDetalleChange={onDetalleChange}
+            disabled={locked}
+          />
+        </div>
+      )}
 
       {!locked && (
         <div className="flex justify-end">

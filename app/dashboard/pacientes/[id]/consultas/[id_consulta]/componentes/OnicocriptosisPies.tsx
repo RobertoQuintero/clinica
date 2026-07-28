@@ -1,5 +1,6 @@
 "use client";
 
+import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
 import Image from "next/image";
 import React, { useState } from "react";
 
@@ -63,6 +64,25 @@ export function buildDedosVacios(): OnicocriptosisDedoState[] {
     }
   }
   return dedos;
+}
+
+export function detalleRowsToFormState(rows: IOnicocriptosisDetalle[]): OnicocriptosisFormState {
+  const dedos = buildDedosVacios();
+  let dolor = 0;
+  for (const row of rows) {
+    const idx = dedos.findIndex((d) => d.pie === row.pie && d.dedo === row.dedo);
+    if (idx !== -1) {
+      dedos[idx] = {
+        pie:          row.pie,
+        dedo:         row.dedo,
+        grado:        row.grado,
+        lado_medial:  row.lado_medial,
+        lado_lateral: row.lado_lateral,
+      };
+    }
+    dolor = row.dolor;
+  }
+  return { dedos, dolor };
 }
 
 export default function OnicocriptosisPies({ detalle, onDetalleChange, disabled }: Props) {

@@ -19,6 +19,11 @@ import TabFotos from "./componentes/TabFotos";
 import TabGeneral from "./componentes/TabGeneral";
 import TabPagar from "./componentes/TabPagar";
 import TabPatologia from "./componentes/TabPatologia";
+import {
+  buildDedosVacios,
+  detalleRowsToFormState,
+  OnicocriptosisFormState,
+} from "./componentes/OnicocriptosisPies";
 import TabProductos from "./componentes/TabProductos";
 import TabServicios from "./componentes/TabServicios";
 import TabValoracion from "./componentes/TabValoracion";
@@ -91,6 +96,12 @@ export default function ConsultaPage() {
   const [savingPatologia, setSavingPatologia] = useState(false);
   const [patologiaError,  setPatologiaError ] = useState<string | null>(null);
 
+  // onicocriptosis detalle form (dentro de patologia)
+  const [onicocriptosisForm, setOnicocriptosisForm] = useState<OnicocriptosisFormState>({
+    dedos: buildDedosVacios(),
+    dolor: 0,
+  });
+
   // pago form
   const [pagoForm, setPagoForm] = useState<Omit<IPago, "id_pago" | "created_at" | "id_empresa">>({
     id_consulta,
@@ -125,6 +136,9 @@ id_usuario_elimino: null,
       setPagos(data.pagos);
       setProceso(data.proceso);
       setOnicocriptosisDetalle(data.onicocriptosisDetalle);
+      if (data.onicocriptosisDetalle.length > 0) {
+        setOnicocriptosisForm(detalleRowsToFormState(data.onicocriptosisDetalle));
+      }
       setMetodosPago(mp);
     } finally {
       setLoading(false);
@@ -421,6 +435,8 @@ id_usuario_elimino: null,
               error={patologiaError}
               onSubmit={handlePatologiaSubmit}
               locked={locked}
+              detalle={onicocriptosisForm}
+              onDetalleChange={setOnicocriptosisForm}
             />
           )}
           {activeTab === "servicios"  && (
