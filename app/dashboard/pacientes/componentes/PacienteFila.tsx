@@ -27,6 +27,20 @@ export default function PacienteFila({ paciente: p, onEdit, showWhatsapp = false
           </span>
         )}
       </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-1">
+          {p.onicomicosis_ultima_consulta && (
+            <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/40 dark:text-green-300">
+              Onicomicosis
+            </span>
+          )}
+          {p.onicocriptosis_ultima_consulta && (
+            <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/40 dark:text-green-300">
+              Onicocriptosis
+            </span>
+          )}
+        </div>
+      </td>
       <td className="px-4 py-3 flex gap-2">
         <button
           onClick={() => onEdit(p)}

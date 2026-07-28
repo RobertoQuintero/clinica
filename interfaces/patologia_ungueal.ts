@@ -10,4 +10,5 @@ export interface IPatologiaUngueal {
     paquioniquia:          boolean;
     onicomicosis_grado_1:          boolean; 
     onicomicosis_grado_2:          boolean; 
+    onicocriptosis:            boolean;
 }

@@ -99,7 +99,7 @@ export async function getConsultaData(
     db.queryParams(
       `SELECT [id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
               [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],
-              [onicomicosis_grado_1],[onicomicosis_grado_2]
+              [onicomicosis_grado_1],[onicomicosis_grado_2], [onicocriptosis]
          FROM [CentroPodologico].[dbo].[patologia_ungueal]
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
@@ -287,13 +287,13 @@ export async function savePatologia(
     const {
       id_patologia, id_consulta, anoniquia, microniquia, onicolisis,
       onicauxis, hematoma_subungueal, onicofosis, paquioniquia,
-      onicomicosis_grado_1, onicomicosis_grado_2,
+      onicomicosis_grado_1, onicomicosis_grado_2, onicocriptosis
     } = form;
 
     const commonParams = {
       id_consulta, anoniquia, microniquia, onicolisis,
       onicauxis, hematoma_subungueal, onicofosis, paquioniquia, 
-      onicomicosis_grado_1, onicomicosis_grado_2,
+      onicomicosis_grado_1, onicomicosis_grado_2, onicocriptosis,
     };
 
     let result;
@@ -302,13 +302,13 @@ export async function savePatologia(
         `INSERT INTO [CentroPodologico].[dbo].[patologia_ungueal]
            ([id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
             [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],
-            [onicomicosis_grado_1],[onicomicosis_grado_2])
+            [onicomicosis_grado_1],[onicomicosis_grado_2],[onicocriptosis])
          OUTPUT INSERTED.*
          VALUES (
            (SELECT ISNULL(MAX([id_patologia]),0)+1 FROM [CentroPodologico].[dbo].[patologia_ungueal]),
            @id_consulta,@anoniquia,@microniquia,@onicolisis,
            @onicauxis,@hematoma_subungueal,@onicofosis,@paquioniquia,
-           @onicomicosis_grado_1,@onicomicosis_grado_2
+           @onicomicosis_grado_1,@onicomicosis_grado_2,@onicocriptosis
          )`,
         commonParams,
       );
@@ -323,9 +323,9 @@ export async function savePatologia(
            [hematoma_subungueal] = @hematoma_subungueal,
            [onicofosis]          = @onicofosis,
            [paquioniquia]        = @paquioniquia,
-          
            [onicomicosis_grado_1] = @onicomicosis_grado_1,
-           [onicomicosis_grado_2] = @onicomicosis_grado_2
+           [onicomicosis_grado_2] = @onicomicosis_grado_2,
+           [onicocriptosis]       = @onicocriptosis
          OUTPUT INSERTED.*
          WHERE [id_patologia] = @id_patologia`,
         { id_patologia, ...commonParams },

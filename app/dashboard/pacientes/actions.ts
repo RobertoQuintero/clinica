@@ -63,10 +63,24 @@ export async function getPacientes(): Promise<IPaciente[]> {
                        AND ISNULL(DT.[id_tratamiento], 0) > 0
                        AND DT.[id_stage] < 6
                        order by dt.id_tratamiento desc
-                       ) , '') AS en_tratamiento_onicomicosis
+                       ) , '') AS en_tratamiento_onicomicosis,
+            CASE WHEN uc.[onicomicosis_grado_1] = 1 OR uc.[onicomicosis_grado_2] = 1
+                 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS onicomicosis_ultima_consulta,
+            CASE WHEN uc.[onicocriptosis] = 1
+                 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS onicocriptosis_ultima_consulta
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
+       OUTER APPLY (
+         SELECT TOP 1 pu.[onicomicosis_grado_1], pu.[onicomicosis_grado_2], pu.[onicocriptosis]
+           FROM [CentroPodologico].[dbo].[consultas] c
+           LEFT JOIN [CentroPodologico].[dbo].[patologia_ungueal] pu
+             ON pu.[id_consulta] = c.[id_consulta]
+          WHERE c.[id_paciente] = p.[id_paciente]
+            AND c.[deleted_at] IS NULL
+            AND ISNULL(c.[cancelada], 0) = 0
+          ORDER BY c.[fecha] DESC
+       ) uc
       WHERE p.[id_sucursal] = @id_sucursal
         AND p.[id_empresa]  = @id_empresa
         ORDER BY p.[created_at] DESC`,
@@ -205,10 +219,24 @@ export async function buscarPacientesExternos(query: string): Promise<IPaciente[
                         ON DT.[id_consulta] = DC.[id_consulta]
                      WHERE DC.[id_paciente] = p.[id_paciente]
                        AND ISNULL(DT.[id_tratamiento], 0) > 0
-                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis
+                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis,
+            CASE WHEN uc.[onicomicosis_grado_1] = 1 OR uc.[onicomicosis_grado_2] = 1
+                 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS onicomicosis_ultima_consulta,
+            CASE WHEN uc.[onicocriptosis] = 1
+                 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS onicocriptosis_ultima_consulta
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
+       OUTER APPLY (
+         SELECT TOP 1 pu.[onicomicosis_grado_1], pu.[onicomicosis_grado_2], pu.[onicocriptosis]
+           FROM [CentroPodologico].[dbo].[consultas] c
+           LEFT JOIN [CentroPodologico].[dbo].[patologia_ungueal] pu
+             ON pu.[id_consulta] = c.[id_consulta]
+          WHERE c.[id_paciente] = p.[id_paciente]
+            AND c.[deleted_at] IS NULL
+            AND ISNULL(c.[cancelada], 0) = 0
+          ORDER BY c.[fecha] DESC
+       ) uc
       WHERE p.[id_empresa] = @id_empresa
         AND ${wordClauses.join(" AND ")}`,
 
@@ -259,10 +287,24 @@ export async function buscarPacientesPorSucursal(query: string): Promise<IPacien
                         ON DT.[id_consulta] = DC.[id_consulta]
                      WHERE DC.[id_paciente] = p.[id_paciente]
                        AND ISNULL(DT.[id_tratamiento], 0) > 0
-                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis
+                       AND DT.[id_stage] < 5), '') AS en_tratamiento_onicomicosis,
+            CASE WHEN uc.[onicomicosis_grado_1] = 1 OR uc.[onicomicosis_grado_2] = 1
+                 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS onicomicosis_ultima_consulta,
+            CASE WHEN uc.[onicocriptosis] = 1
+                 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS onicocriptosis_ultima_consulta
        FROM [CentroPodologico].[dbo].[pacientes] p
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
          ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
+       OUTER APPLY (
+         SELECT TOP 1 pu.[onicomicosis_grado_1], pu.[onicomicosis_grado_2], pu.[onicocriptosis]
+           FROM [CentroPodologico].[dbo].[consultas] c
+           LEFT JOIN [CentroPodologico].[dbo].[patologia_ungueal] pu
+             ON pu.[id_consulta] = c.[id_consulta]
+          WHERE c.[id_paciente] = p.[id_paciente]
+            AND c.[deleted_at] IS NULL
+            AND ISNULL(c.[cancelada], 0) = 0
+          ORDER BY c.[fecha] DESC
+       ) uc
       WHERE p.[id_sucursal] = @id_sucursal
         AND p.[id_empresa]  = @id_empresa
         AND ${wordClauses.join(" AND ")}
