@@ -3,6 +3,8 @@
 import { IArchivo } from "@/interfaces/archivos";
 import { IConsulta } from "@/interfaces/consulta";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
+import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
+import { IOnicomicosisDetalle } from "@/interfaces/onicomicosis_detalle";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
@@ -10,7 +12,7 @@ import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
-import { getConsultaData, getMetodosPago, savePago, savePatologia, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveOnicocriptosisDetalle, saveOnicomicosisDetalle, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,6 +20,18 @@ import TabFotos from "./componentes/TabFotos";
 import TabGeneral from "./componentes/TabGeneral";
 import TabPagar from "./componentes/TabPagar";
 import TabPatologia from "./componentes/TabPatologia";
+import {
+  buildDedosVacios,
+  detalleRowsToFormState,
+  formStateToDetalleRows,
+  OnicocriptosisFormState,
+} from "./componentes/OnicocriptosisPies";
+import {
+  buildDedosVacios as buildDedosVaciosOnicomicosis,
+  detalleRowsToFormState as detalleRowsToFormStateOnicomicosis,
+  formStateToDetalleRows as formStateToDetalleRowsOnicomicosis,
+  OnicomicosisFormState,
+} from "./componentes/OnicomicosisPies";
 import TabProductos from "./componentes/TabProductos";
 import TabServicios from "./componentes/TabServicios";
 import TabValoracion from "./componentes/TabValoracion";
@@ -48,6 +62,8 @@ export default function ConsultaPage() {
   const [patologia,  setPatologia ] = useState<IPatologiaUngueal | null>(null);
   const [proceso,    setProceso   ] = useState<IProceso | null>(null);
   const [metodosPago, setMetodosPago] = useState<IMetodoPago[]>([]);
+  const [onicocriptosisDetalle, setOnicocriptosisDetalle] = useState<IOnicocriptosisDetalle[]>([]);
+  const [onicomicosisDetalle, setOnicomicosisDetalle] = useState<IOnicomicosisDetalle[]>([]);
 
   // valoracion form
   const VALORACION_DEFAULTS: IValoracionPiel = {
@@ -89,6 +105,17 @@ export default function ConsultaPage() {
   const [savingPatologia, setSavingPatologia] = useState(false);
   const [patologiaError,  setPatologiaError ] = useState<string | null>(null);
 
+  // onicocriptosis detalle form (dentro de patologia)
+  const [onicocriptosisForm, setOnicocriptosisForm] = useState<OnicocriptosisFormState>({
+    dedos: buildDedosVacios(),
+    dolor: 0,
+  });
+
+  // onicomicosis detalle form (dentro de patologia)
+  const [onicomicosisForm, setOnicomicosisForm] = useState<OnicomicosisFormState>({
+    dedos: buildDedosVaciosOnicomicosis(),
+  });
+
   // pago form
   const [pagoForm, setPagoForm] = useState<Omit<IPago, "id_pago" | "created_at" | "id_empresa">>({
     id_consulta,
@@ -122,6 +149,14 @@ id_usuario_elimino: null,
       setArchivos(data.archivos);
       setPagos(data.pagos);
       setProceso(data.proceso);
+      setOnicocriptosisDetalle(data.onicocriptosisDetalle);
+      if (data.onicocriptosisDetalle.length > 0) {
+        setOnicocriptosisForm(detalleRowsToFormState(data.onicocriptosisDetalle));
+      }
+      setOnicomicosisDetalle(data.onicomicosisDetalle);
+      if (data.onicomicosisDetalle.length > 0) {
+        setOnicomicosisForm(detalleRowsToFormStateOnicomicosis(data.onicomicosisDetalle));
+      }
       setMetodosPago(mp);
     } finally {
       setLoading(false);
@@ -159,6 +194,22 @@ id_usuario_elimino: null,
 
   const handlePatologiaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const dedosConGrado = onicocriptosisForm.dedos.filter((d) => d.grado !== null);
+    if (dedosConGrado.length > 0 && (onicocriptosisForm.dolor < 1 || onicocriptosisForm.dolor > 10)) {
+      setPatologiaError("Selecciona un nivel de dolor (1-10) para la valoración de onicocriptosis");
+      return;
+    }
+
+    const dedosOnicomicosisMarcados = onicomicosisForm.dedos.filter((d) => d.marcado);
+    if (
+      (patologiaForm.onicomicosis_grado_1 || patologiaForm.onicomicosis_grado_2) &&
+      dedosOnicomicosisMarcados.length === 0
+    ) {
+      setPatologiaError("Selecciona al menos un dedo para la valoración de onicomicosis");
+      return;
+    }
+
     setSavingPatologia(true);
     setPatologiaError(null);
     try {
@@ -166,6 +217,21 @@ id_usuario_elimino: null,
       if (!result.ok) throw new Error(result.data);
       setPatologia(result.data);
       setPatologiaForm(result.data);
+
+      const onicoResult = await saveOnicocriptosisDetalle(
+        id_consulta,
+        formStateToDetalleRows(onicocriptosisForm),
+      );
+      if (!onicoResult.ok) throw new Error(onicoResult.data);
+      setOnicocriptosisDetalle(onicoResult.data);
+
+      const onicomicosisResult = await saveOnicomicosisDetalle(
+        id_consulta,
+        formStateToDetalleRowsOnicomicosis(onicomicosisForm),
+      );
+      if (!onicomicosisResult.ok) throw new Error(onicomicosisResult.data);
+      setOnicomicosisDetalle(onicomicosisResult.data);
+
       // mark step complete and advance
       const procResult = await updateProcesoField(id_consulta, "patologia_ungueal", 1);
       if (procResult.ok) setProceso(procResult.data);
@@ -418,6 +484,10 @@ id_usuario_elimino: null,
               error={patologiaError}
               onSubmit={handlePatologiaSubmit}
               locked={locked}
+              detalle={onicocriptosisForm}
+              onDetalleChange={setOnicocriptosisForm}
+              detalleOnicomicosis={onicomicosisForm}
+              onDetalleOnicomicosisChange={setOnicomicosisForm}
             />
           )}
           {activeTab === "servicios"  && (

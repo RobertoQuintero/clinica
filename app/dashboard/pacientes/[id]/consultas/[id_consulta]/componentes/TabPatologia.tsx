@@ -1,13 +1,19 @@
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import React from "react";
+import OnicocriptosisPies, { OnicocriptosisFormState } from "./OnicocriptosisPies";
+import OnicomicosisPies, { OnicomicosisFormState } from "./OnicomicosisPies";
 
 interface Props {
-  form:     IPatologiaUngueal;
-  onChange: React.Dispatch<React.SetStateAction<IPatologiaUngueal>>;
-  saving:   boolean;
-  error:    string | null;
-  onSubmit: (e: React.FormEvent) => void;
-  locked?:  boolean;
+  form:                       IPatologiaUngueal;
+  onChange:                   React.Dispatch<React.SetStateAction<IPatologiaUngueal>>;
+  saving:                     boolean;
+  error:                      string | null;
+  onSubmit:                   (e: React.FormEvent) => void;
+  locked?:                    boolean;
+  detalle:                    OnicocriptosisFormState;
+  onDetalleChange:            (value: OnicocriptosisFormState) => void;
+  detalleOnicomicosis:        OnicomicosisFormState;
+  onDetalleOnicomicosisChange: (value: OnicomicosisFormState) => void;
 }
 
 const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
@@ -23,7 +29,10 @@ const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
   ["paquioniquia",        "Paquioniquia"       ],
 ];
 
-export default function TabPatologia({ form, onChange, saving, error, onSubmit, locked }: Props) {
+export default function TabPatologia({
+  form, onChange, saving, error, onSubmit, locked, detalle, onDetalleChange,
+  detalleOnicomicosis, onDetalleOnicomicosisChange,
+}: Props) {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {error && (
@@ -49,6 +58,34 @@ export default function TabPatologia({ form, onChange, saving, error, onSubmit, 
           ))}
         </div>
       </div>
+
+      {(form.onicomicosis_grado_1 || form.onicomicosis_grado_2) && (
+        <div>
+          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-3 text-center">
+            Detalle de onicomicosis
+          </p>
+          <OnicomicosisPies
+            detalle={detalleOnicomicosis}
+            onDetalleChange={onDetalleOnicomicosisChange}
+            disabled={locked}
+          />
+        </div>
+      )}
+
+      {form.onicocriptosis && (
+        <div>
+          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-3 text-center">
+            Detalle de onicocriptosis
+          </p>
+          <OnicocriptosisPies
+            detalle={detalle}
+            onDetalleChange={onDetalleChange}
+            disabled={locked}
+          />
+        </div>
+      )}
+
+      
 
       {!locked && (
         <div className="flex justify-end">

@@ -8,6 +8,8 @@ import { IConsultaProducto } from "@/interfaces/consulta_producto";
 import { IConsultaServicio } from "@/interfaces/consulta_servicio";
 import { IPaciente } from "@/interfaces/paciente";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
+import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
+import { IOnicomicosisDetalle } from "@/interfaces/onicomicosis_detalle";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IProceso } from "@/interfaces/proceso";
@@ -32,6 +34,8 @@ export interface ConsultaData {
   productos:  ConsultaProductoExtended[];
   pagos:      IPago[];
   proceso:    IProceso | null;
+  onicocriptosisDetalle: IOnicocriptosisDetalle[];
+  onicomicosisDetalle: IOnicomicosisDetalle[];
 }
 
 export type ProcesoField =
@@ -73,7 +77,7 @@ export async function getConsultaData(
   id_consulta: number,
   id_paciente: number,
 ): Promise<ConsultaData> {
-  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows] = await Promise.all([ 
+  const [cRows, vRows, patRows, aRows, pRows, pgRows, pacRows, procRows, onicoRows, onicomicosisRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_consulta],[id_paciente],[id_podologo]
               ,CONVERT(varchar(19), [fecha],     120) AS fecha
@@ -156,6 +160,19 @@ export async function getConsultaData(
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
     ),
+    db.queryParams(
+      `SELECT [id_detalle],[id_consulta],[pie],[dedo],[grado],
+              [lado_medial],[lado_lateral],[dolor]
+         FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
+    db.queryParams(
+      `SELECT [id_detalle],[id_consulta],[pie],[dedo]
+         FROM [CentroPodologico].[dbo].[onicomicosis_detalle]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    ),
   ]);
 
   return {
@@ -167,6 +184,8 @@ export async function getConsultaData(
     pagos:      (pgRows     as IPago[])                 ?? [],
     paciente:   (pacRows[0] as IPaciente)               ?? null,
     proceso:    (procRows[0] as IProceso)               ?? null,
+    onicocriptosisDetalle: (onicoRows as IOnicocriptosisDetalle[]) ?? [],
+    onicomicosisDetalle: (onicomicosisRows as IOnicomicosisDetalle[]) ?? [],
   };
 }
 
@@ -336,6 +355,113 @@ export async function savePatologia(
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al guardar la patología" };
+  }
+}
+
+// ─── onicocriptosis detalle ──────────────────────────────────────────────────
+
+export async function getOnicocriptosisDetalle(
+  id_consulta: number,
+): Promise<IOnicocriptosisDetalle[]> {
+  const rows = await db.queryParams(
+    `SELECT [id_detalle],[id_consulta],[pie],[dedo],[grado],
+            [lado_medial],[lado_lateral],[dolor]
+       FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]
+      WHERE [id_consulta] = @id_consulta`,
+    { id_consulta },
+  );
+  return rows as IOnicocriptosisDetalle[];
+}
+
+export async function saveOnicocriptosisDetalle(
+  id_consulta: number,
+  detalles: Omit<IOnicocriptosisDetalle, "id_detalle" | "id_consulta">[],
+): Promise<ActionResult<IOnicocriptosisDetalle[]>> {
+  try {
+    await db.queryParams(
+      `DELETE FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    );
+
+    const inserted: IOnicocriptosisDetalle[] = [];
+    for (const d of detalles) {
+      const result = await db.queryParams(
+        `INSERT INTO [CentroPodologico].[dbo].[onicocriptosis_detalle]
+           ([id_detalle],[id_consulta],[pie],[dedo],[grado],[lado_medial],[lado_lateral],[dolor])
+         OUTPUT INSERTED.*
+         VALUES (
+           (SELECT ISNULL(MAX([id_detalle]),0)+1 FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]),
+           @id_consulta,@pie,@dedo,@grado,@lado_medial,@lado_lateral,@dolor
+         )`,
+        {
+          id_consulta,
+          pie: d.pie,
+          dedo: d.dedo,
+          grado: d.grado,
+          lado_medial: d.lado_medial,
+          lado_lateral: d.lado_lateral,
+          dolor: d.dolor,
+        },
+      );
+      inserted.push(result[0] as IOnicocriptosisDetalle);
+    }
+
+    return { ok: true, data: inserted };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al guardar el detalle de onicocriptosis" };
+  }
+}
+
+// ─── onicomicosis detalle ────────────────────────────────────────────────────
+
+export async function getOnicomicosisDetalle(
+  id_consulta: number,
+): Promise<IOnicomicosisDetalle[]> {
+  const rows = await db.queryParams(
+    `SELECT [id_detalle],[id_consulta],[pie],[dedo]
+       FROM [CentroPodologico].[dbo].[onicomicosis_detalle]
+      WHERE [id_consulta] = @id_consulta`,
+    { id_consulta },
+  );
+  return rows as IOnicomicosisDetalle[];
+}
+
+export async function saveOnicomicosisDetalle(
+  id_consulta: number,
+  detalles: Omit<IOnicomicosisDetalle, "id_detalle" | "id_consulta">[],
+): Promise<ActionResult<IOnicomicosisDetalle[]>> {
+  try {
+    await db.queryParams(
+      `DELETE FROM [CentroPodologico].[dbo].[onicomicosis_detalle]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    );
+
+    const inserted: IOnicomicosisDetalle[] = [];
+    for (const d of detalles) {
+      const result = await db.queryParams(
+        `INSERT INTO [CentroPodologico].[dbo].[onicomicosis_detalle]
+           ([id_detalle],[id_consulta],[pie],[dedo])
+         OUTPUT INSERTED.*
+         VALUES (
+           (SELECT ISNULL(MAX([id_detalle]),0)+1 FROM [CentroPodologico].[dbo].[onicomicosis_detalle]),
+           @id_consulta,@pie,@dedo
+         )`,
+        {
+          id_consulta,
+          pie: d.pie,
+          dedo: d.dedo,
+        },
+      );
+      inserted.push(result[0] as IOnicomicosisDetalle);
+    }
+
+    return { ok: true, data: inserted };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al guardar el detalle de onicomicosis" };
   }
 }
 
