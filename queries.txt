@@ -141,3 +141,10 @@ CREATE TABLE [CentroPodologico].[dbo].[onicocriptosis_detalle] (
   [dolor]        TINYINT       NOT NULL    -- 1..10, mismo valor repetido en todas las filas de una misma consulta
 );
 
+CREATE TABLE [CentroPodologico].[dbo].[onicomicosis_detalle] (
+  [id_detalle]   INT           NOT NULL PRIMARY KEY,
+  [id_consulta]  INT           NOT NULL,
+  [pie]          VARCHAR(10)   NOT NULL,   -- 'izquierdo' | 'derecho'
+  [dedo]         TINYINT       NOT NULL    -- 1 (hallux/gordo) .. 5 (meñique)
+);
+
