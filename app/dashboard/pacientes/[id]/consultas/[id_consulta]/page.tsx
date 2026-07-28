@@ -83,6 +83,7 @@ export default function ConsultaPage() {
     paquioniquia:        false,
     onicomicosis_grado_1: false,
     onicomicosis_grado_2: false,
+    onicocriptosis:      false,
   };
   const [patologiaForm,   setPatologiaForm  ] = useState<IPatologiaUngueal>(PATOLOGIA_DEFAULTS);
   const [savingPatologia, setSavingPatologia] = useState(false);
