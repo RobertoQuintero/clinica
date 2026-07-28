@@ -111,6 +111,10 @@ export function useExpedienteMedico() {
             ...latest,
             id_antecedente_medico: 0,
             fecha_registro: addZeroToday(new Date()),
+            medicamentos_actuales: latest.medicamentos_actuales ?? "",
+            tipo_sangre: latest.tipo_sangre ?? "",
+            cirugias: latest.cirugias ?? "",
+            otros: latest.otros ?? "",
           }
         : buildEmpty(id_paciente)
     );
@@ -124,6 +128,10 @@ export function useExpedienteMedico() {
       fecha_registro: a.fecha_registro
         ? (a.fecha_registro as string).slice(0, 10)
         : "",
+      medicamentos_actuales: a.medicamentos_actuales ?? "",
+      tipo_sangre: a.tipo_sangre ?? "",
+      cirugias: a.cirugias ?? "",
+      otros: a.otros ?? "",
     });
     setError(null);
     setShowModal(true);
