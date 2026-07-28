@@ -8,6 +8,7 @@ import { IConsultaProducto } from "@/interfaces/consulta_producto";
 import { IConsultaServicio } from "@/interfaces/consulta_servicio";
 import { IPaciente } from "@/interfaces/paciente";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
+import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IProceso } from "@/interfaces/proceso";
@@ -336,6 +337,62 @@ export async function savePatologia(
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al guardar la patología" };
+  }
+}
+
+// ─── onicocriptosis detalle ──────────────────────────────────────────────────
+
+export async function getOnicocriptosisDetalle(
+  id_consulta: number,
+): Promise<IOnicocriptosisDetalle[]> {
+  const rows = await db.queryParams(
+    `SELECT [id_detalle],[id_consulta],[pie],[dedo],[grado],
+            [lado_medial],[lado_lateral],[dolor]
+       FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]
+      WHERE [id_consulta] = @id_consulta`,
+    { id_consulta },
+  );
+  return rows as IOnicocriptosisDetalle[];
+}
+
+export async function saveOnicocriptosisDetalle(
+  id_consulta: number,
+  detalles: Omit<IOnicocriptosisDetalle, "id_detalle" | "id_consulta">[],
+): Promise<ActionResult<IOnicocriptosisDetalle[]>> {
+  try {
+    await db.queryParams(
+      `DELETE FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]
+        WHERE [id_consulta] = @id_consulta`,
+      { id_consulta },
+    );
+
+    const inserted: IOnicocriptosisDetalle[] = [];
+    for (const d of detalles) {
+      const result = await db.queryParams(
+        `INSERT INTO [CentroPodologico].[dbo].[onicocriptosis_detalle]
+           ([id_detalle],[id_consulta],[pie],[dedo],[grado],[lado_medial],[lado_lateral],[dolor])
+         OUTPUT INSERTED.*
+         VALUES (
+           (SELECT ISNULL(MAX([id_detalle]),0)+1 FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]),
+           @id_consulta,@pie,@dedo,@grado,@lado_medial,@lado_lateral,@dolor
+         )`,
+        {
+          id_consulta,
+          pie: d.pie,
+          dedo: d.dedo,
+          grado: d.grado,
+          lado_medial: d.lado_medial,
+          lado_lateral: d.lado_lateral,
+          dolor: d.dolor,
+        },
+      );
+      inserted.push(result[0] as IOnicocriptosisDetalle);
+    }
+
+    return { ok: true, data: inserted };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, data: "Error al guardar el detalle de onicocriptosis" };
   }
 }
 
