@@ -36,18 +36,18 @@ const NOMBRES_DEDO: Record<number, string> = {
 // posiciones aproximadas (% del ancho/alto de la imagen) de cada dedo sobre piezen-pain.jpeg
 const POSICIONES: Record<"izquierdo" | "derecho", Record<number, { x: number; y: number }>> = {
   izquierdo: {
-    5: { x: 13, y: 32 },
-    4: { x: 23, y: 22 },
-    3: { x: 33, y: 16 },
-    2: { x: 43, y: 13 },
-    1: { x: 52, y: 21 },
+    5: { x: 17, y: 32 },
+    4: { x: 21, y: 25 },
+    3: { x: 27, y: 22 },
+    2: { x: 33, y: 20 },
+    1: { x: 42, y: 19 },
   },
   derecho: {
-    1: { x: 48, y: 21 },
-    2: { x: 57, y: 13 },
-    3: { x: 67, y: 16 },
-    4: { x: 77, y: 22 },
-    5: { x: 87, y: 32 },
+    1: { x: 64, y: 19 },
+    2: { x: 72, y: 20 },
+    3: { x: 79, y: 22 },
+    4: { x: 85, y: 25 },
+    5: { x: 90, y: 31 },
   },
 };
 
@@ -236,11 +236,11 @@ export default function OnicocriptosisPies({ detalle, onDetalleChange, disabled 
         </div>
       )}
 
-      <div>
+      <div style={{textAlign: "center"}}>
         <p className="mb-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
           Nivel de dolor general (1-10)
         </p>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 justify-center">
           {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => {
             const selected = detalle.dolor === n;
             return (
