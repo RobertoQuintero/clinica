@@ -201,6 +201,15 @@ id_usuario_elimino: null,
       return;
     }
 
+    const dedosOnicomicosisMarcados = onicomicosisForm.dedos.filter((d) => d.marcado);
+    if (
+      (patologiaForm.onicomicosis_grado_1 || patologiaForm.onicomicosis_grado_2) &&
+      dedosOnicomicosisMarcados.length === 0
+    ) {
+      setPatologiaError("Selecciona al menos un dedo para la valoración de onicomicosis");
+      return;
+    }
+
     setSavingPatologia(true);
     setPatologiaError(null);
     try {
@@ -215,6 +224,13 @@ id_usuario_elimino: null,
       );
       if (!onicoResult.ok) throw new Error(onicoResult.data);
       setOnicocriptosisDetalle(onicoResult.data);
+
+      const onicomicosisResult = await saveOnicomicosisDetalle(
+        id_consulta,
+        formStateToDetalleRowsOnicomicosis(onicomicosisForm),
+      );
+      if (!onicomicosisResult.ok) throw new Error(onicomicosisResult.data);
+      setOnicomicosisDetalle(onicomicosisResult.data);
 
       // mark step complete and advance
       const procResult = await updateProcesoField(id_consulta, "patologia_ungueal", 1);
