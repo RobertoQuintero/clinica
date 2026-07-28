@@ -12,7 +12,7 @@ import { IProceso } from "@/interfaces/proceso";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { createWebId } from "@/utils/random";
-import { getConsultaData, getMetodosPago, savePago, savePatologia, saveOnicocriptosisDetalle, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
+import { getConsultaData, getMetodosPago, savePago, savePatologia, saveOnicocriptosisDetalle, saveOnicomicosisDetalle, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -26,6 +26,12 @@ import {
   formStateToDetalleRows,
   OnicocriptosisFormState,
 } from "./componentes/OnicocriptosisPies";
+import {
+  buildDedosVacios as buildDedosVaciosOnicomicosis,
+  detalleRowsToFormState as detalleRowsToFormStateOnicomicosis,
+  formStateToDetalleRows as formStateToDetalleRowsOnicomicosis,
+  OnicomicosisFormState,
+} from "./componentes/OnicomicosisPies";
 import TabProductos from "./componentes/TabProductos";
 import TabServicios from "./componentes/TabServicios";
 import TabValoracion from "./componentes/TabValoracion";
@@ -105,6 +111,11 @@ export default function ConsultaPage() {
     dolor: 0,
   });
 
+  // onicomicosis detalle form (dentro de patologia)
+  const [onicomicosisForm, setOnicomicosisForm] = useState<OnicomicosisFormState>({
+    dedos: buildDedosVaciosOnicomicosis(),
+  });
+
   // pago form
   const [pagoForm, setPagoForm] = useState<Omit<IPago, "id_pago" | "created_at" | "id_empresa">>({
     id_consulta,
@@ -143,6 +154,9 @@ id_usuario_elimino: null,
         setOnicocriptosisForm(detalleRowsToFormState(data.onicocriptosisDetalle));
       }
       setOnicomicosisDetalle(data.onicomicosisDetalle);
+      if (data.onicomicosisDetalle.length > 0) {
+        setOnicomicosisForm(detalleRowsToFormStateOnicomicosis(data.onicomicosisDetalle));
+      }
       setMetodosPago(mp);
     } finally {
       setLoading(false);
@@ -456,6 +470,8 @@ id_usuario_elimino: null,
               locked={locked}
               detalle={onicocriptosisForm}
               onDetalleChange={setOnicocriptosisForm}
+              detalleOnicomicosis={onicomicosisForm}
+              onDetalleOnicomicosisChange={setOnicomicosisForm}
             />
           )}
           {activeTab === "servicios"  && (
