@@ -105,7 +105,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, sucursa
           
           {(
             [
-              { name: "telefono",                     label: "Teléfono",                     type: "text", minLength: 10, maxLength: 10 },
+              // { name: "telefono",                     label: "Teléfono",                     type: "text", minLength: 10, maxLength: 10 },
               { name: "ciudad_preferida",             label: "Ciudad preferida",             type: "text" },
               { name: "direccion",                    label: "Dirección",                    type: "text" },
               { name: "contacto_emergencia_nombre",   label: "Nombre(Contacto emergencia)",   type: "text" },

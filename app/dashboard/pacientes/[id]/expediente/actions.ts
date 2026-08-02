@@ -3,6 +3,8 @@
 import db from "@/database/connection";
 import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IConsulta } from "@/interfaces/consulta";
+import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
+import { IOnicomicosisDetalle } from "@/interfaces/onicomicosis_detalle";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { ISucursal } from "@/interfaces/sucursal";
@@ -223,14 +225,16 @@ export async function getTratamientoActivoByPaciente(
 export async function getPatologiaValoracionByConsulta(
   id_consulta: number
 ): Promise<{
-  patologia:  IPatologiaUngueal | null;
-  valoracion: IValoracionPiel  | null;
+  patologia:            IPatologiaUngueal | null;
+  valoracion:           IValoracionPiel  | null;
+  onicomicosisDetalle:  IOnicomicosisDetalle[];
+  onicocriptosisDetalle: IOnicocriptosisDetalle[];
 }> {
-  const [patRows, valRows] = await Promise.all([
+  const [patRows, valRows, onicomicosisRows, onicocriptosisRows] = await Promise.all([
     db.queryParams(
       `SELECT [id_patologia],[id_consulta],[anoniquia],[microniquia],[onicolisis],
               [onicauxis],[hematoma_subungueal],[onicofosis],[paquioniquia],
-              [onicomicosis_grado_1],[onicomicosis_grado_2]
+              [onicomicosis_grado_1],[onicomicosis_grado_2],[onicocriptosis]
          FROM [CentroPodologico].[dbo].[patologia_ungueal]
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
@@ -246,11 +250,27 @@ export async function getPatologiaValoracionByConsulta(
         WHERE [id_consulta] = @id_consulta`,
       { id_consulta },
     ),
+    db.queryParams(
+      `SELECT [id_detalle],[id_consulta],[pie],[dedo]
+         FROM [CentroPodologico].[dbo].[onicomicosis_detalle]
+        WHERE [id_consulta] = @id_consulta
+        ORDER BY [pie],[dedo]`,
+      { id_consulta },
+    ),
+    db.queryParams(
+      `SELECT [id_detalle],[id_consulta],[pie],[dedo],[grado],[lado_medial],[lado_lateral],[dolor]
+         FROM [CentroPodologico].[dbo].[onicocriptosis_detalle]
+        WHERE [id_consulta] = @id_consulta
+        ORDER BY [pie],[dedo]`,
+      { id_consulta },
+    ),
   ]);
 
   return {
-    patologia:  (patRows[0] as IPatologiaUngueal) ?? null,
-    valoracion: (valRows[0] as IValoracionPiel)   ?? null,
+    patologia:             (patRows[0] as IPatologiaUngueal) ?? null,
+    valoracion:            (valRows[0] as IValoracionPiel)   ?? null,
+    onicomicosisDetalle:   onicomicosisRows   as IOnicomicosisDetalle[],
+    onicocriptosisDetalle: onicocriptosisRows as IOnicocriptosisDetalle[],
   };
 }
 

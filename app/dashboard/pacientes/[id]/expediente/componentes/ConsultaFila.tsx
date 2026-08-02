@@ -1,10 +1,12 @@
 "use client";
 
 import { IConsulta } from "@/interfaces/consulta";
+import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
+import { IOnicomicosisDetalle } from "@/interfaces/onicomicosis_detalle";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getPatologiaValoracionByConsulta } from "../actions";
 import { formatDate } from "../useExpediente";
 
@@ -15,6 +17,8 @@ interface Props {
   onCancel?:   (c: IConsulta) => void;
   hideCostoTotal?: boolean;
   onVerImagenes?: (id_consulta: number) => void;
+  showDetalleColumn?: boolean;
+  expandAll?: boolean;
 }
 
 const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
@@ -27,7 +31,14 @@ const PATOLOGIAS: [keyof IPatologiaUngueal, string][] = [
   ["onicomicosis_grado_1", "Onicomicosis Grado 1"],
   ["onicomicosis_grado_2", "Onicomicosis Grado 2"],
   ["paquioniquia",         "Paquioniquia"        ],
+  ["onicocriptosis",       "Onicocriptosis"      ],
 ];
+
+function formatDedos(detalle: { pie: string; dedo: number }[]): string {
+  return detalle
+    .map((d) => `${d.pie === "izquierdo" ? "Izq" : "Der"} ${d.dedo}`)
+    .join(", ");
+}
 
 const CONDITIONS: [keyof IValoracionPiel, string][] = [
   ["anhidrosis",      "Anhidrosis"     ],
@@ -40,31 +51,48 @@ const CONDITIONS: [keyof IValoracionPiel, string][] = [
   ["verrugas",        "Verrugas"       ],
 ];
 
-export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCancel, hideCostoTotal = false, onVerImagenes }: Props) {
+export default function ConsultaFila({
+  consulta: c, id_paciente, onEdit, onCancel, hideCostoTotal = false, onVerImagenes, showDetalleColumn = false, expandAll,
+}: Props) {
   const cancelled  = Boolean(c.cancelada);
   const finalizada = Boolean(c.fecha_fin);
-  const colSpan    = hideCostoTotal ? 9 : 10;
+  const colSpan    = (hideCostoTotal ? 9 : 10) + (showDetalleColumn ? 1 : 0);
 
   const [expanded, setExpanded] = useState(false);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [detalle, setDetalle] = useState<{
-    patologia:  IPatologiaUngueal | null;
-    valoracion: IValoracionPiel  | null;
+    patologia:             IPatologiaUngueal | null;
+    valoracion:            IValoracionPiel  | null;
+    onicomicosisDetalle:   IOnicomicosisDetalle[];
+    onicocriptosisDetalle: IOnicocriptosisDetalle[];
   } | null>(null);
+
+  const fetchDetalle = async () => {
+    setLoadingDetalle(true);
+    try {
+      const data = await getPatologiaValoracionByConsulta(c.id_consulta);
+      setDetalle(data);
+    } finally {
+      setLoadingDetalle(false);
+    }
+  };
 
   const toggleExpanded = async () => {
     const next = !expanded;
     setExpanded(next);
     if (next && detalle === null && !loadingDetalle) {
-      setLoadingDetalle(true);
-      try {
-        const data = await getPatologiaValoracionByConsulta(c.id_consulta);
-        setDetalle(data);
-      } finally {
-        setLoadingDetalle(false);
-      }
+      await fetchDetalle();
     }
   };
+
+  useEffect(() => {
+    if (expandAll === undefined) return;
+    setExpanded(expandAll);
+    if (expandAll && detalle === null && !loadingDetalle) {
+      fetchDetalle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandAll]);
 
   const patologiasActivas  = detalle?.patologia  ? PATOLOGIAS.filter(([key]) => !!detalle.patologia![key]) : [];
   const condicionesActivas = detalle?.valoracion ? CONDITIONS.filter(([key]) => !!detalle.valoracion![key]) : [];
@@ -113,6 +141,7 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCance
           ${Number(c.costo_total).toFixed(2)}
         </td>
       )}
+      {showDetalleColumn && <td className="px-4 py-3"></td>}
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <button
@@ -190,9 +219,20 @@ export default function ConsultaFila({ consulta: c, id_paciente, onEdit, onCance
                   <p className="text-sm text-zinc-400">Sin datos registrados</p>
                 ) : (
                   <ul className="list-disc list-inside text-sm text-zinc-700 dark:text-zinc-300 space-y-0.5">
-                    {patologiasActivas.map(([key, label]) => (
-                      <li key={key}>{label}</li>
-                    ))}
+                    {patologiasActivas.map(([key, label]) => {
+                      const dedos =
+                        key === "onicomicosis_grado_1" || key === "onicomicosis_grado_2"
+                          ? formatDedos(detalle?.onicomicosisDetalle ?? [])
+                          : key === "onicocriptosis"
+                          ? formatDedos(detalle?.onicocriptosisDetalle ?? [])
+                          : "";
+                      return (
+                        <li key={key}>
+                          {label}
+                          {dedos && <span className="text-zinc-500 dark:text-zinc-400"> ({dedos})</span>}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

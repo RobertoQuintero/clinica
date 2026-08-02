@@ -21,6 +21,7 @@ export default function ConsultasTable({
   const [motivo,       setMotivo       ] = useState("");
   const [saving,       setSaving       ] = useState(false);
   const [error,        setError        ] = useState<string | null>(null);
+  const [showDetalle,  setShowDetalle  ] = useState(false);
 
   const openCancel = (c: IConsulta) => {
     setCancelTarget(c);
@@ -57,7 +58,7 @@ export default function ConsultasTable({
         <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
           <thead className="bg-zinc-100 dark:bg-zinc-800">
             <tr>
-              {["#", "Fecha", "Podólogo", "Sucursal", "H. Consulta", "H. Inicio", "H. Fin", "Duración", "Costo total", ""].map((h) => (
+              {["#", "Fecha", "Podólogo", "Sucursal", "H. Consulta", "H. Inicio", "H. Fin", "Duración", "Costo total"].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap"
@@ -65,12 +66,33 @@ export default function ConsultasTable({
                   {h}
                 </th>
               ))}
+              <th className=" py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showDetalle}
+                    onClick={() => setShowDetalle((v) => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
+                      showDetalle ? "bg-blue-600 dark:bg-blue-500" : "bg-zinc-300 dark:bg-zinc-600"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                        showDetalle ? "translate-x-4" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                  Detalle
+                </label>
+              </th>
+              <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap" />
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
             {consultas.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={11} className="px-4 py-6 text-center text-zinc-400">
                   Sin consultas registradas
                 </td>
               </tr>
@@ -82,6 +104,8 @@ export default function ConsultasTable({
                   id_paciente={id_paciente}
                   onEdit={onEdit}
                   onCancel={openCancel}
+                  showDetalleColumn={true}
+                  expandAll={showDetalle}
                 />
               ))
             )}
