@@ -330,8 +330,8 @@ export default function EstadisticasCharts() {
         .slice(0, 7)
     : [];
 
-  const totalServicios = data?.servicios.reduce((acc, s) => acc + s.total_ingresos, 0) ?? 0;
-  const totalProductos = data?.productos.reduce((acc, p) => acc + p.total_ingresos, 0) ?? 0;
+  const totalServicios = data?.ventas_cobradas.total_servicios ?? 0;
+  const totalProductos = data?.ventas_cobradas.total_productos ?? 0;
   const totalTratamientos = data?.tratamientos.total_ingresos ?? 0;
   const ventasTotalesData = [
     { nombre: "Servicios", total: totalServicios, fill: "#587CD6" },
