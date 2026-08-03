@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PodoCentro - HRM Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "on-primary-fixed": "#001b3f",
+                "inverse-primary": "#aec7fa",
+                "outline-variant": "#c4c6d0",
+                "on-tertiary": "#ffffff",
+                "inverse-on-surface": "#eaf1ff",
+                "error-container": "#ffdad6",
+                "surface-container-low": "#eff4ff",
+                "tertiary-fixed-dim": "#4edea3",
+                "surface-variant": "#d3e4fe",
+                "tertiary": "#000d06",
+                "primary-fixed-dim": "#aec7fa",
+                "background": "#f8f9ff",
+                "secondary-container": "#316bf3",
+                "on-background": "#0b1c30",
+                "surface-container": "#e5eeff",
+                "primary": "#000a1f",
+                "on-primary-container": "#7189b8",
+                "tertiary-fixed": "#6ffbbe",
+                "on-surface": "#0b1c30",
+                "on-secondary-container": "#fefcff",
+                "on-primary-fixed-variant": "#2e4772",
+                "primary-fixed": "#d7e2ff",
+                "secondary-fixed": "#dbe1ff",
+                "on-secondary-fixed": "#00174b",
+                "on-tertiary-fixed-variant": "#005236",
+                "tertiary-container": "#002718",
+                "secondary-fixed-dim": "#b4c5ff",
+                "on-tertiary-fixed": "#002113",
+                "on-secondary-fixed-variant": "#003ea8",
+                "on-error": "#ffffff",
+                "error": "#ba1a1a",
+                "surface-dim": "#cbdbf5",
+                "surface-bright": "#f8f9ff",
+                "surface-tint": "#465e8b",
+                "inverse-surface": "#213145",
+                "on-primary": "#ffffff",
+                "outline": "#747780",
+                "surface-container-highest": "#d3e4fe",
+                "surface-container-lowest": "#ffffff",
+                "surface": "#f8f9ff",
+                "secondary": "#0051d5",
+                "on-error-container": "#93000a",
+                "on-surface-variant": "#44474f",
+                "primary-container": "#00204a",
+                "surface-container-high": "#dce9ff",
+                "on-tertiary-container": "#009c6b",
+                "on-secondary": "#ffffff"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            },
+            "spacing": {
+                "inline-gutter": "16px",
+                "container-padding": "24px",
+                "unit": "4px",
+                "sidebar-width": "240px",
+                "card-gap": "20px"
+            },
+            "fontFamily": {
+                "display-lg": ["Inter"],
+                "label-subtle": ["Inter"],
+                "title-sm": ["Inter"],
+                "body-sm": ["Inter"],
+                "body-md": ["Inter"],
+                "headline-md": ["Inter"],
+                "label-bold": ["Inter"]
+            },
+            "fontSize": {
+                "display-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "label-subtle": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                "title-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for sidebar */
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SIDE BAR - Managed by JSON Shared Component -->
+<aside class="docked fixed h-screen w-[240px] left-0 top-0 bg-primary flex flex-col py-6 sidebar-scroll overflow-y-auto">
+<div class="px-6 mb-8">
+<h1 class="font-display-lg text-display-lg font-bold text-on-primary">PodoCentro</h1>
+<p class="font-body-sm text-body-sm text-on-primary/60">HRM - Gestión de Empleados</p>
+</div>
+<nav class="flex flex-col gap-1"><!-- Active Navigation: Dashboard -->
+<a class="bg-on-primary-fixed-variant text-white font-semibold border-l-4 border-secondary flex items-center gap-3 px-4 py-2.5 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-bold text-label-bold">Dashboard</span>
+</a>
+<!-- Pacientes -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold">Pacientes</span>
+</a>
+<!-- Citas -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="event">event</span>
+<span class="font-label-bold text-label-bold">Citas</span>
+</a>
+<!-- Servicios -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="medical_services">medical_services</span>
+<span class="font-label-bold text-label-bold">Servicios</span>
+</a>
+<!-- Inventario Dropdown -->
+<div class="flex flex-col">
+<button class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 w-full flex items-center justify-between px-4 py-2.5 transition-colors group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-bold text-label-bold">Inventario</span>
+</div>
+<span class="material-symbols-outlined text-[20px]">expand_more</span>
+</button>
+<div class="flex flex-col pl-[52px] py-1 gap-1">
+<a class="text-on-primary/60 hover:text-white text-body-sm py-1.5 transition-colors flex items-center gap-2" href="#">
+<span class="material-symbols-outlined text-sm">inventory</span>
+      Productos
+    </a>
+</div>
+</div>
+<!-- Sucursales -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="store">store</span>
+<span class="font-label-bold text-label-bold">Sucursales</span>
+</a>
+<!-- Enlaces -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="link">link</span>
+<span class="font-label-bold text-label-bold">Enlaces</span>
+</a>
+<!-- Ventas -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Ventas</span>
+</a>
+<!-- Tratamientos -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="content_paste">content_paste</span>
+<span class="font-label-bold text-label-bold">Tratamientos</span>
+</a>
+<!-- Empleados -->
+<a class="text-on-primary/70 hover:text-white hover:bg-on-primary-fixed-variant/50 flex items-center gap-3 px-4 py-2.5 transition-colors group" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-bold text-label-bold">Empleados</span>
+</a></nav>
+</aside>
+<!-- MAIN CONTENT AREA -->
+<main class="ml-[240px] min-h-screen flex flex-col">
+<!-- TOP APP BAR - Managed by JSON Shared Component -->
+<header class="flex items-center justify-between px-container-padding h-16 w-full bg-surface-container-lowest border-b border-outline-variant shadow-sm sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">Dashboard</h2>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container rounded-lg border-none focus:ring-2 focus:ring-secondary w-64 text-body-sm transition-all" placeholder="Buscar empleado o reporte..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative hover:bg-surface-container-low p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="text-right">
+<p class="font-label-bold text-label-bold text-on-surface">Administrador</p>
+<p class="font-label-subtle text-label-subtle text-on-surface-variant">admin@podocentro.com</p>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-outline-variant group-hover:border-secondary transition-colors">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a professional male HR administrator wearing a crisp white dress shirt in a bright modern office with warm wooden accents. The professional is smiling confidently, conveying trust and reliability. High-key natural lighting illuminates the face, creating a clean and corporate look suitable for an enterprise dashboard interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsl2R2N7GpAje-4sJ_8UILkIaYdlWStbeqwMNwRG3oi5sJR_W7eiueiQr51MG314aN-O-Xc7QBQN-ORCjylXl7BryQNlFgd6_7R2PZ73L3CQ3nOKZqTaPwXjLgF8evoUB95tgPFldc8sRp6LGi807Ql2wPjuag0ZZYJzcDtPhHlMHj4pd0mOFwJ0tiDlIsu6ZY_iQ4YQ32qr4lScTpLdHSO2GPqneyE79ALgt15VdkjLEsoSeX-ts"/>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</header>
+<!-- CANVAS CONTENT -->
+<div class="p-container-padding space-y-8 max-w-[1440px]">
+<!-- KEY METRICS BENTO GRID -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-card-gap">
+<!-- Metric Card 1: Total Employees -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary-fixed rounded-lg text-primary">
+<span class="material-symbols-outlined">group</span>
+</div>
+<span class="text-tertiary-container bg-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold">+2 este mes</span>
+</div>
+<p class="font-label-subtle text-label-subtle text-on-surface-variant mb-1">Total Empleados</p>
+<h3 class="font-display-lg text-display-lg text-on-surface">156</h3>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-primary"></div>
+</div>
+<!-- Metric Card 2: Attendance Rate -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary-fixed rounded-lg text-secondary">
+<span class="material-symbols-outlined">how_to_reg</span>
+</div>
+<span class="text-tertiary-container bg-tertiary-fixed px-2 py-0.5 rounded text-[10px] font-bold">Excelente</span>
+</div>
+<p class="font-label-subtle text-label-subtle text-on-surface-variant mb-1">Tasa Asistencia</p>
+<h3 class="font-display-lg text-display-lg text-on-surface">94.2%</h3>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-secondary"></div>
+</div>
+<!-- Metric Card 3: Pending Incidents -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-error-container rounded-lg text-error">
+<span class="material-symbols-outlined">report_problem</span>
+</div>
+<span class="text-on-error-container bg-error-container px-2 py-0.5 rounded text-[10px] font-bold">Atención</span>
+</div>
+<p class="font-label-subtle text-label-subtle text-on-surface-variant mb-1">Incidencias Pendientes</p>
+<h3 class="font-display-lg text-display-lg text-on-surface">8</h3>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-error"></div>
+</div>
+<!-- Metric Card 4: Upcoming Vacations -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary-fixed rounded-lg text-on-tertiary-fixed-variant">
+<span class="material-symbols-outlined">beach_access</span>
+</div>
+<span class="text-on-surface-variant bg-surface-container px-2 py-0.5 rounded text-[10px] font-bold">Próximos 7 días</span>
+</div>
+<p class="font-label-subtle text-label-subtle text-on-surface-variant mb-1">Vacaciones Próximas</p>
+<h3 class="font-display-lg text-display-lg text-on-surface">12</h3>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-tertiary-fixed-dim"></div>
+</div>
+</section>
+<!-- ANALYTICS & ACTIVITY -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-card-gap">
+<!-- Distribution by Branch Chart Container -->
+<div class="lg:col-span-2 bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-title-sm text-title-sm text-on-surface">Distribución por Sucursal</h4>
+<div class="flex gap-2">
+<span class="flex items-center gap-1.5 text-label-subtle font-label-subtle text-on-surface-variant">
+<span class="w-3 h-3 rounded-full bg-primary"></span> Matriz
+                            </span>
+<span class="flex items-center gap-1.5 text-label-subtle font-label-subtle text-on-surface-variant">
+<span class="w-3 h-3 rounded-full bg-secondary"></span> Norte
+                            </span>
+<span class="flex items-center gap-1.5 text-label-subtle font-label-subtle text-on-surface-variant">
+<span class="w-3 h-3 rounded-full bg-tertiary-fixed-dim"></span> Poniente
+                            </span>
+</div>
+</div>
+<!-- Simulated Chart Visualization -->
+<div class="h-[300px] w-full flex items-end justify-between px-4 pb-2 border-b border-outline-variant relative">
+<div class="flex flex-col items-center gap-2 group w-1/4">
+<div class="w-16 bg-primary rounded-t-lg h-56 transition-all group-hover:opacity-80"></div>
+<span class="font-label-subtle text-label-subtle text-on-surface-variant">Matriz</span>
+</div>
+<div class="flex flex-col items-center gap-2 group w-1/4">
+<div class="w-16 bg-secondary rounded-t-lg h-40 transition-all group-hover:opacity-80"></div>
+<span class="font-label-subtle text-label-subtle text-on-surface-variant">Norte</span>
+</div>
+<div class="flex flex-col items-center gap-2 group w-1/4">
+<div class="w-16 bg-tertiary-fixed-dim rounded-t-lg h-32 transition-all group-hover:opacity-80"></div>
+<span class="font-label-subtle text-label-subtle text-on-surface-variant">Poniente</span>
+</div>
+<div class="flex flex-col items-center gap-2 group w-1/4">
+<div class="w-16 bg-on-primary-fixed-variant rounded-t-lg h-24 transition-all group-hover:opacity-80"></div>
+<span class="font-label-subtle text-label-subtle text-on-surface-variant">Sur</span>
+</div>
+<!-- Grid lines -->
+<div class="absolute w-full h-px bg-outline-variant/30 bottom-1/4 left-0"></div>
+<div class="absolute w-full h-px bg-outline-variant/30 bottom-2/4 left-0"></div>
+<div class="absolute w-full h-px bg-outline-variant/30 bottom-3/4 left-0"></div>
+</div>
+</div>
+<!-- Recent Activity Feed -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full">
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-title-sm text-title-sm text-on-surface">Actividad Reciente</h4>
+<button class="text-secondary text-label-bold font-label-bold hover:underline">Ver todo</button>
+</div>
+<div class="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+<!-- Activity Item 1 -->
+<div class="flex gap-4 relative">
+<div class="z-10 w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-lg">person_add</span>
+</div>
+<div class="flex-1">
+<p class="text-body-sm font-body-sm text-on-surface">Nuevo ingreso: <strong>Ricardo Salinas</strong></p>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Matriz • Hace 2 horas</p>
+</div>
+<div class="absolute left-5 top-10 w-px h-6 bg-outline-variant"></div>
+</div>
+<!-- Activity Item 2 -->
+<div class="flex gap-4 relative">
+<div class="z-10 w-10 h-10 rounded-full bg-error-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error text-lg" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="flex-1">
+<p class="text-body-sm font-body-sm text-on-surface">Incidencia reportada: <strong>Retardo equipo médico</strong></p>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Sucursal Norte • Hace 4 horas</p>
+</div>
+<div class="absolute left-5 top-10 w-px h-6 bg-outline-variant"></div>
+</div>
+<!-- Activity Item 3 -->
+<div class="flex gap-4 relative">
+<div class="z-10 w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-tertiary-fixed-variant text-lg">beach_access</span>
+</div>
+<div class="flex-1">
+<p class="text-body-sm font-body-sm text-on-surface">Vacaciones aprobadas: <strong>Lucía Méndez</strong></p>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Administración • Ayer</p>
+</div>
+<div class="absolute left-5 top-10 w-px h-6 bg-outline-variant"></div>
+</div>
+<!-- Activity Item 4 -->
+<div class="flex gap-4">
+<div class="z-10 w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-lg">description</span>
+</div>
+<div class="flex-1">
+<p class="text-body-sm font-body-sm text-on-surface">Actualización de contrato: <strong>Carlos Ruiz</strong></p>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Operaciones • Hace 1 día</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- UPCOMING EVENTS & QUICK ACTIONS -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-card-gap">
+<!-- Upcoming Vacations & Absences Table -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<h4 class="font-title-sm text-title-sm text-on-surface">Próximas Ausencias</h4>
+<span class="bg-secondary text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Próximos 7 días</span>
+</div>
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-6 py-3 font-label-bold text-label-bold text-on-surface-variant">Empleado</th>
+<th class="px-6 py-3 font-label-bold text-label-bold text-on-surface-variant">Motivo</th>
+<th class="px-6 py-3 font-label-bold text-label-bold text-on-surface-variant">Fecha</th>
+<th class="px-6 py-3 font-label-bold text-label-bold text-on-surface-variant">Estado</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200">
+<img class="w-full h-full object-cover rounded-full" data-alt="Corporate headshot of a professional Hispanic woman with dark hair tied back, wearing a blue medical uniform, smiling warmly against a soft-focus office background. The lighting is bright and airy, consistent with a modern podiatry clinic environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRSoZjzRM0MgxMGgAXWmhCMfMt8Bh7k4HqRxyZ7N5X0cLzex5VUGyevQ-qevuCHvuvKM35jRa2VOs8NdX78mi_R3UfPiGdUIB_pqHzblJ1O9c6m4nLPSJja0qRLvnixN5-SQAsiFVxnnqorUkpxf6Zk-e75p3uQNbx16wh7vSkuX5PWVYe9DA0X6G56akhYpgXjgURBMbdvVQEQObhBXDdsCC9MLs2Cr9pmt2Xx2tz7d9EAYUCwko"/>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface">María F. López</span>
+</td>
+<td class="px-6 py-4 text-body-sm text-on-surface-variant">Vacaciones</td>
+<td class="px-6 py-4 text-body-sm text-on-surface-variant">Oct 12 - Oct 18</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-[#DCFCE7] text-[#166534] text-[10px] font-bold uppercase">Confirmado</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200">
+<img class="w-full h-full object-cover rounded-full" data-alt="Portrait of a young male professional medical assistant with short black hair and glasses, wearing a light blue scrub top, presenting a friendly and professional demeanor in a clinical setting. Minimalist white walls and clean lighting create a high-trust healthcare aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCE8-egQeokzZG0q3mPFzcuNFW1zG2ilZx_mgb8gJW_CjE7n1lbJqWpwP9Mq7WNPIxVjsfWas59WwZ2r1Fpb7k6Yiyxb5psBDQkHh3mGg66sGCsv0tfHut44J5sISgoxHzy52sRbVoWCWRY4UJmadIrwC3--h9fI3CMJnQu-aja5Z1NN9D36-OLml1LVaGLrARNWT_v_k_35O8hTBIwprzXZNnVAmnfzWvWJfRjr6S0SCJF8R22SkI"/>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface">Luis López</span>
+</td>
+<td class="px-6 py-4 text-body-sm text-on-surface-variant">Asuntos Pers.</td>
+<td class="px-6 py-4 text-body-sm text-on-surface-variant">Oct 14</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface-variant text-[10px] font-bold uppercase">Pendiente</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Quick Actions Bento -->
+<div class="grid grid-cols-2 gap-4">
+<button class="bg-primary text-white p-6 rounded-xl shadow-sm hover:brightness-110 transition-all flex flex-col items-center justify-center gap-3 group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">person_add</span>
+<span class="font-label-bold text-label-bold">Nuevo Empleado</span>
+</button>
+<button class="bg-secondary text-white p-6 rounded-xl shadow-sm hover:brightness-110 transition-all flex flex-col items-center justify-center gap-3 group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">fact_check</span>
+<span class="font-label-bold text-label-bold">Revisar Asistencia</span>
+</button>
+<button class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-sm hover:bg-surface-container transition-all flex flex-col items-center justify-center gap-3 group">
+<span class="material-symbols-outlined text-3xl text-on-surface-variant group-hover:text-primary">summarize</span>
+<span class="font-label-bold text-label-bold text-on-surface">Generar Reporte</span>
+</button>
+<button class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-sm hover:bg-surface-container transition-all flex flex-col items-center justify-center gap-3 group">
+<span class="material-symbols-outlined text-3xl text-on-surface-variant group-hover:text-secondary">contact_mail</span>
+<span class="font-label-bold text-label-bold text-on-surface">Comunicado General</span>
+</button>
+</div>
+</section>
+</div>
+<!-- FOOTER -->
+<footer class="mt-auto p-6 text-center border-t border-outline-variant bg-surface-container-lowest">
+<p class="font-label-subtle text-label-subtle text-on-surface-variant">© 2024 PodoCentro HRM System. Panel de Control de Administración v2.4.1</p>
+</footer>
+</main>
+<!-- FLOATING ACTION BUTTON (Suppressed on Home according to logic but usually useful for quick employee add) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-secondary text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform z-50">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'wght' 600;">add</span>
+</button>
+<script>
+        // Micro-interaction for search bar focus
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.classList.add('w-80');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.classList.remove('w-80');
+        });
+
+        // Simple dashboard data refresh simulation
+        setInterval(() => {
+            console.log("Checking for real-time HRM updates...");
+        }, 30000);
+    </script>
+</body></html>
