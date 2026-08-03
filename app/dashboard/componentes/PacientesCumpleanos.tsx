@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getPacientesCumpleanos, IPacienteCumpleanos } from "../actions";
 import { useSucursal } from "@/contexts/SucursalContext";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 const fmtBirthday = (val: string) => {
   if (!val) return "—";
@@ -22,6 +23,7 @@ const diasParaCumple = (val: string): number => {
 };
 
 export default function PacientesCumpleanos() {
+  const {user} = useAuth();
   const { selectedId } = useSucursal();
   const [pacientes, setPacientes] = useState<IPacienteCumpleanos[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -85,9 +87,9 @@ export default function PacientesCumpleanos() {
                     {dias === 0 ? "¡Hoy!" : `${dias} día${dias === 1 ? "" : "s"}`}
                   </span>
                 </td>
-                <td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 hidden md:table-cell">
+                {user?.id_role === 1 || user?.id_role === 4 ? (<td className="px-4 py-2 text-zinc-600 dark:text-zinc-300 hidden md:table-cell">
                   {p.whatsapp || p.telefono || "—"}
-                </td>
+                </td>):<></>}
               </tr>
             );
           })}

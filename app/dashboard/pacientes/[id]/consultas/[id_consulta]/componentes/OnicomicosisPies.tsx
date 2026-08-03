@@ -20,7 +20,7 @@ interface Props {
   disabled?:       boolean;
 }
 
-const PIES: ("izquierdo" | "derecho")[] = ["izquierdo", "derecho"];
+const PIES: ("derecho" | "izquierdo")[] = ["derecho" ,"izquierdo"];
 
 const NOMBRES_DEDO: Record<number, string> = {
   1: "Hallux (gordo)",
@@ -31,20 +31,20 @@ const NOMBRES_DEDO: Record<number, string> = {
 };
 
 // posiciones aproximadas (% del ancho/alto de la imagen) de cada dedo sobre pie-zen-onico.jpeg
-const POSICIONES: Record<"izquierdo" | "derecho", Record<number, { x: number; y: number }>> = {
-  izquierdo: {
-    5: { x: 8, y: 43 },
-    4: { x: 13, y: 35 },
-    3: { x: 19, y: 30 },
-    2: { x: 27, y: 27 },
-    1: { x: 36, y: 25 },
-  },
+const POSICIONES: Record<"derecho" | "izquierdo", Record<number, { x: number; y: number }>> = {
   derecho: {
-    1: { x: 62, y: 25 },
-    2: { x: 72, y: 27 },
-    3: { x: 79, y: 31},
-    4: { x: 86, y: 35 },
-    5: { x: 91, y: 43 },
+    5: { x: 21, y: 69 },
+    4: { x: 25, y: 77 },
+    3: { x: 30, y: 83 },
+    2: { x: 35, y: 86 },
+    1: { x: 42, y: 86 },
+  },
+  izquierdo: {
+    1: { x: 59, y: 86 },
+    2: { x: 67, y: 86 },
+    3: { x: 72, y: 83 },
+    4: { x: 76, y: 76 },
+    5: { x: 80, y: 69 },
   },
 };
 
@@ -78,7 +78,7 @@ export function detalleRowsToFormState(rows: IOnicomicosisDetalle[]): Onicomicos
 }
 
 export default function OnicomicosisPies({ detalle, onDetalleChange, disabled }: Props) {
-  const toggleDedo = (pie: "izquierdo" | "derecho", dedo: number) => {
+  const toggleDedo = (pie: "derecho" | "izquierdo", dedo: number) => {
     if (disabled) return;
     const dedos = detalle.dedos.map((d) =>
       d.pie === pie && d.dedo === dedo ? { ...d, marcado: !d.marcado } : d,
@@ -91,12 +91,12 @@ export default function OnicomicosisPies({ detalle, onDetalleChange, disabled }:
   return (
     <div className="space-y-4">
       <div className="relative mx-auto w-full max-w-md select-none">
-        <div className='food-img' style={{padding:'7rem 0 0 0',gap:'6rem'}}>
+        {/* <div className='food-img' style={{padding:'7rem 0 0 0',gap:'6rem'}}>
           <p className="food-img__p">Pie Izquierdo</p>
           <p className="food-img__p ">Pie Derecho</p>
-        </div>
+        </div> */}
         <Image
-          src="/pie-zen-onico.png"
+          src="/pie1.png"
           alt="Pies (izquierdo y derecho)"
           width={365}
           height={277}

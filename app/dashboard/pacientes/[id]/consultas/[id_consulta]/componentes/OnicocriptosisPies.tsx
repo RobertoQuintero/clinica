@@ -23,7 +23,7 @@ interface Props {
   disabled?:       boolean;
 }
 
-const PIES: ("izquierdo" | "derecho")[] = ["izquierdo", "derecho"];
+const PIES: ("derecho" | "izquierdo")[] = ["derecho", "izquierdo"];
 
 const NOMBRES_DEDO: Record<number, string> = {
   1: "Hallux (gordo)",
@@ -34,20 +34,20 @@ const NOMBRES_DEDO: Record<number, string> = {
 };
 
 // posiciones aproximadas (% del ancho/alto de la imagen) de cada dedo sobre piezen-pain.jpeg
-const POSICIONES: Record<"izquierdo" | "derecho", Record<number, { x: number; y: number }>> = {
-  izquierdo: {
-    5: { x: 17, y: 32 },
-    4: { x: 21, y: 26 },
-    3: { x: 27, y: 23 },
-    2: { x: 33, y: 20 },
-    1: { x: 42, y: 19 },
-  },
+const POSICIONES: Record<"derecho" | "izquierdo", Record<number, { x: number; y: number }>> = {
   derecho: {
-    1: { x: 64, y: 19 },
-    2: { x: 73, y: 20 },
-    3: { x: 79, y: 23 },
-    4: { x: 85, y: 26 },
-    5: { x: 90, y: 31 },
+    5: { x: 21, y: 53 },
+    4: { x: 25, y: 57 },
+    3: { x: 30, y: 60 },
+    2: { x: 35, y: 62 },
+    1: { x: 42, y: 62 },
+  },
+  izquierdo: {
+    1: { x: 59, y: 62 },
+    2: { x: 67, y: 62 },
+    3: { x: 72, y: 60 },
+    4: { x: 77, y: 58 },
+    5: { x: 81, y: 53 },
   },
 };
 
@@ -104,7 +104,7 @@ export default function OnicocriptosisPies({ detalle, onDetalleChange, disabled 
   const [activeKey, setActiveKey] = useState<string | null>(null);
 
   const updateDedo = (
-    pie: "izquierdo" | "derecho",
+    pie: "derecho" | "izquierdo",
     dedo: number,
     patch: Partial<OnicocriptosisDedoState>,
   ) => {
@@ -131,14 +131,13 @@ export default function OnicocriptosisPies({ detalle, onDetalleChange, disabled 
       <div
         className="relative mx-auto w-full max-w-md select-none"
         onClick={() => setActiveKey(null)}
-        
       >
-        <div className='food-img'>
+        {/* <div className='food-img'>
           <p className="food-img__p">Pie Izquierdo</p>
           <p className="food-img__p fp-2">Pie Derecho</p>
-        </div>
+        </div> */}
         <Image
-          src="/piezen-pain.png"
+          src="/pie2.png"
           alt="Pies (izquierdo y derecho)"
           width={412}
           height={392}
