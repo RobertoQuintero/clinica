@@ -5,14 +5,20 @@ import { useSucursal } from "@/contexts/SucursalContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Inter } from "next/font/google";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sun, Moon, LogOut, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordModal";
 import { NAV_LINKS, type NavLink } from "@/app/dashboard/componentes/navConfig";
 
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+
 const RAIL_WIDTH = 72;
 const EXPANDED_WIDTH = 240;
 const COLLAPSED_STORAGE_KEY = "sidebar_collapsed";
+
+// Paleta de references/sidebar/DESIGN.md
+const NAVY = "#00204A";
 
 export default function Sidebar({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -22,6 +28,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [passwordModal, setPasswordModal] = useState(false);
+  const [flyoutTop, setFlyoutTop] = useState<number | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(COLLAPSED_STORAGE_KEY);
@@ -46,17 +53,43 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const isActive = (href?: string) => !!href && pathname.startsWith(href);
   const isGroupActive = (link: NavLink) => !!link.children?.some((c) => pathname.startsWith(c.href));
 
+  const navItemBase = "flex items-center gap-3 py-2.5 text-xs font-semibold tracking-wide transition-colors";
+  const navItemState = (active: boolean) =>
+    active
+      ? "bg-[#2e4772] text-white border-l-4 border-[#0051d5]"
+      : "text-white/70 hover:text-white hover:bg-[#2e4772]/50 border-l-4 border-transparent";
+
   const renderLink = (link: NavLink) => {
     const Icon = link.icon;
 
     if (link.children) {
       const active = isGroupActive(link);
-      return (
-        <div key={link.label} className="relative group">
-          <div
-            className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-              active ? "bg-zinc-700 text-white" : "text-zinc-300 hover:bg-zinc-800"
+      const submenu = link.children.map((child) => {
+        const ChildIcon = child.icon;
+        const childActive = pathname.startsWith(child.href);
+        return (
+          <Link
+            key={child.href}
+            href={child.href}
+            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded transition-colors ${
+              childActive ? "text-white bg-[#2e4772]" : "text-white/60 hover:text-white"
             }`}
+          >
+            <ChildIcon className="h-4 w-4" />
+            {child.label}
+          </Link>
+        );
+      });
+
+      return (
+        <div
+          key={link.label}
+          className="relative"
+          onMouseEnter={(e) => collapsed && setFlyoutTop(e.currentTarget.getBoundingClientRect().top)}
+          onMouseLeave={() => setFlyoutTop(null)}
+        >
+          <div
+            className={`${navItemBase} ${navItemState(active)} ${collapsed ? "justify-center px-0" : "px-4"}`}
           >
             <Icon className="h-5 w-5 shrink-0" />
             {!collapsed && (
@@ -66,36 +99,19 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               </>
             )}
           </div>
-          <div
-            className={
-              collapsed
-                ? "invisible absolute left-full top-0 z-50 ml-2 min-w-[180px] rounded-md bg-zinc-800 py-2 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
-                : "pl-8 space-y-1"
-            }
-          >
-            {collapsed && (
-              <p className="px-3 pb-1 text-xs font-semibold text-zinc-400">{link.label}</p>
-            )}
-            {link.children.map((child) => {
-              const ChildIcon = child.icon;
-              return (
-                <Link
-                  key={child.href}
-                  href={child.href}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                    collapsed ? "" : "rounded-md"
-                  } ${
-                    pathname.startsWith(child.href)
-                      ? "bg-zinc-700 text-white"
-                      : "text-zinc-300 hover:bg-zinc-800"
-                  }`}
-                >
-                  <ChildIcon className="h-4 w-4" />
-                  {child.label}
-                </Link>
-              );
-            })}
-          </div>
+          {collapsed ? (
+            flyoutTop !== null && (
+              <div
+                style={{ position: "fixed", top: flyoutTop, left: RAIL_WIDTH + 8 }}
+                className="z-50 min-w-[180px] rounded-lg bg-[#00204a] py-2 shadow-lg"
+              >
+                <p className="px-3 pb-1 text-xs font-semibold text-white/50">{link.label}</p>
+                {submenu}
+              </div>
+            )
+          ) : (
+            <div className="pl-8 py-1 space-y-1">{submenu}</div>
+          )}
         </div>
       );
     }
@@ -104,7 +120,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
       return (
         <div
           key={link.label}
-          className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-zinc-500 opacity-50 cursor-not-allowed"
+          className={`${navItemBase} ${collapsed ? "justify-center px-0" : "px-4"} border-l-4 border-transparent text-white/30 opacity-60 cursor-not-allowed`}
         >
           <Icon className="h-5 w-5 shrink-0" />
           {!collapsed && <span>{link.label}</span>}
@@ -116,9 +132,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
       <Link
         key={link.href}
         href={link.href!}
-        className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
-          isActive(link.href) ? "bg-zinc-700 text-white" : "text-zinc-300 hover:bg-zinc-800"
-        }`}
+        className={`${navItemBase} ${navItemState(isActive(link.href))} ${collapsed ? "justify-center px-0" : "px-4"}`}
       >
         <Icon className="h-5 w-5 shrink-0" />
         {!collapsed && <span>{link.label}</span>}
@@ -130,20 +144,20 @@ export default function Sidebar({ children }: { children: ReactNode }) {
     <>
       {/* Desktop / tablet aside */}
       <aside
-        style={{ width: asideWidth }}
-        className="hidden lg:flex fixed top-0 left-0 z-40 h-screen flex-col bg-zinc-900 text-white transition-all duration-300"
+        style={{ width: asideWidth, backgroundColor: NAVY }}
+        className={`${inter.className} hidden lg:flex fixed top-0 left-0 z-40 h-screen flex-col py-6 transition-all duration-300 overflow-y-auto`}
       >
-        <div className="flex items-center justify-between px-4 py-5">
-          {!collapsed && <span className="text-lg font-bold">Pie Zen</span>}
+        <div className={`mb-6 flex items-center px-6 ${collapsed ? "justify-center px-0" : "justify-between"}`}>
+          {!collapsed && <span className="text-lg font-bold text-white">Pie Zen</span>}
           <button
             onClick={toggleCollapsed}
             aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
-            className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+            className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
           >
             {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </button>
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto px-2 pb-4">{links.map(renderLink)}</nav>
+        <nav className="flex-1 space-y-1">{links.map(renderLink)}</nav>
       </aside>
 
       {/* Header + content wrapper */}
@@ -152,12 +166,14 @@ export default function Sidebar({ children }: { children: ReactNode }) {
         className="flex min-h-screen flex-col lg:ml-[var(--sidebar-w)] transition-all duration-300"
       >
         {/* Desktop header */}
-        <header className="hidden lg:flex sticky top-0 z-30 items-center justify-end gap-4 bg-white px-6 py-3 shadow-sm dark:bg-zinc-800">
+        <header
+          className={`${inter.className} hidden lg:flex sticky top-0 z-30 items-center justify-end gap-4 border-b border-[#e2e8f0] bg-white px-6 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800`}
+        >
           {sucursales.length > 1 && (
             <select
               value={selectedId}
               onChange={(e) => setSelected(Number(e.target.value))}
-              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors hover:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
+              className="rounded border border-[#cbd5e1] bg-white px-2 py-1.5 text-sm text-[#0b1c30] shadow-sm transition-colors hover:border-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#2563eb] dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
             >
               {sucursales.map((s) => (
                 <option key={s.id_sucursal} value={s.id_sucursal}>
@@ -169,7 +185,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           <button
             onClick={toggle}
             aria-label="Cambiar tema"
-            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors"
+            className="rounded p-2 text-[#44474f] hover:bg-[#eff4ff] dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors"
           >
             {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
@@ -177,12 +193,13 @@ export default function Sidebar({ children }: { children: ReactNode }) {
             onClick={() => setPasswordModal(true)}
             className="flex flex-col items-end hover:underline underline-offset-2 transition-colors"
           >
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 leading-tight">{user?.nombre}</span>
-            <span className="text-xs text-zinc-400 dark:text-zinc-500 leading-tight">{user?.role_nombre}</span>
+            <span className="text-sm font-medium leading-tight text-[#0b1c30] dark:text-zinc-300">{user?.nombre}</span>
+            <span className="text-xs leading-tight text-[#44474f] dark:text-zinc-500">{user?.role_nombre}</span>
           </button>
           <button
             onClick={logout}
-            className="flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+            style={{ backgroundColor: NAVY }}
+            className="flex items-center gap-2 rounded px-4 py-2 text-sm font-medium text-white transition-all hover:brightness-110"
           >
             <LogOut className="h-4 w-4" />
             Cerrar sesión
@@ -190,14 +207,16 @@ export default function Sidebar({ children }: { children: ReactNode }) {
         </header>
 
         {/* Mobile header */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-white px-4 py-3 shadow-sm dark:bg-zinc-800">
-          <Link href="/dashboard" className="text-lg font-bold text-zinc-800 dark:text-zinc-50">
+        <header
+          className={`${inter.className} lg:hidden sticky top-0 z-30 flex items-center justify-between border-b border-[#e2e8f0] bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-800`}
+        >
+          <Link href="/dashboard" className="text-lg font-bold text-[#0b1c30] dark:text-zinc-50">
             Pie Zen
           </Link>
           <button
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menú"
-            className="rounded-md p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+            className="rounded p-2 text-[#44474f] hover:bg-[#eff4ff] dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -213,23 +232,24 @@ export default function Sidebar({ children }: { children: ReactNode }) {
 
       {/* Mobile drawer */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white dark:bg-zinc-800 shadow-xl flex flex-col transition-transform duration-300 lg:hidden ${
+        style={{ backgroundColor: NAVY }}
+        className={`${inter.className} fixed top-0 left-0 z-50 h-full w-64 shadow-xl flex flex-col transition-transform duration-300 lg:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-700">
-          <span className="text-base font-semibold text-zinc-800 dark:text-zinc-50">Menú</span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <span className="text-base font-semibold text-white">Menú</span>
           <button
             onClick={() => setMobileOpen(false)}
             aria-label="Cerrar menú"
-            className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors"
+            className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-700">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Sesión iniciada como</p>
+        <div className="px-5 py-4 border-b border-white/10">
+          <p className="text-sm text-white/50">Sesión iniciada como</p>
           <button
             onClick={() => {
               setMobileOpen(false);
@@ -237,12 +257,12 @@ export default function Sidebar({ children }: { children: ReactNode }) {
             }}
             className="flex flex-col items-start mt-0.5 hover:underline underline-offset-2 transition-colors text-left"
           >
-            <span className="text-sm font-medium text-zinc-800 dark:text-zinc-100 leading-tight">{user?.nombre}</span>
-            <span className="text-xs text-zinc-400 dark:text-zinc-500 leading-tight">{user?.role_nombre}</span>
+            <span className="text-sm font-medium leading-tight text-white">{user?.nombre}</span>
+            <span className="text-xs leading-tight text-white/50">{user?.role_nombre}</span>
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
           {links.map((link) => {
             const Icon = link.icon;
 
@@ -250,26 +270,21 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               const active = isGroupActive(link);
               return (
                 <div key={link.label}>
-                  <div
-                    className={`flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-medium ${
-                      active ? "bg-zinc-800 text-white dark:bg-zinc-600" : "text-zinc-600 dark:text-zinc-300"
-                    }`}
-                  >
+                  <div className={`${navItemBase} ${navItemState(active)} px-4`}>
                     <Icon className="h-5 w-5 shrink-0" />
                     <span>{link.label}</span>
                   </div>
-                  <div className="pl-9 space-y-1">
+                  <div className="pl-9 py-1 space-y-1">
                     {link.children.map((child) => {
                       const ChildIcon = child.icon;
+                      const childActive = pathname.startsWith(child.href);
                       return (
                         <Link
                           key={child.href}
                           href={child.href}
                           onClick={() => setMobileOpen(false)}
-                          className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm transition-colors ${
-                            pathname.startsWith(child.href)
-                              ? "bg-zinc-800 text-white dark:bg-zinc-600"
-                              : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                          className={`flex items-center gap-2 rounded px-3 py-2 text-xs font-semibold transition-colors ${
+                            childActive ? "text-white" : "text-white/60 hover:text-white"
                           }`}
                         >
                           <ChildIcon className="h-4 w-4" />
@@ -286,7 +301,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               return (
                 <div
                   key={link.label}
-                  className="flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-medium text-zinc-400 opacity-50 cursor-not-allowed dark:text-zinc-500"
+                  className={`${navItemBase} px-4 border-l-4 border-transparent text-white/30 opacity-60 cursor-not-allowed`}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span>{link.label}</span>
@@ -299,11 +314,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
                 key={link.href}
                 href={link.href!}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-medium transition-colors ${
-                  isActive(link.href)
-                    ? "bg-zinc-800 text-white dark:bg-zinc-600"
-                    : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                }`}
+                className={`${navItemBase} ${navItemState(isActive(link.href))} px-4`}
               >
                 <Icon className="h-5 w-5 shrink-0" />
                 {link.label}
@@ -312,18 +323,18 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           })}
 
           {sucursales.length > 1 && (
-            <div className="pt-2">
-              <p className="px-4 pb-1 text-xs text-zinc-400 dark:text-zinc-500">Sucursal</p>
+            <div className="pt-2 px-4">
+              <p className="pb-1 text-xs text-white/50">Sucursal</p>
               <select
                 value={selectedId}
                 onChange={(e) => {
                   setMobileOpen(false);
                   setSelected(Number(e.target.value));
                 }}
-                className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200"
+                className="w-full rounded border border-white/20 bg-white/5 px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]"
               >
                 {sucursales.map((s) => (
-                  <option key={s.id_sucursal} value={s.id_sucursal}>
+                  <option key={s.id_sucursal} value={s.id_sucursal} className="text-[#0b1c30]">
                     {s.nombre}
                     {s.ciudad ? ` — ${s.ciudad}` : ""}
                   </option>
@@ -333,17 +344,17 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           )}
         </nav>
 
-        <div className="px-3 py-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center gap-2">
+        <div className="px-4 py-4 border-t border-white/10 flex items-center gap-2">
           <button
             onClick={toggle}
             aria-label="Cambiar tema"
-            className="rounded-lg border border-zinc-300 dark:border-zinc-600 p-2.5 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors shrink-0"
+            className="rounded border border-white/20 p-2.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors shrink-0"
           >
             {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
           <button
             onClick={logout}
-            className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+            className="flex-1 flex items-center justify-center gap-2 rounded bg-[#0051d5] px-4 py-2.5 text-sm font-medium text-white transition-all hover:brightness-110"
           >
             <LogOut className="h-4 w-4" />
             Cerrar sesión
