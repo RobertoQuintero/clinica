@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** Ninguno
 - **Fecha:** 2026-08-03
 - **Objetivo:** Convertir el Navbar superior actual en un sidebar lateral colapsable (rail de iconos ↔ 240px expandido), con el diseño visual de `references/sidebar/`, navegando a las páginas del dashboard existentes y mostrando "Empleados" como item visible sin página funcional aún.

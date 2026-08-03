@@ -29,6 +29,16 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [passwordModal, setPasswordModal] = useState(false);
   const [flyoutTop, setFlyoutTop] = useState<number | null>(null);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    NAV_LINKS.forEach((l) => {
+      if (l.children) initial[l.label] = l.children.some((c) => pathname.startsWith(c.href));
+    });
+    return initial;
+  });
+
+  const toggleGroup = (label: string) =>
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
 
   useEffect(() => {
     const stored = localStorage.getItem(COLLAPSED_STORAGE_KEY);
@@ -88,17 +98,21 @@ export default function Sidebar({ children }: { children: ReactNode }) {
           onMouseEnter={(e) => collapsed && setFlyoutTop(e.currentTarget.getBoundingClientRect().top)}
           onMouseLeave={() => setFlyoutTop(null)}
         >
-          <div
-            className={`${navItemBase} ${navItemState(active)} ${collapsed ? "justify-center px-0" : "px-4"}`}
+          <button
+            type="button"
+            onClick={() => !collapsed && toggleGroup(link.label)}
+            className={`w-full text-left ${navItemBase} ${navItemState(active)} ${collapsed ? "justify-center px-0" : "px-4"}`}
           >
             <Icon className="h-5 w-5 shrink-0" />
             {!collapsed && (
               <>
                 <span className="flex-1">{link.label}</span>
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${openGroups[link.label] ? "rotate-180" : ""}`}
+                />
               </>
             )}
-          </div>
+          </button>
           {collapsed ? (
             flyoutTop !== null && (
               <div
@@ -110,7 +124,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               </div>
             )
           ) : (
-            <div className="pl-8 py-1 space-y-1">{submenu}</div>
+            openGroups[link.label] && <div className="pl-8 py-1 space-y-1">{submenu}</div>
           )}
         </div>
       );
@@ -270,29 +284,38 @@ export default function Sidebar({ children }: { children: ReactNode }) {
               const active = isGroupActive(link);
               return (
                 <div key={link.label}>
-                  <div className={`${navItemBase} ${navItemState(active)} px-4`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(link.label)}
+                    className={`w-full text-left ${navItemBase} ${navItemState(active)} px-4`}
+                  >
                     <Icon className="h-5 w-5 shrink-0" />
-                    <span>{link.label}</span>
-                  </div>
-                  <div className="pl-9 py-1 space-y-1">
-                    {link.children.map((child) => {
-                      const ChildIcon = child.icon;
-                      const childActive = pathname.startsWith(child.href);
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          onClick={() => setMobileOpen(false)}
-                          className={`flex items-center gap-2 rounded px-3 py-2 text-xs font-semibold transition-colors ${
-                            childActive ? "text-white" : "text-white/60 hover:text-white"
-                          }`}
-                        >
-                          <ChildIcon className="h-4 w-4" />
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
+                    <span className="flex-1">{link.label}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${openGroups[link.label] ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {openGroups[link.label] && (
+                    <div className="pl-9 py-1 space-y-1">
+                      {link.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const childActive = pathname.startsWith(child.href);
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={() => setMobileOpen(false)}
+                            className={`flex items-center gap-2 rounded px-3 py-2 text-xs font-semibold transition-colors ${
+                              childActive ? "text-white" : "text-white/60 hover:text-white"
+                            }`}
+                          >
+                            <ChildIcon className="h-4 w-4" />
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             }
