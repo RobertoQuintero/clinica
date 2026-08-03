@@ -127,11 +127,16 @@ export default function OnicocriptosisPies({ detalle, onDetalleChange, disabled 
   const dedosConGrado = detalle.dedos.filter((d) => d.grado);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" >
       <div
         className="relative mx-auto w-full max-w-md select-none"
         onClick={() => setActiveKey(null)}
+        
       >
+        <div className='food-img'>
+          <p className="food-img__p">Pie Izquierdo</p>
+          <p className="food-img__p fp-2">Pie Derecho</p>
+        </div>
         <Image
           src="/piezen-pain.png"
           alt="Pies (izquierdo y derecho)"

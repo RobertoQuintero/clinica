@@ -91,6 +91,10 @@ export default function OnicomicosisPies({ detalle, onDetalleChange, disabled }:
   return (
     <div className="space-y-4">
       <div className="relative mx-auto w-full max-w-md select-none">
+        <div className='food-img' style={{padding:'7rem 0 0 0',gap:'6rem'}}>
+          <p className="food-img__p">Pie Izquierdo</p>
+          <p className="food-img__p ">Pie Derecho</p>
+        </div>
         <Image
           src="/pie-zen-onico.png"
           alt="Pies (izquierdo y derecho)"
