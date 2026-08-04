@@ -12,6 +12,19 @@ No test suite is configured in this repo.
 
 Always use the `frontend-design` skill when designing or building user interfaces (new UI, or reshaping existing UI).
 
+## Next.js/React best practices (priority)
+
+When writing or modifying any component or page, prioritize idiomatic Next.js (App Router) and React best practices, with performance and component reuse as primary concerns — not an afterthought:
+
+- **Server vs Client Components**: default to Server Components; only add `"use client"` when the component actually needs interactivity, hooks, or browser APIs. Keep client boundaries as small/leaf-level as possible instead of marking whole pages client-side.
+- **Reuse over duplication**: before writing a new component, check `app/dashboard/<feature>/componentes/` and any shared component folders for something already doing (or close to doing) the job. Extract shared UI/logic into reusable components/hooks rather than copy-pasting across features.
+- **Data fetching**: fetch data in Server Components/Server Actions, not client-side `useEffect` + fetch, unless the data is genuinely client-driven (e.g. depends on client-only state like `SucursalContext`).
+- **Avoid unnecessary re-renders/work**: memoize expensive computations (`useMemo`/`useCallback`) only when they demonstrably matter; prefer narrowing state and lifting it correctly over broad context re-renders; avoid prop drilling by leveraging existing contexts appropriately.
+- **Lists**: use stable, unique `key` props (never array index for dynamic lists); paginate or virtualize large lists (citas, pacientes, ventas) rather than rendering everything at once.
+- **Images/assets**: use `next/image` for images instead of raw `<img>` where practical.
+- **Bundle size**: avoid importing large libraries client-side when a server-side or lighter alternative exists; use dynamic imports (`next/dynamic`) for heavy client-only components not needed on initial render.
+- When reviewing or refactoring existing code, flag violations of the above (client components that could be server components, duplicated UI that should be a shared component, client-side fetching that should be a server action) even if not explicitly asked.
+
 ## Architecture
 
 ### Data layer: SQL Server via raw SQL, no ORM
