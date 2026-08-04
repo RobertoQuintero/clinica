@@ -161,12 +161,12 @@ export default function UsuariosPage() {
       <SucursalName/>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Usuarios</h2>
-        {/* <button
+        <button
           onClick={openNew}
           className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
         >
           + Nuevo usuario
-        </button> */}
+        </button>
       </div>
 
       <div className="mb-6">
