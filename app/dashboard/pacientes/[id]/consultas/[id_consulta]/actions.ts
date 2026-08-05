@@ -143,13 +143,14 @@ export async function getConsultaData(
       { id_consulta },
     ),
     db.queryParams(
-      `SELECT [id_paciente],[nombre],[telefono]
+      `SELECT [id_paciente],DP.[nombre],DP.[telefono]
               ,CONVERT(varchar(10), [fecha_nacimiento], 120) AS fecha_nacimiento
-              ,[direccion],[observaciones_generales],[created_at],[updated_at],[deleted_at]
+              ,DP.[direccion],[observaciones_generales],DP.[created_at],[updated_at],[deleted_at]
               ,[apellido_paterno],[apellido_materno],[sexo],[whatsapp],[ciudad_preferida]
               ,[contacto_emergencia_nombre],[contacto_emergencia_whatsapp]
-              ,[id_sucursal],[id_empresa]
-         FROM [CentroPodologico].[dbo].[pacientes]
+              ,DP.[id_sucursal],DP.[id_empresa],DS.nombre sucursal
+         FROM [CentroPodologico].[dbo].[pacientes] DP
+         left join dbo.sucursales DS on DS.id_sucursal=DP.id_sucursal
         WHERE [id_paciente] = @id_paciente`,
       { id_paciente },
     ),

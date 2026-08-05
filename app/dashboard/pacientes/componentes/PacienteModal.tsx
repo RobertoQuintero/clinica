@@ -106,7 +106,7 @@ export default function PacienteModal({ form, saving, error, phoneCodes, sucursa
           {(
             [
               // { name: "telefono",                     label: "Teléfono",                     type: "text", minLength: 10, maxLength: 10 },
-              { name: "ciudad_preferida",             label: "Ciudad preferida",             type: "text" },
+              // { name: "ciudad_preferida",             label: "Ciudad preferida",             type: "text" },
               { name: "direccion",                    label: "Dirección",                    type: "text" },
               { name: "contacto_emergencia_nombre",   label: "Nombre(Contacto emergencia)",   type: "text" },
               { name: "contacto_emergencia_whatsapp", label: "WhatsApp(Contacto emergencia)", type: "text", minLength: 10, maxLength: 10 },
@@ -172,13 +172,14 @@ export default function PacienteModal({ form, saving, error, phoneCodes, sucursa
             >
               Cancelar
             </button>
-            <button
+            {
+              ((new Date()< date)||!form.id_paciente ||( user?.id_role===1||user?.id_role===4))&&<button
               type="submit"
               disabled={saving}
               className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 disabled:opacity-50"
             >
               {saving ? "Guardando…" : "Guardar"}
-            </button>
+            </button>}
           </div>
         </form>
       </div>

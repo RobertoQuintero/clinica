@@ -8,6 +8,10 @@ Next.js (App Router) admin/clinic-management app for "Centro Podológico" — pa
 
 No test suite is configured in this repo.
 
+## Naming conventions
+
+Function, variable, and component names must be written in English, be descriptive, and be humanly understandable (avoid abbreviations, single-letter names, or vague names like `data`, `item`, `handleClick2`). This applies even though UI text and domain identifiers elsewhere in the app (routes, DB columns, feature folders like `pacientes`, `citas`, `sucursales`) are in Spanish — code-level names (functions, variables, component names, hooks, types) should still be in English.
+
 ## UI/UX design
 
 Always use the `frontend-design` skill when designing or building user interfaces (new UI, or reshaping existing UI).

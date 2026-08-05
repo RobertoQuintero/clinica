@@ -22,4 +22,5 @@ export interface IPaciente {
     en_tratamiento_onicomicosis?: string;
     onicomicosis_ultima_consulta?:   boolean;
     onicocriptosis_ultima_consulta?: boolean;
+    sucursal:string;
 }

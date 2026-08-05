@@ -17,6 +17,7 @@ import {
   getGeneralTabData,
   updateConsultaBuzon,
 } from "../actions";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -472,6 +473,10 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     }
   };
 
+  const {user}= useAuth()
+    const date=new Date(paciente.created_at)
+    date.setHours(date.getHours()+12)
+
   // ── render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -582,8 +587,8 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
             <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{nombreCompleto || "—"}</dd>
           </div>
           <div>
-            <dt className="text-zinc-500 font-medium">Sucursal preferente</dt>
-            <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{paciente.ciudad_preferida || "—"}</dd>
+            <dt className="text-zinc-500 font-medium">Sucursal</dt>
+            <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{paciente.sucursal || "—"}</dd>
           </div>
           <div>
             <dt className="text-zinc-500 font-medium">Sexo</dt>
@@ -595,10 +600,11 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
               {edad !== null ? `${edad} años` : "—"}
             </dd>
           </div>
-          <div>
+          {
+            ((new Date()< date)||!paciente.id_paciente ||( user?.id_role===1||user?.id_role===4))&&<div>
             <dt className="text-zinc-500 font-medium">WhatsApp</dt>
             <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{paciente.whatsapp || "—"}</dd>
-          </div>
+          </div>}
           <div>
             <dt className="text-zinc-500 font-medium">Contacto de emergencia</dt>
             <dd className="mt-0.5 text-zinc-800 dark:text-zinc-100">{paciente.contacto_emergencia_nombre || "—"}</dd>

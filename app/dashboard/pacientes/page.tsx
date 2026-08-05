@@ -30,6 +30,11 @@ const EMPTY: IPaciente = {
   id_sucursal:                  0,
   id_empresa:                   0,
   id_phone_code:                52,
+  nombre_sucursal:              "",
+  en_tratamiento_onicomicosis:  "",
+  onicomicosis_ultima_consulta:   false,
+  onicocriptosis_ultima_consulta: false,
+  sucursal:""
 };
 
 export default function PacientesPage() {
