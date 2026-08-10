@@ -42,7 +42,7 @@ export async function getTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas,
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento] and [cancelada] is null) AS num_consultas,
             isnull((select 
                     top 1
                     es.name
@@ -96,7 +96,7 @@ export async function searchTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento]) AS num_consultas,
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento] and [cancelada] is null) AS num_consultas,
             p.[whatsapp] AS whatsapp_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
