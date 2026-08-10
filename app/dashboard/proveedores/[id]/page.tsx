@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Info, Contact, MapPin, ExternalLink } from "lucide-react";
 import { getSupplierById } from "../actions";
 import { getPhoneCodes } from "@/app/dashboard/pacientes/actions";
+import EditSupplierButton from "./componentes/EditSupplierButton";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -50,7 +51,7 @@ export default async function SupplierDetailPage({ params }: Props) {
           <h1 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">{supplier.nombre_corto}</h1>
         </div>
         <div className="flex items-center gap-3">
-          {/* El botón "Editar Datos" (EditSupplierButton) se agrega en el siguiente paso del plan. */}
+          <EditSupplierButton supplier={supplier} phoneCodes={phoneCodes} />
         </div>
       </div>
 
