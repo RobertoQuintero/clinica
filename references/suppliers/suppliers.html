@@ -1,0 +1,264 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Lista de Proveedores - Pie Zen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#0b1c30",
+                      "primary-container": "#0f1c31",
+                      "primary-fixed-dim": "#bac7e3",
+                      "on-surface-variant": "#44474f",
+                      "background": "#f8f9ff",
+                      "primary-fixed": "#d7e3ff",
+                      "on-secondary-fixed-variant": "#003ea7",
+                      "surface-container-low": "#eff4ff",
+                      "inverse-surface": "#213146",
+                      "on-tertiary-fixed": "#0d1f16",
+                      "surface-tint": "#525f77",
+                      "surface-dim": "#cbdbf6",
+                      "tertiary-fixed": "#d2e8d9",
+                      "on-secondary-fixed": "#00174b",
+                      "on-tertiary-fixed-variant": "#384b40",
+                      "secondary": "#0051d5",
+                      "on-secondary": "#ffffff",
+                      "surface-container": "#e6eeff",
+                      "on-error-container": "#93000a",
+                      "on-primary": "#ffffff",
+                      "surface-container-highest": "#d3e4fe",
+                      "on-primary-fixed": "#0f1c31",
+                      "on-error": "#ffffff",
+                      "outline-variant": "#c5c6cd",
+                      "on-secondary-container": "#fefcff",
+                      "on-tertiary-container": "#75887c",
+                      "secondary-fixed": "#dbe1ff",
+                      "on-tertiary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#bac7e3",
+                      "tertiary-container": "#0d1f16",
+                      "tertiary-fixed-dim": "#b7ccbe",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-container": "#78849e",
+                      "secondary-fixed-dim": "#b4c5ff",
+                      "error-container": "#ffdad6",
+                      "primary": "#000000",
+                      "surface-container-high": "#dde9ff",
+                      "inverse-on-surface": "#ebf1ff",
+                      "secondary-container": "#346cef",
+                      "surface-bright": "#f8f9ff",
+                      "tertiary": "#000000",
+                      "surface": "#f8f9ff",
+                      "on-primary-fixed-variant": "#3b475e",
+                      "on-surface": "#0b1c30",
+                      "surface-variant": "#d3e3ff",
+                      "success": "#009c6b",
+                      "outline": "#747780"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "card-gap": "20px",
+                      "unit": "4px",
+                      "inline-gutter": "16px",
+                      "container-padding": "24px",
+                      "base-unit": "4px",
+                      "sidebar-width": "240px",
+                      "gutter-inline": "16px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "label-subtle": ["Inter"],
+                      "title-sm": ["Inter"],
+                      "label-bold": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-md": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-subtle": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "title-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                      "display-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md min-h-screen flex">
+<!-- SideNavBar -->
+
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-on-background text-primary dark:text-primary-fixed font-title-sm text-title-sm fixed top-0 right-0 h-16 border-b border-outline-variant flex justify-between items-center px-container-padding z-10 w-full">
+<div class="flex items-center gap-4 flex-1">
+
+
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full hover:bg-surface-container-low transition-colors flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full hover:bg-surface-container-low transition-colors flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant ml-2">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a corporate employee in a well-lit modern office environment, wearing a dark navy blazer over a crisp white shirt, soft natural lighting, high resolution, soft background blur." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6lwRthF_AEIlUHRSMpRhz9b2LAwXR-ZwW9vFHyVECXz2UoayLYdwiGF1nE6MxmHgTxN7STjmJUW5d4RoD_DlaG238jTxNbnhpWxcVC4pprub38_c8Fuh1605_MOMmr2oz3BEnu-r_EFKdQ_K4s-8mJaFJDTalhFXqW46EtvFHM0gBSO9A8FoNK8G8C0djOA2_4ue_cd_bLHXJD_2JZOyoaGR1ZtMZfYvUq3mmIflcCn4ALNKqiPY">
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="mt-16 p-container-padding w-full max-w-[1440px] mx-auto flex flex-col gap-card-gap">
+<!-- Header Actions -->
+<div class="flex justify-between items-end mb-4">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-background mb-1">Lista de Proveedores</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Gestiona y administra el directorio de proveedores.</p>
+</div>
+<button class="bg-primary text-on-primary hover:bg-primary/90 px-6 py-3 rounded-lg font-title-sm text-title-sm flex items-center gap-2 transition-colors shadow-sm">
+<span class="material-symbols-outlined">add</span>
+                Nuevo Proveedor
+            </button>
+</div>
+<!-- Table Toolbar -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-t-xl p-4 flex justify-between items-center">
+<div class="relative w-72">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-10 pr-4 py-2 font-body-sm text-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary transition-all" placeholder="Buscar proveedor por nombre o RFC..." type="text">
+</div>
+<button class="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors font-label-bold text-label-bold">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+                Filtros
+            </button>
+</div>
+<!-- Data Table Container -->
+<div class="bg-surface-container-lowest border-x border-b border-outline-variant rounded-b-xl overflow-hidden shadow-sm flex-1">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-outline-variant font-title-sm text-title-sm text-on-surface-variant">
+<tr>
+<th class="px-6 py-4 font-semibold w-1/3">Nombre</th>
+<th class="px-6 py-4 font-semibold w-1/4">RFC</th>
+<th class="px-6 py-4 font-semibold w-1/4">Teléfono</th>
+<th class="px-6 py-4 font-semibold">Estado</th>
+<th class="px-6 py-4 font-semibold text-right">Acciones</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-body-md text-body-md text-on-background">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+
+<div>
+<div class="font-medium">TechSolutions S.A. de C.V.</div>
+<div class="text-on-surface-variant font-body-sm text-body-sm">Tecnología de la Información</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-mono text-sm text-on-surface-variant">TEC120304XYZ</td>
+<td class="px-6 py-4 text-on-surface-variant">+52 (55) 1234-5678</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-bold text-label-bold bg-success/10 text-success border border-success/20">
+                                Activo
+                            </span>
+</td>
+<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2"><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">visibility</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">delete</span></button></div></td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+
+<div>
+<div class="font-medium">OfiClean Mantenimiento</div>
+<div class="text-on-surface-variant font-body-sm text-body-sm">Servicios Generales</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-mono text-sm text-on-surface-variant">OFC980715ABC</td>
+<td class="px-6 py-4 text-on-surface-variant">+52 (81) 8765-4321</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-bold text-label-bold bg-success/10 text-success border border-success/20">
+                                Activo
+                            </span>
+</td>
+<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2"><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">visibility</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">delete</span></button></div></td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group bg-surface-bright">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+
+<div>
+<div class="font-medium text-on-surface-variant">Papelería Corporativa Centro</div>
+<div class="text-outline font-body-sm text-body-sm">Suministros</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-mono text-sm text-outline">PCC880228DEF</td>
+<td class="px-6 py-4 text-outline">+52 (33) 3456-7890</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-bold text-label-bold bg-surface-variant text-on-surface-variant border border-outline-variant">
+                                Inactivo
+                            </span>
+</td>
+<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2"><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">visibility</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">delete</span></button></div></td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+
+<div>
+<div class="font-medium">Grupo Consultor Global</div>
+<div class="text-on-surface-variant font-body-sm text-body-sm">Servicios Profesionales</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-mono text-sm text-on-surface-variant">GCG050912GHI</td>
+<td class="px-6 py-4 text-on-surface-variant">+52 (55) 5555-1234</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-label-bold text-label-bold bg-success/10 text-success border border-success/20">
+                                Activo
+                            </span>
+</td>
+<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2"><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">visibility</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">edit</span></button><button class="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"><span class="material-symbols-outlined">delete</span></button></div></td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination Footer -->
+<div class="bg-surface-container-lowest border-t border-outline-variant p-4 flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Mostrando 1 a 4 de 24 proveedores</span>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded hover:bg-surface-container-low text-on-surface-variant disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary-container text-on-primary-container font-label-bold text-label-bold flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-low text-on-surface-variant font-label-bold text-label-bold flex items-center justify-center transition-colors">2</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-low text-on-surface-variant font-label-bold text-label-bold flex items-center justify-center transition-colors">3</button>
+<span class="text-on-surface-variant px-1">...</span>
+<button class="p-2 rounded hover:bg-surface-container-low text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+
+
+
+
+</body></html>

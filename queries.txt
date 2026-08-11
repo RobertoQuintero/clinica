@@ -148,3 +148,25 @@ CREATE TABLE [CentroPodologico].[dbo].[onicomicosis_detalle] (
   [dedo]         TINYINT       NOT NULL    -- 1 (hallux/gordo) .. 5 (meñique)
 );
 
+CREATE TABLE [CentroPodologico].[dbo].[proveedores] (
+  [id_proveedor]               INT             NOT NULL PRIMARY KEY, -- MAX(id_proveedor)+1 en el INSERT, no identity
+  [id_empresa]                 INT             NOT NULL,
+  [nombre_corto]                NVARCHAR(255)   NOT NULL,
+  [nombre_legal]                NVARCHAR(255)   NULL,
+  [rfc]                         NVARCHAR(20)    NULL,
+  [codigo_postal]               NVARCHAR(10)    NULL,
+  [direccion]                   NVARCHAR(500)   NULL,
+  [web]                         NVARCHAR(255)   NULL,
+  [telefono_principal]          NVARCHAR(20)    NULL,
+  [id_phonecode_principal]      INT             NULL,
+  [telefono_secundario]         NVARCHAR(20)    NULL,
+  [whatsapp_principal]          NVARCHAR(20)    NULL,
+  [id_whatsappcode_principal]   INT             NULL,
+  [whatsapp_secundario]         NVARCHAR(20)    NULL,
+  [email_principal]             NVARCHAR(255)   NULL,
+  [email_secundario]            NVARCHAR(255)   NULL,
+  [activo]                      BIT             NOT NULL DEFAULT 1,
+  [status]                      BIT             NOT NULL DEFAULT 1,
+  [created_at]                  DATETIME        NOT NULL
+);
+

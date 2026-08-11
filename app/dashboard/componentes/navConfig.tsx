@@ -11,6 +11,7 @@ import {
   ClipboardList,
   UsersRound,
   UserCog,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,7 +41,10 @@ export const NAV_LINKS: NavLink[] = [
     icon: Package,
     minRole: 0,
     excludeRoles: [5],
-    children: [{ href: "/dashboard/productos", label: "Productos", icon: Box }],
+    children: [
+      { href: "/dashboard/productos", label: "Productos", icon: Box },
+      { href: "/dashboard/proveedores", label: "Proveedores", icon: Truck },
+    ],
   },
   { href: "/dashboard/sucursales", label: "Sucursales", icon: Store, minRole: 0, excludeRoles: [5] },
   { href: "/dashboard/enlaces", label: "Enlaces", icon: Link2, minRole: 0, excludeRoles: [3, 5] },
