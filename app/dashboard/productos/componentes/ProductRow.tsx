@@ -40,7 +40,9 @@ export default function ProductRow({ product, categoryName, supplierName, onEdit
       <tr className="border-b border-[#c4c6d0] dark:border-zinc-700 hover:bg-[#eff4ff]/50 dark:hover:bg-zinc-800/50 transition-colors">
         <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">{product.product_code || "—"}</td>
         <td className="px-6 py-4">
-          <div className="font-semibold text-[#0b1c30] dark:text-zinc-100">{product.name}</div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#0b1c30] dark:text-zinc-100">{product.name}</span>
+          </div>
           {(product.brand || product.presentation) && (
             <div className="text-xs text-[#44474f] dark:text-zinc-400">
               {[product.brand, product.presentation].filter(Boolean).join(" / ")}
@@ -61,6 +63,7 @@ export default function ProductRow({ product, categoryName, supplierName, onEdit
           {fmtPrice(product.price)}
         </td>
         <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">{product.size || "—"}</td>
+        <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">{product.min_stock ?? "—"}</td>
         <td className="px-6 py-4">
           {product.activo ? (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#009c6b]/10 text-[#009c6b] border border-[#009c6b]/20 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">

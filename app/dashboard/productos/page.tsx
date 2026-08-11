@@ -23,6 +23,7 @@ const EMPTY: ProductFormData = {
   product_code: "",
   id_supplier: null,
   pieces: null,
+  min_stock: null,
   description: "",
   activo: true,
   split: false,
@@ -88,6 +89,7 @@ export default function ProductosPage() {
       product_code: product.product_code ?? "",
       id_supplier: product.id_supplier,
       pieces: product.pieces,
+      min_stock: product.min_stock,
       description: product.description ?? "",
       activo: product.activo,
       split: product.split,
@@ -101,7 +103,7 @@ export default function ProductosPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    const numericFields = ["id_category", "id_unit_measurement", "id_supplier", "pieces"];
+    const numericFields = ["id_category", "id_unit_measurement", "id_supplier", "pieces", "min_stock"];
     setForm((prev) => ({
       ...prev,
       [name]:
@@ -206,6 +208,7 @@ export default function ProductosPage() {
                   <th className="px-6 py-4 font-semibold">Proveedor</th>
                   <th className="px-6 py-4 font-semibold text-right">Precio Unit.</th>
                   <th className="px-6 py-4 font-semibold">Talla/Medida</th>
+                  <th className="px-6 py-4 font-semibold">Stock Mínimo</th>
                   <th className="px-6 py-4 font-semibold">Estado</th>
                   <th className="px-6 py-4 font-semibold text-right">Acciones</th>
                 </tr>

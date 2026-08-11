@@ -55,6 +55,7 @@ export async function getProducts(): Promise<IProduct[]> {
             [product_code],
             [id_supplier],
             [pieces],
+            [min_stock],
             [id_empresa],
             [description],
             CONVERT(varchar(19), [created_at], 120) AS created_at,
@@ -120,6 +121,7 @@ export async function saveProduct(
       product_code,
       id_supplier,
       pieces,
+      min_stock,
       description,
       activo,
       split,
@@ -143,6 +145,7 @@ export async function saveProduct(
       product_code,
       id_supplier,
       pieces,
+      min_stock,
       description,
       activo,
       split,
@@ -153,12 +156,12 @@ export async function saveProduct(
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[inventory].[Products]
            ([id_product],[name],[id_category],[brand],[presentation],[id_unit_measurement],
-            [size],[price],[product_code],[id_supplier],[pieces],[id_empresa],[description],
+            [size],[price],[product_code],[id_supplier],[pieces],[min_stock],[id_empresa],[description],
             [created_at],[activo],[status],[split],[url_product])
          VALUES (
            (SELECT ISNULL(MAX([id_product]), 0) + 1 FROM [CentroPodologico].[inventory].[Products]),
            @name,@id_category,@brand,@presentation,@id_unit_measurement,
-           @size,@price,@product_code,@id_supplier,@pieces,@id_empresa,@description,
+           @size,@price,@product_code,@id_supplier,@pieces,@min_stock,@id_empresa,@description,
            @created_at,@activo,1,@split,@url_product
          )`,
         { ...commonParams, id_empresa, created_at: buildDate(new Date()) }
@@ -176,6 +179,7 @@ export async function saveProduct(
            [product_code]        = @product_code,
            [id_supplier]         = @id_supplier,
            [pieces]               = @pieces,
+           [min_stock]            = @min_stock,
            [description]         = @description,
            [activo]               = @activo,
            [split]                = @split,

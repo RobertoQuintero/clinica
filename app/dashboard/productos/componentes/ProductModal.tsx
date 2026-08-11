@@ -196,6 +196,18 @@ export default function ProductModal({
               />
             </div>
 
+            <div>
+              <label className={labelClass}>Stock Mínimo</label>
+              <input
+                type="number"
+                name="min_stock"
+                value={form.min_stock ?? ""}
+                onChange={onChange}
+                min={0}
+                className={inputClass}
+              />
+            </div>
+
             <div className="flex items-center gap-3 py-2">
               <input
                 type="checkbox"

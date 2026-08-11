@@ -215,6 +215,7 @@ CREATE TABLE [inventory].[Products](
 	[activo] [bit] NULL,
 	[status] [bit] NULL,
 	[split] [bit] NULL,
+    [min_stock] [decimal](18, 2) NULL,
     [url_product] [varchar](250) NULL,
  CONSTRAINT [PK_Products] PRIMARY KEY CLUSTERED 
 (

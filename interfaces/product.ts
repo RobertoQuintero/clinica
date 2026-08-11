@@ -10,6 +10,7 @@ export interface IProduct {
   product_code:         string;
   id_supplier:          number | null;
   pieces:               number | null;
+  min_stock:            number | null;
   id_empresa:            number;
   description:          string;
   created_at:           Date | string;
