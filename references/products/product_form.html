@@ -1,0 +1,326 @@
+<!DOCTYPE html><html lang="es" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Pie Zen - Catálogo de Productos</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error": "#ba1a1a",
+                      "surface-container": "#e5eeff",
+                      "on-tertiary-fixed-variant": "#384b40",
+                      "surface-container-high": "#dde9ff",
+                      "on-primary-fixed-variant": "#3b475e",
+                      "surface-dim": "#cbdbf5",
+                      "secondary": "#0051d5",
+                      "tertiary-container": "#0d1f16",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#003ea7",
+                      "surface-container-lowest": "#ffffff",
+                      "inverse-surface": "#213146",
+                      "on-primary-container": "#78849e",
+                      "surface-container-low": "#eff4ff",
+                      "primary-container": "#0f1c31",
+                      "surface-variant": "#d3e3ff",
+                      "secondary-fixed-dim": "#b4c5ff",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-fixed": "#0d1f16",
+                      "primary-fixed": "#d7e3ff",
+                      "outline": "#747780",
+                      "tertiary-fixed": "#d2e8d9",
+                      "outline-variant": "#c4c6d0",
+                      "on-error-container": "#93000a",
+                      "primary": "#000000",
+                      "secondary-container": "#346cef",
+                      "on-surface-variant": "#44474f",
+                      "surface-tint": "#525f77",
+                      "on-tertiary": "#ffffff",
+                      "on-primary-fixed": "#0f1c31",
+                      "surface-bright": "#f8f9ff",
+                      "surface": "#f8f9ff",
+                      "on-background": "#0b1c30",
+                      "on-surface": "#0b1c30",
+                      "primary-fixed-dim": "#bac7e3",
+                      "background": "#f8f9ff",
+                      "surface-container-highest": "#d3e4fe",
+                      "error-container": "#ffdad6",
+                      "tertiary": "#000000",
+                      "on-secondary-container": "#fefcff",
+                      "on-secondary-fixed": "#00174b",
+                      "secondary-fixed": "#dbe1ff",
+                      "inverse-primary": "#bac7e3",
+                      "tertiary-fixed-dim": "#b7ccbe",
+                      "on-tertiary-container": "#75887c",
+                      "on-primary": "#ffffff",
+                      "inverse-on-surface": "#ebf1ff",
+                      "success": "#009c6b"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "gutter-inline": "16px",
+                      "sidebar-width": "240px",
+                      "card-gap": "20px",
+                      "container-padding": "24px",
+                      "base-unit": "4px",
+                      "inline-gutter": "16px"
+              },
+              "fontFamily": {
+                      "title-sm": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-bold": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-subtle": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "title-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-bold": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-subtle": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<!-- Canvas -->
+<main class="flex-1 p-container-padding overflow-x-hidden">
+<!-- Page Header & Actions -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+<div>
+<h2 class="text-display-lg font-display-lg text-primary">Catálogo de Productos</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">Gestiona el inventario completo de insumos y productos para venta.</p>
+</div>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-lg font-title-sm text-title-sm flex items-center gap-2 hover:bg-primary-container transition-colors shrink-0">
+<span class="material-symbols-outlined">add_circle</span>
+                    Agregar Producto
+                </button>
+</div>
+<!-- Filter Bar -->
+<div class="bg-surface-container-low rounded-xl p-4 mb-card-gap border border-outline-variant flex flex-wrap gap-4 items-center"><div class="relative flex-1 min-w-[250px]"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span><input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-body-sm font-body-sm focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="Buscar producto por nombre..." type="text"></div>
+<div class="flex items-center gap-2 text-label-bold font-label-bold text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    FILTROS:
+                </div>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-sm font-body-sm focus:border-secondary focus:ring-1 focus:ring-secondary min-w-[160px]">
+<option value="">Todas las Categorías</option>
+<option value="consumibles">Consumibles</option>
+<option value="instrumental">Instrumental</option>
+<option value="medicamentos">Medicamentos</option>
+<option value="venta">Venta al Público</option>
+</select>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-sm font-body-sm focus:border-secondary focus:ring-1 focus:ring-secondary min-w-[160px]">
+<option value="">Todos los Proveedores</option>
+<option value="prov1">MedSupply Co.</option>
+<option value="prov2">FarmaSur</option>
+<option value="prov3">InstruMed</option>
+</select>
+<div class="flex-1"></div>
+</div>
+<!-- Data Table Container (Scrollable) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse whitespace-nowrap min-w-[1000px]">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant text-label-bold font-label-bold text-on-surface-variant"><th class="px-4 py-3">No. Producto</th><th class="px-4 py-3 min-w-[250px]">Producto (Marca / Presentación)</th><th class="px-4 py-3">Categoría</th><th class="px-4 py-3">Proveedor</th><th class="px-4 py-3 text-right">Precio Unit.</th><th class="px-4 py-3">Talla/Medida</th><th class="px-4 py-3 text-center w-24">Acciones</th></tr>
+</thead>
+<tbody class="text-body-sm font-body-sm text-on-surface divide-y divide-outline-variant/50">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors"><td class="px-4 py-3 text-on-surface-variant">MC-B15-100</td><td class="px-4 py-3"><div class="font-semibold text-primary">Bisturí Desechable #15</div><div class="text-label-subtle font-label-subtle text-on-surface-variant">MedCore / Caja con 100 pzas</div></td><td class="px-4 py-3"><span class="inline-flex items-center px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-label-subtle font-label-subtle border border-outline-variant/30">Consumibles</span></td><td class="px-4 py-3">MedSupply</td><td class="px-4 py-3 text-right font-medium">$450.00</td><td class="px-4 py-3 text-on-surface-variant">N/A</td><td class="px-4 py-3"><div class="flex justify-center gap-2"><button class="text-secondary hover:bg-secondary-container/20 p-1 rounded transition-colors" title="Editar"><span class="material-symbols-outlined text-[20px]">edit</span></button><button class="text-error hover:bg-error-container/20 p-1 rounded transition-colors" title="Eliminar"><span class="material-symbols-outlined text-[20px]">delete</span></button></div></td></tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors"><td class="px-4 py-3 text-on-surface-variant">PC-U20-250</td><td class="px-4 py-3"><div class="font-semibold text-primary">Crema Urea 20%</div><div class="text-label-subtle font-label-subtle text-on-surface-variant">PodoCare / Tarro 250g</div></td><td class="px-4 py-3"><span class="inline-flex items-center px-2 py-1 rounded-full bg-secondary-container/20 text-secondary-container-on text-label-subtle font-label-subtle border border-secondary/20">Venta</span></td><td class="px-4 py-3">FarmaSur</td><td class="px-4 py-3 text-right font-medium">$280.00</td><td class="px-4 py-3 text-on-surface-variant">250g</td><td class="px-4 py-3"><div class="flex justify-center gap-2"><button class="text-secondary hover:bg-secondary-container/20 p-1 rounded transition-colors" title="Editar"><span class="material-symbols-outlined text-[20px]">edit</span></button><button class="text-error hover:bg-error-container/20 p-1 rounded transition-colors" title="Eliminar"><span class="material-symbols-outlined text-[20px]">delete</span></button></div></td></tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors"><td class="px-4 py-3 text-on-surface-variant">IM-AR-14</td><td class="px-4 py-3"><div class="font-semibold text-primary">Alicata Recta Profesional</div><div class="text-label-subtle font-label-subtle text-on-surface-variant">InstruMed / Acero Inox 14cm</div></td><td class="px-4 py-3"><span class="inline-flex items-center px-2 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-label-subtle font-label-subtle border border-tertiary/20">Instrumental</span></td><td class="px-4 py-3">InstruMed</td><td class="px-4 py-3 text-right font-medium">$850.00</td><td class="px-4 py-3 text-on-surface-variant">14 cm</td><td class="px-4 py-3"><div class="flex justify-center gap-2"><button class="text-secondary hover:bg-secondary-container/20 p-1 rounded transition-colors" title="Editar"><span class="material-symbols-outlined text-[20px]">edit</span></button><button class="text-error hover:bg-error-container/20 p-1 rounded transition-colors" title="Eliminar"><span class="material-symbols-outlined text-[20px]">delete</span></button></div></td></tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors"><td class="px-4 py-3 text-on-surface-variant">ST-GN-M</td><td class="px-4 py-3"><div class="font-semibold text-primary">Guantes de Nitrilo</div><div class="text-label-subtle font-label-subtle text-on-surface-variant">SafeTouch / Caja 100 pzas</div></td><td class="px-4 py-3"><span class="inline-flex items-center px-2 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-label-subtle font-label-subtle border border-outline-variant/30">Consumibles</span></td><td class="px-4 py-3">MedSupply</td><td class="px-4 py-3 text-right font-medium">$190.00</td><td class="px-4 py-3 text-on-surface-variant font-bold">M</td><td class="px-4 py-3"><div class="flex justify-center gap-2"><button class="text-secondary hover:bg-secondary-container/20 p-1 rounded transition-colors" title="Editar"><span class="material-symbols-outlined text-[20px]">edit</span></button><button class="text-error hover:bg-error-container/20 p-1 rounded transition-colors" title="Eliminar"><span class="material-symbols-outlined text-[20px]">delete</span></button></div></td></tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="bg-surface border-t border-outline-variant px-4 py-3 flex items-center justify-between">
+</div>
+</div>
+</main>
+</div>
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/40 backdrop-blur-sm" id="product-modal">
+<div class="bg-surface-container-lowest w-full max-w-3xl rounded-xl shadow-sm overflow-hidden flex flex-col max-h-[90vh]">
+<!-- Modal Header -->
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface">
+<h3 class="text-headline-md font-display-lg text-primary">Editar Producto</h3>
+<button class="text-on-surface-variant hover:bg-surface-container-high p-1 rounded-full transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Modal Body (Scrollable) -->
+<div class="p-6 overflow-y-auto">
+<form class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+<!-- Name -->
+<div class="md:col-span-2">
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Nombre</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="Lidocaina al 2%">
+</div>
+<!-- Category -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Categoría</label>
+<div class="relative"><input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-4 pr-10 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="Medicamento" placeholder="Buscar categoría..."><span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span></div>
+</div>
+<!-- Brand -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Marca</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="Astra">
+</div>
+<!-- Presentation -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Presentación</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="frasco 115 ml">
+</div>
+<!-- Unit of Measure -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Unidad de Medida</label>
+<div class="relative"><input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-4 pr-10 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="Frasco" placeholder="Buscar unidad..."><span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span></div>
+</div>
+<!-- Size -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Talla/Tamaño</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="No aplica">
+</div>
+<!-- Unit Price -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Precio Unitario</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="number" value="0">
+</div>
+<!-- SKU -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">No. Producto/Código de Barras</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="XC22345">
+</div>
+<!-- Provider -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Proveedor</label>
+<div class="relative"><input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-4 pr-10 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="text" value="Medinsumos Veracruz" placeholder="Buscar proveedor..."><span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span></div>
+</div><div class="">
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">URL Producto</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="url" placeholder="https://ejemplo.com/producto">
+</div>
+<!-- Pieces per Product -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Piezas por Producto</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="number" value="1">
+</div>
+<!-- Status -->
+<div class="flex items-center gap-3 py-2">
+<input checked="" class="w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary" type="checkbox">
+<label class="text-body-md font-medium text-on-surface">Producto Activo</label>
+</div>
+<!-- Description -->
+<div class="md:col-span-2">
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Descripción</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-body-md focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" rows="3">Es un anestésico local y antiarrítmico de tipo amida que bloquea los impulsos nerviosos para adormecer áreas específicas del cuerpo</textarea>
+</div>
+<!-- Divide Unit -->
+<div class="md:col-span-2 bg-surface-container-low p-4 rounded-lg border border-outline-variant/30">
+<div class="flex items-start gap-3">
+<input class="mt-1 w-5 h-5 rounded border-outline-variant text-secondary focus:ring-secondary" type="checkbox">
+<div>
+<label class="block text-body-md font-semibold text-on-surface">Dividir Unidad</label>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Indica si el producto será dividido en piezas o alguna unidad específica para el descuento por consulta.</p>
+</div>
+</div>
+</div>
+</form>
+</div>
+<!-- Modal Footer -->
+<div class="px-6 py-4 border-t border-outline-variant flex justify-end gap-3 bg-surface">
+<button class="px-6 py-2 rounded-lg font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-container-high transition-colors">Cancelar</button>
+<button class="px-6 py-2 rounded-lg font-title-sm text-title-sm bg-primary text-on-primary hover:bg-primary-container transition-colors">Guardar Producto</button>
+</div>
+</div>
+</div>
+
+</body></html>

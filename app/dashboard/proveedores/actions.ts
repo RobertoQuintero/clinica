@@ -40,7 +40,7 @@ export async function getSuppliers(): Promise<ISupplier[]> {
             [activo],
             [status],
             CONVERT(varchar(19), [created_at], 120) AS created_at
-       FROM [CentroPodologico].[dbo].[proveedores]
+       FROM [CentroPodologico].[inventory].[proveedores]
       WHERE [status] = 1
         AND [id_empresa] = @id_empresa
       ORDER BY [nombre_corto]`,
@@ -73,7 +73,7 @@ export async function getSupplierById(
             [activo],
             [status],
             CONVERT(varchar(19), [created_at], 120) AS created_at
-       FROM [CentroPodologico].[dbo].[proveedores]
+       FROM [CentroPodologico].[inventory].[proveedores]
       WHERE [id_proveedor] = @id_proveedor
         AND [id_empresa]   = @id_empresa`,
     { id_proveedor, id_empresa }
@@ -131,13 +131,13 @@ export async function saveSupplier(
 
     if (id_proveedor === 0) {
       await db.queryParams(
-        `INSERT INTO [CentroPodologico].[dbo].[proveedores]
+        `INSERT INTO [CentroPodologico].[inventory].[proveedores]
            ([id_proveedor],[id_empresa],[nombre_corto],[nombre_legal],[rfc],[codigo_postal],
             [direccion],[web],[telefono_principal],[id_phonecode_principal],[telefono_secundario],
             [whatsapp_principal],[id_whatsappcode_principal],[whatsapp_secundario],
             [email_principal],[email_secundario],[activo],[status],[created_at])
          VALUES (
-           (SELECT ISNULL(MAX([id_proveedor]), 0) + 1 FROM [CentroPodologico].[dbo].[proveedores]),
+           (SELECT ISNULL(MAX([id_proveedor]), 0) + 1 FROM [CentroPodologico].[inventory].[proveedores]),
            @id_empresa,@nombre_corto,@nombre_legal,@rfc,@codigo_postal,
            @direccion,@web,@telefono_principal,@id_phonecode_principal,@telefono_secundario,
            @whatsapp_principal,@id_whatsappcode_principal,@whatsapp_secundario,
@@ -147,7 +147,7 @@ export async function saveSupplier(
       );
     } else {
       await db.queryParams(
-        `UPDATE [CentroPodologico].[dbo].[proveedores] SET
+        `UPDATE [CentroPodologico].[inventory].[proveedores] SET
            [nombre_corto]              = @nombre_corto,
            [nombre_legal]              = @nombre_legal,
            [rfc]                       = @rfc,
@@ -183,7 +183,7 @@ export async function deleteSupplier(
   try {
     const { id_empresa } = await getActiveUser();
     await db.queryParams(
-      `UPDATE [CentroPodologico].[dbo].[proveedores]
+      `UPDATE [CentroPodologico].[inventory].[proveedores]
           SET [status] = 0
         WHERE [id_proveedor] = @id_proveedor
           AND [id_empresa]   = @id_empresa`,

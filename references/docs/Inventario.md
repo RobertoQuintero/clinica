@@ -6,7 +6,6 @@ informacion necesaria de las tablas a utilizar en el sistema de inventario y com
 estas tablas pueden incluir mas columnas si es necesario o quitar las columnas redundantes
 
 **Productos**
-- id_product: 123
 - Nombre: Lidocaina al 2%
 - Categoría: medicamento
 - Marca: Astra
@@ -16,10 +15,10 @@ estas tablas pueden incluir mas columnas si es necesario o quitar las columnas r
 - Precio Unitario
 - No. Producto/codigo de barras: XC22345
 - Proveedor: Medinsumos Veracruz
-- created_at
-- id_empresa
-- description: Es un anestésico local y antiarrítmico de tipo amida que bloquea los impulsos nerviosos para adormecer áreas específicas del cuerpo
-- automatic( true o false, indica si el producto será dividido en piezas o alguna unidad especifica, ejem: 1 Caja Cubrebocas 100 se convertirá en 100 cubrebocas que son los que se descontaran 1 por consulta consulta)
+- piezas por producto
+- activo
+- descripcion: Es un anestésico local y antiarrítmico de tipo amida que bloquea los impulsos nerviosos para adormecer áreas específicas del cuerpo
+- dividir( true o false, indica si el producto será dividido en piezas o alguna unidad especifica, ejem: 1 Caja Cubrebocas 100 se convertirá en 100 cubrebocas que son los que se descontaran 1 por consulta consulta)
 
 **Purchase_orders**(ordenes de compra)
 - id_purchase_order
