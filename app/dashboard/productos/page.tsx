@@ -1,68 +1,117 @@
 "use client";
 
-import { IProducto } from "@/interfaces/producto";
-import { useEffect, useState } from "react";
-import { useSucursal } from "@/contexts/SucursalContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { getProductos, saveProducto } from "./actions";
-import ProductoFila from "./componentes/ProductoFila";
-import ProductoModal from "./componentes/ProductoModal";
-import { SucursalName } from "../componentes/SucursalName";
+import { IProduct } from "@/interfaces/product";
+import { IProductCategory } from "@/interfaces/product_category";
+import { IUnitMeasurement } from "@/interfaces/unit_measurement";
+import { ISupplier } from "@/interfaces/supplier";
+import { useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { getProducts, getCategories, getUnitsMeasurement, saveProduct } from "./actions";
+import { getSuppliers } from "@/app/dashboard/proveedores/actions";
+import ProductRow from "./componentes/ProductRow";
+import ProductModal, { ProductFormData } from "./componentes/ProductModal";
 
-type FormData = Pick<IProducto, "id_producto" | "nombre" | "precio" | "descripcion" | "id_sucursal">;
-
-const EMPTY: FormData = { id_producto: 0, nombre: "", precio: 0, descripcion: "", id_sucursal: 0 };
+const EMPTY: ProductFormData = {
+  id_product: 0,
+  name: "",
+  id_category: null,
+  brand: "",
+  presentation: "",
+  id_unit_measurement: null,
+  size: "",
+  price: 0,
+  product_code: "",
+  id_supplier: null,
+  pieces: null,
+  description: "",
+  activo: true,
+  split: false,
+  url_product: "",
+};
 
 export default function ProductosPage() {
-  const { selectedId }            = useSucursal();
-  const { user }                  = useAuth();
-  const readOnly                  = user?.id_role === 2 || user?.id_role === 3;
-  const [productos, setProductos] = useState<IProducto[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm]           = useState<FormData>(EMPTY);
-  const [saving, setSaving]       = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const [search, setSearch]       = useState("");
+  const [products, setProducts]           = useState<IProduct[]>([]);
+  const [categories, setCategories]       = useState<IProductCategory[]>([]);
+  const [unitsMeasurement, setUnitsMeasurement] = useState<IUnitMeasurement[]>([]);
+  const [suppliers, setSuppliers]         = useState<ISupplier[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [showModal, setShowModal]         = useState(false);
+  const [form, setForm]                   = useState<ProductFormData>(EMPTY);
+  const [saving, setSaving]               = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
+  const [search, setSearch]               = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
 
-  type SortKey = "nombre" | "precio";
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortAsc, setSortAsc] = useState(true);
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortAsc((prev) => !prev);
-    else { setSortKey(key); setSortAsc(true); }
-  };
-
-  const fetchProductos = async () => {
+  const fetchProducts = async () => {
     setLoading(true);
     try {
-      const data = await getProductos(selectedId);
-      setProductos(data);
+      const data = await getProducts();
+      setProducts(data);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchProductos(); }, [selectedId]);
+  useEffect(() => {
+    fetchProducts();
+    getCategories().then(setCategories);
+    getUnitsMeasurement().then(setUnitsMeasurement);
+    getSuppliers().then(setSuppliers);
+  }, []);
+
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((c) => [c.id_category, c.name])),
+    [categories]
+  );
+  const supplierNameById = useMemo(
+    () => new Map(suppliers.map((s) => [s.id_proveedor, s.nombre_corto])),
+    [suppliers]
+  );
 
   const openNew = () => {
-    setForm({ ...EMPTY, id_sucursal: selectedId });
+    setForm(EMPTY);
     setError(null);
     setShowModal(true);
   };
 
-  const openEdit = (p: IProducto) => {
-    setForm({ id_producto: p.id_producto, nombre: p.nombre, precio: p.precio, descripcion: p.descripcion ?? "",id_sucursal: p.id_sucursal });
+  const openEdit = (product: IProduct) => {
+    setForm({
+      id_product: product.id_product,
+      name: product.name,
+      id_category: product.id_category,
+      brand: product.brand ?? "",
+      presentation: product.presentation ?? "",
+      id_unit_measurement: product.id_unit_measurement,
+      size: product.size ?? "",
+      price: product.price,
+      product_code: product.product_code ?? "",
+      id_supplier: product.id_supplier,
+      pieces: product.pieces,
+      description: product.description ?? "",
+      activo: product.activo,
+      split: product.split,
+      url_product: product.url_product ?? "",
+    });
     setError(null);
     setShowModal(true);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value, type } = e.target;
+    const numericFields = ["id_category", "id_unit_measurement", "id_supplier", "pieces"];
     setForm((prev) => ({
       ...prev,
-      [name]: name === "precio" ? parseFloat(value) || 0 : value,
+      [name]:
+        type === "checkbox"
+          ? (e.target as HTMLInputElement).checked
+          : name === "price"
+          ? parseFloat(value) || 0
+          : numericFields.includes(name)
+          ? value === "" ? null : Number(value)
+          : value,
     }));
   };
 
@@ -71,10 +120,10 @@ export default function ProductosPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await saveProducto(form);
+      const res = await saveProduct(form);
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchProductos();
+      await fetchProducts();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -82,100 +131,118 @@ export default function ProductosPage() {
     }
   };
 
-  const productosFiltrados = productos
-    .filter((p) => p.nombre.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (!sortKey) return 0;
-      if (sortKey === "precio") {
-        return sortAsc ? a.precio - b.precio : b.precio - a.precio;
-      }
-      const va = a.nombre.toLowerCase();
-      const vb = b.nombre.toLowerCase();
-      return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
-    });
+  const productsFiltered = products.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = !categoryFilter || String(p.id_category) === categoryFilter;
+    const matchesSupplier = !supplierFilter || String(p.id_supplier) === supplierFilter;
+    return matchesSearch && matchesCategory && matchesSupplier;
+  });
 
   return (
-    <div>
-      <SucursalName/>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Productos</h2>
-        {!readOnly && (
-          <button
-            onClick={openNew}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-          >
-            + Nuevo producto
-          </button>
-        )}
+    <div className="flex flex-col gap-5">
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">Catálogo de Productos</h2>
+          <p className="text-sm text-[#44474f] dark:text-zinc-400">
+            Gestiona el inventario completo de insumos y productos para venta.
+          </p>
+        </div>
+        <button
+          onClick={openNew}
+          className="flex items-center gap-2 rounded-lg bg-[#0051d5] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0051d5]/90"
+        >
+          Agregar Producto
+        </button>
       </div>
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Buscar por nombre…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
-        />
+      <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-4 flex flex-wrap gap-4 items-center">
+        <div className="relative flex-1 min-w-[250px]">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#44474f] dark:text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Buscar producto por nombre..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-[#eff4ff] dark:bg-zinc-800 pl-10 pr-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 placeholder-[#747780] dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] transition-all"
+          />
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-[#eff4ff] dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] min-w-[160px]"
+        >
+          <option value="">Todas las Categorías</option>
+          {categories.map((c) => (
+            <option key={c.id_category} value={c.id_category}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={supplierFilter}
+          onChange={(e) => setSupplierFilter(e.target.value)}
+          className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-[#eff4ff] dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] min-w-[160px]"
+        >
+          <option value="">Todos los Proveedores</option>
+          {suppliers.map((s) => (
+            <option key={s.id_proveedor} value={s.id_proveedor}>
+              {s.nombre_corto}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
-        <p className="text-zinc-500">Cargando…</p>
+        <p className="text-[#44474f] dark:text-zinc-400">Cargando…</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-          <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-            <thead className="bg-zinc-100 dark:bg-zinc-800">
-              <tr>
-                <th
-                  onClick={() => toggleSort("nombre")}
-                  className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
-                >
-                  Nombre
-                  <span className="ml-1 text-xs">
-                    {sortKey === "nombre" ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
-                  </span>
-                </th>
-                <th
-                  onClick={() => toggleSort("precio")}
-                  className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100"
-                >
-                  Precio
-                  <span className="ml-1 text-xs">
-                    {sortKey === "precio" ? (sortAsc ? "▲" : "▼") : <span className="opacity-30">▲</span>}
-                  </span>
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300">Descripción</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
-              {productosFiltrados.length === 0 ? (
+        <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead className="bg-[#eff4ff] dark:bg-zinc-800 border-b border-[#c4c6d0] dark:border-zinc-700 text-sm text-[#44474f] dark:text-zinc-400">
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-zinc-400">
-                    Sin registros
-                  </td>
+                  <th className="px-6 py-4 font-semibold">No. Producto</th>
+                  <th className="px-6 py-4 font-semibold min-w-[250px]">Producto (Marca / Presentación)</th>
+                  <th className="px-6 py-4 font-semibold">Categoría</th>
+                  <th className="px-6 py-4 font-semibold">Proveedor</th>
+                  <th className="px-6 py-4 font-semibold text-right">Precio Unit.</th>
+                  <th className="px-6 py-4 font-semibold">Talla/Medida</th>
+                  <th className="px-6 py-4 font-semibold">Estado</th>
+                  <th className="px-6 py-4 font-semibold text-right">Acciones</th>
                 </tr>
-              ) : (
-                productosFiltrados.map((p) => (
-                  <ProductoFila
-                    key={p.id_producto}
-                    producto={p}
-                    onEdit={openEdit}
-                    onDeleted={fetchProductos}
-                    readOnly={readOnly}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {productsFiltered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-6 text-center text-[#747780] dark:text-zinc-500">
+                      Sin registros
+                    </td>
+                  </tr>
+                ) : (
+                  productsFiltered.map((p) => (
+                    <ProductRow
+                      key={p.id_product}
+                      product={p}
+                      categoryName={p.id_category ? categoryNameById.get(p.id_category) ?? "" : ""}
+                      supplierName={p.id_supplier ? supplierNameById.get(p.id_supplier) ?? "" : ""}
+                      onEdit={openEdit}
+                      onDeleted={fetchProducts}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {showModal && (
-        <ProductoModal
+        <ProductModal
           form={form}
           saving={saving}
           error={error}
+          categories={categories}
+          unitsMeasurement={unitsMeasurement}
+          suppliers={suppliers}
           onChange={handleChange}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
