@@ -120,7 +120,7 @@ export default function ProveedoresPage() {
           onClick={openNew}
           className="flex items-center gap-2 rounded-lg bg-[#0051d5] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0051d5]/90"
         >
-          <Plus size={18} />
+          {/* <Plus size={18} /> */}
           Nuevo Proveedor
         </button>
       </div>
