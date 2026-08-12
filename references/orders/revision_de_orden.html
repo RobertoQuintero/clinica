@@ -1,0 +1,284 @@
+<!DOCTYPE html><html class="light" lang="es" style="width: 1280px; height: 1023px; overflow: hidden; position: relative;"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Pie Zen - Cesta de Compras por Proveedor</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#44474f",
+                        "inverse-primary": "#bac7e3",
+                        "surface-container-high": "#dde9ff",
+                        "primary": "#000000",
+                        "on-tertiary-fixed": "#0d1f16",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "tertiary-fixed-dim": "#b7ccbe",
+                        "inverse-surface": "#213146",
+                        "secondary": "#0051d5",
+                        "surface-container-low": "#eff4ff",
+                        "tertiary-fixed": "#d2e8d9",
+                        "on-primary-fixed-variant": "#3b475e",
+                        "outline": "#747780",
+                        "background": "#f8f9ff",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-surface": "#0b1c30",
+                        "surface-dim": "#cbdbf5",
+                        "tertiary-container": "#0d1f16",
+                        "surface-container": "#e6eeff",
+                        "on-secondary-container": "#fefcff",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface": "#f8f9ff",
+                        "primary-container": "#0f1c31",
+                        "outline-variant": "#c4c6d0",
+                        "on-background": "#0b1c30",
+                        "surface-variant": "#d3e3ff",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#f8f9ff",
+                        "inverse-on-surface": "#ebf1ff",
+                        "on-tertiary-container": "#75887c",
+                        "surface-container-lowest": "#ffffff",
+                        "success": "#009c6b",
+                        "on-secondary-fixed": "#00174b",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#346cef",
+                        "on-primary-container": "#78849e",
+                        "surface-tint": "#525f77",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#d7e3ff",
+                        "primary-fixed-dim": "#bac7e3",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#003ea7",
+                        "on-tertiary-fixed-variant": "#384b40",
+                        "on-primary-fixed": "#0f1c31"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter-inline": "16px",
+                        "unit": "4px",
+                        "card-gap": "20px",
+                        "sidebar-width": "240px",
+                        "inline-gutter": "16px",
+                        "base-unit": "4px",
+                        "container-padding": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter", "sans-serif"],
+                        "title-sm": ["Inter", "sans-serif"],
+                        "label-bold": ["Inter", "sans-serif"],
+                        "label-subtle": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "label-subtle": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Hide scrollbar for clean UI in lists */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md text-body-md antialiased min-h-screen flex">
+<!-- JSON Anchor: SideNavBar -->
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-h-screen">
+<!-- JSON Anchor: TopAppBar -->
+
+<!-- Page Content -->
+<main class="flex-1 p-container-padding overflow-y-auto">
+<!-- Page Header -->
+<div class="mb-8 flex items-end justify-between">
+<div>
+<div class="flex items-center gap-2 text-label-bold font-label-bold text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[16px]">arrow_back</span>
+<a class="hover:text-secondary transition-colors" href="#">Volver a Pedidos</a>
+</div>
+<h2 class="text-display-lg font-display-lg text-on-surface">Revisión de Orden</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1 max-w-2xl">Revisa los productos, ajusta las cantidades necesarias y confirma la orden de compra.</p>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-card-gap">
+<!-- Left Column: Supplier & Products (Spans 8 cols on large screens) -->
+<div class="xl:col-span-8 space-y-card-gap"><!-- Provider 1: Medinsumos Veracruz -->
+<div class="space-y-card-gap">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+<div class="flex items-center justify-between">
+<h3 class="text-headline-md font-headline-md text-on-surface">Medinsumos Veracruz S.A. de C.V.</h3>
+<span class="bg-surface-container-high text-on-surface px-3 py-1 rounded-full text-label-bold font-label-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-success">check_circle</span> Proveedor Frecuente
+            </span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface flex justify-between items-center">
+<h4 class="text-title-sm font-title-sm text-on-surface">Productos a Comprar</h4>
+<span class="text-label-subtle font-label-subtle text-on-surface-variant">2 artículos seleccionados</span>
+</div>
+<div class="divide-y divide-outline-variant">
+<div class="flex items-center hover:bg-surface-bright transition-colors group p-8 gap-8">
+<div class="flex-1">
+<h5 class="text-body-md font-body-md font-semibold text-on-surface">Guantes de nitrilo (Caja 100 pzs)</h5>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">SKU: GNT-001 • Material médico</p>
+</div>
+<div class="flex flex-col items-center">
+<label class="text-label-subtle font-label-subtle text-on-surface-variant mb-1">Cantidad</label>
+<div class="flex items-center border border-outline-variant rounded-lg bg-surface-container-lowest h-9">
+<button class="px-2 text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<input class="w-14 text-center border-none bg-transparent text-body-md focus:ring-0 p-0" type="text" value="300">
+<button class="px-2 text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[18px]">add</span></button>
+</div>
+</div>
+<div class="text-right w-24">
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Unitario</p>
+<p class="text-body-md font-body-md text-on-surface">$120.00</p>
+</div>
+<div class="text-right w-32">
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Subtotal</p>
+<p class="text-title-sm font-title-sm text-on-surface font-semibold">$36,000.00</p>
+</div>
+</div>
+<div class="flex items-center hover:bg-surface-bright transition-colors group p-8 gap-8">
+<div class="flex-1">
+<h5 class="text-body-md font-body-md font-semibold text-on-surface">Alcohol 70% (Litro)</h5>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">SKU: ALC-001 • Consumibles</p>
+</div>
+<div class="flex flex-col items-center">
+<label class="text-label-subtle font-label-subtle text-on-surface-variant mb-1">Cantidad</label>
+<div class="flex items-center border border-outline-variant rounded-lg bg-surface-container-lowest h-9">
+<button class="px-2 text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<input class="w-14 text-center border-none bg-transparent text-body-md focus:ring-0 p-0" type="text" value="20">
+<button class="px-2 text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[18px]">add</span></button>
+</div>
+</div>
+<div class="text-right w-24">
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Unitario</p>
+<p class="text-body-md font-body-md text-on-surface">$90.00</p>
+</div>
+<div class="text-right w-32">
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Subtotal</p>
+<p class="text-title-sm font-title-sm text-on-surface font-semibold">$1,800.00</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Provider 2: Dermoinsumos MX -->
+<div class="space-y-card-gap mt-8">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+<div class="flex items-center justify-between">
+<h3 class="text-headline-md font-headline-md text-on-surface">Dermoinsumos MX</h3>
+<span class="bg-surface-container-high text-on-surface px-3 py-1 rounded-full text-label-bold font-label-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-success">check_circle</span> Proveedor Frecuente
+            </span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface flex justify-between items-center">
+<h4 class="text-title-sm font-title-sm text-on-surface">Productos a Comprar</h4>
+<span class="text-label-subtle font-label-subtle text-on-surface-variant">1 artículo seleccionado</span>
+</div>
+<div class="divide-y divide-outline-variant">
+<div class="flex items-center hover:bg-surface-bright transition-colors group p-8 gap-8">
+<div class="flex-1">
+<h5 class="text-body-md font-body-md font-semibold text-on-surface">Alicate corta uñas (Pieza)</h5>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">SKU: ALC-002 • Instrumental</p>
+</div>
+<div class="flex flex-col items-center">
+<label class="text-label-subtle font-label-subtle text-on-surface-variant mb-1">Cantidad</label>
+<div class="flex items-center border border-outline-variant rounded-lg bg-surface-container-lowest h-9">
+<button class="px-2 text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<input class="w-14 text-center border-none bg-transparent text-body-md focus:ring-0 p-0" type="text" value="5">
+<button class="px-2 text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined text-[18px]">add</span></button>
+</div>
+</div>
+<div class="text-right w-24">
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Unitario</p>
+<p class="text-body-md font-body-md text-on-surface">$250.00</p>
+</div>
+<div class="text-right w-32">
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">Subtotal</p>
+<p class="text-title-sm font-title-sm text-on-surface font-semibold">$1,250.00</p>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+<!-- Right Column: Sticky Summary Sidebar (Spans 4 cols) -->
+<div class="xl:col-span-4">
+<div class="sticky top-24 space-y-6">
+<!-- Order Summary Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm">
+<h3 class="text-headline-md font-headline-md text-on-surface mb-6 border-b border-outline-variant pb-4">Resumen del pedido</h3>
+<div class="space-y-4 text-body-md font-body-md text-on-surface"><div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Productos seleccionados</span>
+<span class="font-semibold">3</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Subtotal</span>
+<span class="font-semibold">$39,050.00</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">IVA (16%)</span>
+<span class="font-semibold">$6,248.00</span>
+</div>
+<div class="pt-4 mt-4 border-t border-outline-variant border-dashed flex justify-between items-center">
+<span class="text-title-sm font-title-sm font-bold text-on-surface">Total estimado</span>
+<span class="text-headline-md font-headline-md font-bold text-secondary">$45,298.00 <span class="text-label-subtle font-label-subtle text-on-surface-variant">MXN</span></span>
+</div></div>
+<div class="mt-8 space-y-3"><button class="w-full bg-secondary text-on-secondary py-3 rounded-lg text-label-bold font-label-bold flex items-center justify-center gap-2 hover:bg-secondary/90 transition-colors shadow-sm"><span class="material-symbols-outlined text-[18px]">send</span> Generar Orden de Compra</button></div>
+</div>
+<!-- Info Snippet -->
+
+</div>
+</div>
+</div>
+</main>
+</div>
+
+
+
+
+</body></html>

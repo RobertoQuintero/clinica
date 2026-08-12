@@ -1,0 +1,403 @@
+<!DOCTYPE html><html lang="es" style="width: 1280px; height: 1344px; overflow: hidden; position: relative;"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Pedidos de inventario - PIE ZEN</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface-variant": "#44474f",
+                      "inverse-primary": "#bac7e3",
+                      "surface-container-high": "#dde9ff",
+                      "primary": "#000000",
+                      "on-tertiary-fixed": "#0d1f16",
+                      "secondary-fixed-dim": "#b4c5ff",
+                      "tertiary-fixed-dim": "#b7ccbe",
+                      "inverse-surface": "#213146",
+                      "secondary": "#0051d5",
+                      "surface-container-low": "#eff4ff",
+                      "tertiary-fixed": "#d2e8d9",
+                      "on-primary-fixed-variant": "#3b475e",
+                      "outline": "#747780",
+                      "background": "#f8f9ff",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed": "#dbe1ff",
+                      "on-surface": "#0b1c30",
+                      "surface-dim": "#cbdbf5",
+                      "tertiary-container": "#0d1f16",
+                      "surface-container": "#e6eeff",
+                      "on-secondary-container": "#fefcff",
+                      "surface-container-highest": "#d3e4fe",
+                      "surface": "#f8f9ff",
+                      "primary-container": "#0f1c31",
+                      "outline-variant": "#c4c6d0",
+                      "on-background": "#0b1c30",
+                      "surface-variant": "#d3e3ff",
+                      "error": "#ba1a1a",
+                      "surface-bright": "#f8f9ff",
+                      "inverse-on-surface": "#ebf1ff",
+                      "on-tertiary-container": "#75887c",
+                      "surface-container-lowest": "#ffffff",
+                      "success": "#009c6b",
+                      "on-secondary-fixed": "#00174b",
+                      "on-error": "#ffffff",
+                      "secondary-container": "#346cef",
+                      "on-primary-container": "#78849e",
+                      "surface-tint": "#525f77",
+                      "error-container": "#ffdad6",
+                      "on-primary": "#ffffff",
+                      "tertiary": "#000000",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed": "#d7e3ff",
+                      "primary-fixed-dim": "#bac7e3",
+                      "on-error-container": "#93000a",
+                      "on-secondary-fixed-variant": "#003ea7",
+                      "on-tertiary-fixed-variant": "#384b40",
+                      "on-primary-fixed": "#0f1c31"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter-inline": "16px",
+                      "unit": "4px",
+                      "card-gap": "20px",
+                      "sidebar-width": "240px",
+                      "inline-gutter": "16px",
+                      "base-unit": "4px",
+                      "container-padding": "24px"
+              },
+              "fontFamily": {
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "title-sm": [
+                              "Inter"
+                      ],
+                      "label-bold": [
+                              "Inter"
+                      ],
+                      "label-subtle": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "title-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-bold": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-subtle": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill-icon {
+          font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        input[type="checkbox"] {
+            appearance: none;
+            background-color: transparent;
+            margin: 0;
+            font: inherit;
+            color: currentColor;
+            width: 1.15em;
+            height: 1.15em;
+            border: 2px solid #747780;
+            border-radius: 0.15em;
+            display: grid;
+            place-content: center;
+        }
+
+        input[type="checkbox"]::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+            transform: scale(0);
+            transform-origin: bottom left;
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em white;
+            background-color: white;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: #0051d5;
+            border-color: #0051d5;
+        }
+
+        input[type="checkbox"]:checked::before {
+            transform: scale(1);
+        }
+      </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+
+<!-- Page Content -->
+<main class="flex-1 p-container-padding grid grid-cols-12 gap-card-gap">
+<!-- Header Section -->
+<div class="col-span-12 flex justify-between items-end mb-4">
+<div>
+<h2 class="text-display-lg font-display-lg text-on-surface mb-2">Pedidos de inventario</h2>
+<p class="text-body-md font-body-md text-on-surface-variant">Crea pedidos a tus proveedores para reabastecer los productos que necesitas.</p>
+</div>
+<div class="flex gap-4">
+<button class="border border-outline-variant text-secondary px-4 py-2 rounded-lg text-label-bold font-label-bold flex items-center gap-2 hover:bg-surface-variant/30 transition-colors bg-surface-container-lowest">
+<span class="material-symbols-outlined text-sm">history</span>
+                        Ver historiales de pedidos
+                     </button>
+</div>
+</div>
+<!-- KPI Cards Row -->
+<div class="col-span-12 grid grid-cols-3 gap-card-gap mb-4">
+<!-- KPI 1 -->
+<div class="bg-surface-container-low p-5 rounded-xl border border-outline-variant flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined fill-icon">inventory_2</span>
+</div>
+<div>
+<h3 class="text-label-bold font-label-bold text-on-surface-variant mb-1">Productos con stock bajo</h3>
+<p class="text-display-lg font-display-lg text-on-surface mb-1">9</p>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">requieren pedido</p>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-[#fff8f6] p-5 rounded-xl border border-[#ffd8cc] flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-[#ffede6] flex items-center justify-center text-[#d94f27] shrink-0">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div>
+<h3 class="text-label-bold font-label-bold text-on-surface-variant mb-1">Sugeridos para pedir</h3>
+<p class="text-display-lg font-display-lg text-on-surface mb-1">23 productos</p>
+
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-[#f2fcf5] p-5 rounded-xl border border-[#c6f0d5] flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-[#e1f7e8] flex items-center justify-center text-success shrink-0">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<div>
+<h3 class="text-label-bold font-label-bold text-on-surface-variant mb-1">Último pedido realizado</h3>
+<p class="text-headline-md font-headline-md text-on-surface mb-1">17 Abr 2024</p>
+<p class="text-label-subtle font-label-subtle text-on-surface-variant">A Dermoinsumos MX</p>
+</div>
+</div>
+</div>
+<!-- Main Content Area (9 cols table, 3 cols sidebar) -->
+<div class="col-span-9 flex flex-col gap-4">
+<!-- Tabs -->
+<div class="border-b border-outline-variant flex gap-6">
+<button class="text-secondary font-label-bold text-label-bold border-b-2 border-secondary pb-3 px-2">Sugeridos para pedir</button>
+<button class="text-on-surface-variant hover:text-on-surface font-label-bold text-label-bold pb-3 px-2">Todos los productos</button>
+<button class="text-on-surface-variant hover:text-on-surface font-label-bold text-label-bold pb-3 px-2">Plantillas de pedido</button>
+</div>
+<!-- Filters Bar -->
+<div class="flex gap-4 items-center mt-2">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md font-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" placeholder="Buscar producto..." type="text">
+</div>
+<div class="relative w-48">
+<select class="w-full appearance-none pl-4 pr-10 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md font-body-md focus:outline-none focus:border-secondary">
+<option>Todas las categorías</option>
+<option>Material médico</option>
+<option>Medicamentos</option>
+<option>Consumibles</option>
+<option>Instrumental</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg pointer-events-none">expand_more</span>
+</div>
+<div class="relative w-48">
+<select class="w-full appearance-none pl-4 pr-10 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md font-body-md focus:outline-none focus:border-secondary">
+<option>Todos los proveedores</option>
+<option>Dermoinsumos MX</option>
+<option>MediStock</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg pointer-events-none">expand_more</span>
+</div>
+
+</div>
+<!-- Data Table -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant bg-surface">
+<th class="py-3 px-4 w-12"><input type="checkbox"></th>
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant">Producto</th>
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant">Categoría</th>
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant text-right">Stock actual</th>
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant text-right">Stock mínimo</th>
+
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant text-center">Cantidad a pedir</th>
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant">Unidad</th>
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant text-right">Precio unit.</th>
+<th class="py-3 px-4 text-label-bold font-label-bold text-on-surface-variant text-right">Subtotal</th>
+</tr>
+</thead>
+<tbody class="text-body-md font-body-md divide-y divide-outline-variant/50"><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Guantes de nitrilo</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">GNT-001</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#f0e6ff] text-[#6b21a8] whitespace-nowrap">Material médico</span></td><td class="py-3 px-4 text-right font-medium text-success">150</td><td class="py-3 px-4 text-right text-on-surface-variant">300</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="300"></td><td class="py-3 px-4">Cajas (100 pzs)</td><td class="py-3 px-4 text-right text-on-surface-variant">$120.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$36,000.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Gasas estériles</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">GAS-002</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#f0e6ff] text-[#6b21a8] whitespace-nowrap">Material médico</span></td><td class="py-3 px-4 text-right font-medium text-error">45</td><td class="py-3 px-4 text-right text-on-surface-variant">100</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="100"></td><td class="py-3 px-4">Paquetes</td><td class="py-3 px-4 text-right text-on-surface-variant">$45.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$4,500.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Alcohol 70%</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">ALC-003</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#f5f3ff] text-[#4c1d95] whitespace-nowrap">Consumibles</span></td><td class="py-3 px-4 text-right font-medium text-error">2</td><td class="py-3 px-4 text-right text-on-surface-variant">10</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="10"></td><td class="py-3 px-4">Litros</td><td class="py-3 px-4 text-right text-on-surface-variant">$85.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$850.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Lidocaína 2%</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">LDC-001</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#fff0e6] text-[#c2410c] whitespace-nowrap">Medicamentos</span></td><td class="py-3 px-4 text-right font-medium text-error">5</td><td class="py-3 px-4 text-right text-on-surface-variant">20</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="20"></td><td class="py-3 px-4">Frascos</td><td class="py-3 px-4 text-right text-on-surface-variant">$180.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$3,600.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Jeringas 3ml</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">JER-005</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#f0e6ff] text-[#6b21a8] whitespace-nowrap">Material médico</span></td><td class="py-3 px-4 text-right font-medium text-error">80</td><td class="py-3 px-4 text-right text-on-surface-variant">200</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="200"></td><td class="py-3 px-4">Cajas</td><td class="py-3 px-4 text-right text-on-surface-variant">$150.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$30,000.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Queratolítico</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">QUE-006</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#fff0e6] text-[#c2410c] whitespace-nowrap">Medicamentos</span></td><td class="py-3 px-4 text-right font-medium text-error">12</td><td class="py-3 px-4 text-right text-on-surface-variant">30</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="30"></td><td class="py-3 px-4">Frascos</td><td class="py-3 px-4 text-right text-on-surface-variant">$210.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$6,300.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Agua destilada</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">AGU-007</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#f5f3ff] text-[#4c1d95] whitespace-nowrap">Consumibles</span></td><td class="py-3 px-4 text-right font-medium text-error">4</td><td class="py-3 px-4 text-right text-on-surface-variant">15</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="15"></td><td class="py-3 px-4">Galones</td><td class="py-3 px-4 text-right text-on-surface-variant">$65.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$975.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Crema Mupirocina</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">MUP-008</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#fff0e6] text-[#c2410c] whitespace-nowrap">Medicamentos</span></td><td class="py-3 px-4 text-right font-medium text-error">8</td><td class="py-3 px-4 text-right text-on-surface-variant">25</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="25"></td><td class="py-3 px-4">Tubos</td><td class="py-3 px-4 text-right text-on-surface-variant">$145.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$3,625.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Cinta COVAN</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">COV-009</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#f0e6ff] text-[#6b21a8] whitespace-nowrap">Material médico</span></td><td class="py-3 px-4 text-right font-medium text-error">15</td><td class="py-3 px-4 text-right text-on-surface-variant">50</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="50"></td><td class="py-3 px-4">Rollos</td><td class="py-3 px-4 text-right text-on-surface-variant">$32.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$1,600.00</td></tr><tr class="hover:bg-surface-container/30 transition-colors"><td class="py-3 px-4"><input checked="" type="checkbox"></td><td class="py-3 px-4"><div class="flex items-center gap-3"><div><p class="font-medium text-on-surface">Algodón</p><p class="text-label-subtle font-label-subtle text-on-surface-variant">ALG-010</p></div></div></td><td class="py-3 px-4"><span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-[#f5f3ff] text-[#4c1d95] whitespace-nowrap">Consumibles</span></td><td class="py-3 px-4 text-right font-medium text-error">10</td><td class="py-3 px-4 text-right text-on-surface-variant">40</td><td class="py-3 px-4 text-center"><input class="w-16 text-center py-1 border border-outline-variant rounded bg-surface-container-lowest outline-none" type="number" value="40"></td><td class="py-3 px-4">Bolsas</td><td class="py-3 px-4 text-right text-on-surface-variant">$55.00</td><td class="py-3 px-4 text-right font-medium text-on-surface">$2,200.00</td></tr></tbody>
+</table>
+<!-- Pagination Footer -->
+
+</div>
+<!-- Info Alert -->
+
+</div>
+<!-- Right Sidebar (Order Summary) -->
+<div class="col-span-3 flex flex-col gap-4">
+<!-- Order Config Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-5">
+<div class="mb-4">
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Seleccionar proveedor *</label>
+<div class="relative">
+<select class="w-full appearance-none pl-3 pr-10 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md font-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary">
+<option>Dermoinsumos MX</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="mb-4">
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Fecha estimada de entrega</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">calendar_month</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md font-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary" type="text" value="24/04/2024">
+</div>
+</div>
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Notas del pedido (opcional)</label>
+<textarea class="w-full p-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md font-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary resize-none" placeholder="Ej. Entregar en horario matutino." rows="2"></textarea>
+</div>
+</div>
+<!-- Summary Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-5">
+<h3 class="text-title-sm font-title-sm text-on-surface mb-4">Resumen del pedido</h3>
+<div class="flex justify-between items-center mb-3 text-body-md font-body-md text-on-surface-variant">
+<span class="">Productos seleccionados</span>
+<span class="font-medium text-on-surface">3</span>
+</div>
+<div class="flex justify-between items-center mb-3 text-body-md font-body-md text-on-surface-variant">
+<span class="">Subtotal</span>
+<span class="font-medium text-on-surface">$78,500.00</span>
+</div>
+<div class="flex justify-between items-center mb-4 pb-4 border-b border-outline-variant text-body-md font-body-md text-on-surface-variant">
+<span class="">IVA (16%)</span>
+<span class="font-medium text-on-surface">$12,560.00</span>
+</div>
+<div class="flex justify-between items-center mb-6">
+<span class="text-body-md font-body-md font-medium text-on-surface">Total estimado</span>
+<span class="text-title-sm font-title-sm font-bold text-secondary">$91,060.00 MXN</span>
+</div>
+<button class="w-full bg-secondary text-on-secondary py-3 rounded-lg text-label-bold font-label-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity mb-3">
+<span class="material-symbols-outlined text-sm">shopping_cart_checkout</span>
+                        Generar pedido
+                    </button>
+<button class="w-full border border-secondary text-secondary py-3 rounded-lg text-label-bold font-label-bold flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-sm">bookmark</span>
+                        Guardar como plantilla
+                    </button>
+</div>
+<!-- Provider Info Glassmorphism Card -->
+<div class="relative overflow-hidden rounded-xl border border-outline-variant p-5 bg-surface-container-lowest/80 backdrop-blur-sm">
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-secondary/10 rounded-full blur-2xl pointer-events-none"></div>
+<h4 class="text-label-bold font-label-bold text-secondary mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">storefront</span>
+                        Información del proveedor
+                    </h4>
+<p class="text-body-md font-body-md font-medium text-on-surface mb-1">Dermoinsumos MX</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-1">55 1234 5678</p>
+<p class="text-body-sm font-body-sm text-secondary mb-3">ventas@dermoinsumos.mx</p>
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-[#e1f7e8] text-success border border-[#c6f0d5] mb-5">
+<span class="material-symbols-outlined text-[12px]">verified</span>
+                        Proveedor frecuente
+                    </span>
+
+<ul class="text-body-sm font-body-sm text-on-surface-variant space-y-2 list-disc list-inside">
+
+
+
+</ul>
+</div>
+</div>
+</main>
+</div>
+
+
+
+
+
+
+
+
+</body></html>
