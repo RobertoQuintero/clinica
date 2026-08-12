@@ -420,11 +420,16 @@ export async function getPurchaseOrders(
   }
 }
 
+/** Fila de la bitácora de recepciones, con el nombre de quien la confirmó. */
+export interface IPurchaseReceptionListItem extends IPurchaseReception {
+  user_name: string;
+}
+
 /** Detalle de una orden: encabezado + nombre del proveedor + líneas + bitácora de recepciones. */
 export interface IPurchaseOrderDetailView extends IPurchaseOrder {
   supplier_name: string;
   items:         IPurchaseOrderItem[];
-  receptions:    IPurchaseReception[];
+  receptions:    IPurchaseReceptionListItem[];
 }
 
 export async function getPurchaseOrderById(
@@ -493,23 +498,26 @@ export async function getPurchaseOrderById(
     );
 
     const receptions = await db.queryParams(
-      `SELECT [id_reception],
-              [id_purchase_order],
-              [id_sucursal],
-              [id_user],
-              [notes],
-              [is_final],
-              CONVERT(varchar(19), [created_at], 120) AS created_at
-         FROM [CentroPodologico].[inventory].[purchase_receptions]
-        WHERE [id_purchase_order] = @id_purchase_order
-        ORDER BY [created_at] DESC`,
+      `SELECT pr.[id_reception],
+              pr.[id_purchase_order],
+              pr.[id_sucursal],
+              pr.[id_user],
+              pr.[notes],
+              pr.[is_final],
+              CONVERT(varchar(19), pr.[created_at], 120) AS created_at,
+              u.[nombre] AS user_name
+         FROM [CentroPodologico].[inventory].[purchase_receptions] pr
+         JOIN [CentroPodologico].[dbo].[users] u
+           ON u.[id_user] = pr.[id_user]
+        WHERE pr.[id_purchase_order] = @id_purchase_order
+        ORDER BY pr.[created_at] DESC`,
       { id_purchase_order }
     );
 
     const data: IPurchaseOrderDetailView = {
       ...(headerRows[0] as IPurchaseOrder & { supplier_name: string }),
       items: items as IPurchaseOrderItem[],
-      receptions: receptions as IPurchaseReception[],
+      receptions: receptions as IPurchaseReceptionListItem[],
     };
 
     return { ok: true, data };
