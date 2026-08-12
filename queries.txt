@@ -320,3 +320,150 @@ GO
 INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (9, N'Salida por daño/merma', N'SXD', 1, 1, 0, 1, N'Resta al stock por daño, deterioro, caducidad,etc.')
 GO
 
+-- ============================================================
+-- spec 09 — pedidos de compra y recepción de mercancía
+-- ============================================================
+
+-- Existencia actual por producto+sucursal (snapshot cacheado, reconstruible desde kardex)
+CREATE TABLE [inventory].[stock](
+	[id_stock] [int] IDENTITY(1,1) NOT NULL,
+	[id_product] [int] NOT NULL,
+	[id_sucursal] [int] NOT NULL,
+	[quantity] [decimal](18, 4) NOT NULL DEFAULT 0,
+	[min_stock] [decimal](18, 2) NULL, -- override por sucursal; NULL => usa Products.min_stock
+	[updated_at] [datetime] NULL,
+ CONSTRAINT [PK_stock] PRIMARY KEY CLUSTERED
+(
+	[id_stock] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE UNIQUE INDEX [UQ_stock_product_sucursal] ON [inventory].[stock] ([id_product] ASC, [id_sucursal] ASC)
+GO
+
+-- Libro mayor append-only de movimientos de inventario (nunca UPDATE ni DELETE)
+CREATE TABLE [inventory].[kardex](
+	[id_kardex] [bigint] IDENTITY(1,1) NOT NULL,
+	[id_product] [int] NOT NULL,
+	[id_sucursal] [int] NOT NULL,
+	[id_empresa] [int] NOT NULL,
+	[id_movement] [smallint] NOT NULL, -- FK lógica a inventory.movements; su increases_storage define el signo
+	[quantity] [decimal](18, 4) NOT NULL, -- siempre positiva, en unidades de stock
+	[balance_after] [decimal](18, 4) NOT NULL, -- acumulado tras aplicar el movimiento
+	[id_unit_measurement] [smallint] NULL, -- unidad de stock (snapshot)
+	[unit_cost] [decimal](18, 6) NULL,
+	[id_purchase_order_item] [int] NULL, -- origen, cuando el movimiento viene de una compra
+	[id_reception] [int] NULL, -- agrupa las filas generadas por un mismo evento de recepción
+	[notes] [varchar](500) NULL,
+	[id_user] [int] NOT NULL,
+	[created_at] [datetime] NOT NULL,
+ CONSTRAINT [PK_kardex] PRIMARY KEY CLUSTERED
+(
+	[id_kardex] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE INDEX [IX_kardex_product_sucursal] ON [inventory].[kardex] ([id_product] ASC, [id_sucursal] ASC, [id_kardex] DESC)
+GO
+CREATE INDEX [IX_kardex_reception] ON [inventory].[kardex] ([id_reception] ASC)
+GO
+
+-- Encabezado de orden de compra (una por proveedor, agrupadas por id_batch)
+CREATE TABLE [inventory].[purchase_orders](
+	[id_purchase_order] [int] IDENTITY(1,1) NOT NULL,
+	[folio] [varchar](20) NOT NULL, -- PO-{AAAA}-{consecutivo}, único por empresa
+	[id_batch] [varchar](36) NULL, -- agrupa las órdenes generadas desde un mismo carrito
+	[id_empresa] [int] NOT NULL,
+	[id_sucursal] [int] NOT NULL,
+	[id_supplier] [int] NOT NULL,
+	[id_status] [smallint] NOT NULL, -- FK lógica a inventory.order_statuses
+	[subtotal] [decimal](18, 2) NOT NULL DEFAULT 0,
+	[discount] [decimal](18, 2) NOT NULL DEFAULT 0,
+	[tax] [decimal](18, 2) NOT NULL DEFAULT 0,
+	[shipping_cost] [decimal](18, 2) NOT NULL DEFAULT 0,
+	[total] [decimal](18, 2) NOT NULL DEFAULT 0,
+	[tax_rate] [decimal](5, 2) NOT NULL DEFAULT 16,
+	[estimated_date] [date] NULL,
+	[delivery_date] [date] NULL,
+	[invoice_date] [date] NULL,
+	[invoice_url] [varchar](1000) NULL,
+	[invoice_number] [varchar](50) NULL,
+	[notes] [varchar](1000) NULL,
+	[id_user_created] [int] NOT NULL,
+	[created_at] [datetime] NOT NULL,
+	[sent_at] [datetime] NULL,
+	[closed_at] [datetime] NULL,
+	[status] [bit] NOT NULL DEFAULT 1,
+ CONSTRAINT [PK_purchase_orders] PRIMARY KEY CLUSTERED
+(
+	[id_purchase_order] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE UNIQUE INDEX [UQ_purchase_orders_folio] ON [inventory].[purchase_orders] ([id_empresa] ASC, [folio] ASC)
+GO
+CREATE INDEX [IX_purchase_orders_listing] ON [inventory].[purchase_orders] ([id_empresa] ASC, [id_sucursal] ASC, [id_status] ASC, [created_at] DESC)
+GO
+
+-- Líneas de la orden de compra (snapshots del producto al momento del pedido)
+CREATE TABLE [inventory].[purchase_order_items](
+	[id_purchase_order_item] [int] IDENTITY(1,1) NOT NULL,
+	[id_purchase_order] [int] NOT NULL,
+	[id_product] [int] NOT NULL,
+	[product_name] [varchar](100) NULL,
+	[product_code] [varchar](100) NULL,
+	[brand] [varchar](100) NULL,
+	[id_unit_measurement] [smallint] NULL, -- unidad de compra (snapshot)
+	[conversion_factor] [decimal](18, 4) NOT NULL DEFAULT 1, -- unidades de stock por unidad de compra (snapshot)
+	[quantity] [decimal](18, 4) NOT NULL, -- cantidad pedida, en unidades de compra
+	[quantity_received] [decimal](18, 4) NOT NULL DEFAULT 0, -- acumulado recibido, en unidades de compra
+	[unit_price] [decimal](18, 6) NOT NULL,
+	[discount] [decimal](18, 2) NOT NULL DEFAULT 0,
+	[line_total] [decimal](18, 2) NOT NULL,
+	[created_at] [datetime] NOT NULL,
+ CONSTRAINT [PK_purchase_order_items] PRIMARY KEY CLUSTERED
+(
+	[id_purchase_order_item] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+ALTER TABLE [inventory].[purchase_order_items] WITH CHECK ADD CONSTRAINT [FK_purchase_order_items_purchase_orders]
+	FOREIGN KEY([id_purchase_order]) REFERENCES [inventory].[purchase_orders] ([id_purchase_order])
+GO
+ALTER TABLE [inventory].[purchase_order_items] CHECK CONSTRAINT [FK_purchase_order_items_purchase_orders]
+GO
+CREATE INDEX [IX_purchase_order_items_order] ON [inventory].[purchase_order_items] ([id_purchase_order] ASC)
+GO
+
+-- Eventos de recepción (sin tabla de detalle: las filas de kardex con el mismo id_reception lo son)
+CREATE TABLE [inventory].[purchase_receptions](
+	[id_reception] [int] IDENTITY(1,1) NOT NULL,
+	[id_purchase_order] [int] NOT NULL,
+	[id_sucursal] [int] NOT NULL,
+	[id_user] [int] NOT NULL,
+	[notes] [varchar](1000) NULL,
+	[is_final] [bit] NOT NULL DEFAULT 0,
+	[created_at] [datetime] NOT NULL,
+ CONSTRAINT [PK_purchase_receptions] PRIMARY KEY CLUSTERED
+(
+	[id_reception] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+ALTER TABLE [inventory].[purchase_receptions] WITH CHECK ADD CONSTRAINT [FK_purchase_receptions_purchase_orders]
+	FOREIGN KEY([id_purchase_order]) REFERENCES [inventory].[purchase_orders] ([id_purchase_order])
+GO
+ALTER TABLE [inventory].[purchase_receptions] CHECK CONSTRAINT [FK_purchase_receptions_purchase_orders]
+GO
+CREATE INDEX [IX_purchase_receptions_order] ON [inventory].[purchase_receptions] ([id_purchase_order] ASC)
+GO
+
+-- Cambios a tablas existentes
+ALTER TABLE [inventory].[Products] ADD [id_stock_unit_measurement] [smallint] NULL -- unidad en la que se lleva el stock (distinta de la de compra cuando split = 1)
+GO
+
+INSERT [inventory].[order_statuses] ([id_status], [name], [id_empresa], [status], [activo], [description]) VALUES (4, N'Parcial', 1, 1, 1, N'Recibido parcialmente, faltan piezas por llegar')
+GO
+INSERT [inventory].[order_statuses] ([id_status], [name], [id_empresa], [status], [activo], [description]) VALUES (5, N'Cancelado', 1, 1, 1, N'La orden fue cancelada antes de recibirse')
+GO
+
