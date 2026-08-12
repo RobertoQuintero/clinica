@@ -1,0 +1,309 @@
+<!DOCTYPE html><html class="light" lang="es" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Recepción de Compras - Pie Zen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#003ea7",
+                        "error-container": "#ffdad6",
+                        "primary": "#000000",
+                        "primary-container": "#0f1c31",
+                        "secondary-fixed": "#dbe1ff",
+                        "tertiary": "#000000",
+                        "surface-bright": "#f8f9ff",
+                        "surface-variant": "#d3e3ff",
+                        "surface-container-high": "#dde9ff",
+                        "outline": "#747780",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "surface-container-low": "#eff4ff",
+                        "surface-container-highest": "#d3e3ff",
+                        "surface-dim": "#cbdbf6",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#384b40",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#c5c6cd",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#e6eeff",
+                        "on-secondary-container": "#fefcff",
+                        "secondary": "#0051d5",
+                        "primary-fixed": "#d7e3ff",
+                        "on-primary-fixed-variant": "#3b475e",
+                        "on-tertiary": "#ffffff",
+                        "surface-tint": "#525f77",
+                        "tertiary-container": "#0d1f16",
+                        "tertiary-fixed": "#d2e8d9",
+                        "on-tertiary-fixed": "#0d1f16",
+                        "on-surface-variant": "#45474d",
+                        "on-tertiary-container": "#75887c",
+                        "inverse-on-surface": "#ebf1ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#78849e",
+                        "primary-fixed-dim": "#bac7e3",
+                        "success": "#009c6b",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed": "#0f1c31",
+                        "on-secondary-fixed": "#00174b",
+                        "surface": "#f8f9ff",
+                        "background": "#f8f9ff",
+                        "inverse-primary": "#bac7e3",
+                        "on-surface": "#0b1c30",
+                        "secondary-container": "#346cef",
+                        "on-background": "#0b1c30",
+                        "inverse-surface": "#213146",
+                        "tertiary-fixed-dim": "#b7ccbe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "card-gap": "20px",
+                        "inline-gutter": "16px",
+                        "unit": "4px",
+                        "container-padding": "24px",
+                        "gutter-inline": "16px",
+                        "sidebar-width": "240px",
+                        "base-unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "body-md": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-subtle": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "label-subtle": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- TopAppBar -->
+
+<!-- Main Content -->
+<main class="flex-1 w-full px-container-padding py-8 flex flex-col gap-6">
+<!-- Header & Breadcrumbs -->
+<div>
+<nav aria-label="Breadcrumb" class="flex text-body-sm text-on-surface-variant mb-2">
+<ol class="inline-flex items-center space-x-1 md:space-x-2">
+<li class="inline-flex items-center">
+<a class="hover:text-primary transition-colors" href="#">Pedidos</a>
+</li>
+<li class="">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-[16px] mx-1">chevron_right</span>
+<span class="text-on-surface">Recepción</span>
+</div>
+</li>
+</ol>
+</nav>
+<h1 class="text-display-lg font-display-lg text-on-background">Recepción de Mercancía</h1>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">Verifica y registra los productos recibidos contra la orden de compra.</p>
+</div>
+<div class="flex flex-col lg:flex-row gap-6 items-start">
+<!-- Left Column: Order Details & Table -->
+<div class="w-full lg:w-3/4 flex flex-col gap-6">
+<!-- Order Summary Card -->
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div class="flex gap-8">
+<div>
+<div class="text-label-subtle font-label-subtle text-on-surface-variant uppercase tracking-wider mb-1">Orden de Compra</div>
+<div class="text-title-sm font-title-sm text-on-surface">PO-2024-089</div>
+</div>
+<div>
+<div class="text-label-subtle font-label-subtle text-on-surface-variant uppercase tracking-wider mb-1">Proveedor</div>
+<div class="text-title-sm font-title-sm text-on-surface">Dermoinsumos MX</div>
+</div>
+<div class="hidden sm:block">
+<div class="text-label-subtle font-label-subtle text-on-surface-variant uppercase tracking-wider mb-1">Fecha de Pedido</div>
+<div class="text-title-sm font-title-sm text-on-surface">17 Abr 2024</div>
+</div>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-label-bold font-label-bold text-on-surface">Enviado<br></span>
+</div>
+</div>
+<!-- Products Table -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant text-label-bold font-label-bold text-on-surface-variant uppercase tracking-wider">
+<th class="p-4 w-1/3">Producto</th>
+<th class="p-4 text-center">Cant. Pedida</th>
+<th class="p-4 text-center">Cant. Recibida</th>
+<th class="p-4 text-center">Estado</th>
+<th class="p-4 text-right">Diferencia</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface/50 transition-colors">
+<td class="p-4">
+<div class="text-body-md font-medium text-on-surface">Guantes de nitrilo</div>
+<div class="text-label-subtle text-on-surface-variant mt-0.5">SKU: GNT-001 • Cajas (100 pzs)</div>
+</td>
+<td class="p-4 text-center text-body-md font-body-md text-on-surface">
+                                        300
+                                    </td>
+<td class="p-4">
+<div class="flex items-center justify-center gap-2">
+<button class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<input class="w-16 h-8 text-center border border-outline-variant rounded bg-surface-container-lowest text-body-md font-body-md focus:ring-1 focus:ring-secondary focus:border-secondary outline-none hide-arrows" type="number" value="300">
+<button class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-tertiary-fixed text-on-tertiary-fixed">
+                                            Completo
+                                        </span>
+</td>
+<td class="p-4 text-right text-body-md font-body-md text-on-surface-variant">
+                                        0
+                                    </td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface/50 transition-colors">
+<td class="p-4">
+<div class="text-body-md font-medium text-on-surface">Cubrebocas tricapa</div>
+<div class="text-label-subtle text-on-surface-variant mt-0.5">SKU: CBR-001 • Cajas (50 pzs)</div>
+</td>
+<td class="p-4 text-center text-body-md font-body-md text-on-surface">
+                                        400
+                                    </td>
+<td class="p-4">
+<div class="flex items-center justify-center gap-2">
+<button class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<input class="w-16 h-8 text-center border border-secondary rounded bg-surface-container-lowest text-body-md font-body-md focus:ring-1 focus:ring-secondary outline-none hide-arrows text-secondary" type="number" value="350">
+<button class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-error-container text-on-error-container">
+                                            Parcial
+                                        </span>
+</td>
+<td class="p-4 text-right text-body-md font-body-md text-error font-medium">
+                                        -50
+                                    </td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface/50 transition-colors bg-surface/30">
+<td class="p-4">
+<div class="text-body-md font-medium text-on-surface">Lidocaína 2%</div>
+<div class="text-label-subtle text-on-surface-variant mt-0.5">SKU: LDC-001 • Frascos (50 ml)</div>
+</td>
+<td class="p-4 text-center text-body-md font-body-md text-on-surface">
+                                        50
+                                    </td>
+<td class="p-4">
+<div class="flex items-center justify-center gap-2">
+<button class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center text-outline hover:bg-surface-container-low transition-colors" disabled="">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<input class="w-16 h-8 text-center border border-outline-variant rounded bg-surface-container-low text-body-md font-body-md focus:ring-1 focus:ring-secondary outline-none hide-arrows text-on-surface-variant" type="number" value="0">
+<button class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-surface-container-high text-on-surface-variant">
+                                            Pendiente
+                                        </span>
+</td>
+<td class="p-4 text-right text-body-md font-body-md text-on-surface-variant">
+                                        -50
+                                    </td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Column: Action Sidebar -->
+<div class="w-full lg:w-1/4 sticky top-24">
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-6 flex flex-col gap-6">
+<h2 class="text-headline-md font-headline-md text-on-surface border-b border-outline-variant pb-4">Resumen de Recepción</h2>
+<div class="flex flex-col gap-3 text-body-md font-body-md text-on-surface">
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Líneas en orden</span>
+<span class="font-medium">3</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Líneas completas</span>
+<span class="font-medium text-success">1</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-on-surface-variant">Líneas con diferencia</span>
+<span class="font-medium text-error">2</span>
+</div>
+</div>
+<div class="flex flex-col gap-2 pt-4 border-t border-outline-variant">
+<label class="text-label-bold font-label-bold text-on-surface" for="notes">Notas de recepción (opcional)</label>
+<textarea class="w-full border border-outline-variant rounded bg-surface-container-lowest text-body-sm p-3 focus:ring-1 focus:ring-secondary focus:border-secondary outline-none resize-none" id="notes" placeholder="Añade comentarios sobre el estado de la entrega..." rows="3"></textarea>
+</div>
+<div class="flex flex-col gap-3 mt-2">
+<button class="w-full bg-secondary text-on-secondary hover:bg-secondary/90 transition-colors py-2.5 rounded font-title-sm text-title-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                            Confirmar Recepción</button>
+<button class="w-full border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low transition-colors py-2.5 rounded font-title-sm text-title-sm">
+                            Guardar Borrador
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<style>
+        /* Hide number input arrows */
+        .hide-arrows::-webkit-outer-spin-button,
+        .hide-arrows::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .hide-arrows {
+            -moz-appearance: textfield;
+        }
+    </style>
+
+
+
+
+
+
+</body></html>

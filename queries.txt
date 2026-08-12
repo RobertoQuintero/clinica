@@ -148,7 +148,7 @@ CREATE TABLE [CentroPodologico].[dbo].[onicomicosis_detalle] (
   [dedo]         TINYINT       NOT NULL    -- 1 (hallux/gordo) .. 5 (meñique)
 );
 
-CREATE TABLE [CentroPodologico].[dbo].[proveedores] (
+CREATE TABLE [CentroPodologico].[inventory].[proveedores] (
   [id_proveedor]               INT             NOT NULL PRIMARY KEY, -- MAX(id_proveedor)+1 en el INSERT, no identity
   [id_empresa]                 INT             NOT NULL,
   [nombre_corto]                NVARCHAR(255)   NOT NULL,
@@ -169,4 +169,154 @@ CREATE TABLE [CentroPodologico].[dbo].[proveedores] (
   [status]                      BIT             NOT NULL DEFAULT 1,
   [created_at]                  DATETIME        NOT NULL
 );
+
+
+CREATE SCHEMA inventory
+
+USE [CentroPodologico]
+GO
+/****** Object:  Table [inventory].[categories]    Script Date: 11/08/2026 02:16:49 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [inventory].[categories](
+	[id_category] [smallint] NOT NULL,
+	[name] [varchar](50) NULL,
+	[status] [bit] NULL,
+	[activo] [bit] NULL,
+	[id_empresa] [int] NULL,
+ CONSTRAINT [PK_categories] PRIMARY KEY CLUSTERED 
+(
+	[id_category] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [inventory].[Products]    Script Date: 11/08/2026 02:16:49 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [inventory].[Products](
+	[id_product] [int] NOT NULL,
+	[name] [varchar](100) NULL,
+	[id_category] [smallint] NULL,
+	[brand] [varchar](100) NULL,
+	[presentation] [varchar](100) NULL,
+	[id_unit_measurement] [smallint] NULL,
+	[size] [varchar](50) NULL,
+	[price] [decimal](18, 6) NULL,
+	[product_code] [varchar](100) NULL,
+	[id_supplier] [int] NULL,
+	[pieces] [int] NULL,
+	[id_empresa] [int] NULL,
+	[description] [varchar](1000) NULL,
+	[created_at] [datetime] NULL,
+	[activo] [bit] NULL,
+	[status] [bit] NULL,
+	[split] [bit] NULL,
+    [min_stock] [decimal](18, 2) NULL,
+    [url_product] [varchar](1000) NULL,
+ CONSTRAINT [PK_Products] PRIMARY KEY CLUSTERED 
+(
+	[id_product] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [inventory].[categories] ([id_category], [name], [status], [activo], [id_empresa]) VALUES (1, N'Consumibles', 1, 1, 1)
+GO
+INSERT [inventory].[categories] ([id_category], [name], [status], [activo], [id_empresa]) VALUES (2, N'Instrumental', 1, 1, 1)
+GO
+INSERT [inventory].[categories] ([id_category], [name], [status], [activo], [id_empresa]) VALUES (3, N'Medicamentos', 1, 1, 1)
+GO
+INSERT [inventory].[categories] ([id_category], [name], [status], [activo], [id_empresa]) VALUES (4, N'Venta', 1, 1, 1)
+GO
+
+
+  CREATE TABLE [inventory].[units_measurement](
+	[id_unit_measurement] [int] NOT NULL,
+	[id_type] [int] NULL,
+	[name] [nvarchar](50) NULL,
+	[code] [varchar](10) NULL,
+	[value] [decimal](18, 4) NULL,
+	[status] [bit] NULL,
+ CONSTRAINT [PK_units_measurement] PRIMARY KEY CLUSTERED 
+(
+	[id_unit_measurement] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (1, 1, N'MILIGRAMO', N'MR', CAST(0.0010 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (2, 1, N'GRAMO', N'G', CAST(1.0000 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (3, 1, N'KILOGRAMO', N'KG', CAST(1000.0000 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (4, 1, N'TONELADA', N'TON', CAST(1000000.0000 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (5, 2, N'MILILITRO', N'ML', CAST(0.0010 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (6, 2, N'LITRO', N'LTR', CAST(1.0000 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (7, 3, N'PAQUETE', N'PAQ', CAST(1.0000 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (8, 3, N'CAJA', N'CAJ', CAST(1.0000 AS Decimal(18, 4)), 0)
+GO
+INSERT [inventory].[units_measurement] ([id_unit_measurement], [id_type], [name], [code], [value], [status]) VALUES (9, 3, N'PIEZA', N'PZA', CAST(1.0000 AS Decimal(18, 4)), 0)
+GO
+
+CREATE TABLE [inventory].[order_statuses](
+	[id_status] [smallint] NOT NULL,
+	[name] [varchar](50) NULL,
+	[id_empresa] [int] NULL,
+	[status] [bit] NULL,
+	[activo] [bit] NULL,
+	[description] [varchar](250) NULL,
+ CONSTRAINT [PK_order_statuses] PRIMARY KEY CLUSTERED 
+(
+	[id_status] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [inventory].[order_statuses] ([id_status], [name], [id_empresa], [status], [activo], [description]) VALUES (1, N'Pedido', 1, 1, 1, N'El producto fue pedido por la podóloga')
+GO
+INSERT [inventory].[order_statuses] ([id_status], [name], [id_empresa], [status], [activo], [description]) VALUES (2, N'Enviado', 1, 1, 1, N'La factura esta dada de alta en el sistema')
+GO
+INSERT [inventory].[order_statuses] ([id_status], [name], [id_empresa], [status], [activo], [description]) VALUES (3, N'Stock', 1, 1, 1, N'La chica de suministros confirmado con la podologa que le producto llego a la clinica')
+GO
+
+
+CREATE TABLE [inventory].[movements](
+	[id_movement] [smallint] NOT NULL,
+	[name] [varchar](50) NULL,
+	[short_name] [varchar](50) NULL,
+	[status] [bit] NOT NULL,
+	[activo] [bit] NOT NULL,
+	[increases_storage] [bit] NOT NULL,
+	[id_empresa] [int] NULL,
+	[description] [varchar](250) NULL,
+ CONSTRAINT [PK_movements] PRIMARY KEY CLUSTERED 
+(
+	[id_movement] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (1, N'Entrada por compra', N'EXC', 1, 1, 1, 1, N'Movimiento al confirmar recepcion de productos')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (2, N'Salida por devolución', N'SXD', 1, 1, 0, 1, N'Movimiento al devolver producto el cual se resta del stock')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (3, N'Entrada por traspaso', N'EXT', 1, 1, 1, 1, N'Movimiento al recibir material de otra sucursal')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (4, N'Salida por traspaso', N'SXT', 1, 1, 0, 1, N'Movimiento al retirar producto del stock y enviarlo a otra sucursal')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (5, N'Salida por consulta', N'SXC', 1, 1, 0, 1, N'Descuenta producto automaticamente al realizar una consulta')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (6, N'Salida por venta', N'SXV', 1, 1, 0, 1, N'Descuenta producto al realizar una venta')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (7, N'Entrada por ajuste', N'EXA', 1, 1, 1, 1, N'Añade al stock por ajuste manual del usuario')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (8, N'Salida por ajuste', N'SXA', 1, 1, 0, 1, N'Resta al stock por ajuste manual del usuario')
+GO
+INSERT [inventory].[movements] ([id_movement], [name], [short_name], [status], [activo], [increases_storage], [id_empresa], [description]) VALUES (9, N'Salida por daño/merma', N'SXD', 1, 1, 0, 1, N'Resta al stock por daño, deterioro, caducidad,etc.')
+GO
 

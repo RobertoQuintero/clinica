@@ -6,7 +6,6 @@ informacion necesaria de las tablas a utilizar en el sistema de inventario y com
 estas tablas pueden incluir mas columnas si es necesario o quitar las columnas redundantes
 
 **Productos**
-- id_product: 123
 - Nombre: Lidocaina al 2%
 - Categoría: medicamento
 - Marca: Astra
@@ -16,27 +15,29 @@ estas tablas pueden incluir mas columnas si es necesario o quitar las columnas r
 - Precio Unitario
 - No. Producto/codigo de barras: XC22345
 - Proveedor: Medinsumos Veracruz
-- created_at
-- id_empresa
-- description: Es un anestésico local y antiarrítmico de tipo amida que bloquea los impulsos nerviosos para adormecer áreas específicas del cuerpo
-- automatic( true o false, indica si el producto será dividido en piezas o alguna unidad especifica, ejem: 1 Caja Cubrebocas 100 se convertirá en 100 cubrebocas que son los que se descontaran 1 por consulta consulta)
+- piezas por producto
+- activo
+- descripcion: Es un anestésico local y antiarrítmico de tipo amida que bloquea los impulsos nerviosos para adormecer áreas específicas del cuerpo
+- dividir( true o false, indica si el producto será dividido en piezas o alguna unidad especifica, ejem: 1 Caja Cubrebocas 100 se convertirá en 100 cubrebocas que son los que se descontaran 1 por consulta consulta)
 
 **Purchase_orders**(ordenes de compra)
 - id_purchase_order
-- id_status
+- id_status(pedido/enviado/stock)
 - created_at
 - id_proveedor
 - subtotal:
 - iva
 - descuento
+- estimated_date
+- delivery_date
+- id_sucursal
+- shipping_cost
 
-
-**Product_orders**(orden de producto)
+**Product_orders**(orden de producto a comprar)
 - id_product_order
 - id_product
-- Precio unitario
-- id_sucursal
-- marca
+- price
+- brand
 - descuento
 - quantity
 
@@ -89,9 +90,9 @@ valores: pieza, caja, paquete, kilo, frasco, litro, mililitro, gramo
  - id_empresa
 
 valores:
--Pedido: El producto fue pedido por la podloga
--Enviado: la factura esta dada de alta en el sistema
--Stock: la chica de suministros confirmado con la podologa que le producto llego a la clinica
+-Pedido: El producto fue pedido por la podóloga
+-Enviado: La factura esta dada de alta en el sistema
+-Stock: La chica de suministros confirmado con la podologa que le producto llego a la clinica
 
 **Movements**(son los tipos de movimientos que se hacen en el inventario- salidas, entradas, devoluciones, traspasos)
 - id_movement
@@ -115,15 +116,14 @@ valores:
 
 **kardex**
 - id_kardex
-- id_product
+- id_product_order
 - id_movement
 - quantity
 - created_at
 - id_user(el usuario que guardó el registro)
 - acumulado
 - unidad de medida
-- unidad ed medida convertida
-- acumulado convertido
+- id_sucursal
 
 
 ## Reglas de visualizacion

@@ -1,0 +1,272 @@
+"use client";
+
+import { IProduct } from "@/interfaces/product";
+import { IProductCategory } from "@/interfaces/product_category";
+import { IUnitMeasurement } from "@/interfaces/unit_measurement";
+import { ISupplier } from "@/interfaces/supplier";
+
+export type ProductFormData = Omit<IProduct, "id_empresa" | "status" | "created_at">;
+
+interface Props {
+  form: ProductFormData;
+  saving: boolean;
+  error: string | null;
+  categories: IProductCategory[];
+  unitsMeasurement: IUnitMeasurement[];
+  suppliers: ISupplier[];
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onClose: () => void;
+}
+
+const inputClass =
+  "w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] transition-colors";
+const labelClass = "block text-xs font-semibold text-[#44474f] dark:text-zinc-400 mb-1";
+
+export default function ProductModal({
+  form,
+  saving,
+  error,
+  categories,
+  unitsMeasurement,
+  suppliers,
+  onChange,
+  onSubmit,
+  onClose,
+}: Props) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl flex flex-col">
+        <div className="flex items-center justify-between border-b border-[#c4c6d0] dark:border-zinc-700 px-6 py-4 shrink-0">
+          <h3 className="text-lg font-semibold text-[#0b1c30] dark:text-zinc-50">
+            {form.id_product === 0 ? "Nuevo producto" : "Editar producto"}
+          </h3>
+          <button onClick={onClose} className="text-[#747780] hover:text-[#0b1c30] dark:text-zinc-400 dark:hover:text-zinc-200 text-xl leading-none">
+            &times;
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="p-6 flex flex-col gap-4 overflow-y-auto">
+          {error && (
+            <p className="rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="md:col-span-2">
+              <label className={labelClass}>Nombre *</label>
+              <input
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={onChange}
+                required
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Categoría</label>
+              <select
+                name="id_category"
+                value={form.id_category ?? ""}
+                onChange={onChange}
+                className={inputClass}
+              >
+                <option value="">—</option>
+                {categories.map((c) => (
+                  <option key={c.id_category} value={c.id_category}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Marca</label>
+              <input
+                type="text"
+                name="brand"
+                value={form.brand ?? ""}
+                onChange={onChange}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Presentación</label>
+              <input
+                type="text"
+                name="presentation"
+                value={form.presentation ?? ""}
+                onChange={onChange}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Unidad de Medida</label>
+              <select
+                name="id_unit_measurement"
+                value={form.id_unit_measurement ?? ""}
+                onChange={onChange}
+                className={inputClass}
+              >
+                <option value="">—</option>
+                {unitsMeasurement.map((u) => (
+                  <option key={u.id_unit_measurement} value={u.id_unit_measurement}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Talla/Tamaño</label>
+              <input
+                type="text"
+                name="size"
+                value={form.size ?? ""}
+                onChange={onChange}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Precio Unitario</label>
+              <input
+                type="number"
+                name="price"
+                value={form.price ?? 0}
+                onChange={onChange}
+                min={0}
+                step="0.01"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>No. Producto/Código de Barras</label>
+              <input
+                type="text"
+                name="product_code"
+                value={form.product_code ?? ""}
+                onChange={onChange}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Proveedor</label>
+              <select
+                name="id_supplier"
+                value={form.id_supplier ?? ""}
+                onChange={onChange}
+                className={inputClass}
+              >
+                <option value="">—</option>
+                {suppliers.map((s) => (
+                  <option key={s.id_proveedor} value={s.id_proveedor}>
+                    {s.nombre_corto}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>URL Producto</label>
+              <input
+                type="url"
+                name="url_product"
+                value={form.url_product ?? ""}
+                onChange={onChange}
+                placeholder="https://ejemplo.com/producto"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Piezas por Producto</label>
+              <input
+                type="number"
+                name="pieces"
+                value={form.pieces ?? ""}
+                onChange={onChange}
+                min={0}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Stock Mínimo</label>
+              <input
+                type="number"
+                name="min_stock"
+                value={form.min_stock ?? ""}
+                onChange={onChange}
+                min={0}
+                className={inputClass}
+              />
+            </div>
+
+            <div className="flex items-center gap-3 py-2">
+              <input
+                type="checkbox"
+                name="activo"
+                checked={!!form.activo}
+                onChange={onChange}
+                className="h-5 w-5 rounded border-[#c4c6d0] dark:border-zinc-600 text-[#0051d5] focus:ring-[#0051d5]"
+              />
+              <span className="text-sm font-medium text-[#0b1c30] dark:text-zinc-100">Producto Activo</span>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className={labelClass}>Descripción</label>
+              <textarea
+                name="description"
+                value={form.description ?? ""}
+                onChange={onChange}
+                rows={3}
+                className={`${inputClass} resize-none`}
+              />
+            </div>
+
+            <div className="md:col-span-2 bg-[#eff4ff] dark:bg-zinc-800/50 p-4 rounded-lg border border-[#c4c6d0]/50 dark:border-zinc-700">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  name="split"
+                  checked={!!form.split}
+                  onChange={onChange}
+                  className="mt-1 h-5 w-5 rounded border-[#c4c6d0] dark:border-zinc-600 text-[#0051d5] focus:ring-[#0051d5]"
+                />
+                <div>
+                  <label className="block text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">Dividir Unidad</label>
+                  <p className="text-xs text-[#44474f] dark:text-zinc-400">
+                    Indica si el producto será dividido en piezas o alguna unidad específica para el descuento por consulta.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-[#c4c6d0] dark:border-zinc-700">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 px-4 py-2 text-sm font-medium text-[#44474f] dark:text-zinc-300 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0051d5]/90 disabled:opacity-50"
+            >
+              {saving ? "Guardando…" : "Guardar Producto"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

@@ -2,6 +2,9 @@
 
 import db from "@/database/connection";
 import { IProducto } from "@/interfaces/producto";
+import { IProduct } from "@/interfaces/product";
+import { IProductCategory } from "@/interfaces/product_category";
+import { IUnitMeasurement } from "@/interfaces/unit_measurement";
 import { IAuthUser } from "@/interfaces/auth";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
@@ -38,50 +41,175 @@ export async function getProductos(id_sucursal: number): Promise<IProducto[]> {
   return data as IProducto[];
 }
 
-export async function saveProducto(
-  form: Pick<IProducto, "id_producto" | "nombre" | "precio" | "descripcion" | "id_sucursal">
+export async function getProducts(): Promise<IProduct[]> {
+  const { id_empresa } = await getActiveUser();
+  const data = await db.queryParams(
+    `SELECT [id_product],
+            [name],
+            [id_category],
+            [brand],
+            [presentation],
+            [id_unit_measurement],
+            [size],
+            [price],
+            [product_code],
+            [id_supplier],
+            [pieces],
+            [min_stock],
+            [id_empresa],
+            [description],
+            CONVERT(varchar(19), [created_at], 120) AS created_at,
+            [activo],
+            [status],
+            [split],
+            [url_product]
+       FROM [CentroPodologico].[inventory].[Products]
+      WHERE [status] = 1
+        AND [id_empresa] = @id_empresa
+      ORDER BY [name]`,
+    { id_empresa }
+  );
+  return data as IProduct[];
+}
+
+export async function getCategories(): Promise<IProductCategory[]> {
+  const { id_empresa } = await getActiveUser();
+  const data = await db.queryParams(
+    `SELECT [id_category],
+            [name],
+            [status],
+            [activo],
+            [id_empresa]
+       FROM [CentroPodologico].[inventory].[categories]
+      WHERE [status] = 1
+        AND [id_empresa] = @id_empresa
+      ORDER BY [name]`,
+    { id_empresa }
+  );
+  return data as IProductCategory[];
+}
+
+export async function getUnitsMeasurement(): Promise<IUnitMeasurement[]> {
+  const data = await db.queryParams(
+    `SELECT [id_unit_measurement],
+            [id_type],
+            [name],
+            [code],
+            [value],
+            [status]
+       FROM [CentroPodologico].[inventory].[units_measurement]
+      WHERE [status] = 1
+      ORDER BY [name]`,
+    {}
+  );
+  return data as IUnitMeasurement[];
+}
+
+export async function saveProduct(
+  form: Omit<IProduct, "id_empresa" | "status" | "created_at">
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_producto, nombre, precio, descripcion, id_sucursal } = form;
+    const {
+      id_product,
+      name,
+      id_category,
+      brand,
+      presentation,
+      id_unit_measurement,
+      size,
+      price,
+      product_code,
+      id_supplier,
+      pieces,
+      min_stock,
+      description,
+      activo,
+      split,
+      url_product,
+    } = form;
+
+    if (!name || !name.trim()) {
+      return { ok: false, message: "El nombre es obligatorio" };
+    }
+
     const { id_empresa } = await getActiveUser();
 
-    if (id_producto === 0) {
+    const commonParams = {
+      name,
+      id_category,
+      brand,
+      presentation,
+      id_unit_measurement,
+      size,
+      price,
+      product_code,
+      id_supplier,
+      pieces,
+      min_stock,
+      description,
+      activo,
+      split,
+      url_product,
+    };
+
+    if (id_product === 0) {
       await db.queryParams(
-        `INSERT INTO [CentroPodologico].[dbo].[productos]
-           ([id_producto], [nombre], [precio], [descripcion], [status], [created_at], [id_empresa], [id_sucursal])
+        `INSERT INTO [CentroPodologico].[inventory].[Products]
+           ([id_product],[name],[id_category],[brand],[presentation],[id_unit_measurement],
+            [size],[price],[product_code],[id_supplier],[pieces],[min_stock],[id_empresa],[description],
+            [created_at],[activo],[status],[split],[url_product])
          VALUES (
-           (SELECT ISNULL(MAX([id_producto]), 0) + 1 FROM [CentroPodologico].[dbo].[productos]),
-           @nombre, @precio, @descripcion, 1, @created_at, @id_empresa, @id_sucursal
+           (SELECT ISNULL(MAX([id_product]), 0) + 1 FROM [CentroPodologico].[inventory].[Products]),
+           @name,@id_category,@brand,@presentation,@id_unit_measurement,
+           @size,@price,@product_code,@id_supplier,@pieces,@min_stock,@id_empresa,@description,
+           @created_at,@activo,1,@split,@url_product
          )`,
-        { nombre, precio, descripcion, created_at: buildDate(new Date()), id_empresa, id_sucursal }
+        { ...commonParams, id_empresa, created_at: buildDate(new Date()) }
       );
     } else {
       await db.queryParams(
-        `UPDATE [CentroPodologico].[dbo].[productos]
-            SET [nombre] = @nombre,
-                [precio] = @precio,
-                [descripcion] = @descripcion
-          WHERE [id_producto] = @id_producto`,
-        { id_producto, nombre, precio, descripcion }
+        `UPDATE [CentroPodologico].[inventory].[Products] SET
+           [name]                = @name,
+           [id_category]         = @id_category,
+           [brand]                = @brand,
+           [presentation]        = @presentation,
+           [id_unit_measurement] = @id_unit_measurement,
+           [size]                 = @size,
+           [price]                = @price,
+           [product_code]        = @product_code,
+           [id_supplier]         = @id_supplier,
+           [pieces]               = @pieces,
+           [min_stock]            = @min_stock,
+           [description]         = @description,
+           [activo]               = @activo,
+           [split]                = @split,
+           [url_product]         = @url_product
+         WHERE [id_product] = @id_product
+           AND [id_empresa] = @id_empresa`,
+        { id_product, id_empresa, ...commonParams }
       );
     }
 
     revalidatePath("/dashboard/productos");
     return { ok: true };
-  } catch {
+  } catch(error) {
+    console.log(error)
+    console.log('https://www.mercadolibre.com.mx/campo-desechable-kingden-100-pz--paquete-quirurgico/up/MLMU2909458976?pdp_filters=item_id%3AMLM3676314208&from=gshop&matt_tool=16126632&matt_word=&matt_source=google&matt_campaign_id=23406600422&matt_ad_group_id=194380565721&matt_match_type=&matt_network=g&matt_device=c&matt_creative=790322147507&matt_keyword=&matt_ad_position=&matt_ad_type=pla&matt_merchant_id=5065331399&matt_product_id=MLMU2909458976&matt_product_partition_id=2560704020557&matt_target_id=pla-2560704020557&cq_src=google_ads&cq_cmp=23406600422&cq_net=g&cq_plt=gp&cq_med=pla'.length)
     return { ok: false, message: "Error al guardar el producto" };
   }
 }
 
-export async function deleteProducto(
-  id_producto: number
+export async function deleteProduct(
+  id_product: number
 ): Promise<{ ok: boolean; message?: string }> {
   try {
+    const { id_empresa } = await getActiveUser();
     await db.queryParams(
-      `UPDATE [CentroPodologico].[dbo].[productos]
+      `UPDATE [CentroPodologico].[inventory].[Products]
           SET [status] = 0
-        WHERE [id_producto] = @id_producto`,
-      { id_producto }
+        WHERE [id_product] = @id_product
+          AND [id_empresa] = @id_empresa`,
+      { id_product, id_empresa }
     );
     revalidatePath("/dashboard/productos");
     return { ok: true };
