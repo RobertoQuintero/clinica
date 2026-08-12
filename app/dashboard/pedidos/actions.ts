@@ -1,8 +1,11 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import db from "@/database/connection";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import { IAuthUser } from "@/interfaces/auth";
+import { buildDate } from "@/utils/date_helpper";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 
@@ -144,5 +147,189 @@ export async function getPurchaseOrdersSummary(
     return { ok: true, data };
   } catch {
     return { ok: false, message: "Error al obtener el resumen de pedidos" };
+  }
+}
+
+export interface ICreatePurchaseOrderLineInput {
+  id_product:  number;
+  id_supplier: number | null;
+  quantity:    number;
+  unit_price:  number;
+}
+
+export interface ICreatePurchaseOrdersInput {
+  id_sucursal:    number;
+  estimated_date: string | null;
+  notes:          string;
+  lines:          ICreatePurchaseOrderLineInput[];
+}
+
+const TAX_RATE = 16;
+
+/** Redondea a 2 decimales evitando el error de coma flotante de un simple `Math.round(x*100)/100`. */
+const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+/**
+ * Crea una orden de compra por proveedor a partir del carrito revisado, todas
+ * agrupadas bajo un mismo `id_batch`. Una sola transacción: valida los productos
+ * contra la BD, recalcula subtotal/IVA/total en el servidor (nunca confía en lo
+ * enviado por el cliente) y congela `conversion_factor` en cada línea.
+ */
+export async function createPurchaseOrders(
+  input: ICreatePurchaseOrdersInput
+): Promise<ActionResult<{ folios: string[] }>> {
+  try {
+    const { id_empresa, id_user } = await getActiveUser();
+    const { id_sucursal, estimated_date, notes, lines } = input;
+
+    if (!lines || lines.length === 0) {
+      return { ok: false, message: "El carrito está vacío" };
+    }
+    if (lines.some((line) => line.id_supplier === null)) {
+      return { ok: false, message: "Todas las líneas deben tener un proveedor asignado" };
+    }
+    if (lines.some((line) => line.quantity <= 0)) {
+      return { ok: false, message: "La cantidad de cada línea debe ser mayor a cero" };
+    }
+    if (lines.some((line) => line.unit_price < 0)) {
+      return { ok: false, message: "El precio unitario no puede ser negativo" };
+    }
+
+    const folios = await db.transaction(async (tx) => {
+      // Valida que cada producto exista, esté activo y sea de la empresa; toma
+      // los snapshots (nombre, código, marca, unidad, conversion_factor) desde la BD,
+      // nunca desde lo que mandó el cliente.
+      const productIds = [...new Set(lines.map((line) => line.id_product))];
+      const productParams: Record<string, unknown> = { id_empresa };
+      const productPlaceholders = productIds
+        .map((id, index) => {
+          productParams[`id_product_${index}`] = id;
+          return `@id_product_${index}`;
+        })
+        .join(",");
+
+      const productRows = await tx.queryParams(
+        `SELECT [id_product],[name],[product_code],[brand],[id_unit_measurement],[pieces],[split]
+           FROM [CentroPodologico].[inventory].[Products]
+          WHERE [id_empresa] = @id_empresa
+            AND [status] = 1
+            AND [activo] = 1
+            AND [id_product] IN (${productPlaceholders})`,
+        productParams
+      );
+      const productById = new Map(productRows.map((product) => [product.id_product, product]));
+      for (const line of lines) {
+        if (!productById.has(line.id_product)) {
+          throw new Error(
+            `El producto con id ${line.id_product} no existe, no está activo o no pertenece a la empresa`
+          );
+        }
+      }
+
+      const id_batch = randomUUID();
+      const now = buildDate(new Date());
+      const year = new Date().getFullYear();
+      const createdFolios: string[] = [];
+
+      const linesBySupplier = new Map<number, ICreatePurchaseOrderLineInput[]>();
+      for (const line of lines) {
+        const supplierId = line.id_supplier as number; // ya validado como no-nulo arriba
+        const supplierLines = linesBySupplier.get(supplierId) ?? [];
+        supplierLines.push(line);
+        linesBySupplier.set(supplierId, supplierLines);
+      }
+
+      for (const [id_supplier, supplierLines] of linesBySupplier) {
+        // Consecutivo del folio serializado con HOLDLOCK sobre el rango año+empresa,
+        // para minimizar colisiones bajo dos pedidos generados en simultáneo.
+        const prefix = `PO-${year}-`;
+        const countRows = await tx.queryParams(
+          `SELECT COUNT(*) AS cnt
+             FROM [CentroPodologico].[inventory].[purchase_orders] WITH (UPDLOCK, HOLDLOCK)
+            WHERE [id_empresa] = @id_empresa
+              AND [folio] LIKE @prefix + '%'`,
+          { id_empresa, prefix }
+        );
+        const consecutive = Number(countRows[0]?.cnt ?? 0) + 1;
+        const folio = `${prefix}${String(consecutive).padStart(4, "0")}`;
+
+        const itemsToInsert = supplierLines.map((line) => {
+          const product = productById.get(line.id_product)!;
+          const conversionFactor = product.split ? Number(product.pieces) || 1 : 1;
+          const lineTotal = round2(line.quantity * line.unit_price);
+          return { line, product, conversionFactor, lineTotal };
+        });
+        const subtotal = round2(itemsToInsert.reduce((sum, item) => sum + item.lineTotal, 0));
+        const tax = round2(subtotal * (TAX_RATE / 100));
+        const total = round2(subtotal + tax);
+
+        const orderResult = await tx.queryParams(
+          `INSERT INTO [CentroPodologico].[inventory].[purchase_orders]
+             ([folio],[id_batch],[id_empresa],[id_sucursal],[id_supplier],[id_status],
+              [subtotal],[discount],[tax],[shipping_cost],[total],[tax_rate],
+              [estimated_date],[notes],[id_user_created],[created_at],[status])
+           OUTPUT inserted.id_purchase_order
+           VALUES
+             (@folio,@id_batch,@id_empresa,@id_sucursal,@id_supplier,1,
+              @subtotal,0,@tax,0,@total,@tax_rate,
+              @estimated_date,@notes,@id_user_created,@created_at,1)`,
+          {
+            folio,
+            id_batch,
+            id_empresa,
+            id_sucursal,
+            id_supplier,
+            subtotal,
+            tax,
+            total,
+            tax_rate: TAX_RATE,
+            estimated_date: estimated_date || null,
+            notes: notes || null,
+            id_user_created: id_user,
+            created_at: now,
+          }
+        );
+        const id_purchase_order = orderResult[0].id_purchase_order;
+
+        for (const { line, product, conversionFactor, lineTotal } of itemsToInsert) {
+          await tx.queryParams(
+            `INSERT INTO [CentroPodologico].[inventory].[purchase_order_items]
+               ([id_purchase_order],[id_product],[product_name],[product_code],[brand],
+                [id_unit_measurement],[conversion_factor],[quantity],[quantity_received],
+                [unit_price],[discount],[line_total],[created_at])
+             VALUES
+               (@id_purchase_order,@id_product,@product_name,@product_code,@brand,
+                @id_unit_measurement,@conversion_factor,@quantity,0,
+                @unit_price,0,@line_total,@created_at)`,
+            {
+              id_purchase_order,
+              id_product: line.id_product,
+              product_name: product.name,
+              product_code: product.product_code,
+              brand: product.brand,
+              id_unit_measurement: product.id_unit_measurement,
+              conversion_factor: conversionFactor,
+              quantity: line.quantity,
+              unit_price: line.unit_price,
+              line_total: lineTotal,
+              created_at: now,
+            }
+          );
+        }
+
+        createdFolios.push(folio);
+      }
+
+      return createdFolios;
+    });
+
+    revalidatePath("/dashboard/pedidos");
+    return { ok: true, data: { folios } };
+  } catch (error) {
+    console.log(error);
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Error al generar la orden de compra",
+    };
   }
 }

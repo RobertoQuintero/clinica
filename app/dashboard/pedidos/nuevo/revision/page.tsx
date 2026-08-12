@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
+import { useSucursal } from "@/contexts/SucursalContext";
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
 import { getUnitsMeasurement } from "@/app/dashboard/productos/actions";
+import { createPurchaseOrders } from "../../actions";
 import { ISupplier } from "@/interfaces/supplier";
 import { IUnitMeasurement } from "@/interfaces/unit_measurement";
 import SupplierOrderGroup from "./componentes/SupplierOrderGroup";
@@ -20,10 +22,13 @@ const currencyFormatter = new Intl.NumberFormat("es-MX", {
 
 export default function RevisionOrdenPage() {
   const router = useRouter();
-  const { lines, isHydrated } = usePurchaseCart();
+  const { selectedId } = useSucursal();
+  const { lines, estimatedDate, notes, isHydrated, clearCart } = usePurchaseCart();
 
   const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
   const [units, setUnits]         = useState<IUnitMeasurement[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]           = useState<string | null>(null);
 
   useEffect(() => {
     getSuppliers().then(setSuppliers);
@@ -59,6 +64,35 @@ export default function RevisionOrdenPage() {
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
   const tax = subtotal * (TAX_RATE / 100);
   const total = subtotal + tax;
+  const hasLineWithoutSupplier = lines.some((line) => line.id_supplier === null);
+
+  const handleGenerateOrder = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await createPurchaseOrders({
+        id_sucursal: selectedId,
+        estimated_date: estimatedDate || null,
+        notes,
+        lines: lines.map((line) => ({
+          id_product: line.id_product,
+          id_supplier: line.id_supplier,
+          quantity: line.quantity,
+          unit_price: line.unit_price,
+        })),
+      });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      clearCart();
+      router.push("/dashboard/pedidos");
+    } catch {
+      setError("Error inesperado al generar la orden de compra");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!isHydrated || lines.length === 0) {
     return <p className="text-[#44474f] dark:text-zinc-400">Cargando…</p>;
@@ -137,15 +171,29 @@ export default function RevisionOrdenPage() {
                   </span>
                 </div>
               </div>
+              {error && (
+                <p className="text-sm text-[#ba1a1a] dark:text-red-400 mt-4">{error}</p>
+              )}
+
               <div className="mt-8">
                 <button
-                  disabled
-                  title="Se habilita en el siguiente paso de implementación"
-                  className="w-full bg-[#0051d5] text-white py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 opacity-60 cursor-not-allowed"
+                  disabled={submitting || hasLineWithoutSupplier}
+                  title={
+                    hasLineWithoutSupplier
+                      ? "Asigna un proveedor a cada línea antes de generar la orden"
+                      : undefined
+                  }
+                  onClick={handleGenerateOrder}
+                  className="w-full bg-[#0051d5] text-white py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Send size={16} />
-                  Generar Orden de Compra
+                  {submitting ? "Generando…" : "Generar Orden de Compra"}
                 </button>
+                {hasLineWithoutSupplier && (
+                  <p className="text-xs text-[#747780] dark:text-zinc-500 mt-2 text-center">
+                    Asigna un proveedor a cada línea antes de continuar.
+                  </p>
+                )}
               </div>
             </div>
           </div>
