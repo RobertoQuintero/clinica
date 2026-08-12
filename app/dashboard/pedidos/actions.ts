@@ -4,6 +4,8 @@ import { randomUUID } from "crypto";
 import db from "@/database/connection";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import { IAuthUser } from "@/interfaces/auth";
+import { IPurchaseOrder, IPurchaseOrderItem } from "@/interfaces/purchase_order";
+import { IPurchaseReception } from "@/interfaces/purchase_reception";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -331,5 +333,187 @@ export async function createPurchaseOrders(
       ok: false,
       message: error instanceof Error ? error.message : "Error al generar la orden de compra",
     };
+  }
+}
+
+/** Fila del historial: encabezado de la orden + nombre del proveedor para mostrar. */
+export interface IPurchaseOrderListItem extends IPurchaseOrder {
+  supplier_name: string;
+}
+
+export interface IPurchaseOrdersFilters {
+  id_sucursal: number;
+  id_status?:  number | null;
+  id_supplier?: number | null;
+  date_from?:  string | null;
+  date_to?:    string | null;
+}
+
+export async function getPurchaseOrders(
+  filters: IPurchaseOrdersFilters
+): Promise<ActionResult<IPurchaseOrderListItem[]>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+    const { id_sucursal, id_status, id_supplier, date_from, date_to } = filters;
+
+    const conditions = [
+      "po.[id_empresa] = @id_empresa",
+      "po.[id_sucursal] = @id_sucursal",
+      "po.[status] = 1",
+    ];
+    const params: Record<string, unknown> = { id_empresa, id_sucursal };
+
+    if (id_status) {
+      conditions.push("po.[id_status] = @id_status");
+      params.id_status = id_status;
+    }
+    if (id_supplier) {
+      conditions.push("po.[id_supplier] = @id_supplier");
+      params.id_supplier = id_supplier;
+    }
+    if (date_from) {
+      conditions.push("po.[created_at] >= @date_from");
+      params.date_from = `${date_from} 00:00:00`;
+    }
+    if (date_to) {
+      conditions.push("po.[created_at] <= @date_to");
+      params.date_to = `${date_to} 23:59:59`;
+    }
+
+    const rows = await db.queryParams(
+      `SELECT po.[id_purchase_order],
+              po.[folio],
+              po.[id_batch],
+              po.[id_empresa],
+              po.[id_sucursal],
+              po.[id_supplier],
+              po.[id_status],
+              po.[subtotal],
+              po.[discount],
+              po.[tax],
+              po.[shipping_cost],
+              po.[total],
+              po.[tax_rate],
+              CONVERT(varchar(10), po.[estimated_date], 120) AS estimated_date,
+              CONVERT(varchar(10), po.[delivery_date], 120) AS delivery_date,
+              CONVERT(varchar(10), po.[invoice_date], 120) AS invoice_date,
+              po.[invoice_url],
+              po.[invoice_number],
+              po.[notes],
+              po.[id_user_created],
+              CONVERT(varchar(19), po.[created_at], 120) AS created_at,
+              CONVERT(varchar(19), po.[sent_at], 120) AS sent_at,
+              CONVERT(varchar(19), po.[closed_at], 120) AS closed_at,
+              po.[status],
+              sup.[nombre_corto] AS supplier_name
+         FROM [CentroPodologico].[inventory].[purchase_orders] po
+         JOIN [CentroPodologico].[inventory].[proveedores] sup
+           ON sup.[id_proveedor] = po.[id_supplier]
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY po.[created_at] DESC`,
+      params
+    );
+
+    return { ok: true, data: rows as IPurchaseOrderListItem[] };
+  } catch {
+    return { ok: false, message: "Error al obtener el historial de pedidos" };
+  }
+}
+
+/** Detalle de una orden: encabezado + nombre del proveedor + líneas + bitácora de recepciones. */
+export interface IPurchaseOrderDetailView extends IPurchaseOrder {
+  supplier_name: string;
+  items:         IPurchaseOrderItem[];
+  receptions:    IPurchaseReception[];
+}
+
+export async function getPurchaseOrderById(
+  id_purchase_order: number
+): Promise<ActionResult<IPurchaseOrderDetailView>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+
+    const headerRows = await db.queryParams(
+      `SELECT po.[id_purchase_order],
+              po.[folio],
+              po.[id_batch],
+              po.[id_empresa],
+              po.[id_sucursal],
+              po.[id_supplier],
+              po.[id_status],
+              po.[subtotal],
+              po.[discount],
+              po.[tax],
+              po.[shipping_cost],
+              po.[total],
+              po.[tax_rate],
+              CONVERT(varchar(10), po.[estimated_date], 120) AS estimated_date,
+              CONVERT(varchar(10), po.[delivery_date], 120) AS delivery_date,
+              CONVERT(varchar(10), po.[invoice_date], 120) AS invoice_date,
+              po.[invoice_url],
+              po.[invoice_number],
+              po.[notes],
+              po.[id_user_created],
+              CONVERT(varchar(19), po.[created_at], 120) AS created_at,
+              CONVERT(varchar(19), po.[sent_at], 120) AS sent_at,
+              CONVERT(varchar(19), po.[closed_at], 120) AS closed_at,
+              po.[status],
+              sup.[nombre_corto] AS supplier_name
+         FROM [CentroPodologico].[inventory].[purchase_orders] po
+         JOIN [CentroPodologico].[inventory].[proveedores] sup
+           ON sup.[id_proveedor] = po.[id_supplier]
+        WHERE po.[id_purchase_order] = @id_purchase_order
+          AND po.[id_empresa] = @id_empresa`,
+      { id_purchase_order, id_empresa }
+    );
+
+    if (headerRows.length === 0) {
+      return { ok: false, message: "La orden de compra no existe" };
+    }
+
+    const items = await db.queryParams(
+      `SELECT [id_purchase_order_item],
+              [id_purchase_order],
+              [id_product],
+              [product_name],
+              [product_code],
+              [brand],
+              [id_unit_measurement],
+              [conversion_factor],
+              [quantity],
+              [quantity_received],
+              [unit_price],
+              [discount],
+              [line_total],
+              CONVERT(varchar(19), [created_at], 120) AS created_at
+         FROM [CentroPodologico].[inventory].[purchase_order_items]
+        WHERE [id_purchase_order] = @id_purchase_order
+        ORDER BY [id_purchase_order_item]`,
+      { id_purchase_order }
+    );
+
+    const receptions = await db.queryParams(
+      `SELECT [id_reception],
+              [id_purchase_order],
+              [id_sucursal],
+              [id_user],
+              [notes],
+              [is_final],
+              CONVERT(varchar(19), [created_at], 120) AS created_at
+         FROM [CentroPodologico].[inventory].[purchase_receptions]
+        WHERE [id_purchase_order] = @id_purchase_order
+        ORDER BY [created_at] DESC`,
+      { id_purchase_order }
+    );
+
+    const data: IPurchaseOrderDetailView = {
+      ...(headerRows[0] as IPurchaseOrder & { supplier_name: string }),
+      items: items as IPurchaseOrderItem[],
+      receptions: receptions as IPurchaseReception[],
+    };
+
+    return { ok: true, data };
+  } catch {
+    return { ok: false, message: "Error al obtener el detalle de la orden" };
   }
 }
