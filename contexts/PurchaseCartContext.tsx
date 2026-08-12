@@ -29,6 +29,8 @@ interface PurchaseCartContextType {
   lines:            IPurchaseCartLine[];
   estimatedDate:    string;
   notes:            string;
+  /** true una vez que se intentó leer el carrito de sessionStorage (evita falsos "carrito vacío" en el primer render). */
+  isHydrated:       boolean;
   isProductInCart:  (id_product: number) => boolean;
   toggleProduct:    (product: ISuggestedProduct, checked: boolean) => void;
   setLineQuantity:  (id_product: number, quantity: number) => void;
@@ -142,6 +144,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         lines,
         estimatedDate,
         notes,
+        isHydrated,
         isProductInCart,
         toggleProduct,
         setLineQuantity,
