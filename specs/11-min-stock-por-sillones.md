@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[09-pedidos-compra-recepcion]] (`getSuggestedProducts`, `ISuggestedProduct`, `inventory.stock`, `inventory.Products.min_stock`)
 - **Fecha:** 2026-08-13
 - **Objetivo:** Sustituir el mínimo efectivo de `getSuggestedProducts` (hoy `COALESCE(stock.min_stock, Products.min_stock)`) por `CEILING(Products.min_stock * COALESCE(NULLIF(sucursales.seats, 0), 1))`, para que el stock mínimo de pedidos escale según el número de sillones de cada sucursal.

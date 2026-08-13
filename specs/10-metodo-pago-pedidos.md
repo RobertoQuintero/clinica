@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[09-pedidos-compra-recepcion]] (`inventory.purchase_orders`, `createPurchaseOrders`, `PurchaseCartContext`, `SupplierOrderGroup`), catálogo existente `dbo.metodos_pago` (usado hoy en Ventas)
 - **Fecha:** 2026-08-13
 - **Objetivo:** Agregar la selección obligatoria de método de pago por proveedor en la pantalla de revisión de pedidos, guardándolo en la orden de compra generada.
