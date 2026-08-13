@@ -471,3 +471,7 @@ GO
 ALTER TABLE [inventory].[purchase_orders] ADD [id_metodo_pago] int NULL -- FK lógica a dbo.metodos_pago.idMetodoPago, se congela al generar la orden
 GO
 
+-- Spec 12: precio de venta individual para productos de paquete/caja
+ALTER TABLE [CentroPodologico].[inventory].[Products] ADD [sale_price] [decimal](18,6) NULL -- precio de venta por pieza individual; obligatorio (>0) solo cuando id_category = 4 (Venta) y split = 1
+GO
+

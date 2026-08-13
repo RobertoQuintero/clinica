@@ -40,6 +40,7 @@ export default function ProductModal({
 }: Props) {
   const { user } = useAuth();
   const canEditMinStock = !!user && MIN_STOCK_ALLOWED_ROLES.includes(user.id_role);
+  const isVentaSplit = form.id_category === 4 && !!form.split;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -139,7 +140,9 @@ export default function ProductModal({
             </div>
 
             <div>
-              <label className={labelClass}>Precio Unitario</label>
+              <label className={labelClass}>
+                {isVentaSplit ? "Precio de Compra (paquete/caja)" : "Precio Unitario"}
+              </label>
               <input
                 type="number"
                 name="price"
@@ -150,6 +153,22 @@ export default function ProductModal({
                 className={inputClass}
               />
             </div>
+
+            {isVentaSplit && (
+              <div>
+                <label className={labelClass}>Precio de Venta (pieza)</label>
+                <input
+                  type="number"
+                  name="sale_price"
+                  value={form.sale_price ?? ""}
+                  onChange={onChange}
+                  min={0}
+                  step="0.01"
+                  required
+                  className={inputClass}
+                />
+              </div>
+            )}
 
             <div>
               <label className={labelClass}>No. Producto/Código de Barras</label>
@@ -192,7 +211,9 @@ export default function ProductModal({
             </div>
 
             <div>
-              <label className={labelClass}>Piezas por Producto</label>
+              <label className={labelClass}>
+                {isVentaSplit ? "Piezas por Paquete/Caja" : "Piezas por Producto"}
+              </label>
               <input
                 type="number"
                 name="pieces"

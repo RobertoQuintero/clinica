@@ -7,6 +7,7 @@ export interface IProduct {
   id_unit_measurement:  number | null;
   size:                 string;
   price:                number;
+  sale_price:           number | null;
   product_code:         string;
   id_supplier:          number | null;
   pieces:               number | null;

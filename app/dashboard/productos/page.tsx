@@ -20,6 +20,7 @@ const EMPTY: ProductFormData = {
   id_unit_measurement: null,
   size: "",
   price: 0,
+  sale_price: null,
   product_code: "",
   id_supplier: null,
   pieces: null,
@@ -86,6 +87,7 @@ export default function ProductosPage() {
       id_unit_measurement: product.id_unit_measurement,
       size: product.size ?? "",
       price: product.price,
+      sale_price: product.sale_price,
       product_code: product.product_code ?? "",
       id_supplier: product.id_supplier,
       pieces: product.pieces,
@@ -111,6 +113,8 @@ export default function ProductosPage() {
           ? (e.target as HTMLInputElement).checked
           : name === "price"
           ? parseFloat(value) || 0
+          : name === "sale_price"
+          ? (value === "" ? null : parseFloat(value) || 0)
           : numericFields.includes(name)
           ? value === "" ? null : Number(value)
           : value,
