@@ -7,6 +7,7 @@ import { ArrowLeft, FileUp, Ban } from "lucide-react";
 import { getPurchaseOrderById, IPurchaseOrderDetailView } from "../actions";
 import { useSucursal } from "@/contexts/SucursalContext";
 import OrderStatusBadge from "@/app/dashboard/componentes/OrderStatusBadge";
+import UploadInvoiceModal from "./componentes/UploadInvoiceModal";
 import { dayFirst } from "@/utils/date_helpper";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -26,12 +27,12 @@ export default function PurchaseOrderDetailPage() {
   const [order, setOrder]   = useState<IPurchaseOrderDetailView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
+  const [showUploadInvoice, setShowUploadInvoice] = useState(false);
 
-  useEffect(() => {
-    if (!id_purchase_order) return;
+  const fetchOrder = () => {
     setLoading(true);
     setError(null);
-    getPurchaseOrderById(id_purchase_order)
+    return getPurchaseOrderById(id_purchase_order)
       .then((result) => {
         if (result.ok) {
           setOrder(result.data);
@@ -40,6 +41,12 @@ export default function PurchaseOrderDetailPage() {
         }
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (!id_purchase_order) return;
+    fetchOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_purchase_order]);
 
   if (loading) {
@@ -102,9 +109,8 @@ export default function PurchaseOrderDetailPage() {
         <div className="flex flex-wrap gap-3">
           {canUploadInvoice && (
             <button
-              disabled
-              title="Se habilita en el siguiente paso de implementación"
-              className="flex items-center gap-2 rounded-lg border border-[#0051d5] text-[#0051d5] px-4 py-2 text-sm font-semibold opacity-60 cursor-not-allowed"
+              onClick={() => setShowUploadInvoice(true)}
+              className="flex items-center gap-2 rounded-lg border border-[#0051d5] text-[#0051d5] px-4 py-2 text-sm font-semibold hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"
             >
               <FileUp size={16} />
               Cargar factura
@@ -227,6 +233,14 @@ export default function PurchaseOrderDetailPage() {
           </div>
         )}
       </div>
+
+      {showUploadInvoice && (
+        <UploadInvoiceModal
+          id_purchase_order={id_purchase_order}
+          onClose={() => setShowUploadInvoice(false)}
+          onUploaded={fetchOrder}
+        />
+      )}
     </div>
   );
 }

@@ -525,3 +525,63 @@ export async function getPurchaseOrderById(
     return { ok: false, message: "Error al obtener el detalle de la orden" };
   }
 }
+
+export interface IMarkOrderAsShippedInput {
+  invoice_url:    string;
+  invoice_number: string | null;
+  invoice_date:   string | null;
+}
+
+/**
+ * Sella la factura de una orden y la mueve de `Pedido` a `Enviado`. El servidor
+ * impone la regla de negocio (no solo la UI): solo se puede salir de `Pedido`,
+ * y solo con `invoice_url` presente.
+ */
+export async function markOrderAsShipped(
+  id_purchase_order: number,
+  input: IMarkOrderAsShippedInput
+): Promise<ActionResult<void>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+    const { invoice_url, invoice_number, invoice_date } = input;
+
+    if (!invoice_url || !invoice_url.trim()) {
+      return { ok: false, message: "Debes cargar la factura antes de marcar la orden como enviada" };
+    }
+
+    const now = buildDate(new Date());
+    const result = await db.queryParams(
+      `UPDATE [CentroPodologico].[inventory].[purchase_orders]
+          SET [id_status]      = 2,
+              [invoice_url]    = @invoice_url,
+              [invoice_number] = @invoice_number,
+              [invoice_date]   = @invoice_date,
+              [sent_at]        = @sent_at
+        OUTPUT inserted.id_purchase_order
+        WHERE [id_purchase_order] = @id_purchase_order
+          AND [id_empresa] = @id_empresa
+          AND [id_status] = 1`,
+      {
+        id_purchase_order,
+        id_empresa,
+        invoice_url,
+        invoice_number: invoice_number || null,
+        invoice_date: invoice_date || null,
+        sent_at: now,
+      }
+    );
+
+    if (result.length === 0) {
+      return {
+        ok: false,
+        message: "La orden no existe o ya no está en estado Pedido",
+      };
+    }
+
+    revalidatePath("/dashboard/pedidos");
+    revalidatePath(`/dashboard/pedidos/${id_purchase_order}`);
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, message: "Error al marcar la orden como enviada" };
+  }
+}
