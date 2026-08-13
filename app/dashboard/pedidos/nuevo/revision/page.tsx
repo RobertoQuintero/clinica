@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +29,10 @@ export default function RevisionOrdenPage() {
   const [units, setUnits]         = useState<IUnitMeasurement[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  // clearCart() tras generar la orden vacía el carrito en esta misma página; sin este
+  // flag, el guard de "carrito vacío" de abajo se dispara y compite con la navegación
+  // a /dashboard/pedidos, ganando la carrera y dejando al usuario en /nuevo otra vez.
+  const hasSubmittedRef = useRef(false);
 
   useEffect(() => {
     getSuppliers().then(setSuppliers);
@@ -36,7 +40,7 @@ export default function RevisionOrdenPage() {
   }, []);
 
   useEffect(() => {
-    if (isHydrated && lines.length === 0) {
+    if (isHydrated && lines.length === 0 && !hasSubmittedRef.current) {
       router.replace("/dashboard/pedidos/nuevo");
     }
   }, [isHydrated, lines.length, router]);
@@ -85,6 +89,7 @@ export default function RevisionOrdenPage() {
         setError(result.message);
         return;
       }
+      hasSubmittedRef.current = true;
       clearCart();
       router.push("/dashboard/pedidos");
     } catch {
