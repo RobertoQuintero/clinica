@@ -132,7 +132,27 @@ export async function saveProduct(
       return { ok: false, message: "El nombre es obligatorio" };
     }
 
-    const { id_empresa } = await getActiveUser();
+    const { id_empresa, id_role } = await getActiveUser();
+
+    // "El Stock Mínimo solo lo puede ajustar el administrador" (Inventario.md).
+    // Un rol no autorizado no puede tocar este campo: se ignora lo enviado y se
+    // conserva el valor previo (o null en un producto nuevo).
+    const canEditMinStock = id_role === 1 || id_role === 4;
+    let effectiveMinStock = min_stock;
+    if (!canEditMinStock) {
+      if (id_product === 0) {
+        effectiveMinStock = null;
+      } else {
+        const existing = await db.queryParams(
+          `SELECT [min_stock]
+             FROM [CentroPodologico].[inventory].[Products]
+            WHERE [id_product] = @id_product
+              AND [id_empresa] = @id_empresa`,
+          { id_product, id_empresa }
+        );
+        effectiveMinStock = existing[0]?.min_stock ?? null;
+      }
+    }
 
     const commonParams = {
       name,
@@ -145,7 +165,7 @@ export async function saveProduct(
       product_code,
       id_supplier,
       pieces,
-      min_stock,
+      min_stock: effectiveMinStock,
       description,
       activo,
       split,

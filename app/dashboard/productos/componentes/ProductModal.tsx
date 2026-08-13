@@ -4,6 +4,10 @@ import { IProduct } from "@/interfaces/product";
 import { IProductCategory } from "@/interfaces/product_category";
 import { IUnitMeasurement } from "@/interfaces/unit_measurement";
 import { ISupplier } from "@/interfaces/supplier";
+import { useAuth } from "@/contexts/AuthContext";
+
+/** Solo Administrador (1) y Dueño/Gerencia (4) pueden ajustar el Stock Mínimo — ver Inventario.md. */
+const MIN_STOCK_ALLOWED_ROLES = [1, 4];
 
 export type ProductFormData = Omit<IProduct, "id_empresa" | "status" | "created_at">;
 
@@ -34,6 +38,9 @@ export default function ProductModal({
   onSubmit,
   onClose,
 }: Props) {
+  const { user } = useAuth();
+  const canEditMinStock = !!user && MIN_STOCK_ALLOWED_ROLES.includes(user.id_role);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl flex flex-col">
@@ -204,8 +211,15 @@ export default function ProductModal({
                 value={form.min_stock ?? ""}
                 onChange={onChange}
                 min={0}
-                className={inputClass}
+                disabled={!canEditMinStock}
+                title={canEditMinStock ? undefined : "Solo un administrador puede ajustar el Stock Mínimo"}
+                className={`${inputClass} disabled:opacity-50 disabled:cursor-not-allowed`}
               />
+              {!canEditMinStock && (
+                <p className="text-xs text-[#747780] dark:text-zinc-500 mt-1">
+                  Solo un administrador puede ajustar el Stock Mínimo.
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3 py-2">
