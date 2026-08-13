@@ -20,6 +20,7 @@ export interface IPurchaseOrder {
   invoice_url:        string | null;
   invoice_number:     string | null;
   notes:              string | null;
+  id_metodo_pago:     number | null;
   id_user_created:    number;
   created_at:         Date | string;
   sent_at:            Date | string | null;
