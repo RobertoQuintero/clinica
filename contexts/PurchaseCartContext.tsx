@@ -26,20 +26,23 @@ export interface IPurchaseCartLine {
 const SESSION_STORAGE_KEY = "purchaseCart";
 
 interface PurchaseCartContextType {
-  lines:            IPurchaseCartLine[];
-  estimatedDate:    string;
-  notes:            string;
+  lines:                   IPurchaseCartLine[];
+  estimatedDate:           string;
+  notes:                   string;
+  /** id_supplier -> idMetodoPago. Un método de pago por proveedor, elegido en la revisión. */
+  paymentMethodBySupplier: Record<number, number>;
   /** true una vez que se intentó leer el carrito de sessionStorage (evita falsos "carrito vacío" en el primer render). */
-  isHydrated:       boolean;
-  isProductInCart:  (id_product: number) => boolean;
-  toggleProduct:    (product: ISuggestedProduct, checked: boolean) => void;
-  setLineQuantity:  (id_product: number, quantity: number) => void;
-  setLineUnitPrice: (id_product: number, unit_price: number) => void;
-  setLineSupplier:  (id_product: number, id_supplier: number | null) => void;
-  removeLine:       (id_product: number) => void;
-  setEstimatedDate: (date: string) => void;
-  setNotes:         (notes: string) => void;
-  clearCart:        () => void;
+  isHydrated:              boolean;
+  isProductInCart:         (id_product: number) => boolean;
+  toggleProduct:           (product: ISuggestedProduct, checked: boolean) => void;
+  setLineQuantity:         (id_product: number, quantity: number) => void;
+  setLineUnitPrice:        (id_product: number, unit_price: number) => void;
+  setLineSupplier:         (id_product: number, id_supplier: number | null) => void;
+  removeLine:              (id_product: number) => void;
+  setEstimatedDate:        (date: string) => void;
+  setNotes:                (notes: string) => void;
+  setSupplierPaymentMethod: (id_supplier: number, idMetodoPago: number) => void;
+  clearCart:               () => void;
 }
 
 const PurchaseCartContext = createContext<PurchaseCartContextType | null>(null);
@@ -48,6 +51,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<IPurchaseCartLine[]>([]);
   const [estimatedDate, setEstimatedDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentMethodBySupplier, setPaymentMethodBySupplier] = useState<Record<number, number>>({});
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Carga el carrito de sessionStorage una sola vez, al montar en el cliente.
@@ -59,6 +63,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         setLines(parsed.lines ?? []);
         setEstimatedDate(parsed.estimatedDate ?? "");
         setNotes(parsed.notes ?? "");
+        setPaymentMethodBySupplier(parsed.paymentMethodBySupplier ?? {});
       } catch {
         // sessionStorage corrupto o con un formato viejo: se ignora y arranca vacío
       }
@@ -72,9 +77,9 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
     if (!isHydrated) return;
     sessionStorage.setItem(
       SESSION_STORAGE_KEY,
-      JSON.stringify({ lines, estimatedDate, notes })
+      JSON.stringify({ lines, estimatedDate, notes, paymentMethodBySupplier })
     );
-  }, [lines, estimatedDate, notes, isHydrated]);
+  }, [lines, estimatedDate, notes, paymentMethodBySupplier, isHydrated]);
 
   const isProductInCart = (id_product: number) =>
     lines.some((line) => line.id_product === id_product);
@@ -131,10 +136,15 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
     setLines((current) => current.filter((line) => line.id_product !== id_product));
   };
 
+  const setSupplierPaymentMethod = (id_supplier: number, idMetodoPago: number) => {
+    setPaymentMethodBySupplier((current) => ({ ...current, [id_supplier]: idMetodoPago }));
+  };
+
   const clearCart = () => {
     setLines([]);
     setEstimatedDate("");
     setNotes("");
+    setPaymentMethodBySupplier({});
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
   };
 
@@ -144,6 +154,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         lines,
         estimatedDate,
         notes,
+        paymentMethodBySupplier,
         isHydrated,
         isProductInCart,
         toggleProduct,
@@ -153,6 +164,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         removeLine,
         setEstimatedDate,
         setNotes,
+        setSupplierPaymentMethod,
         clearCart,
       }}
     >
