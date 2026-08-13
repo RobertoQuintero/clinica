@@ -351,7 +351,8 @@ export async function createPurchaseOrders(
 
 /** Fila del historial: encabezado de la orden + nombre del proveedor para mostrar. */
 export interface IPurchaseOrderListItem extends IPurchaseOrder {
-  supplier_name: string;
+  supplier_name:              string;
+  metodo_pago_descripcion:    string | null;
 }
 
 export interface IPurchaseOrdersFilters {
@@ -413,15 +414,19 @@ export async function getPurchaseOrders(
               po.[invoice_url],
               po.[invoice_number],
               po.[notes],
+              po.[id_metodo_pago],
               po.[id_user_created],
               CONVERT(varchar(19), po.[created_at], 120) AS created_at,
               CONVERT(varchar(19), po.[sent_at], 120) AS sent_at,
               CONVERT(varchar(19), po.[closed_at], 120) AS closed_at,
               po.[status],
-              sup.[nombre_corto] AS supplier_name
+              sup.[nombre_corto] AS supplier_name,
+              mp.[descripcion] AS metodo_pago_descripcion
          FROM [CentroPodologico].[inventory].[purchase_orders] po
          JOIN [CentroPodologico].[inventory].[proveedores] sup
            ON sup.[id_proveedor] = po.[id_supplier]
+         LEFT JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
+           ON mp.[idMetodoPago] = po.[id_metodo_pago]
         WHERE ${conditions.join(" AND ")}
         ORDER BY po.[created_at] DESC`,
       params
@@ -440,9 +445,10 @@ export interface IPurchaseReceptionListItem extends IPurchaseReception {
 
 /** Detalle de una orden: encabezado + nombre del proveedor + líneas + bitácora de recepciones. */
 export interface IPurchaseOrderDetailView extends IPurchaseOrder {
-  supplier_name: string;
-  items:         IPurchaseOrderItem[];
-  receptions:    IPurchaseReceptionListItem[];
+  supplier_name:           string;
+  metodo_pago_descripcion: string | null;
+  items:                   IPurchaseOrderItem[];
+  receptions:               IPurchaseReceptionListItem[];
 }
 
 export async function getPurchaseOrderById(
@@ -471,15 +477,19 @@ export async function getPurchaseOrderById(
               po.[invoice_url],
               po.[invoice_number],
               po.[notes],
+              po.[id_metodo_pago],
               po.[id_user_created],
               CONVERT(varchar(19), po.[created_at], 120) AS created_at,
               CONVERT(varchar(19), po.[sent_at], 120) AS sent_at,
               CONVERT(varchar(19), po.[closed_at], 120) AS closed_at,
               po.[status],
-              sup.[nombre_corto] AS supplier_name
+              sup.[nombre_corto] AS supplier_name,
+              mp.[descripcion] AS metodo_pago_descripcion
          FROM [CentroPodologico].[inventory].[purchase_orders] po
          JOIN [CentroPodologico].[inventory].[proveedores] sup
            ON sup.[id_proveedor] = po.[id_supplier]
+         LEFT JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
+           ON mp.[idMetodoPago] = po.[id_metodo_pago]
         WHERE po.[id_purchase_order] = @id_purchase_order
           AND po.[id_empresa] = @id_empresa`,
       { id_purchase_order, id_empresa }
@@ -528,7 +538,7 @@ export async function getPurchaseOrderById(
     );
 
     const data: IPurchaseOrderDetailView = {
-      ...(headerRows[0] as IPurchaseOrder & { supplier_name: string }),
+      ...(headerRows[0] as IPurchaseOrder & { supplier_name: string; metodo_pago_descripcion: string | null }),
       items: items as IPurchaseOrderItem[],
       receptions: receptions as IPurchaseReceptionListItem[],
     };
