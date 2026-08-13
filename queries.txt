@@ -467,3 +467,7 @@ GO
 INSERT [inventory].[order_statuses] ([id_status], [name], [id_empresa], [status], [activo], [description]) VALUES (5, N'Cancelado', 1, 1, 1, N'La orden fue cancelada antes de recibirse')
 GO
 
+-- Spec 10: método de pago por proveedor en pedidos de compra
+ALTER TABLE [inventory].[purchase_orders] ADD [id_metodo_pago] int NULL -- FK lógica a dbo.metodos_pago.idMetodoPago, se congela al generar la orden
+GO
+
