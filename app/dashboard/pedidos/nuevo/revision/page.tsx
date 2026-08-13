@@ -8,9 +8,11 @@ import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
 import { getUnitsMeasurement } from "@/app/dashboard/productos/actions";
+import { getMetodosPagos } from "@/app/dashboard/ventas/actions";
 import { createPurchaseOrders } from "../../actions";
 import { ISupplier } from "@/interfaces/supplier";
 import { IUnitMeasurement } from "@/interfaces/unit_measurement";
+import { IMetodoPago } from "@/interfaces/metodo_pago";
 import SupplierOrderGroup from "./componentes/SupplierOrderGroup";
 
 const TAX_RATE = 16;
@@ -23,10 +25,19 @@ const currencyFormatter = new Intl.NumberFormat("es-MX", {
 export default function RevisionOrdenPage() {
   const router = useRouter();
   const { selectedId } = useSucursal();
-  const { lines, estimatedDate, notes, isHydrated, clearCart } = usePurchaseCart();
+  const {
+    lines,
+    estimatedDate,
+    notes,
+    paymentMethodBySupplier,
+    isHydrated,
+    setSupplierPaymentMethod,
+    clearCart,
+  } = usePurchaseCart();
 
-  const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
-  const [units, setUnits]         = useState<IUnitMeasurement[]>([]);
+  const [suppliers, setSuppliers]         = useState<ISupplier[]>([]);
+  const [units, setUnits]                 = useState<IUnitMeasurement[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<IMetodoPago[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
   // clearCart() tras generar la orden vacía el carrito en esta misma página; sin este
@@ -37,6 +48,7 @@ export default function RevisionOrdenPage() {
   useEffect(() => {
     getSuppliers().then(setSuppliers);
     getUnitsMeasurement().then(setUnits);
+    getMetodosPagos().then(setPaymentMethods);
   }, []);
 
   useEffect(() => {
@@ -69,6 +81,9 @@ export default function RevisionOrdenPage() {
   const tax = subtotal * (TAX_RATE / 100);
   const total = subtotal + tax;
   const hasLineWithoutSupplier = lines.some((line) => line.id_supplier === null);
+  const hasSupplierWithoutPaymentMethod = Array.from(groupedBySupplier.keys()).some(
+    (key) => key !== "sin-proveedor" && !paymentMethodBySupplier[Number(key)]
+  );
 
   const handleGenerateOrder = async () => {
     setSubmitting(true);
@@ -84,6 +99,7 @@ export default function RevisionOrdenPage() {
           quantity: line.quantity,
           unit_price: line.unit_price,
         })),
+        paymentMethodBySupplier,
       });
       if (!result.ok) {
         setError(result.message);
@@ -134,6 +150,13 @@ export default function RevisionOrdenPage() {
                 lines={supplierLines}
                 suppliers={suppliers}
                 unitNameById={unitNameById}
+                paymentMethods={paymentMethods}
+                selectedPaymentMethodId={id_supplier !== null ? paymentMethodBySupplier[id_supplier] ?? null : null}
+                onPaymentMethodChange={
+                  id_supplier !== null
+                    ? (idMetodoPago) => setSupplierPaymentMethod(id_supplier, idMetodoPago)
+                    : undefined
+                }
               />
             );
           })}
@@ -182,10 +205,12 @@ export default function RevisionOrdenPage() {
 
               <div className="mt-8">
                 <button
-                  disabled={submitting || hasLineWithoutSupplier}
+                  disabled={submitting || hasLineWithoutSupplier || hasSupplierWithoutPaymentMethod}
                   title={
                     hasLineWithoutSupplier
                       ? "Asigna un proveedor a cada línea antes de generar la orden"
+                      : hasSupplierWithoutPaymentMethod
+                      ? "Asigna un método de pago a cada proveedor antes de generar la orden"
                       : undefined
                   }
                   onClick={handleGenerateOrder}
@@ -197,6 +222,11 @@ export default function RevisionOrdenPage() {
                 {hasLineWithoutSupplier && (
                   <p className="text-xs text-[#747780] dark:text-zinc-500 mt-2 text-center">
                     Asigna un proveedor a cada línea antes de continuar.
+                  </p>
+                )}
+                {!hasLineWithoutSupplier && hasSupplierWithoutPaymentMethod && (
+                  <p className="text-xs text-[#747780] dark:text-zinc-500 mt-2 text-center">
+                    Asigna un método de pago a cada proveedor antes de continuar.
                   </p>
                 )}
               </div>

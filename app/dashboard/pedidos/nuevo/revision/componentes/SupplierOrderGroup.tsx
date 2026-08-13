@@ -3,13 +3,18 @@
 import { Trash2 } from "lucide-react";
 import { IPurchaseCartLine, usePurchaseCart } from "@/contexts/PurchaseCartContext";
 import { ISupplier } from "@/interfaces/supplier";
+import { IMetodoPago } from "@/interfaces/metodo_pago";
 import QuantityStepper from "@/app/dashboard/componentes/QuantityStepper";
 
 interface Props {
-  supplierName: string;
-  lines:        IPurchaseCartLine[];
-  suppliers:    ISupplier[];
-  unitNameById: Map<number, string>;
+  supplierName:             string;
+  lines:                    IPurchaseCartLine[];
+  suppliers:                ISupplier[];
+  unitNameById:             Map<number, string>;
+  paymentMethods:           IMetodoPago[];
+  selectedPaymentMethodId:  number | null;
+  /** undefined cuando el grupo no tiene proveedor asignado (no aplica método de pago). */
+  onPaymentMethodChange?:   (idMetodoPago: number) => void;
 }
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -17,13 +22,40 @@ const currencyFormatter = new Intl.NumberFormat("es-MX", {
   currency: "MXN",
 });
 
-export default function SupplierOrderGroup({ supplierName, lines, suppliers, unitNameById }: Props) {
+export default function SupplierOrderGroup({
+  supplierName,
+  lines,
+  suppliers,
+  unitNameById,
+  paymentMethods,
+  selectedPaymentMethodId,
+  onPaymentMethodChange,
+}: Props) {
   const { setLineQuantity, setLineUnitPrice, setLineSupplier, removeLine } = usePurchaseCart();
 
   return (
     <div className="space-y-4">
-      <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6">
+      <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h3 className="text-lg font-bold text-[#0b1c30] dark:text-zinc-50">{supplierName}</h3>
+        {onPaymentMethodChange && (
+          <div className="flex flex-col gap-1 w-full md:w-56">
+            <label className="text-xs text-[#44474f] dark:text-zinc-400">Método de pago</label>
+            <select
+              value={selectedPaymentMethodId ?? ""}
+              onChange={(e) => onPaymentMethodChange(Number(e.target.value))}
+              className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
+            >
+              <option value="" disabled>
+                Selecciona un método
+              </option>
+              {paymentMethods.map((metodo) => (
+                <option key={metodo.idMetodoPago} value={metodo.idMetodoPago}>
+                  {metodo.descripcion}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden">
