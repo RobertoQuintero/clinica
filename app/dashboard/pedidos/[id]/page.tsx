@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileUp, Ban } from "lucide-react";
+import { ArrowLeft, FileUp, Ban, PackageCheck } from "lucide-react";
 import { getPurchaseOrderById, cancelPurchaseOrder, IPurchaseOrderDetailView } from "../actions";
 import { useSucursal } from "@/contexts/SucursalContext";
 import OrderStatusBadge from "@/app/dashboard/componentes/OrderStatusBadge";
@@ -90,6 +90,7 @@ export default function PurchaseOrderDetailPage() {
   const hasReceptions = order.receptions.length > 0;
   const canUploadInvoice = order.id_status === 1;
   const canCancel = (order.id_status === 1 || order.id_status === 2) && !hasReceptions;
+  const canReceive = order.id_status === 2 || order.id_status === 4;
 
   return (
     <div className="flex flex-col gap-6">
@@ -122,7 +123,7 @@ export default function PurchaseOrderDetailPage() {
         </div>
       )}
 
-      {(canUploadInvoice || canCancel) && (
+      {(canUploadInvoice || canCancel || canReceive) && (
         <div className="flex flex-wrap gap-3">
           {canUploadInvoice && (
             <button
@@ -131,6 +132,15 @@ export default function PurchaseOrderDetailPage() {
             >
               <FileUp size={16} />
               Cargar factura
+            </button>
+          )}
+          {canReceive && (
+            <button
+              onClick={() => router.push(`/dashboard/recepciones/${id_purchase_order}`)}
+              className="flex items-center gap-2 rounded-lg bg-[#0051d5] text-white px-4 py-2 text-sm font-semibold hover:bg-[#0051d5]/90 transition-colors"
+            >
+              <PackageCheck size={16} />
+              Registrar recepción
             </button>
           )}
           {canCancel && (
