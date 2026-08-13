@@ -160,10 +160,12 @@ export interface ICreatePurchaseOrderLineInput {
 }
 
 export interface ICreatePurchaseOrdersInput {
-  id_sucursal:    number;
-  estimated_date: string | null;
-  notes:          string;
-  lines:          ICreatePurchaseOrderLineInput[];
+  id_sucursal:              number;
+  estimated_date:           string | null;
+  notes:                    string;
+  lines:                    ICreatePurchaseOrderLineInput[];
+  /** id_supplier -> idMetodoPago. Obligatorio para cada proveedor con líneas en el carrito. */
+  paymentMethodBySupplier:  Record<number, number>;
 }
 
 const TAX_RATE = 16;
@@ -182,7 +184,7 @@ export async function createPurchaseOrders(
 ): Promise<ActionResult<{ folios: string[] }>> {
   try {
     const { id_empresa, id_user } = await getActiveUser();
-    const { id_sucursal, estimated_date, notes, lines } = input;
+    const { id_sucursal, estimated_date, notes, lines, paymentMethodBySupplier } = input;
 
     if (!lines || lines.length === 0) {
       return { ok: false, message: "El carrito está vacío" };
@@ -195,6 +197,16 @@ export async function createPurchaseOrders(
     }
     if (lines.some((line) => line.unit_price < 0)) {
       return { ok: false, message: "El precio unitario no puede ser negativo" };
+    }
+    const supplierIdsWithLines = [...new Set(lines.map((line) => line.id_supplier as number))];
+    const supplierWithoutPaymentMethod = supplierIdsWithLines.find(
+      (id_supplier) => !paymentMethodBySupplier?.[id_supplier]
+    );
+    if (supplierWithoutPaymentMethod !== undefined) {
+      return {
+        ok: false,
+        message: `Falta asignar un método de pago para el proveedor con id ${supplierWithoutPaymentMethod}`,
+      };
     }
 
     const folios = await db.transaction(async (tx) => {
@@ -269,12 +281,12 @@ export async function createPurchaseOrders(
           `INSERT INTO [CentroPodologico].[inventory].[purchase_orders]
              ([folio],[id_batch],[id_empresa],[id_sucursal],[id_supplier],[id_status],
               [subtotal],[discount],[tax],[shipping_cost],[total],[tax_rate],
-              [estimated_date],[notes],[id_user_created],[created_at],[status])
+              [estimated_date],[notes],[id_metodo_pago],[id_user_created],[created_at],[status])
            OUTPUT inserted.id_purchase_order
            VALUES
              (@folio,@id_batch,@id_empresa,@id_sucursal,@id_supplier,1,
               @subtotal,0,@tax,0,@total,@tax_rate,
-              @estimated_date,@notes,@id_user_created,@created_at,1)`,
+              @estimated_date,@notes,@id_metodo_pago,@id_user_created,@created_at,1)`,
           {
             folio,
             id_batch,
@@ -287,6 +299,7 @@ export async function createPurchaseOrders(
             tax_rate: TAX_RATE,
             estimated_date: estimated_date || null,
             notes: notes || null,
+            id_metodo_pago: paymentMethodBySupplier[id_supplier],
             id_user_created: id_user,
             created_at: now,
           }
