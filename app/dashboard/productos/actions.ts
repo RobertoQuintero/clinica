@@ -57,6 +57,8 @@ export async function getProducts(): Promise<IProduct[]> {
             [id_supplier],
             [pieces],
             [min_stock],
+            [auto_consume],
+            [consumption_per_consultation],
             [id_empresa],
             [description],
             CONVERT(varchar(19), [created_at], 120) AS created_at,
@@ -124,6 +126,8 @@ export async function saveProduct(
       id_supplier,
       pieces,
       min_stock,
+      auto_consume,
+      consumption_per_consultation,
       description,
       activo,
       split,
@@ -133,6 +137,25 @@ export async function saveProduct(
     if (!name || !name.trim()) {
       return { ok: false, message: "El nombre es obligatorio" };
     }
+
+    // Si el producto se consume automáticamente en cada consulta, la cantidad
+    // por consulta es obligatoria y debe ser positiva (ver spec 13).
+    if (auto_consume === true) {
+      if (
+        consumption_per_consultation === null ||
+        consumption_per_consultation === undefined ||
+        Number(consumption_per_consultation) <= 0
+      ) {
+        return {
+          ok: false,
+          message:
+            "La cantidad por consulta es obligatoria y debe ser mayor a 0 cuando el producto se consume automáticamente",
+        };
+      }
+    }
+    const effectiveConsumptionPerConsultation = auto_consume === true
+      ? consumption_per_consultation
+      : null;
 
     // Categoría "Venta" (4) que se compra por paquete/caja (split) requiere un
     // precio de venta por pieza distinto del precio de compra (ver spec 12).
@@ -181,6 +204,8 @@ export async function saveProduct(
       id_supplier,
       pieces,
       min_stock: effectiveMinStock,
+      auto_consume,
+      consumption_per_consultation: effectiveConsumptionPerConsultation,
       description,
       activo,
       split,
@@ -191,12 +216,14 @@ export async function saveProduct(
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[inventory].[Products]
            ([id_product],[name],[id_category],[brand],[presentation],[id_unit_measurement],
-            [size],[price],[sale_price],[product_code],[id_supplier],[pieces],[min_stock],[id_empresa],[description],
+            [size],[price],[sale_price],[product_code],[id_supplier],[pieces],[min_stock],
+            [auto_consume],[consumption_per_consultation],[id_empresa],[description],
             [created_at],[activo],[status],[split],[url_product])
          VALUES (
            (SELECT ISNULL(MAX([id_product]), 0) + 1 FROM [CentroPodologico].[inventory].[Products]),
            @name,@id_category,@brand,@presentation,@id_unit_measurement,
-           @size,@price,@sale_price,@product_code,@id_supplier,@pieces,@min_stock,@id_empresa,@description,
+           @size,@price,@sale_price,@product_code,@id_supplier,@pieces,@min_stock,
+           @auto_consume,@consumption_per_consultation,@id_empresa,@description,
            @created_at,@activo,1,@split,@url_product
          )`,
         { ...commonParams, id_empresa, created_at: buildDate(new Date()) }
@@ -216,6 +243,8 @@ export async function saveProduct(
            [id_supplier]         = @id_supplier,
            [pieces]               = @pieces,
            [min_stock]            = @min_stock,
+           [auto_consume]         = @auto_consume,
+           [consumption_per_consultation] = @consumption_per_consultation,
            [description]         = @description,
            [activo]               = @activo,
            [split]                = @split,
