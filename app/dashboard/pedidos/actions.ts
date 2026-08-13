@@ -57,11 +57,13 @@ export async function getSuggestedProducts(
               p.[split],
               p.[min_stock] AS product_min_stock,
               s.[quantity] AS stock_quantity,
-              s.[min_stock] AS branch_min_stock
+              suc.[seats] AS seats
          FROM [CentroPodologico].[inventory].[Products] p
          LEFT JOIN [CentroPodologico].[inventory].[stock] s
                 ON s.[id_product] = p.[id_product]
                AND s.[id_sucursal] = @id_sucursal
+         LEFT JOIN [CentroPodologico].[dbo].[sucursales] suc
+                ON suc.[id_sucursal] = @id_sucursal
         WHERE p.[status] = 1
           AND p.[id_empresa] = @id_empresa
         ORDER BY p.[name]`,
