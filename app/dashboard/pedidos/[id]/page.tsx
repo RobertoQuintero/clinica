@@ -114,6 +114,7 @@ export default function PurchaseOrderDetailPage() {
         <InfoTile label="Fecha de pedido" value={toLocalDate(String(order.created_at ?? ""))} />
         <InfoTile label="Entrega estimada" value={toLocalDateOnly(order.estimated_date)} />
         <InfoTile label="Fecha de entrega" value={toLocalDateOnly(order.delivery_date)} />
+        <InfoTile label="Método de pago" value={order.metodo_pago_descripcion ?? "—"} />
       </div>
 
       {order.notes && (
