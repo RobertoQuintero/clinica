@@ -57,11 +57,13 @@ export async function getSuggestedProducts(
               p.[split],
               p.[min_stock] AS product_min_stock,
               s.[quantity] AS stock_quantity,
-              s.[min_stock] AS branch_min_stock
+              suc.[seats] AS seats
          FROM [CentroPodologico].[inventory].[Products] p
          LEFT JOIN [CentroPodologico].[inventory].[stock] s
                 ON s.[id_product] = p.[id_product]
                AND s.[id_sucursal] = @id_sucursal
+         LEFT JOIN [CentroPodologico].[dbo].[sucursales] suc
+                ON suc.[id_sucursal] = @id_sucursal
         WHERE p.[status] = 1
           AND p.[id_empresa] = @id_empresa
         ORDER BY p.[name]`,
@@ -70,11 +72,10 @@ export async function getSuggestedProducts(
 
     const data: ISuggestedProduct[] = rows.map((row) => {
       const currentStock = Number(row.stock_quantity ?? 0);
+      const seatsEffective = Number(row.seats) > 0 ? Number(row.seats) : 1;
       const minStockEffective =
-        row.branch_min_stock !== null && row.branch_min_stock !== undefined
-          ? Number(row.branch_min_stock)
-          : row.product_min_stock !== null && row.product_min_stock !== undefined
-          ? Number(row.product_min_stock)
+        row.product_min_stock !== null && row.product_min_stock !== undefined
+          ? Math.ceil(Number(row.product_min_stock) * seatsEffective)
           : null;
       const conversionFactor = row.split ? Number(row.pieces) || 1 : 1;
       const belowMinimum =
