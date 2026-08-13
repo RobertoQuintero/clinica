@@ -133,6 +133,7 @@ export default function PedidosPage() {
                   <th className="px-6 py-4 font-semibold">Estado</th>
                   <th className="px-6 py-4 font-semibold">Fecha de pedido</th>
                   <th className="px-6 py-4 font-semibold">Entrega estimada</th>
+                  <th className="px-6 py-4 font-semibold">Método de pago</th>
                   <th className="px-6 py-4 font-semibold text-right">Total</th>
                   <th className="px-6 py-4 w-10" />
                 </tr>
@@ -140,7 +141,7 @@ export default function PedidosPage() {
               <tbody>
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-6 text-center text-[#747780] dark:text-zinc-500">
+                    <td colSpan={8} className="px-6 py-6 text-center text-[#747780] dark:text-zinc-500">
                       Sin pedidos que coincidan con los filtros
                     </td>
                   </tr>

@@ -34,6 +34,9 @@ export default function PurchaseOrderRow({ order }: Props) {
       <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">
         {order.estimated_date ? dayFirst(order.estimated_date + "T00:00:00") : "—"}
       </td>
+      <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">
+        {order.metodo_pago_descripcion ?? "—"}
+      </td>
       <td className="px-6 py-4 text-right font-medium text-[#0b1c30] dark:text-zinc-100">
         {currencyFormatter.format(order.total)}
       </td>
