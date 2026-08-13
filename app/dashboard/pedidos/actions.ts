@@ -72,11 +72,10 @@ export async function getSuggestedProducts(
 
     const data: ISuggestedProduct[] = rows.map((row) => {
       const currentStock = Number(row.stock_quantity ?? 0);
+      const seatsEffective = Number(row.seats) > 0 ? Number(row.seats) : 1;
       const minStockEffective =
-        row.branch_min_stock !== null && row.branch_min_stock !== undefined
-          ? Number(row.branch_min_stock)
-          : row.product_min_stock !== null && row.product_min_stock !== undefined
-          ? Number(row.product_min_stock)
+        row.product_min_stock !== null && row.product_min_stock !== undefined
+          ? Math.ceil(Number(row.product_min_stock) * seatsEffective)
           : null;
       const conversionFactor = row.split ? Number(row.pieces) || 1 : 1;
       const belowMinimum =
