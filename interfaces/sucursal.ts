@@ -13,6 +13,7 @@ export interface ISucursal {
     id_calendar:       string | null;
     iframe: string | null;
     link_calendar: string | null;
+    seats: number | null;
 }
 
 export interface ICatState {

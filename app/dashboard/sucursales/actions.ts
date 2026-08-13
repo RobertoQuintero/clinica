@@ -44,6 +44,7 @@ export async function getSucursales(): Promise<ISucursal[]> {
             s.[id_calendar],
             s.link_calendar,
             s.iframe,
+            s.[seats],
             cs.[description] AS estado
        FROM [CentroPodologico].[dbo].[sucursales] s
        LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
@@ -56,19 +57,19 @@ export async function getSucursales(): Promise<ISucursal[]> {
 }
 
 export async function saveSucursal(
-  form: Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state" | "id_calendar" | "link_calendar" | "iframe">
+  form: Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state" | "id_calendar" | "link_calendar" | "iframe" | "seats">
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_sucursal, nombre, ciudad, direccion, telefono, id_state } = form;
+    const { id_sucursal, nombre, ciudad, direccion, telefono, id_state, seats } = form;
     const { id_empresa } = await getActiveUser();
 
     if (id_sucursal === 0) {
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[dbo].[sucursales]
-           ([id_sucursal], [id_empresa], [nombre], [ciudad], [direccion], [telefono], [activo], [created_at], [status], [id_state], [id_calendar], [link_calendar], [iframe])
+           ([id_sucursal], [id_empresa], [nombre], [ciudad], [direccion], [telefono], [activo], [created_at], [status], [id_state], [id_calendar], [link_calendar], [iframe], [seats])
          VALUES (
            (SELECT ISNULL(MAX([id_sucursal]), 0) + 1 FROM [CentroPodologico].[dbo].[sucursales]),
-           @id_empresa, @nombre, @ciudad, @direccion, @telefono, 1, @created_at, 1, @id_state, @id_calendar, @link_calendar, @iframe
+           @id_empresa, @nombre, @ciudad, @direccion, @telefono, 1, @created_at, 1, @id_state, @id_calendar, @link_calendar, @iframe, @seats
          )`,
         {
           id_empresa,
@@ -81,6 +82,7 @@ export async function saveSucursal(
           id_calendar: form.id_calendar ?? null,
           link_calendar: form.link_calendar ?? null,
           iframe: form.iframe ?? null,
+          seats: seats ?? null,
         }
       );
     } else {
@@ -93,9 +95,10 @@ export async function saveSucursal(
                 [id_state]  = @id_state,
                 [id_calendar] = @id_calendar,
                 [link_calendar] = @link_calendar,
-                [iframe] = @iframe
+                [iframe] = @iframe,
+                [seats] = @seats
           WHERE [id_sucursal] = @id_sucursal `,
-        { id_sucursal, nombre, ciudad: ciudad ?? null, direccion: direccion ?? null, telefono: telefono ?? null, id_state: id_state ?? null, id_calendar: form.id_calendar ?? null, link_calendar: form.link_calendar ?? null, iframe: form.iframe ?? null }
+        { id_sucursal, nombre, ciudad: ciudad ?? null, direccion: direccion ?? null, telefono: telefono ?? null, id_state: id_state ?? null, id_calendar: form.id_calendar ?? null, link_calendar: form.link_calendar ?? null, iframe: form.iframe ?? null, seats: seats ?? null }
       );
     }
 
@@ -147,6 +150,7 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
               s.[id_calendar],
               s.[link_calendar],
               s.[iframe],
+              s.[seats],
               cs.[description] AS estado
          FROM [CentroPodologico].[dbo].[sucursales] s
          LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
@@ -185,6 +189,7 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
             s.[id_calendar],
             s.[link_calendar],
             s.[iframe],
+            s.[seats],
             cs.[description] AS estado
        FROM [CentroPodologico].[dbo].[sucursales] s
        LEFT JOIN [CentroPodologico].[dbo].[Cat_states] cs
