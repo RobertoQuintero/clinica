@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileUp, Ban } from "lucide-react";
-import { getPurchaseOrderById, IPurchaseOrderDetailView } from "../actions";
+import { getPurchaseOrderById, cancelPurchaseOrder, IPurchaseOrderDetailView } from "../actions";
 import { useSucursal } from "@/contexts/SucursalContext";
 import OrderStatusBadge from "@/app/dashboard/componentes/OrderStatusBadge";
 import UploadInvoiceModal from "./componentes/UploadInvoiceModal";
+import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
 import { dayFirst } from "@/utils/date_helpper";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -28,6 +29,9 @@ export default function PurchaseOrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
   const [showUploadInvoice, setShowUploadInvoice] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const fetchOrder = () => {
     setLoading(true);
@@ -48,6 +52,19 @@ export default function PurchaseOrderDetailPage() {
     fetchOrder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_purchase_order]);
+
+  const handleCancelOrder = async () => {
+    setCancelling(true);
+    setCancelError(null);
+    const result = await cancelPurchaseOrder(id_purchase_order);
+    if (result.ok) {
+      setShowCancelConfirm(false);
+      await fetchOrder();
+    } else {
+      setCancelError(result.message);
+    }
+    setCancelling(false);
+  };
 
   if (loading) {
     return <p className="text-[#44474f] dark:text-zinc-400">Cargando…</p>;
@@ -118,9 +135,8 @@ export default function PurchaseOrderDetailPage() {
           )}
           {canCancel && (
             <button
-              disabled
-              title="Se habilita más adelante en la implementación"
-              className="flex items-center gap-2 rounded-lg border border-[#ba1a1a] text-[#ba1a1a] px-4 py-2 text-sm font-semibold opacity-60 cursor-not-allowed"
+              onClick={() => { setCancelError(null); setShowCancelConfirm(true); }}
+              className="flex items-center gap-2 rounded-lg border border-[#ba1a1a] text-[#ba1a1a] px-4 py-2 text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
             >
               <Ban size={16} />
               Cancelar orden
@@ -239,6 +255,17 @@ export default function PurchaseOrderDetailPage() {
           id_purchase_order={id_purchase_order}
           onClose={() => setShowUploadInvoice(false)}
           onUploaded={fetchOrder}
+        />
+      )}
+
+      {showCancelConfirm && (
+        <ConfirmModal
+          message={`¿Deseas cancelar la orden "${order.folio}"? Esta acción no se puede deshacer.`}
+          onConfirm={handleCancelOrder}
+          onCancel={() => setShowCancelConfirm(false)}
+          loading={cancelling}
+          error={cancelError}
+          confirmLabel="Cancelar orden"
         />
       )}
     </div>

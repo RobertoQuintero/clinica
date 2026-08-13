@@ -585,3 +585,45 @@ export async function markOrderAsShipped(
     return { ok: false, message: "Error al marcar la orden como enviada" };
   }
 }
+
+/**
+ * Cancela una orden de compra. Solo permitido desde `Pedido` o `Enviado`, y solo
+ * si no existe ninguna recepción registrada (regla explícita del spec: cancelar
+ * una orden ya recibida no está en alcance).
+ */
+export async function cancelPurchaseOrder(
+  id_purchase_order: number
+): Promise<ActionResult<void>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+
+    const result = await db.queryParams(
+      `UPDATE [CentroPodologico].[inventory].[purchase_orders]
+          SET [id_status] = 5
+        OUTPUT inserted.id_purchase_order
+        WHERE [id_purchase_order] = @id_purchase_order
+          AND [id_empresa] = @id_empresa
+          AND [id_status] IN (1, 2)
+          AND NOT EXISTS (
+            SELECT 1
+              FROM [CentroPodologico].[inventory].[purchase_receptions]
+             WHERE [id_purchase_order] = @id_purchase_order
+          )`,
+      { id_purchase_order, id_empresa }
+    );
+
+    if (result.length === 0) {
+      return {
+        ok: false,
+        message:
+          "La orden no se puede cancelar: ya tiene recepciones registradas o no está en un estado cancelable",
+      };
+    }
+
+    revalidatePath("/dashboard/pedidos");
+    revalidatePath(`/dashboard/pedidos/${id_purchase_order}`);
+    return { ok: true, data: undefined };
+  } catch {
+    return { ok: false, message: "Error al cancelar la orden de compra" };
+  }
+}
