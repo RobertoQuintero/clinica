@@ -39,6 +39,7 @@ export default function SucursalFila({ sucursal: s, onEdit, onDeleted, readOnly 
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.ciudad ?? "—"}</td>
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.direccion ?? "—"}</td>
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.telefono ?? "—"}</td>
+        <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{s.seats ?? "—"}</td>
         <td className="px-4 py-3 flex gap-2 justify-end">
           {!readOnly && (
             <button

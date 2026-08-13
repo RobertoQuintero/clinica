@@ -132,7 +132,27 @@ export async function saveProduct(
       return { ok: false, message: "El nombre es obligatorio" };
     }
 
-    const { id_empresa } = await getActiveUser();
+    const { id_empresa, id_role } = await getActiveUser();
+
+    // "El Stock Mínimo solo lo puede ajustar el administrador" (Inventario.md).
+    // Un rol no autorizado no puede tocar este campo: se ignora lo enviado y se
+    // conserva el valor previo (o null en un producto nuevo).
+    const canEditMinStock = id_role === 1 || id_role === 4;
+    let effectiveMinStock = min_stock;
+    if (!canEditMinStock) {
+      if (id_product === 0) {
+        effectiveMinStock = null;
+      } else {
+        const existing = await db.queryParams(
+          `SELECT [min_stock]
+             FROM [CentroPodologico].[inventory].[Products]
+            WHERE [id_product] = @id_product
+              AND [id_empresa] = @id_empresa`,
+          { id_product, id_empresa }
+        );
+        effectiveMinStock = existing[0]?.min_stock ?? null;
+      }
+    }
 
     const commonParams = {
       name,
@@ -145,7 +165,7 @@ export async function saveProduct(
       product_code,
       id_supplier,
       pieces,
-      min_stock,
+      min_stock: effectiveMinStock,
       description,
       activo,
       split,
@@ -193,8 +213,7 @@ export async function saveProduct(
     revalidatePath("/dashboard/productos");
     return { ok: true };
   } catch(error) {
-    console.log(error)
-    console.log('https://www.mercadolibre.com.mx/campo-desechable-kingden-100-pz--paquete-quirurgico/up/MLMU2909458976?pdp_filters=item_id%3AMLM3676314208&from=gshop&matt_tool=16126632&matt_word=&matt_source=google&matt_campaign_id=23406600422&matt_ad_group_id=194380565721&matt_match_type=&matt_network=g&matt_device=c&matt_creative=790322147507&matt_keyword=&matt_ad_position=&matt_ad_type=pla&matt_merchant_id=5065331399&matt_product_id=MLMU2909458976&matt_product_partition_id=2560704020557&matt_target_id=pla-2560704020557&cq_src=google_ads&cq_cmp=23406600422&cq_net=g&cq_plt=gp&cq_med=pla'.length)
+    
     return { ok: false, message: "Error al guardar el producto" };
   }
 }

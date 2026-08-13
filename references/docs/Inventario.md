@@ -5,7 +5,7 @@ informacion necesaria de las tablas a utilizar en el sistema de inventario y com
 ## Tablas 
 estas tablas pueden incluir mas columnas si es necesario o quitar las columnas redundantes
 
-**Productos**
+**Productos**(ya esta creada)
 - Nombre: Lidocaina al 2%
 - Categoría: medicamento
 - Marca: Astra
@@ -18,9 +18,11 @@ estas tablas pueden incluir mas columnas si es necesario o quitar las columnas r
 - piezas por producto
 - activo
 - descripcion: Es un anestésico local y antiarrítmico de tipo amida que bloquea los impulsos nerviosos para adormecer áreas específicas del cuerpo
-- dividir( true o false, indica si el producto será dividido en piezas o alguna unidad especifica, ejem: 1 Caja Cubrebocas 100 se convertirá en 100 cubrebocas que son los que se descontaran 1 por consulta consulta)
+- split( true o false, indica si el producto será dividido en piezas o alguna unidad especifica, ejem: 1 Caja Cubrebocas 100 se convertirá en 100 cubrebocas que son los que se descontaran 1 por consulta consulta)
+  
+  ayudame a mejorar la logica del uso del campo split o complementar o si es necesario cambiarla
 
-**Purchase_orders**(ordenes de compra)
+**Purchase_orders**(ordenes de compra)(pendiente de creacion)(Pendiente de creacion, sujeta a cambios)
 - id_purchase_order
 - id_status(pedido/enviado/stock)
 - created_at
@@ -33,19 +35,20 @@ estas tablas pueden incluir mas columnas si es necesario o quitar las columnas r
 - id_sucursal
 - shipping_cost
 
-**Product_orders**(orden de producto a comprar)
+**Product_orders**(orden de producto a comprar)(Pendiente de creacion, sujeta a cambios)(un mismo producto puede ser comprado a distintos proveedores)
 - id_product_order
 - id_product
-- price
+- price , En pedidos de inventario el precio unitario debe ser editable
 - brand
 - descuento
 - quantity
+- created_at
 
 **order_templates**(plantillas de orden - son listas de productos que no se compran pero puden utilizarse para realizarse la compra o pedido porteriormente
 son como las ordenes de compra pero no se realiza la compra)
 - id_order_template
 
-**Proveedores**
+**Proveedores**(ya esta creada)
 - Nombre Corto
 - Nombre legal
 - Telefono principal
@@ -63,7 +66,7 @@ son como las ordenes de compra pero no se realiza la compra)
 - activo
 - eliminado
 
-**Categorias**
+**Categorias**(ya esta creada)
 - id_category: 2
 - name: Consumibles
 - status: true
@@ -75,7 +78,7 @@ son como las ordenes de compra pero no se realiza la compra)
  Medicamentos
  Venta de Productos
 
-**Unidades de medida**
+**Unidades de medida**(ya esta creada)
 - id_unidad: 1
 - name: Pieza
 - key: PZA
@@ -83,7 +86,7 @@ son como las ordenes de compra pero no se realiza la compra)
   
 valores: pieza, caja, paquete, kilo, frasco, litro, mililitro, gramo
   
- **Estado del pedido**
+ **Estado del pedido**(ya esta creada)
  - id_status
  - name
  - status
@@ -94,7 +97,7 @@ valores:
 -Enviado: La factura esta dada de alta en el sistema
 -Stock: La chica de suministros confirmado con la podologa que le producto llego a la clinica
 
-**Movements**(son los tipos de movimientos que se hacen en el inventario- salidas, entradas, devoluciones, traspasos)
+**Movements**(son los tipos de movimientos que se hacen en el inventario- salidas, entradas, devoluciones, traspasos)(ya esta creada)
 - id_movement
 - name
 - status
@@ -103,18 +106,18 @@ valores:
 - increases_storage(este es un campo boolean en el que se indica si el movimiento aumenta en el almacen)
 
 valores:
-- Entrada por compra(EXC)
-- Salida por devolucion(SXD)
-- Entrada por traspaso(EXT)
-- Salida por traspaso(SXT)
-- Salida por consulta(SXC)
-- Salida por venta(SXV)
-- Entrada por ajuste(EXA)
-- Salida por ajuste(SXA)
-- Salida por daño/merma
+- Entrada por compra(EXC) - increases_storage=1 // agrega al acumulado
+- Salida por devolucion(SXD) - increases_storage=0 // resta al acumulado
+- Entrada por traspaso(EXT) - increases_storage=1
+- Salida por traspaso(SXT) - increases_storage=0
+- Salida por consulta(SXC) - increases_storage=0
+- Salida por venta(SXV) - increases_storage=0
+- Entrada por ajuste(EXA) - increases_storage=1
+- Salida por ajuste(SXA) - increases_storage=0
+- Salida por daño/merma - increases_storage=0
 
 
-**kardex**
+**kardex**(Pendiente de creacion, sujeta a cambios)
 - id_kardex
 - id_product_order
 - id_movement
@@ -125,22 +128,6 @@ valores:
 - unidad de medida
 - id_sucursal
 
-
-## Reglas de visualizacion
-
-MOSTRAR como se muestra en `references/docs/pedidos-inventario.png`:
-
--Mostrar Sucursal (poder seleccionar una o varias sucursales)
--Producto
--Categoria
--Provedor (Nombre corto)
--Stock Actual
--Stock Minimo
--Estado de pedido
-(.   Pedido, Enviado, Stock)
--Cantidad a pedir
--Precio unitario
--Precio total
 
 ### Stock
 
@@ -160,7 +147,7 @@ PEDIDO
 - Opcion de Agregar categoria
 
 ### Inventario descuento Automático 
-se refiere a articulos que se descontaran en automatico del inventario por cada consulta iniciada
+se refiere a articulos que se descontaran en automatico del inventario por cada consulta iniciada(los productos que tienen el campo split=true, son los que se descontaran por pieza al realizarse cada consulta)
 
 Producto:
  - Campos
@@ -176,11 +163,13 @@ Salidas por cliente(por cada consulta realizada se descuentan éstos productos d
  - 2 Campos
  - 1 Cubrebocas
  - 1 Par de guantes
+  
+Nota importante: Aun no es necesario crear la logica de descuento de producto por consulta, solo es para tener en cuenta, esto se realizará en otro spec
 
 ### Inventario por pedido
 Un mismo producto puede comprarse a distintos proveedores
 
-Producto (productos frecuentes):
+Producto (productos frecuentes - estos se agregaran manualmente, ya existen algunos en la base de datos incluidos los que tienen el campo split=true):
  - Gasas
  - Alchol
  - Algodon 
@@ -242,12 +231,6 @@ Para que el sistema vuelva a marcar producto en stock, es necesario que se cumpl
 subida del PDF de la factura del producto 
 y confirmación de la llegada del producto en sucursal con podologa 
 
-3. totales
-El sistema debe mostrar la lista de productos comprados en el mes (o segun la fecha que se establezca) una lista del:
--IVA
--Subtotal (sin IVA)
--Total
--y al final aparezca la suma del mes del IVA, Subtotal y Total
 
 
 ## Alcance Inventario y compras
@@ -270,3 +253,11 @@ El sistema debe mostrar la lista de productos comprados en el mes (o segun la fe
 
 
 En pedidos de inventario el precio unitario debe ser editable
+
+
+para esta implementacion solo necesito :
+1 la creacion de los pedidos `references/orders/pedidos_de_inventario.html`
+2 visualizacion de los productos seleccionados `references/orders/revision_de_orden.html`
+3 recepcion de compras `references/orders/recepcion_de_compras.html`
+
+si es necesario crear mas pantallas como la lista de compras para recepcion, agregarla, ya que solo se muestra el detalle de la compra por recibir

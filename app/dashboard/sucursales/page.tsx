@@ -8,9 +8,9 @@ import { getStates, getSucursales, saveSucursal } from "./actions";
 import SucursalFila from "./componentes/SucursalFila";
 import SucursalModal from "./componentes/SucursalModal";
 
-type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state"| "id_calendar" | "link_calendar" | "iframe">;
+type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state"| "id_calendar" | "link_calendar" | "iframe" | "seats">;
 
-const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, id_calendar: null, link_calendar: null, iframe: null };
+const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, id_calendar: null, link_calendar: null, iframe: null, seats: null };
 
 export default function SucursalesPage() {
   const { user }                    = useAuth();
@@ -72,13 +72,15 @@ export default function SucursalesPage() {
       id_calendar: s.id_calendar ?? null,
       link_calendar: s.link_calendar ?? null,
       iframe: s.iframe ?? null,
+      seats: s.seats ?? null,
     });
     setError(null);
     setShowModal(true);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: name === "seats" ? (value === "" ? null : Number(value)) : value }));
   };
 
   const handleStateChange = (id_state: number | null) => {
@@ -170,13 +172,14 @@ export default function SucursalesPage() {
                     </th>
                   </React.Fragment>
                 ))}
+                <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">Sillones</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
               {sucursalesFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">
                     Sin registros
                   </td>
                 </tr>

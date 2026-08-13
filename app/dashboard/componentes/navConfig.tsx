@@ -12,6 +12,8 @@ import {
   UsersRound,
   UserCog,
   Truck,
+  ShoppingBag,
+  PackageCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +46,8 @@ export const NAV_LINKS: NavLink[] = [
     children: [
       { href: "/dashboard/productos", label: "Productos", icon: Box },
       { href: "/dashboard/proveedores", label: "Proveedores", icon: Truck },
+      { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingBag },
+      { href: "/dashboard/recepciones", label: "Recepciones", icon: PackageCheck },
     ],
   },
   { href: "/dashboard/sucursales", label: "Sucursales", icon: Store, minRole: 0, excludeRoles: [5] },
