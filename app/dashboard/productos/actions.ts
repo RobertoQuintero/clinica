@@ -52,6 +52,7 @@ export async function getProducts(): Promise<IProduct[]> {
             [id_unit_measurement],
             [size],
             [price],
+            [sale_price],
             [product_code],
             [id_supplier],
             [pieces],
@@ -118,6 +119,7 @@ export async function saveProduct(
       id_unit_measurement,
       size,
       price,
+      sale_price,
       product_code,
       id_supplier,
       pieces,
@@ -130,6 +132,18 @@ export async function saveProduct(
 
     if (!name || !name.trim()) {
       return { ok: false, message: "El nombre es obligatorio" };
+    }
+
+    // Categoría "Venta" (4) que se compra por paquete/caja (split) requiere un
+    // precio de venta por pieza distinto del precio de compra (ver spec 12).
+    if (id_category === 4 && split === true) {
+      if (sale_price === null || sale_price === undefined || Number(sale_price) <= 0) {
+        return {
+          ok: false,
+          message:
+            "El precio de venta es obligatorio para productos de categoría Venta que se dividen en piezas",
+        };
+      }
     }
 
     const { id_empresa, id_role } = await getActiveUser();
@@ -162,6 +176,7 @@ export async function saveProduct(
       id_unit_measurement,
       size,
       price,
+      sale_price,
       product_code,
       id_supplier,
       pieces,
@@ -176,12 +191,12 @@ export async function saveProduct(
       await db.queryParams(
         `INSERT INTO [CentroPodologico].[inventory].[Products]
            ([id_product],[name],[id_category],[brand],[presentation],[id_unit_measurement],
-            [size],[price],[product_code],[id_supplier],[pieces],[min_stock],[id_empresa],[description],
+            [size],[price],[sale_price],[product_code],[id_supplier],[pieces],[min_stock],[id_empresa],[description],
             [created_at],[activo],[status],[split],[url_product])
          VALUES (
            (SELECT ISNULL(MAX([id_product]), 0) + 1 FROM [CentroPodologico].[inventory].[Products]),
            @name,@id_category,@brand,@presentation,@id_unit_measurement,
-           @size,@price,@product_code,@id_supplier,@pieces,@min_stock,@id_empresa,@description,
+           @size,@price,@sale_price,@product_code,@id_supplier,@pieces,@min_stock,@id_empresa,@description,
            @created_at,@activo,1,@split,@url_product
          )`,
         { ...commonParams, id_empresa, created_at: buildDate(new Date()) }
@@ -196,6 +211,7 @@ export async function saveProduct(
            [id_unit_measurement] = @id_unit_measurement,
            [size]                 = @size,
            [price]                = @price,
+           [sale_price]           = @sale_price,
            [product_code]        = @product_code,
            [id_supplier]         = @id_supplier,
            [pieces]               = @pieces,
