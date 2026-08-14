@@ -1,12 +1,11 @@
 "use client";
 
-import { IProducto } from "@/interfaces/producto";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
-import { VentaForm } from "../actions";
+import { VentaForm, ISaleProduct } from "../actions";
 
 interface Props {
   form:          VentaForm;
-  productos:     IProducto[];
+  productos:     ISaleProduct[];
   metodosPagos:  IMetodoPago[];
   saving:        boolean;
   error:         string | null;
@@ -21,6 +20,12 @@ const fmtCurrency = (val: number) =>
 export default function VentaModal({
   form, productos, metodosPagos, saving, error, onChange, onSubmit, onClose,
 }: Props) {
+  const selectedProduct = productos.find((p) => p.id_product === form.id_producto);
+  const stockFaltante = selectedProduct
+    ? form.cantidad - selectedProduct.stock_quantity
+    : 0;
+  const showStockWarning = Boolean(selectedProduct) && stockFaltante > 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-xl bg-white dark:bg-zinc-900 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -55,8 +60,8 @@ export default function VentaModal({
             >
               <option value={0} disabled>Seleccionar producto…</option>
               {productos.map((p) => (
-                <option key={p.id_producto} value={p.id_producto}>
-                  {p.nombre} — {fmtCurrency(p.precio)}
+                <option key={p.id_product} value={p.id_product}>
+                  {p.name} — {fmtCurrency(p.effective_price)} ({p.stock_quantity} en stock)
                 </option>
               ))}
             </select>
@@ -74,6 +79,11 @@ export default function VentaModal({
               min={1}
               className="rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
             />
+            {showStockWarning && (
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                ⚠ Stock insuficiente: faltan {stockFaltante} {selectedProduct?.unit_code ?? ""} — el stock quedará en negativo.
+              </p>
+            )}
           </label>
 
           {/* Método de pago */}
