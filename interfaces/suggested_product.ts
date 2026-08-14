@@ -14,4 +14,6 @@ export interface ISuggestedProduct {
   min_stock_effective:  number | null;
   suggested_quantity:   number;
   below_minimum:        boolean;
+  has_pending_order:    boolean;
+  pending_order_folios: string[];
 }
