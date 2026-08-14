@@ -25,6 +25,8 @@ const EMPTY: ProductFormData = {
   id_supplier: null,
   pieces: null,
   min_stock: null,
+  auto_consume: false,
+  consumption_per_consultation: null,
   description: "",
   activo: true,
   split: false,
@@ -92,6 +94,8 @@ export default function ProductosPage() {
       id_supplier: product.id_supplier,
       pieces: product.pieces,
       min_stock: product.min_stock,
+      auto_consume: product.auto_consume,
+      consumption_per_consultation: product.consumption_per_consultation,
       description: product.description ?? "",
       activo: product.activo,
       split: product.split,
@@ -113,7 +117,7 @@ export default function ProductosPage() {
           ? (e.target as HTMLInputElement).checked
           : name === "price"
           ? parseFloat(value) || 0
-          : name === "sale_price"
+          : name === "sale_price" || name === "consumption_per_consultation"
           ? (value === "" ? null : parseFloat(value) || 0)
           : numericFields.includes(name)
           ? value === "" ? null : Number(value)
