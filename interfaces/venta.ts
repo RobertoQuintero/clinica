@@ -1,6 +1,7 @@
 export interface IVenta {
   id_venta:            number;
   id_producto:         number;
+  id_sucursal:         number;
   cantidad:            number;
   idMetodoPago:        number;
   total:               number;

@@ -16,7 +16,7 @@ import { useMovementsRefresh } from "./MovementsRefreshContext";
 
 /** Tipos seleccionables manualmente en este modal (nunca 1 "compra", 5 "consulta" ni 6 "venta"). */
 const MOVEMENT_SALIDA_POR_TRASPASO = 4;
-const SELECTABLE_MOVEMENT_IDS = [2, MOVEMENT_SALIDA_POR_TRASPASO, 7, 8, 9];
+const SELECTABLE_MOVEMENT_IDS = [2, MOVEMENT_SALIDA_POR_TRASPASO, 7, 8, 9,10];
 /** "Traspaso" reemplaza el nombre real del catálogo (4 = "Salida por traspaso") solo
  * en este select: en el listado ambas filas se muestran con su nombre real (ver spec 14). */
 const MODAL_LABEL_OVERRIDES: Record<number, string> = {
