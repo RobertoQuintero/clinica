@@ -5,6 +5,7 @@ import { ITratamientoOnicomicosis, ITratamientoOnicomicosisListRow } from "@/int
 import { IConsulta } from "@/interfaces/consulta";
 import { IAuthUser } from "@/interfaces/auth";
 import { buildDate, toDBString } from "@/utils/date_helpper";
+import { applyConsultationConsumption } from "@/lib/inventory/consultationConsumption";
 import { createWebId } from "@/utils/random";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
@@ -825,6 +826,14 @@ export async function createConsultaOnicomicosis(form: {
          )`,
         { id_consulta: newConsulta.id_consulta }
       );
+
+      await applyConsultationConsumption({
+        id_consulta: newConsulta.id_consulta,
+        id_sucursal: form.id_sucursal,
+        id_empresa:  form.id_empresa,
+        id_user:     form.id_podologo,
+      });
+
       return { ok: true, id_consulta: newConsulta.id_consulta };
     }
     return { ok: false, message: "No se pudo crear la consulta" };
