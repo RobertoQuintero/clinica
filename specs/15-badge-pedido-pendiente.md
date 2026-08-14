@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[09-pedidos-compra-recepcion]] (`purchase_orders`, `purchase_order_items`, `ISuggestedProduct`, `getSuggestedProducts`)
 - **Fecha:** 2026-08-14
 - **Objetivo:** Mostrar en `SuggestedProductsTable` un badge "Pedido pendiente" sobre los productos que ya tienen una orden de compra abierta (Pedido/Enviado/Parcial) sin recibirse por completo, para evitar que se vuelva a solicitar el mismo producto.

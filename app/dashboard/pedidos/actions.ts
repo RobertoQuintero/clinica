@@ -417,7 +417,7 @@ export async function getPurchaseOrders(
     }
 
     const rows = await db.queryParams(
-      `SELECT po.[id_purchase_order],
+      `SELECT ${!date_from?'TOP 10':''} po.[id_purchase_order],
               po.[folio],
               po.[id_batch],
               po.[id_empresa],

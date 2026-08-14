@@ -1,7 +1,6 @@
 "use server";
 
 import db from "@/database/connection";
-import { IProducto } from "@/interfaces/producto";
 import { IProduct } from "@/interfaces/product";
 import { IProductCategory } from "@/interfaces/product_category";
 import { IUnitMeasurement } from "@/interfaces/unit_measurement";
@@ -19,26 +18,6 @@ async function getActiveUser(): Promise<IAuthUser> {
   if (!token) throw new Error("No autenticado");
   const { payload } = await jwtVerify(token, JWT_SECRET);
   return payload as unknown as IAuthUser;
-}
-
-export async function getProductos(id_sucursal: number): Promise<IProducto[]> {
-  const { id_empresa } = await getActiveUser();
-  const data = await db.queryParams(
-    `SELECT [id_producto],
-            [nombre],
-            [precio],
-            [descripcion],
-            [status],
-            CONVERT(varchar(19), [created_at], 120) AS created_at,
-            [id_empresa],
-            [id_sucursal]
-       FROM [CentroPodologico].[dbo].[productos]
-      WHERE [status] = 1
-        AND [id_empresa] = @id_empresa
-        AND [id_sucursal] = @id_sucursal`,
-    { id_empresa, id_sucursal }
-  );
-  return data as IProducto[];
 }
 
 export async function getProducts(): Promise<IProduct[]> {

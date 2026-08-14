@@ -492,3 +492,11 @@ GO
 CREATE INDEX [IX_kardex_transfer] ON [CentroPodologico].[inventory].[kardex] ([id_transfer] ASC);
 GO
 
+-- spec 16 — ventas descuentan stock por sucursal
+ALTER TABLE [CentroPodologico].[dbo].[Ventas] ADD [id_sucursal] [int] NULL;
+GO
+ALTER TABLE [CentroPodologico].[inventory].[kardex] ADD [id_venta] [int] NULL;
+GO
+CREATE INDEX [IX_kardex_id_venta] ON [CentroPodologico].[inventory].[kardex] ([id_venta] ASC);
+GO
+

@@ -1,13 +1,11 @@
 "use client";
 
 import { IVenta } from "@/interfaces/venta";
-import { IProducto } from "@/interfaces/producto";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
 import { useEffect, useState } from "react";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { addZeroToday } from "@/utils/date_helpper";
-import { getVentas, getMetodosPagos, saveVenta, VentaForm } from "./actions";
-import { getProductos } from "@/app/dashboard/productos/actions";
+import { getVentas, getMetodosPagos, getSaleProducts, saveVenta, VentaForm, ISaleProduct } from "./actions";
 import VentaFila from "./componentes/VentaFila";
 import VentaModal from "./componentes/VentaModal";
 import { SucursalName } from "../componentes/SucursalName";
@@ -15,6 +13,7 @@ import { SucursalName } from "../componentes/SucursalName";
 const EMPTY: VentaForm = {
   id_venta:    0,
   id_producto: 0,
+  id_sucursal: 0,
   cantidad:    1,
   idMetodoPago: 0,
   total:       0,
@@ -25,7 +24,7 @@ export default function VentasPage() {
   const today = addZeroToday(new Date());
 
   const [ventas, setVentas]           = useState<IVenta[]>([]);
-  const [productos, setProductos]     = useState<IProducto[]>([]);
+  const [productos, setProductos]     = useState<ISaleProduct[]>([]);
   const [metodos, setMetodos]         = useState<IMetodoPago[]>([]);
   const [loading, setLoading]         = useState(true);
   const [fechaInicio, setFechaInicio] = useState(today);
@@ -47,7 +46,7 @@ export default function VentasPage() {
 
   // Load catalogues when sucursal changes
   useEffect(() => {
-    Promise.all([getProductos(selectedId), getMetodosPagos()]).then(([prods, mets]) => {
+    Promise.all([getSaleProducts(selectedId), getMetodosPagos()]).then(([prods, mets]) => {
       setProductos(prods);
       setMetodos(mets);
     });
@@ -57,7 +56,7 @@ export default function VentasPage() {
   useEffect(() => { fetchVentas(); }, [selectedId, fechaInicio, fechaFin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openNew = () => {
-    setForm(EMPTY);
+    setForm({ ...EMPTY, id_sucursal: selectedId });
     setError(null);
     setShowModal(true);
   };
@@ -66,6 +65,7 @@ export default function VentasPage() {
     setForm({
       id_venta:    v.id_venta,
       id_producto: v.id_producto,
+      id_sucursal: v.id_sucursal,
       cantidad:    v.cantidad,
       idMetodoPago: v.idMetodoPago,
       total:       v.total,
@@ -86,8 +86,8 @@ export default function VentasPage() {
       if (name === "id_producto" || name === "cantidad") {
         const prodId = name === "id_producto" ? Number(value) : prev.id_producto;
         const qty    = name === "cantidad"    ? Number(value) : prev.cantidad;
-        const prod   = productos.find((p) => p.id_producto === prodId);
-        if (prod) next.total = parseFloat((prod.precio * qty).toFixed(2));
+        const prod   = productos.find((p) => p.id_product === prodId);
+        if (prod) next.total = parseFloat((prod.effective_price * qty).toFixed(2));
       }
       return next;
     });
