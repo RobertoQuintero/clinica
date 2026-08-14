@@ -57,13 +57,26 @@ export async function getSuggestedProducts(
               p.[split],
               p.[min_stock] AS product_min_stock,
               s.[quantity] AS stock_quantity,
-              suc.[seats] AS seats
+              suc.[seats] AS seats,
+              pending.[folios] AS pending_order_folios
          FROM [CentroPodologico].[inventory].[Products] p
          LEFT JOIN [CentroPodologico].[inventory].[stock] s
                 ON s.[id_product] = p.[id_product]
                AND s.[id_sucursal] = @id_sucursal
          LEFT JOIN [CentroPodologico].[dbo].[sucursales] suc
                 ON suc.[id_sucursal] = @id_sucursal
+         OUTER APPLY (
+                SELECT STRING_AGG(po.[folio], ', ') AS folios
+                  FROM [CentroPodologico].[inventory].[purchase_order_items] poi
+                  JOIN [CentroPodologico].[inventory].[purchase_orders] po
+                    ON po.[id_purchase_order] = poi.[id_purchase_order]
+                 WHERE poi.[id_product] = p.[id_product]
+                   AND poi.[quantity] > poi.[quantity_received]
+                   AND po.[id_sucursal] = @id_sucursal
+                   AND po.[id_empresa] = @id_empresa
+                   AND po.[status] = 1
+                   AND po.[id_status] IN (1, 2, 4)
+              ) pending
         WHERE p.[status] = 1
           AND p.[id_empresa] = @id_empresa
         ORDER BY p.[name]`,
@@ -86,6 +99,12 @@ export async function getSuggestedProducts(
             Math.ceil((minStockEffective! - currentStock) / conversionFactor)
           )
         : 0;
+      const pendingOrderFolios = row.pending_order_folios
+        ? String(row.pending_order_folios)
+            .split(",")
+            .map((folio: string) => folio.trim())
+            .filter(Boolean)
+        : [];
 
       return {
         id_product: row.id_product,
@@ -102,6 +121,8 @@ export async function getSuggestedProducts(
         min_stock_effective: minStockEffective,
         suggested_quantity: suggestedQuantity,
         below_minimum: belowMinimum,
+        has_pending_order: pendingOrderFolios.length > 0,
+        pending_order_folios: pendingOrderFolios,
       };
     });
 

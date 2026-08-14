@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[09-pedidos-compra-recepcion]] (`inventory.kardex`, `inventory.stock`, `applyStockMovement`, `inventory.movements`), [[08-productos-inventario-crud]] (`inventory.Products`, `IProduct`), [[13-consumo-automatico-insumos-consulta]] (`auto_consume`, movimiento 5)
 - **Fecha:** 2026-08-13
 - **Objetivo:** Crear la página `/dashboard/movimientos` dentro de Inventario para consultar el kardex de la sucursal seleccionada y registrar manualmente movimientos que afectan stock (ajustes, mermas, devoluciones y traspasos entre sucursales) de productos que no se descuentan automáticamente por consulta o venta.

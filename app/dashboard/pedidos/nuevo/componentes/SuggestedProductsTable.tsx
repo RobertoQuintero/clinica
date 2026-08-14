@@ -2,6 +2,7 @@
 
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
+import PendingOrderBadge from "./PendingOrderBadge";
 
 interface Props {
   products:          ISuggestedProduct[];
@@ -74,6 +75,11 @@ export default function SuggestedProductsTable({
                       <p className="text-xs text-[#44474f] dark:text-zinc-400">
                         {product.product_code || "—"}
                       </p>
+                      {product.has_pending_order && (
+                        <div className="mt-1">
+                          <PendingOrderBadge folios={product.pending_order_folios} />
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {product.id_category && categoryNameById.get(product.id_category) ? (
