@@ -1,30 +1,34 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addConsultaProducto, ConsultaProductoExtended, ProductoCatalogo } from "../actions";
+import { addConsultaProducto, ConsultaProductoExtended } from "../actions";
+import { ISaleProduct } from "@/app/dashboard/ventas/actions";
 
 interface Props {
   id_consulta:   number;
-  catalogo:      ProductoCatalogo[];
+  catalogo:      ISaleProduct[];
   onAdd:         (p: ConsultaProductoExtended) => void;
 }
 
 export default function AddProductoForm({ id_consulta, catalogo, onAdd }: Props) {
   const [open,     setOpen    ] = useState(false);
   const [search,   setSearch  ] = useState("");
-  const [selected, setSelected] = useState<ProductoCatalogo | null>(null);
+  const [selected, setSelected] = useState<ISaleProduct | null>(null);
   const [precio,   setPrecio  ] = useState<number>(0);
   const [cantidad, setCantidad] = useState<number>(1);
   const [error,    setError   ] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const faltante = selected ? cantidad - selected.stock_quantity : 0;
+  const showStockWarning = Boolean(selected) && faltante > 0;
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearch(val);
-    const found = catalogo.find((p) => p.nombre.toLowerCase() === val.toLowerCase());
+    const found = catalogo.find((p) => p.name.toLowerCase() === val.toLowerCase());
     if (found) {
       setSelected(found);
-      setPrecio(found.precio);
+      setPrecio(found.effective_price);
     } else {
       setSelected(null);
     }
@@ -47,7 +51,7 @@ export default function AddProductoForm({ id_consulta, catalogo, onAdd }: Props)
     setError(null);
 
     startTransition(async () => {
-      const res = await addConsultaProducto(id_consulta, selected.id_producto, precio, cantidad);
+      const res = await addConsultaProducto(id_consulta, selected.id_product, precio, cantidad);
       if (!res.ok) { setError(res.data); return; }
       onAdd(res.data);
       handleClose();
@@ -103,7 +107,11 @@ export default function AddProductoForm({ id_consulta, catalogo, onAdd }: Props)
           />
           <datalist id="productos-catalogo-list">
             {catalogo.map((p) => (
-              <option key={p.id_producto} value={p.nombre} />
+              <option
+                key={p.id_product}
+                value={p.name}
+                label={`${p.name} (${p.stock_quantity} en stock)`}
+              />
             ))}
           </datalist>
           {search && !selected && (
@@ -137,6 +145,11 @@ export default function AddProductoForm({ id_consulta, catalogo, onAdd }: Props)
             className={inputCls}
             required
           />
+          {showStockWarning && (
+            <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+              ⚠ Stock insuficiente: faltan {faltante} {selected?.unit_code ?? ""} — el stock quedará en negativo.
+            </p>
+          )}
         </div>
       </div>
 
