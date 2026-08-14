@@ -1,6 +1,8 @@
 "use server";
 
-import db from "@/database/connection";
+import db, { ITransactionClient } from "@/database/connection";
+import { applyStockMovement } from "@/lib/inventory/stock";
+import { getSaleProducts, ISaleProduct } from "@/app/dashboard/ventas/actions";
 import { IArchivo } from "@/interfaces/archivos";
 import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IConsulta } from "@/interfaces/consulta";
@@ -69,6 +71,37 @@ async function getIdEmpresa(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+async function getIdUser(): Promise<number> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth_token")?.value;
+  if (!token) return 0;
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const user = payload as { id_user?: number };
+    return user.id_user ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Movimientos de kardex (ver queries.txt, inventory.movements) — mismos códigos que spec 16. */
+const MOVEMENT_SALIDA_POR_VENTA = 6;
+const MOVEMENT_ENTRADA_POR_AJUSTE = 7;
+
+/** `id_stock_unit_measurement` del producto, para poblar el kardex del movimiento. */
+async function getStockUnitMeasurement(
+  tx: ITransactionClient,
+  id_producto: number
+): Promise<number | null> {
+  const rows = await tx.queryParams(
+    `SELECT [id_stock_unit_measurement]
+       FROM [CentroPodologico].[inventory].[Products]
+      WHERE [id_product] = @id_producto`,
+    { id_producto }
+  );
+  return rows[0]?.id_stock_unit_measurement ?? null;
 }
 
 // ─── fetch all data ───────────────────────────────────────────────────────────
@@ -726,16 +759,14 @@ export async function selectServicioOpcion(
 
 // ─── consulta productos ───────────────────────────────────────────────────────
 
-export type ProductoCatalogo = { id_producto: number; nombre: string; precio: number };
-
 const CONSULTA_PRODUCTOS_SELECT = `
   SELECT cp.[id_consulta_producto],cp.[id_consulta],cp.[id_producto]
-        ,p.[nombre] AS nombre_producto
+        ,p.[name] AS nombre_producto
         ,cp.[precio],cp.[cantidad]
         ,CASE WHEN cp.[status] = 1 THEN 'activo' ELSE 'inactivo' END AS status
         ,CONVERT(varchar(19), cp.[created_at], 120) AS created_at
     FROM [CentroPodologico].[dbo].[consulta_productos] cp
-    LEFT JOIN [CentroPodologico].[dbo].[productos] p ON p.[id_producto] = cp.[id_producto]`;
+    LEFT JOIN [CentroPodologico].[inventory].[Products] p ON p.[id_product] = cp.[id_producto]`;
 
 export async function getConsultaProductos(
   id_consulta: number,
@@ -749,19 +780,20 @@ export async function getConsultaProductos(
   return rows as ConsultaProductoExtended[];
 }
 
-export async function getProductosCatalogo(id_sucursal: number): Promise<ProductoCatalogo[]> {
-  const id_empresa = await getIdEmpresa();
-  const rows = await db.queryParams(
-    `SELECT [id_producto],[nombre],[precio]
-       FROM [CentroPodologico].[dbo].[productos]
-      WHERE [status] = 1 AND [id_empresa] = @id_empresa
-        AND [id_sucursal] = @id_sucursal
-      ORDER BY [nombre]`,
-    { id_empresa, id_sucursal },
-  );
-  return rows as ProductoCatalogo[];
+/**
+ * Productos de categoría "Venta" de `inventory.Products`, con precio efectivo y
+ * stock actual en `id_sucursal` (ver spec 16/17) — reemplaza el catálogo legacy
+ * de `dbo.productos`.
+ */
+export async function getProductosCatalogo(id_sucursal: number): Promise<ISaleProduct[]> {
+  return getSaleProducts(id_sucursal);
 }
 
+/**
+ * Agrega un producto a la consulta, descontando `inventory.stock` de la sucursal
+ * de la consulta (mov. `6`) dentro de la misma transacción que el `INSERT` a
+ * `dbo.consulta_productos` (ver spec 17, "Modelo de datos").
+ */
 export async function addConsultaProducto(
   id_consulta: number,
   id_producto:  number,
@@ -770,19 +802,47 @@ export async function addConsultaProducto(
 ): Promise<ActionResult<ConsultaProductoExtended>> {
   try {
     const created_at = buildDate(new Date());
+    const id_user = await getIdUser();
 
-    const inserted = await db.queryParams(
-      `INSERT INTO [CentroPodologico].[dbo].[consulta_productos]
-         ([id_consulta_producto],[id_consulta],[id_producto],[precio],[cantidad],[status],[created_at])
-       OUTPUT INSERTED.[id_consulta_producto] AS new_id
-       VALUES (
-         (SELECT ISNULL(MAX([id_consulta_producto]),0)+1 FROM [CentroPodologico].[dbo].[consulta_productos]),
-         @id_consulta,@id_producto,@precio,@cantidad,1,@created_at
-       )`,
-      { id_consulta, id_producto, precio, cantidad, created_at },
-    );
+    let new_id = 0;
+    await db.transaction(async (tx) => {
+      const consultaRows = await tx.queryParams(
+        `SELECT [id_sucursal],[id_empresa]
+           FROM [CentroPodologico].[dbo].[consultas]
+          WHERE [id_consulta] = @id_consulta`,
+        { id_consulta },
+      );
+      if (consultaRows.length === 0) {
+        throw new Error("La consulta no existe");
+      }
+      const id_sucursal = Number(consultaRows[0].id_sucursal);
+      const id_empresa = Number(consultaRows[0].id_empresa);
+      const id_unit_measurement = await getStockUnitMeasurement(tx, id_producto);
 
-    const new_id = (inserted[0] as { new_id: number }).new_id;
+      const inserted = await tx.queryParams(
+        `INSERT INTO [CentroPodologico].[dbo].[consulta_productos]
+           ([id_consulta_producto],[id_consulta],[id_producto],[precio],[cantidad],[status],[created_at])
+         OUTPUT INSERTED.[id_consulta_producto] AS new_id
+         VALUES (
+           (SELECT ISNULL(MAX([id_consulta_producto]),0)+1 FROM [CentroPodologico].[dbo].[consulta_productos]),
+           @id_consulta,@id_producto,@precio,@cantidad,1,@created_at
+         )`,
+        { id_consulta, id_producto, precio, cantidad, created_at },
+      );
+      new_id = (inserted[0] as { new_id: number }).new_id;
+
+      await applyStockMovement(tx, {
+        id_product: id_producto,
+        id_sucursal,
+        id_empresa,
+        id_movement: MOVEMENT_SALIDA_POR_VENTA,
+        quantity: cantidad,
+        id_unit_measurement,
+        id_consulta,
+        id_user,
+      });
+    });
+
     const rows = await db.queryParams(
       `${CONSULTA_PRODUCTOS_SELECT} WHERE cp.[id_consulta_producto] = @new_id`,
       { new_id },
@@ -794,6 +854,12 @@ export async function addConsultaProducto(
   }
 }
 
+/**
+ * Actualiza cantidad/precio/status de un producto de la consulta, ajustando el
+ * stock de la sucursal de la consulta según la transición `status`/`cantidad`
+ * (ver spec 17, tabla de transiciones), dentro de la misma transacción que el
+ * `UPDATE` a `dbo.consulta_productos`.
+ */
 export async function updateConsultaProducto(
   id_consulta_producto: number,
   precio:               number,
@@ -801,14 +867,76 @@ export async function updateConsultaProducto(
   status:               string,
 ): Promise<ActionResult<ConsultaProductoExtended>> {
   try {
-    await db.queryParams(
-      `UPDATE [CentroPodologico].[dbo].[consulta_productos]
-          SET [precio]   = @precio,
-              [cantidad] = @cantidad,
-              [status]   = CASE WHEN @status = 'activo' THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END
-        WHERE [id_consulta_producto] = @id_consulta_producto`,
-      { id_consulta_producto, precio, cantidad, status },
-    );
+    const id_user = await getIdUser();
+
+    await db.transaction(async (tx) => {
+      const currentRows = await tx.queryParams(
+        `SELECT cp.[id_producto], cp.[cantidad], cp.[status], cp.[id_consulta],
+                c.[id_sucursal], c.[id_empresa]
+           FROM [CentroPodologico].[dbo].[consulta_productos] cp WITH (UPDLOCK, HOLDLOCK)
+           JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_consulta] = cp.[id_consulta]
+          WHERE cp.[id_consulta_producto] = @id_consulta_producto`,
+        { id_consulta_producto },
+      );
+      if (currentRows.length === 0) {
+        throw new Error("El producto de la consulta no existe");
+      }
+      const current = currentRows[0];
+      const id_producto  = Number(current.id_producto);
+      const oldCantidad   = Number(current.cantidad);
+      const wasActivo     = Boolean(current.status);
+      const willBeActivo  = status === "activo";
+      const id_consulta   = Number(current.id_consulta);
+      const id_sucursal   = Number(current.id_sucursal);
+      const id_empresa    = Number(current.id_empresa);
+
+      let movement: { id_movement: number; quantity: number; notes: string | null } | null = null;
+
+      if (wasActivo && willBeActivo) {
+        const delta = cantidad - oldCantidad;
+        if (delta > 0) {
+          movement = { id_movement: MOVEMENT_SALIDA_POR_VENTA, quantity: delta, notes: null };
+        } else if (delta < 0) {
+          movement = {
+            id_movement: MOVEMENT_ENTRADA_POR_AJUSTE,
+            quantity: Math.abs(delta),
+            notes: `Reversión por edición de producto en consulta #${id_consulta}`,
+          };
+        }
+      } else if (wasActivo && !willBeActivo) {
+        movement = {
+          id_movement: MOVEMENT_ENTRADA_POR_AJUSTE,
+          quantity: oldCantidad,
+          notes: `Reversión por edición de producto en consulta #${id_consulta}`,
+        };
+      } else if (!wasActivo && willBeActivo) {
+        movement = { id_movement: MOVEMENT_SALIDA_POR_VENTA, quantity: cantidad, notes: null };
+      }
+
+      if (movement) {
+        const id_unit_measurement = await getStockUnitMeasurement(tx, id_producto);
+        await applyStockMovement(tx, {
+          id_product: id_producto,
+          id_sucursal,
+          id_empresa,
+          id_movement: movement.id_movement,
+          quantity: movement.quantity,
+          id_unit_measurement,
+          id_consulta,
+          notes: movement.notes,
+          id_user,
+        });
+      }
+
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[dbo].[consulta_productos]
+            SET [precio]   = @precio,
+                [cantidad] = @cantidad,
+                [status]   = CASE WHEN @status = 'activo' THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END
+          WHERE [id_consulta_producto] = @id_consulta_producto`,
+        { id_consulta_producto, precio, cantidad, status },
+      );
+    });
 
     const rows = await db.queryParams(
       `${CONSULTA_PRODUCTOS_SELECT} WHERE cp.[id_consulta_producto] = @id_consulta_producto`,
@@ -821,15 +949,60 @@ export async function updateConsultaProducto(
   }
 }
 
+/**
+ * Elimina un producto de la consulta, revirtiendo por completo el stock que
+ * había descontado (mov. `7`) si estaba `activo`, antes del `DELETE`, dentro de
+ * la misma transacción (ver spec 17).
+ */
 export async function deleteConsultaProducto(
   id_consulta_producto: number,
 ): Promise<ActionResult<null>> {
   try {
-    await db.queryParams(
-      `DELETE FROM [CentroPodologico].[dbo].[consulta_productos]
-        WHERE [id_consulta_producto] = @id_consulta_producto`,
-      { id_consulta_producto },
-    );
+    const id_user = await getIdUser();
+
+    await db.transaction(async (tx) => {
+      const currentRows = await tx.queryParams(
+        `SELECT cp.[id_producto], cp.[cantidad], cp.[status], cp.[id_consulta],
+                c.[id_sucursal], c.[id_empresa]
+           FROM [CentroPodologico].[dbo].[consulta_productos] cp WITH (UPDLOCK, HOLDLOCK)
+           JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_consulta] = cp.[id_consulta]
+          WHERE cp.[id_consulta_producto] = @id_consulta_producto`,
+        { id_consulta_producto },
+      );
+      if (currentRows.length === 0) {
+        throw new Error("El producto de la consulta no existe");
+      }
+      const current = currentRows[0];
+      const wasActivo = Boolean(current.status);
+
+      if (wasActivo) {
+        const id_producto  = Number(current.id_producto);
+        const cantidad      = Number(current.cantidad);
+        const id_consulta   = Number(current.id_consulta);
+        const id_sucursal   = Number(current.id_sucursal);
+        const id_empresa    = Number(current.id_empresa);
+        const id_unit_measurement = await getStockUnitMeasurement(tx, id_producto);
+
+        await applyStockMovement(tx, {
+          id_product: id_producto,
+          id_sucursal,
+          id_empresa,
+          id_movement: MOVEMENT_ENTRADA_POR_AJUSTE,
+          quantity: cantidad,
+          id_unit_measurement,
+          id_consulta,
+          notes: `Reversión por eliminación de producto en consulta #${id_consulta}`,
+          id_user,
+        });
+      }
+
+      await tx.queryParams(
+        `DELETE FROM [CentroPodologico].[dbo].[consulta_productos]
+          WHERE [id_consulta_producto] = @id_consulta_producto`,
+        { id_consulta_producto },
+      );
+    });
+
     return { ok: true, data: null };
   } catch (err) {
     console.error(err);
