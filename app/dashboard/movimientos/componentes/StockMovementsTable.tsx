@@ -86,22 +86,22 @@ export default function StockMovementsTable() {
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#eff4ff] dark:bg-zinc-800 p-5 rounded-lg border border-[#c4c6d0] dark:border-zinc-700 flex flex-col gap-2">
-          <div className="flex justify-between items-center text-[#44474f] dark:text-zinc-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Entradas hoy</span>
-            <ArrowDown size={18} className="text-[#009c6b] dark:text-emerald-400" />
+        <div className="bg-[#f2fcf5] dark:bg-zinc-900 p-5 rounded-xl border border-[#c6f0d5] dark:border-zinc-700 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-[#e1f7e8] dark:bg-emerald-900/30 flex items-center justify-center text-[#009c6b] dark:text-emerald-400 shrink-0">
+            <ArrowDown size={20} />
           </div>
-          <div className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">
-            {summary.units_in_today}
+          <div>
+            <h3 className="text-xs font-semibold text-[#44474f] dark:text-zinc-400 mb-1">Entradas hoy</h3>
+            <p className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">{summary.units_in_today}</p>
           </div>
         </div>
-        <div className="bg-[#eff4ff] dark:bg-zinc-800 p-5 rounded-lg border border-[#c4c6d0] dark:border-zinc-700 flex flex-col gap-2">
-          <div className="flex justify-between items-center text-[#44474f] dark:text-zinc-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Salidas hoy</span>
-            <ArrowUp size={18} className="text-[#0051d5] dark:text-blue-400" />
+        <div className="bg-[#eff4ff] dark:bg-zinc-900 p-5 rounded-xl border border-[#c4c6d0] dark:border-zinc-700 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-[#d3e4fe] dark:bg-blue-900/30 flex items-center justify-center text-[#0051d5] dark:text-blue-400 shrink-0">
+            <ArrowUp size={20} />
           </div>
-          <div className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">
-            {summary.units_out_today}
+          <div>
+            <h3 className="text-xs font-semibold text-[#44474f] dark:text-zinc-400 mb-1">Salidas hoy</h3>
+            <p className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">{summary.units_out_today}</p>
           </div>
         </div>
       </div>
