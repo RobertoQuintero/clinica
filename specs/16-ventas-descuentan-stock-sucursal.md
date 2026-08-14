@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[08-productos-inventario-crud]] (`inventory.Products`, `IProduct`, `getProducts`), [[12-precio-venta-productos-paquete]] (`sale_price`), [[09-pedidos-compra-recepcion]] / [[14-movimientos-almacen]] (`applyStockMovement`, `inventory.stock`, `inventory.kardex`, movimiento `6` "Salida por venta" ya sembrado y sin uso)
 - **Fecha:** 2026-08-14
 - **Objetivo:** Reconectar `/dashboard/ventas` para vender productos de categoría "Venta" (`inventory.Products`) descontando `inventory.stock` por sucursal vía kardex (movimiento `6`), mostrando el stock disponible al elegir producto y reajustando el stock al editar/eliminar una venta, dejando de usar por completo `dbo.productos`.
@@ -169,24 +169,24 @@ export interface ISaleProduct {
 
 ## Criterios de aceptación
 
-- [ ] `dbo.Ventas` tiene la columna `id_sucursal` (`int` NULL) y `inventory.kardex` tiene la columna `id_venta` (`int` NULL) con el índice `IX_kardex_id_venta`, ambas registradas en `queries.txt`.
-- [ ] `IVenta` incluye `id_sucursal: number`.
-- [ ] `applyStockMovement`/`IApplyStockMovementInput` aceptan `id_venta` como campo opcional y lo escriben en el kardex; recepciones, consumo por consulta y movimientos manuales siguen funcionando sin cambios en sus llamadas.
-- [ ] El selector de producto del modal de Ventas solo lista productos de `inventory.Products` con `id_category = 4` (Venta), `activo = 1` y `status = 1` de la empresa del usuario — ningún producto de `dbo.productos` aparece.
-- [ ] Cada opción del selector muestra el precio efectivo (`sale_price` si `split = 1`, si no `price`) y el stock actual del producto en la sucursal seleccionada.
-- [ ] El total de la venta se calcula automáticamente con el precio efectivo del producto elegido y la cantidad capturada.
-- [ ] Registrar una venta nueva inserta la fila en `dbo.Ventas` con el `id_sucursal` actual de `SucursalContext`, y genera **una** fila de kardex con movimiento `6` ("Salida por venta"), con `id_venta` ligado a la venta y `quantity` igual a la cantidad vendida.
-- [ ] `inventory.stock` del producto/sucursal baja exactamente en la cantidad vendida tras registrar la venta.
-- [ ] Editar una venta aumentando la cantidad (mismo producto) genera un movimiento `6` adicional por la diferencia; disminuyéndola genera un movimiento `7` por la diferencia; el stock queda consistente con la cantidad final.
-- [ ] Editar una venta cambiando de producto genera una reversa completa (`7`) sobre el producto/sucursal original y una salida completa (`6`) sobre el producto/sucursal nuevo, dejando ambos stocks correctos.
-- [ ] Eliminar una venta (soft-delete) genera un movimiento `7` que restaura por completo el stock descontado por esa venta, antes de marcar `status = 0`.
-- [ ] Si la cantidad vendida (al crear o al aumentar en edición) deja el stock por debajo de cero, el modal muestra una advertencia visible pero **permite** guardar.
-- [ ] Toda escritura de stock/kardex de una venta (creación, edición, eliminación) ocurre dentro de una única transacción junto con el cambio a `dbo.Ventas`; si el movimiento de stock falla, la venta no se guarda/actualiza/elimina.
-- [ ] `id_empresa`, `id_user` se toman del JWT en el server action, nunca de parámetros enviados por el cliente; `id_sucursal` se toma de `SucursalContext` en el cliente y viaja explícito al server action (mismo patrón ya usado en el resto de Ventas).
-- [ ] `getVentas` filtra por `v.id_sucursal` directamente (sin JOIN a `dbo.productos`) y sigue devolviendo `nombre_producto` correctamente para ventas registradas tras este cambio.
-- [ ] `getProductos`/`IProducto` (`dbo.productos`) ya no tienen ningún consumidor en el código; `dbo.productos` permanece intacta en BD sin usarse.
-- [ ] La página se ve correctamente en modo claro y oscuro, consistente con el resto de Ventas.
-- [ ] `npm run build` sin errores de TypeScript.
+- [x] `dbo.Ventas` tiene la columna `id_sucursal` (`int` NULL) y `inventory.kardex` tiene la columna `id_venta` (`int` NULL) con el índice `IX_kardex_id_venta`, ambas registradas en `queries.txt`.
+- [x] `IVenta` incluye `id_sucursal: number`.
+- [x] `applyStockMovement`/`IApplyStockMovementInput` aceptan `id_venta` como campo opcional y lo escriben en el kardex; recepciones, consumo por consulta y movimientos manuales siguen funcionando sin cambios en sus llamadas.
+- [x] El selector de producto del modal de Ventas solo lista productos de `inventory.Products` con `id_category = 4` (Venta), `activo = 1` y `status = 1` de la empresa del usuario — ningún producto de `dbo.productos` aparece.
+- [x] Cada opción del selector muestra el precio efectivo (`sale_price` si `split = 1`, si no `price`) y el stock actual del producto en la sucursal seleccionada.
+- [x] El total de la venta se calcula automáticamente con el precio efectivo del producto elegido y la cantidad capturada.
+- [x] Registrar una venta nueva inserta la fila en `dbo.Ventas` con el `id_sucursal` actual de `SucursalContext`, y genera **una** fila de kardex con movimiento `6` ("Salida por venta"), con `id_venta` ligado a la venta y `quantity` igual a la cantidad vendida.
+- [x] `inventory.stock` del producto/sucursal baja exactamente en la cantidad vendida tras registrar la venta.
+- [x] Editar una venta aumentando la cantidad (mismo producto) genera un movimiento `6` adicional por la diferencia; disminuyéndola genera un movimiento `7` por la diferencia; el stock queda consistente con la cantidad final.
+- [x] Editar una venta cambiando de producto genera una reversa completa (`7`) sobre el producto/sucursal original y una salida completa (`6`) sobre el producto/sucursal nuevo, dejando ambos stocks correctos.
+- [x] Eliminar una venta (soft-delete) genera un movimiento `7` que restaura por completo el stock descontado por esa venta, antes de marcar `status = 0`.
+- [x] Si la cantidad vendida (al crear o al aumentar en edición) deja el stock por debajo de cero, el modal muestra una advertencia visible pero **permite** guardar.
+- [x] Toda escritura de stock/kardex de una venta (creación, edición, eliminación) ocurre dentro de una única transacción junto con el cambio a `dbo.Ventas`; si el movimiento de stock falla, la venta no se guarda/actualiza/elimina.
+- [x] `id_empresa`, `id_user` se toman del JWT en el server action, nunca de parámetros enviados por el cliente; `id_sucursal` se toma de `SucursalContext` en el cliente y viaja explícito al server action (mismo patrón ya usado en el resto de Ventas).
+- [x] `getVentas` filtra por `v.id_sucursal` directamente (sin JOIN a `dbo.productos`) y sigue devolviendo `nombre_producto` correctamente para ventas registradas tras este cambio.
+- [x] `getProductos`/`IProducto` (`dbo.productos`) ya no tienen ningún consumidor en el código; `dbo.productos` permanece intacta en BD sin usarse.
+- [x] La página se ve correctamente en modo claro y oscuro, consistente con el resto de Ventas.
+- [x] `npm run build` sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 
