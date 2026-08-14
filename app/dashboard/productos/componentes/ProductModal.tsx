@@ -243,6 +243,44 @@ export default function ProductModal({
               )}
             </div>
 
+            {canEditMinStock && (
+              <div className="md:col-span-2 bg-[#eff4ff] dark:bg-zinc-800/50 p-4 rounded-lg border border-[#c4c6d0]/50 dark:border-zinc-700 flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    name="auto_consume"
+                    checked={!!form.auto_consume}
+                    onChange={onChange}
+                    className="mt-1 h-5 w-5 rounded border-[#c4c6d0] dark:border-zinc-600 text-[#0051d5] focus:ring-[#0051d5]"
+                  />
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">
+                      Consumo automático por consulta
+                    </label>
+                    <p className="text-xs text-[#44474f] dark:text-zinc-400">
+                      El producto se descuenta solo del stock cada vez que se crea una consulta.
+                    </p>
+                  </div>
+                </div>
+
+                {form.auto_consume && (
+                  <div>
+                    <label className={labelClass}>Cantidad por consulta</label>
+                    <input
+                      type="number"
+                      name="consumption_per_consultation"
+                      value={form.consumption_per_consultation ?? ""}
+                      onChange={onChange}
+                      min={0.0001}
+                      step="0.0001"
+                      required
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-3 py-2">
               <input
                 type="checkbox"
