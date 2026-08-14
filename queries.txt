@@ -484,3 +484,11 @@ ALTER TABLE [CentroPodologico].[inventory].[kardex]
   ADD [id_consulta] [int] NULL;
 GO
 
+-- spec 14 — movimientos de almacén
+ALTER TABLE [CentroPodologico].[inventory].[kardex]
+  ADD [id_sucursal_counterpart] [int] NULL,
+      [id_transfer] [varchar](36) NULL;
+GO
+CREATE INDEX [IX_kardex_transfer] ON [CentroPodologico].[inventory].[kardex] ([id_transfer] ASC);
+GO
+

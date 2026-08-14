@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[08-productos-inventario-crud]] (`inventory.Products`, `IProduct`, `ProductModal`, `saveProduct`), [[09-pedidos-compra-recepcion]] (`inventory.stock`, `inventory.kardex`, `applyStockMovement`, movimiento 5 "Salida por consulta")
 - **Fecha:** 2026-08-13
 - **Objetivo:** Marcar en el catálogo de Productos qué insumos se consumen automáticamente en cada consulta y con qué cantidad (cubrebocas 1, guantes 1, campos 2), y descontarlos del stock de la sucursal — con su fila en kardex bajo el movimiento 5 "Salida por consulta" — en el momento en que se crea una consulta.
