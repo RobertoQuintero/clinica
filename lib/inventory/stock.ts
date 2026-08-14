@@ -12,6 +12,9 @@ export interface IApplyStockMovementInput {
   unit_cost?:              number | null;
   id_purchase_order_item?: number | null;
   id_reception?:           number | null;
+  id_consulta?:            number | null;
+  id_sucursal_counterpart?: number | null;
+  id_transfer?:            string | null;
   notes?:                  string | null;
   id_user:                 number;
 }
@@ -37,6 +40,9 @@ export async function applyStockMovement(
     unit_cost = null,
     id_purchase_order_item = null,
     id_reception = null,
+    id_consulta = null,
+    id_sucursal_counterpart = null,
+    id_transfer = null,
     notes = null,
     id_user,
   } = input;
@@ -83,10 +89,12 @@ export async function applyStockMovement(
   await tx.queryParams(
     `INSERT INTO [CentroPodologico].[inventory].[kardex]
        ([id_product],[id_sucursal],[id_empresa],[id_movement],[quantity],[balance_after],
-        [id_unit_measurement],[unit_cost],[id_purchase_order_item],[id_reception],[notes],[id_user],[created_at])
+        [id_unit_measurement],[unit_cost],[id_purchase_order_item],[id_reception],[id_consulta],
+        [id_sucursal_counterpart],[id_transfer],[notes],[id_user],[created_at])
      VALUES
        (@id_product, @id_sucursal, @id_empresa, @id_movement, @quantity, @balance_after,
-        @id_unit_measurement, @unit_cost, @id_purchase_order_item, @id_reception, @notes, @id_user, @created_at)`,
+        @id_unit_measurement, @unit_cost, @id_purchase_order_item, @id_reception, @id_consulta,
+        @id_sucursal_counterpart, @id_transfer, @notes, @id_user, @created_at)`,
     {
       id_product,
       id_sucursal,
@@ -98,6 +106,9 @@ export async function applyStockMovement(
       unit_cost,
       id_purchase_order_item,
       id_reception,
+      id_consulta,
+      id_sucursal_counterpart,
+      id_transfer,
       notes,
       id_user,
       created_at: now,

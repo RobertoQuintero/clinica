@@ -12,6 +12,7 @@ import { IUser } from "@/interfaces/user";
 import { IValoracionPiel } from "@/interfaces/valoracion_piel";
 import { IAuthUser } from "@/interfaces/auth";
 import { buildDate, toDBString } from "@/utils/date_helpper";
+import { applyConsultationConsumption } from "@/lib/inventory/consultationConsumption";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 
@@ -148,6 +149,13 @@ export async function saveConsulta(form: IConsulta): Promise<{ ok: boolean; data
            )`,
           { id_consulta: newConsulta.id_consulta }
         );
+
+        await applyConsultationConsumption({
+          id_consulta: newConsulta.id_consulta,
+          id_sucursal,
+          id_empresa,
+          id_user:     id_podologo,
+        });
       }
     } else {
       result = await db.queryParams(

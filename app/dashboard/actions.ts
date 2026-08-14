@@ -6,6 +6,7 @@ import { jwtVerify } from "jose";
 import { IAuthUser } from "@/interfaces/auth";
 import bcrypt from "bcryptjs";
 import { buildDate, addZeroToday, toDBString } from "@/utils/date_helpper";
+import { applyConsultationConsumption } from "@/lib/inventory/consultationConsumption";
 
 export interface ICitaHoy {
   id_cita:               number;
@@ -850,6 +851,13 @@ export async function crearConsultaDesdeCita(
        )`,
       { id_consulta: newId }
     );
+
+    await applyConsultationConsumption({
+      id_consulta: newId,
+      id_sucursal,
+      id_empresa,
+      id_user: id_podologo,
+    });
 
     return { ok: true, id_consulta: newId };
   } catch (err) {

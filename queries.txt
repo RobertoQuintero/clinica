@@ -475,3 +475,20 @@ GO
 ALTER TABLE [CentroPodologico].[inventory].[Products] ADD [sale_price] [decimal](18,6) NULL -- precio de venta por pieza individual; obligatorio (>0) solo cuando id_category = 4 (Venta) y split = 1
 GO
 
+-- spec 13 — consumo automático de insumos por consulta
+ALTER TABLE [CentroPodologico].[inventory].[Products]
+  ADD [auto_consume] [bit] NOT NULL DEFAULT 0,
+      [consumption_per_consultation] [decimal](18,4) NULL;
+GO
+ALTER TABLE [CentroPodologico].[inventory].[kardex]
+  ADD [id_consulta] [int] NULL;
+GO
+
+-- spec 14 — movimientos de almacén
+ALTER TABLE [CentroPodologico].[inventory].[kardex]
+  ADD [id_sucursal_counterpart] [int] NULL,
+      [id_transfer] [varchar](36) NULL;
+GO
+CREATE INDEX [IX_kardex_transfer] ON [CentroPodologico].[inventory].[kardex] ([id_transfer] ASC);
+GO
+
