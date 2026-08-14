@@ -78,7 +78,6 @@ export async function getCalendarClient(calendarId?: string) {
 /** Creates a new event and returns the Google event ID. */
 export async function createCalendarEvent(data: CalendarEventData, calendarId?: string): Promise<string> {
   const { calendar, calId } = await getCalendarClient(calendarId);
-  console.log({ calendar, calId })
   const res = await calendar.events.insert({
     calendarId: calId,
     requestBody: {

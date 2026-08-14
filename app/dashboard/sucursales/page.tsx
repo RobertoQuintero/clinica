@@ -43,7 +43,6 @@ export default function SucursalesPage() {
     setLoading(true);
     try {
       const data = await getSucursales();
-      console.log({data})
       setSucursales(data);
     } finally {
       setLoading(false);
