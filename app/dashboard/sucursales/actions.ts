@@ -199,7 +199,6 @@ export async function getSucursalesForUser(): Promise<ISucursal[]> {
         AND s.[id_sucursal] IN (${placeholders})`,
     params
   );
-  console.log(data)
   return data as ISucursal[];
 }
 
