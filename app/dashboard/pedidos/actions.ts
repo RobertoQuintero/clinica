@@ -1,11 +1,16 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import db from "@/database/connection";
+import db, { ITransactionClient } from "@/database/connection";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import { IAuthUser } from "@/interfaces/auth";
 import { IPurchaseOrder, IPurchaseOrderItem } from "@/interfaces/purchase_order";
 import { IPurchaseReception } from "@/interfaces/purchase_reception";
+import {
+  IPurchaseOrderTemplate,
+  IPurchaseOrderTemplateItemDetail,
+  IPurchaseOrderTemplateListItem,
+} from "@/interfaces/purchase_order_template";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -670,5 +675,402 @@ export async function cancelPurchaseOrder(
     return { ok: true, data: undefined };
   } catch {
     return { ok: false, message: "Error al cancelar la orden de compra" };
+  }
+}
+
+/**
+ * Plantillas de pedido de la empresa (todas las sucursales), con agregados
+ * calculados server-side sobre precios actuales: las líneas cuyo producto ya
+ * no existe, no está activo o no es de la empresa quedan fuera de ambos
+ * agregados (no hay snapshots de producto en una plantilla, ver spec 18).
+ */
+export async function getPurchaseOrderTemplates(): Promise<
+  ActionResult<IPurchaseOrderTemplateListItem[]>
+> {
+  try {
+    const { id_empresa } = await getActiveUser();
+
+    const rows = await db.queryParams(
+      `SELECT t.[id_purchase_order_template],
+              t.[name],
+              t.[id_empresa],
+              t.[id_sucursal],
+              t.[id_user_created],
+              CONVERT(varchar(19), t.[created_at], 120) AS created_at,
+              CONVERT(varchar(19), t.[updated_at], 120) AS updated_at,
+              t.[status],
+              ISNULL(agg.[items_count], 0) AS items_count,
+              ISNULL(agg.[estimated_value], 0) AS estimated_value
+         FROM [CentroPodologico].[inventory].[purchase_order_templates] t
+         OUTER APPLY (
+                SELECT COUNT(*) AS items_count,
+                       SUM(i.[quantity] * p.[price]) AS estimated_value
+                  FROM [CentroPodologico].[inventory].[purchase_order_template_items] i
+                  JOIN [CentroPodologico].[inventory].[Products] p
+                    ON p.[id_product] = i.[id_product]
+                   AND p.[status] = 1
+                   AND p.[activo] = 1
+                   AND p.[id_empresa] = @id_empresa
+                 WHERE i.[id_purchase_order_template] = t.[id_purchase_order_template]
+              ) agg
+        WHERE t.[id_empresa] = @id_empresa
+          AND t.[status] = 1
+        ORDER BY t.[updated_at] DESC`,
+      { id_empresa }
+    );
+
+    const data: IPurchaseOrderTemplateListItem[] = rows.map((row) => ({
+      id_purchase_order_template: row.id_purchase_order_template,
+      name: row.name,
+      id_empresa: row.id_empresa,
+      id_sucursal: row.id_sucursal,
+      id_user_created: row.id_user_created,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      status: Boolean(row.status),
+      items_count: Number(row.items_count ?? 0),
+      estimated_value: Number(row.estimated_value ?? 0),
+    }));
+
+    return { ok: true, data };
+  } catch {
+    return { ok: false, message: "Error al obtener las plantillas de pedido" };
+  }
+}
+
+/** Encabezado + líneas resueltas contra el catálogo actual, para editar o usar una plantilla. */
+export async function getPurchaseOrderTemplateById(
+  id_purchase_order_template: number
+): Promise<
+  ActionResult<{ template: IPurchaseOrderTemplate; items: IPurchaseOrderTemplateItemDetail[] }>
+> {
+  try {
+    const { id_empresa } = await getActiveUser();
+
+    const headerRows = await db.queryParams(
+      `SELECT [id_purchase_order_template],
+              [name],
+              [id_empresa],
+              [id_sucursal],
+              [id_user_created],
+              CONVERT(varchar(19), [created_at], 120) AS created_at,
+              CONVERT(varchar(19), [updated_at], 120) AS updated_at,
+              [status]
+         FROM [CentroPodologico].[inventory].[purchase_order_templates]
+        WHERE [id_purchase_order_template] = @id_purchase_order_template
+          AND [id_empresa] = @id_empresa
+          AND [status] = 1`,
+      { id_purchase_order_template, id_empresa }
+    );
+
+    if (headerRows.length === 0) {
+      return { ok: false, message: "La plantilla no existe" };
+    }
+
+    const itemRows = await db.queryParams(
+      `SELECT i.[id_purchase_order_template_item],
+              i.[id_purchase_order_template],
+              i.[id_product],
+              i.[id_supplier],
+              i.[quantity],
+              ISNULL(p.[name], '') AS product_name,
+              ISNULL(p.[product_code], '') AS product_code,
+              ISNULL(p.[brand], '') AS brand,
+              p.[id_unit_measurement],
+              p.[pieces],
+              p.[split],
+              ISNULL(p.[price], 0) AS price,
+              CASE
+                WHEN p.[id_product] IS NOT NULL
+                 AND p.[status] = 1
+                 AND p.[activo] = 1
+                 AND p.[id_empresa] = @id_empresa
+                THEN 1 ELSE 0
+              END AS is_available
+         FROM [CentroPodologico].[inventory].[purchase_order_template_items] i
+         LEFT JOIN [CentroPodologico].[inventory].[Products] p
+           ON p.[id_product] = i.[id_product]
+        WHERE i.[id_purchase_order_template] = @id_purchase_order_template
+        ORDER BY i.[id_purchase_order_template_item]`,
+      { id_purchase_order_template, id_empresa }
+    );
+
+    const template: IPurchaseOrderTemplate = {
+      id_purchase_order_template: headerRows[0].id_purchase_order_template,
+      name: headerRows[0].name,
+      id_empresa: headerRows[0].id_empresa,
+      id_sucursal: headerRows[0].id_sucursal,
+      id_user_created: headerRows[0].id_user_created,
+      created_at: headerRows[0].created_at,
+      updated_at: headerRows[0].updated_at,
+      status: Boolean(headerRows[0].status),
+    };
+
+    const items: IPurchaseOrderTemplateItemDetail[] = itemRows.map((row) => ({
+      id_purchase_order_template_item: row.id_purchase_order_template_item,
+      id_purchase_order_template: row.id_purchase_order_template,
+      id_product: row.id_product,
+      id_supplier: row.id_supplier,
+      quantity: Number(row.quantity),
+      product_name: row.product_name,
+      product_code: row.product_code,
+      brand: row.brand,
+      id_unit_measurement: row.id_unit_measurement,
+      pieces: row.pieces,
+      split: Boolean(row.split),
+      price: Number(row.price),
+      is_available: Boolean(row.is_available),
+    }));
+
+    return { ok: true, data: { template, items } };
+  } catch {
+    return { ok: false, message: "Error al obtener el detalle de la plantilla" };
+  }
+}
+
+export interface IPurchaseOrderTemplateLineInput {
+  id_product:  number;
+  id_supplier: number | null;
+  quantity:    number;
+}
+
+/**
+ * Valida las líneas comunes a crear/editar una plantilla: al menos una línea,
+ * cantidades positivas, y cada producto existente/activo/de la empresa. Lanza
+ * un `Error` (capturado por el caller) en el primer problema encontrado.
+ */
+async function validateTemplateLines(
+  tx: ITransactionClient,
+  id_empresa: number,
+  lines: IPurchaseOrderTemplateLineInput[]
+): Promise<void> {
+  if (!lines || lines.length === 0) {
+    throw new Error("La plantilla debe tener al menos una línea");
+  }
+  if (lines.some((line) => line.quantity <= 0)) {
+    throw new Error("La cantidad de cada línea debe ser mayor a cero");
+  }
+
+  const productIds = [...new Set(lines.map((line) => line.id_product))];
+  const productParams: Record<string, unknown> = { id_empresa };
+  const productPlaceholders = productIds
+    .map((id, index) => {
+      productParams[`id_product_${index}`] = id;
+      return `@id_product_${index}`;
+    })
+    .join(",");
+
+  const productRows = await tx.queryParams(
+    `SELECT [id_product]
+       FROM [CentroPodologico].[inventory].[Products]
+      WHERE [id_empresa] = @id_empresa
+        AND [status] = 1
+        AND [activo] = 1
+        AND [id_product] IN (${productPlaceholders})`,
+    productParams
+  );
+  const availableProductIds = new Set(productRows.map((product) => product.id_product));
+  for (const line of lines) {
+    if (!availableProductIds.has(line.id_product)) {
+      throw new Error(
+        `El producto con id ${line.id_product} no existe, no está activo o no pertenece a la empresa`
+      );
+    }
+  }
+}
+
+/** Nombre único por empresa entre plantillas activas, ignorando mayúsculas/minúsculas. */
+async function assertUniqueTemplateName(
+  tx: ITransactionClient,
+  id_empresa: number,
+  name: string,
+  excludeId: number | null
+): Promise<void> {
+  const rows = await tx.queryParams(
+    `SELECT TOP 1 [id_purchase_order_template]
+       FROM [CentroPodologico].[inventory].[purchase_order_templates]
+      WHERE [id_empresa] = @id_empresa
+        AND [status] = 1
+        AND LOWER([name]) = LOWER(@name)
+        AND [id_purchase_order_template] <> @excludeId`,
+    { id_empresa, name, excludeId: excludeId ?? 0 }
+  );
+  if (rows.length > 0) {
+    throw new Error("Ya existe una plantilla con ese nombre");
+  }
+}
+
+export interface ICreatePurchaseOrderTemplateInput {
+  name:        string;
+  id_sucursal: number | null;
+  lines:       IPurchaseOrderTemplateLineInput[];
+}
+
+/** Crea una plantilla (encabezado + líneas) en una sola transacción. */
+export async function createPurchaseOrderTemplate(
+  input: ICreatePurchaseOrderTemplateInput
+): Promise<ActionResult<{ id_purchase_order_template: number }>> {
+  try {
+    const { id_empresa, id_user } = await getActiveUser();
+    const name = input.name?.trim();
+
+    if (!name) {
+      return { ok: false, message: "El nombre de la plantilla es obligatorio" };
+    }
+
+    const id_purchase_order_template = await db.transaction(async (tx) => {
+      await assertUniqueTemplateName(tx, id_empresa, name, null);
+      await validateTemplateLines(tx, id_empresa, input.lines);
+
+      const now = buildDate(new Date());
+      const headerResult = await tx.queryParams(
+        `INSERT INTO [CentroPodologico].[inventory].[purchase_order_templates]
+           ([name],[id_empresa],[id_sucursal],[id_user_created],[created_at],[updated_at],[status])
+         OUTPUT inserted.id_purchase_order_template
+         VALUES
+           (@name,@id_empresa,@id_sucursal,@id_user_created,@created_at,@updated_at,1)`,
+        {
+          name,
+          id_empresa,
+          id_sucursal: input.id_sucursal,
+          id_user_created: id_user,
+          created_at: now,
+          updated_at: now,
+        }
+      );
+      const id = headerResult[0].id_purchase_order_template;
+
+      for (const line of input.lines) {
+        await tx.queryParams(
+          `INSERT INTO [CentroPodologico].[inventory].[purchase_order_template_items]
+             ([id_purchase_order_template],[id_product],[id_supplier],[quantity])
+           VALUES
+             (@id_purchase_order_template,@id_product,@id_supplier,@quantity)`,
+          {
+            id_purchase_order_template: id,
+            id_product: line.id_product,
+            id_supplier: line.id_supplier,
+            quantity: line.quantity,
+          }
+        );
+      }
+
+      return id;
+    });
+
+    revalidatePath("/dashboard/pedidos/nuevo");
+    return { ok: true, data: { id_purchase_order_template } };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Error al guardar la plantilla",
+    };
+  }
+}
+
+export interface IUpdatePurchaseOrderTemplateInput {
+  id_purchase_order_template: number;
+  name:                        string;
+  lines:                       IPurchaseOrderTemplateLineInput[];
+}
+
+/**
+ * Actualiza una plantilla: renombra y reemplaza sus líneas completas
+ * (`DELETE` + `INSERT`), en una sola transacción. Sella `updated_at`.
+ */
+export async function updatePurchaseOrderTemplate(
+  input: IUpdatePurchaseOrderTemplateInput
+): Promise<ActionResult<null>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+    const name = input.name?.trim();
+
+    if (!name) {
+      return { ok: false, message: "El nombre de la plantilla es obligatorio" };
+    }
+
+    await db.transaction(async (tx) => {
+      const existingRows = await tx.queryParams(
+        `SELECT [id_purchase_order_template]
+           FROM [CentroPodologico].[inventory].[purchase_order_templates]
+          WHERE [id_purchase_order_template] = @id_purchase_order_template
+            AND [id_empresa] = @id_empresa
+            AND [status] = 1`,
+        { id_purchase_order_template: input.id_purchase_order_template, id_empresa }
+      );
+      if (existingRows.length === 0) {
+        throw new Error("La plantilla no existe");
+      }
+
+      await assertUniqueTemplateName(tx, id_empresa, name, input.id_purchase_order_template);
+      await validateTemplateLines(tx, id_empresa, input.lines);
+
+      const now = buildDate(new Date());
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[inventory].[purchase_order_templates]
+            SET [name] = @name,
+                [updated_at] = @updated_at
+          WHERE [id_purchase_order_template] = @id_purchase_order_template
+            AND [id_empresa] = @id_empresa`,
+        { name, updated_at: now, id_purchase_order_template: input.id_purchase_order_template, id_empresa }
+      );
+
+      await tx.queryParams(
+        `DELETE FROM [CentroPodologico].[inventory].[purchase_order_template_items]
+          WHERE [id_purchase_order_template] = @id_purchase_order_template`,
+        { id_purchase_order_template: input.id_purchase_order_template }
+      );
+
+      for (const line of input.lines) {
+        await tx.queryParams(
+          `INSERT INTO [CentroPodologico].[inventory].[purchase_order_template_items]
+             ([id_purchase_order_template],[id_product],[id_supplier],[quantity])
+           VALUES
+             (@id_purchase_order_template,@id_product,@id_supplier,@quantity)`,
+          {
+            id_purchase_order_template: input.id_purchase_order_template,
+            id_product: line.id_product,
+            id_supplier: line.id_supplier,
+            quantity: line.quantity,
+          }
+        );
+      }
+    });
+
+    revalidatePath("/dashboard/pedidos/nuevo");
+    return { ok: true, data: null };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Error al actualizar la plantilla",
+    };
+  }
+}
+
+/** Borrado lógico (`status = 0`) de una plantilla. */
+export async function deletePurchaseOrderTemplate(
+  id_purchase_order_template: number
+): Promise<ActionResult<null>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+
+    const result = await db.queryParams(
+      `UPDATE [CentroPodologico].[inventory].[purchase_order_templates]
+          SET [status] = 0
+        OUTPUT inserted.id_purchase_order_template
+        WHERE [id_purchase_order_template] = @id_purchase_order_template
+          AND [id_empresa] = @id_empresa
+          AND [status] = 1`,
+      { id_purchase_order_template, id_empresa }
+    );
+
+    if (result.length === 0) {
+      return { ok: false, message: "La plantilla no existe" };
+    }
+
+    revalidatePath("/dashboard/pedidos/nuevo");
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, message: "Error al eliminar la plantilla" };
   }
 }

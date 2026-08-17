@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
 import { addZeroToday } from "@/utils/date_helpper";
+import SaveCartAsTemplateModal from "./SaveCartAsTemplateModal";
 
 const TAX_RATE = 16;
 
@@ -14,6 +16,8 @@ const currencyFormatter = new Intl.NumberFormat("es-MX", {
 export default function PurchaseCartSummary() {
   const router = useRouter();
   const { lines, estimatedDate, notes, setEstimatedDate, setNotes } = usePurchaseCart();
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
   const tax = subtotal * (TAX_RATE / 100);
@@ -80,12 +84,37 @@ export default function PurchaseCartSummary() {
         >
           Revisar y generar orden
         </button>
+        <button
+          disabled={lines.length === 0}
+          onClick={() => {
+            setTemplateSaved(false);
+            setShowSaveTemplateModal(true);
+          }}
+          className="w-full mt-3 border border-[#0051d5] text-[#0051d5] dark:text-blue-400 dark:border-blue-400 py-3 rounded-lg text-sm font-semibold hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Guardar como plantilla
+        </button>
         {lines.length === 0 && (
           <p className="text-xs text-[#747780] dark:text-zinc-500 mt-2 text-center">
             Selecciona al menos un producto para continuar.
           </p>
         )}
+        {templateSaved && (
+          <p className="text-xs text-green-600 dark:text-green-400 mt-2 text-center">
+            Plantilla guardada correctamente.
+          </p>
+        )}
       </div>
+
+      {showSaveTemplateModal && (
+        <SaveCartAsTemplateModal
+          onClose={() => setShowSaveTemplateModal(false)}
+          onSaved={() => {
+            setShowSaveTemplateModal(false);
+            setTemplateSaved(true);
+          }}
+        />
+      )}
     </div>
   );
 }

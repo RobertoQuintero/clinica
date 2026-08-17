@@ -1,0 +1,234 @@
+<!DOCTYPE html><html lang="es" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Plantillas de pedido - Pie Zen Podología</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#d3e3ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "surface": "#f8f9ff",
+                        "on-tertiary-container": "#75887c",
+                        "tertiary-fixed-dim": "#b7ccbe",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "inverse-primary": "#bac7e3",
+                        "outline-variant": "#c5c6cd",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-surface": "#0b1c30",
+                        "surface-container-low": "#eff4ff",
+                        "inverse-surface": "#213146",
+                        "tertiary": "#000000",
+                        "on-secondary-fixed": "#00174b",
+                        "surface-container-high": "#dde9ff",
+                        "surface-container": "#e6eeff",
+                        "on-tertiary": "#ffffff",
+                        "outline": "#747780",
+                        "surface-tint": "#525f77",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#78849e",
+                        "on-primary-fixed-variant": "#3b475e",
+                        "background": "#f8f9ff",
+                        "tertiary-fixed": "#d2e8d9",
+                        "primary-container": "#0f1c31",
+                        "on-tertiary-fixed": "#0d1f16",
+                        "inverse-on-surface": "#ebf1ff",
+                        "primary-fixed-dim": "#bac7e3",
+                        "surface-bright": "#f8f9ff",
+                        "on-secondary-container": "#fefcff",
+                        "on-tertiary-fixed-variant": "#384b40",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#d3e3ff",
+                        "secondary-container": "#346cef",
+                        "on-background": "#0b1c30",
+                        "on-error-container": "#93000a",
+                        "success": "#009c6b",
+                        "secondary": "#0051d5",
+                        "surface-dim": "#cbdbf6",
+                        "on-surface-variant": "#45474d",
+                        "on-secondary-fixed-variant": "#003ea7",
+                        "primary": "#000000",
+                        "on-primary-fixed": "#0f1c31",
+                        "primary-fixed": "#d7e3ff",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#0d1f16"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "card-gap": "20px",
+                        "sidebar-width": "240px",
+                        "gutter-inline": "16px",
+                        "base-unit": "4px",
+                        "inline-gutter": "16px",
+                        "container-padding": "24px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-subtle": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "display-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-subtle": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased">
+<!-- TopNavBar (Rendered exactly as per Shared Components JSON and Rules) -->
+
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-7xl mx-auto px-container-padding py-8 flex flex-col gap-8">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+<div class="flex flex-col gap-1">
+<h1 class="font-display-lg text-display-lg text-on-surface">Plantillas de pedido</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Gestiona tus listas de productos guardadas para agilizar tus pedidos recurrentes.</p>
+</div>
+
+</div>
+<!-- Search & Filter Bar -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 flex flex-col md:flex-row gap-4 items-center">
+<div class="relative w-full md:w-96 flex-grow md:flex-grow-0">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface border border-outline-variant rounded-DEFAULT font-body-sm text-body-sm focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary" placeholder="Buscar plantillas por nombre..." type="text">
+</div>
+<div class="flex items-center gap-2 w-full md:w-auto ml-auto">
+
+
+</div>
+</div>
+<!-- Templates Grid (Bento/Card style instead of standard list) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-card-gap">
+<!-- Template Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 flex flex-col justify-between hover:bg-surface-container-low transition-colors group">
+<div>
+<div class="flex justify-between items-start mb-2">
+<h2 class="font-title-sm text-title-sm text-on-surface">Insumos Quirúrgicos Mensuales</h2>
+
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span> 24 productos • Última actualización: 12 Mayo
+                    </p>
+</div>
+<div class="flex flex-col sm:flex-row justify-between items-end sm:items-center pt-4 border-t border-outline-variant gap-4">
+<div class="flex flex-col w-full sm:w-auto">
+<span class="font-label-subtle text-label-subtle text-on-surface-variant">Valor Estimado</span>
+<span class="font-title-sm text-title-sm text-on-surface">$12,450.00 MXN</span>
+</div>
+<div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+<button class="p-2 text-on-surface-variant hover:text-secondary transition-colors" title="Editar">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error transition-colors" title="Eliminar">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="bg-surface-container-highest text-secondary font-label-bold text-label-bold py-2 px-4 rounded-DEFAULT hover:bg-secondary-fixed transition-colors flex items-center gap-2">
+                            Usar para Pedido <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Template Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 flex flex-col justify-between hover:bg-surface-container-low transition-colors group">
+<div>
+<div class="flex justify-between items-start mb-2">
+<h2 class="font-title-sm text-title-sm text-on-surface">Básicos de Sucursal Norte</h2>
+
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span> 12 productos • Última actualización: 03 Junio
+                    </p>
+</div>
+<div class="flex flex-col sm:flex-row justify-between items-end sm:items-center pt-4 border-t border-outline-variant gap-4">
+<div class="flex flex-col w-full sm:w-auto">
+<span class="font-label-subtle text-label-subtle text-on-surface-variant">Valor Estimado</span>
+<span class="font-title-sm text-title-sm text-on-surface">$4,280.00 MXN</span>
+</div>
+<div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+<button class="p-2 text-on-surface-variant hover:text-secondary transition-colors" title="Editar">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error transition-colors" title="Eliminar">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="bg-surface-container-highest text-secondary font-label-bold text-label-bold py-2 px-4 rounded-DEFAULT hover:bg-secondary-fixed transition-colors flex items-center gap-2">
+                            Usar para Pedido <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Template Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 flex flex-col justify-between hover:bg-surface-container-low transition-colors group">
+<div>
+<div class="flex justify-between items-start mb-2">
+<h2 class="font-title-sm text-title-sm text-on-surface">Material de Curación General</h2>
+
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span> 38 productos • Última actualización: 28 Abril
+                    </p>
+</div>
+<div class="flex flex-col sm:flex-row justify-between items-end sm:items-center pt-4 border-t border-outline-variant gap-4">
+<div class="flex flex-col w-full sm:w-auto">
+<span class="font-label-subtle text-label-subtle text-on-surface-variant">Valor Estimado</span>
+<span class="font-title-sm text-title-sm text-on-surface">$18,900.50 MXN</span>
+</div>
+<div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+<button class="p-2 text-on-surface-variant hover:text-secondary transition-colors" title="Editar">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error transition-colors" title="Eliminar">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="bg-surface-container-highest text-secondary font-label-bold text-label-bold py-2 px-4 rounded-DEFAULT hover:bg-secondary-fixed transition-colors flex items-center gap-2">
+                            Usar para Pedido <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Empty State / Add New (Conceptual Card) -->
+<div class="bg-surface border-2 border-dashed border-outline-variant rounded-lg p-6 flex flex-col justify-center items-center text-center cursor-pointer hover:bg-surface-container-low hover:border-secondary transition-all min-h-[220px]">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-4 text-secondary">
+<span class="material-symbols-outlined">add</span>
+</div>
+<h3 class="font-title-sm text-title-sm text-on-surface mb-1">Crear Nueva Plantilla</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs">Agrupa productos que sueles pedir juntos para ahorrar tiempo en el futuro.</p>
+</div>
+</div>
+</main>
+
+
+</body></html>

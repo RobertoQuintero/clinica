@@ -16,6 +16,7 @@ import { IUnitMeasurement } from "@/interfaces/unit_measurement";
 import { ISupplier } from "@/interfaces/supplier";
 import SuggestedProductsTable from "./componentes/SuggestedProductsTable";
 import PurchaseCartSummary from "./componentes/PurchaseCartSummary";
+import OrderTemplatesTab from "./componentes/OrderTemplatesTab";
 import { dayFirst } from "@/utils/date_helpper";
 
 type TabKey = "sugeridos" | "todos" | "plantillas";
@@ -166,63 +167,74 @@ export default function NuevoPedidoPage() {
               Todos los productos
             </button>
             <button
-              disabled
-              title="Próximamente"
-              className="pb-3 px-2 text-sm font-semibold border-b-2 border-transparent text-[#c4c6d0] dark:text-zinc-600 cursor-not-allowed"
+              onClick={() => setActiveTab("plantillas")}
+              className={`pb-3 px-2 text-sm font-semibold border-b-2 transition-colors ${
+                activeTab === "plantillas"
+                  ? "text-[#0051d5] border-[#0051d5]"
+                  : "text-[#44474f] dark:text-zinc-400 border-transparent hover:text-[#0b1c30] dark:hover:text-zinc-100"
+              }`}
             >
               Plantillas de pedido
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="relative flex-1 min-w-[250px]">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#44474f] dark:text-zinc-400" />
-              <input
-                type="text"
-                placeholder="Buscar producto..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 pl-10 pr-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 placeholder-[#747780] dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
-              />
+          {activeTab !== "plantillas" && (
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="relative flex-1 min-w-[250px]">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#44474f] dark:text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar producto..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 pl-10 pr-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 placeholder-[#747780] dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
+                />
+              </div>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] min-w-[160px]"
+              >
+                <option value="">Todas las categorías</option>
+                {categories.map((c) => (
+                  <option key={c.id_category} value={c.id_category}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={supplierFilter}
+                onChange={(e) => setSupplierFilter(e.target.value)}
+                className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] min-w-[160px]"
+              >
+                <option value="">Todos los proveedores</option>
+                {suppliers.map((s) => (
+                  <option key={s.id_proveedor} value={s.id_proveedor}>
+                    {s.nombre_corto}
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] min-w-[160px]"
-            >
-              <option value="">Todas las categorías</option>
-              {categories.map((c) => (
-                <option key={c.id_category} value={c.id_category}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-              className="rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] min-w-[160px]"
-            >
-              <option value="">Todos los proveedores</option>
-              {suppliers.map((s) => (
-                <option key={s.id_proveedor} value={s.id_proveedor}>
-                  {s.nombre_corto}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {error && (
-            <p className="text-sm text-[#ba1a1a] dark:text-red-400">{error}</p>
           )}
 
-          {loading ? (
-            <p className="text-[#44474f] dark:text-zinc-400">Cargando…</p>
+          {activeTab === "plantillas" ? (
+            <OrderTemplatesTab onCreateNew={() => setActiveTab("sugeridos")} />
           ) : (
-            <SuggestedProductsTable
-              products={filteredProducts}
-              categoryNameById={categoryNameById}
-              unitNameById={unitNameById}
-            />
+            <>
+              {error && (
+                <p className="text-sm text-[#ba1a1a] dark:text-red-400">{error}</p>
+              )}
+
+              {loading ? (
+                <p className="text-[#44474f] dark:text-zinc-400">Cargando…</p>
+              ) : (
+                <SuggestedProductsTable
+                  products={filteredProducts}
+                  categoryNameById={categoryNameById}
+                  unitNameById={unitNameById}
+                />
+              )}
+            </>
           )}
         </div>
 
