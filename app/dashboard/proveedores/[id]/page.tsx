@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Info, Contact, MapPin, ExternalLink } from "lucide-react";
+import { ArrowLeft, Info, Contact, MapPin, ExternalLink, History } from "lucide-react";
 import { getSupplierById, getSupplierProducts } from "../actions";
 import { getPhoneCodes } from "@/app/dashboard/pacientes/actions";
 import EditSupplierButton from "./componentes/EditSupplierButton";
@@ -53,6 +53,13 @@ export default async function SupplierDetailPage({ params }: Props) {
           <h1 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">{supplier.nombre_corto}</h1>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/dashboard/pedidos?proveedor=${id_proveedor}`}
+            className="px-4 py-2 bg-white dark:bg-zinc-800 border border-[#c4c6d0] dark:border-zinc-700 rounded-lg text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 hover:bg-[#eff4ff] dark:hover:bg-zinc-700 flex items-center gap-2 transition-colors"
+          >
+            <History size={18} />
+            Ver Historial de Pedidos
+          </Link>
           <EditSupplierButton supplier={supplier} phoneCodes={phoneCodes} />
         </div>
       </div>
