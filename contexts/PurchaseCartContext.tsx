@@ -39,6 +39,8 @@ interface PurchaseCartContextType {
   setLineUnitPrice:        (id_product: number, unit_price: number) => void;
   setLineSupplier:         (id_product: number, id_supplier: number | null) => void;
   removeLine:              (id_product: number) => void;
+  /** Reemplaza todas las líneas de golpe (p. ej. al cargar una plantilla), sin tocar fecha/notas/métodos de pago. */
+  replaceLines:            (lines: IPurchaseCartLine[]) => void;
   setEstimatedDate:        (date: string) => void;
   setNotes:                (notes: string) => void;
   setSupplierPaymentMethod: (id_supplier: number, idMetodoPago: number) => void;
@@ -136,6 +138,10 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
     setLines((current) => current.filter((line) => line.id_product !== id_product));
   };
 
+  const replaceLines = (newLines: IPurchaseCartLine[]) => {
+    setLines(newLines);
+  };
+
   const setSupplierPaymentMethod = (id_supplier: number, idMetodoPago: number) => {
     setPaymentMethodBySupplier((current) => ({ ...current, [id_supplier]: idMetodoPago }));
   };
@@ -162,6 +168,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         setLineUnitPrice,
         setLineSupplier,
         removeLine,
+        replaceLines,
         setEstimatedDate,
         setNotes,
         setSupplierPaymentMethod,
