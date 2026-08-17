@@ -315,7 +315,7 @@ export default function ProductModal({
                 <div>
                   <label className="block text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">Dividir Unidad</label>
                   <p className="text-xs text-[#44474f] dark:text-zinc-400">
-                    Indica si el producto será dividido en piezas o alguna unidad específica para el descuento por consulta.
+                    Indica si el producto será dividido en piezas o alguna unidad específica.
                   </p>
                 </div>
               </div>
