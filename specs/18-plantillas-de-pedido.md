@@ -2,15 +2,14 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[09-pedidos-compra-recepcion]] (`inventory.Products`, `inventory.purchase_orders`, `PurchaseCartContext`, `PurchaseCartSummary`, `/dashboard/pedidos/nuevo`), [[08-productos-inventario-crud]] (`Products.price`, `Products.activo`, `Products.id_supplier`), [[10-metodo-pago-pedidos]] (patrón de `ActionResult` y validación server-side en `app/dashboard/pedidos/actions.ts`)
 - **Fecha:** 2026-08-17
 - **Objetivo:** Implementar la pestaña "Plantillas de pedido" de `/dashboard/pedidos/nuevo` con persistencia en BD a nivel empresa, permitiendo guardar el carrito actual como plantilla nombrada, listarlas en grid con su valor estimado, editarlas (cantidades, proveedor, quitar líneas), eliminarlas lógicamente y cargarlas al carrito con un clic.
 
 ## Alcance
 
-**Incluye:**
-
+**Incluye:**x
 - **Dos tablas nuevas** en el esquema `inventory`: `purchase_order_templates` (encabezado) y `purchase_order_template_items` (líneas). Las plantillas son **de empresa** (`id_empresa`): visibles desde cualquier sucursal.
 - **Guardar carrito como plantilla**: botón nuevo en `PurchaseCartSummary`, debajo de "Revisar y generar orden", deshabilitado con el carrito vacío. Abre un modal que solo pide el **nombre**; guarda una línea por cada línea del carrito con `id_product`, `quantity` e `id_supplier`. No guarda `unit_price`, ni fecha estimada, ni notas, ni métodos de pago.
 - **Pestaña "Plantillas de pedido"** habilitada en `app/dashboard/pedidos/nuevo/page.tsx` (hoy `disabled` con `title="Próximamente"`). Al activarla:
@@ -171,28 +170,28 @@ Todos resuelven `id_empresa`/`id_user` con `getActiveUser()` y filtran por `id_e
 
 ## Criterios de aceptación
 
-- [ ] Existen en BD `inventory.purchase_order_templates` y `inventory.purchase_order_template_items` con las columnas e índices del DDL, y el DDL quedó anexado a `queries.txt`.
-- [ ] `PurchaseCartSummary` muestra el botón "Guardar como plantilla", deshabilitado cuando el carrito está vacío y habilitado cuando tiene al menos una línea.
-- [ ] Guardar el carrito como plantilla crea **una** fila de encabezado y **una fila por línea del carrito**, con `id_product`, `id_supplier` y `quantity`; no se persiste `unit_price`, `estimated_date`, `notes` ni método de pago.
-- [ ] Intentar crear o renombrar una plantilla con un nombre que ya usa otra plantilla activa de la empresa (ignorando mayúsculas/minúsculas) devuelve `{ ok: false, message }` y la UI muestra ese mensaje; el nombre de una plantilla eliminada **sí** puede reutilizarse.
-- [ ] La pestaña "Plantillas de pedido" de `/dashboard/pedidos/nuevo` está habilitada y, al activarse, oculta la barra de filtros de productos y `SuggestedProductsTable`, muestra el grid de plantillas con su buscador por nombre, y mantiene visible `PurchaseCartSummary`.
-- [ ] El buscador de plantillas filtra por nombre client-side sobre las plantillas ya cargadas, sin volver a consultar el servidor.
-- [ ] Cada card muestra nombre, número de productos, "Última actualización" con `updated_at` formateado desde el string de BD (sin `new Date(raw)` directo), y el valor estimado calculado server-side como Σ `quantity × Products.price` actual **sin IVA**.
-- [ ] Cambiar el precio de un producto en `/dashboard/productos` se refleja en el valor estimado de las cards que lo contienen, sin editar la plantilla.
-- [ ] Las líneas cuyo producto ya no existe, está inactivo o no es de la empresa quedan excluidas de `items_count` y de `estimated_value`.
-- [ ] La card punteada "Crear Nueva Plantilla" aparece siempre al final del grid y al hacer clic cambia a la pestaña "Sugeridos para pedir".
-- [ ] El modal de edición permite renombrar, cambiar cantidad, cambiar proveedor y quitar líneas; **no** ofrece agregar productos nuevos. Al guardar, las líneas quedan exactamente como se dejaron y `updated_at` avanza.
-- [ ] Eliminar una plantilla pide confirmación (`ConfirmModal` compartido), y al confirmar deja la fila con `status = 0` y la quita del grid; no se borra físicamente ninguna fila.
-- [ ] "Usar para Pedido" con el carrito vacío carga las líneas directamente; con el carrito no vacío pide confirmación antes de **reemplazar**, y cancelar deja el carrito intacto.
-- [ ] Las líneas cargadas al carrito toman `unit_price` del `Products.price` actual, no de la plantilla.
-- [ ] Al usar una plantilla con productos no disponibles, esos se omiten y la UI muestra un aviso indicando cuántos y cuáles; si ninguna línea es utilizable, el carrito no se modifica y solo se avisa.
-- [ ] Todas las lecturas y escrituras de plantillas resuelven `id_empresa`/`id_user` desde el JWT vía `getActiveUser()` y filtran por `id_empresa` en el `WHERE`; ningún action confía en un `id_empresa` recibido del cliente.
-- [ ] `createPurchaseOrderTemplate` y `updatePurchaseOrderTemplate` escriben encabezado y líneas dentro de una sola `db.transaction`; si falla la inserción de una línea, no queda ni encabezado creado ni líneas parciales.
-- [ ] Las plantillas creadas en una sucursal siguen visibles al cambiar de sucursal en el header.
-- [ ] Las server actions siguen la convención `ActionResult<T>` y viven en `app/dashboard/pedidos/actions.ts`; no se agregó ninguna ruta REST en `app/api/`.
-- [ ] Los nombres de funciones, variables, componentes y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md`.
-- [ ] La pestaña se ve correctamente en modo claro y oscuro, y en ancho móvil el grid colapsa a una columna con el sidebar debajo.
-- [ ] `npm run build` sin errores de TypeScript.
+- [x] Existen en BD `inventory.purchase_order_templates` y `inventory.purchase_order_template_items` con las columnas e índices del DDL, y el DDL quedó anexado a `queries.txt`.
+- [x] `PurchaseCartSummary` muestra el botón "Guardar como plantilla", deshabilitado cuando el carrito está vacío y habilitado cuando tiene al menos una línea.
+- [x] Guardar el carrito como plantilla crea **una** fila de encabezado y **una fila por línea del carrito**, con `id_product`, `id_supplier` y `quantity`; no se persiste `unit_price`, `estimated_date`, `notes` ni método de pago.
+- [x] Intentar crear o renombrar una plantilla con un nombre que ya usa otra plantilla activa de la empresa (ignorando mayúsculas/minúsculas) devuelve `{ ok: false, message }` y la UI muestra ese mensaje; el nombre de una plantilla eliminada **sí** puede reutilizarse.
+- [x] La pestaña "Plantillas de pedido" de `/dashboard/pedidos/nuevo` está habilitada y, al activarse, oculta la barra de filtros de productos y `SuggestedProductsTable`, muestra el grid de plantillas con su buscador por nombre, y mantiene visible `PurchaseCartSummary`.
+- [x] El buscador de plantillas filtra por nombre client-side sobre las plantillas ya cargadas, sin volver a consultar el servidor.
+- [x] Cada card muestra nombre, número de productos, "Última actualización" con `updated_at` formateado desde el string de BD (sin `new Date(raw)` directo), y el valor estimado calculado server-side como Σ `quantity × Products.price` actual **sin IVA**.
+- [x] Cambiar el precio de un producto en `/dashboard/productos` se refleja en el valor estimado de las cards que lo contienen, sin editar la plantilla.
+- [x] Las líneas cuyo producto ya no existe, está inactivo o no es de la empresa quedan excluidas de `items_count` y de `estimated_value`.
+- [x] La card punteada "Crear Nueva Plantilla" aparece siempre al final del grid y al hacer clic cambia a la pestaña "Sugeridos para pedir".
+- [x] El modal de edición permite renombrar, cambiar cantidad, cambiar proveedor y quitar líneas; **no** ofrece agregar productos nuevos. Al guardar, las líneas quedan exactamente como se dejaron y `updated_at` avanza.
+- [x] Eliminar una plantilla pide confirmación (`ConfirmModal` compartido), y al confirmar deja la fila con `status = 0` y la quita del grid; no se borra físicamente ninguna fila.
+- [x] "Usar para Pedido" con el carrito vacío carga las líneas directamente; con el carrito no vacío pide confirmación antes de **reemplazar**, y cancelar deja el carrito intacto.
+- [x] Las líneas cargadas al carrito toman `unit_price` del `Products.price` actual, no de la plantilla.
+- [x] Al usar una plantilla con productos no disponibles, esos se omiten y la UI muestra un aviso indicando cuántos y cuáles; si ninguna línea es utilizable, el carrito no se modifica y solo se avisa.
+- [x] Todas las lecturas y escrituras de plantillas resuelven `id_empresa`/`id_user` desde el JWT vía `getActiveUser()` y filtran por `id_empresa` en el `WHERE`; ningún action confía en un `id_empresa` recibido del cliente.
+- [x] `createPurchaseOrderTemplate` y `updatePurchaseOrderTemplate` escriben encabezado y líneas dentro de una sola `db.transaction`; si falla la inserción de una línea, no queda ni encabezado creado ni líneas parciales.
+- [x] Las plantillas creadas en una sucursal siguen visibles al cambiar de sucursal en el header.
+- [x] Las server actions siguen la convención `ActionResult<T>` y viven en `app/dashboard/pedidos/actions.ts`; no se agregó ninguna ruta REST en `app/api/`.
+- [x] Los nombres de funciones, variables, componentes y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md`.
+- [x] La pestaña se ve correctamente en modo claro y oscuro, y en ancho móvil el grid colapsa a una columna con el sidebar debajo.
+- [x] `npm run build` sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 
