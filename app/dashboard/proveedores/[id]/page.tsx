@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft, Info, Contact, MapPin, ExternalLink } from "lucide-react";
-import { getSupplierById } from "../actions";
+import { getSupplierById, getSupplierProducts } from "../actions";
 import { getPhoneCodes } from "@/app/dashboard/pacientes/actions";
 import EditSupplierButton from "./componentes/EditSupplierButton";
+import AssociatedProductsTable from "./componentes/AssociatedProductsTable";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -12,9 +13,10 @@ export default async function SupplierDetailPage({ params }: Props) {
   const { id } = await params;
   const id_proveedor = Number(id);
 
-  const [supplier, phoneCodes] = await Promise.all([
+  const [supplier, phoneCodes, associatedProducts] = await Promise.all([
     getSupplierById(id_proveedor),
     getPhoneCodes(),
+    getSupplierProducts(id_proveedor),
   ]);
 
   if (!supplier) {
@@ -183,6 +185,9 @@ export default async function SupplierDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Productos asociados */}
+      <AssociatedProductsTable products={associatedProducts} />
     </div>
   );
 }
