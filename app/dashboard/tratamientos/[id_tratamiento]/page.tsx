@@ -38,6 +38,7 @@ type DetailRow = ITratamientoOnicomicosis & {
   nombre_especialista: string;
   nombre_usuario:      string;
   nombre_stage:        string;
+  nombre_sucursal:     string | null;
   id_paciente:         number;
   id_podologo:         number;
   whatsapp:            string | null;
