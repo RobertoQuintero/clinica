@@ -185,6 +185,7 @@ export interface ICreatePurchaseOrderLineInput {
   id_supplier: number | null;
   quantity:    number;
   unit_price:  number;
+  applies_iva: boolean;
 }
 
 export interface ICreatePurchaseOrdersInput {
@@ -296,10 +297,11 @@ export async function createPurchaseOrders(
           const product = productById.get(line.id_product)!;
           const conversionFactor = product.split ? Number(product.pieces) || 1 : 1;
           const lineTotal = round2(line.quantity * line.unit_price);
-          return { line, product, conversionFactor, lineTotal };
+          const lineTaxAmount = line.applies_iva ? round2(lineTotal * (TAX_RATE / 100)) : 0;
+          return { line, product, conversionFactor, lineTotal, lineTaxAmount };
         });
         const subtotal = round2(itemsToInsert.reduce((sum, item) => sum + item.lineTotal, 0));
-        const tax = round2(subtotal * (TAX_RATE / 100));
+        const tax = round2(itemsToInsert.reduce((sum, item) => sum + item.lineTaxAmount, 0));
         const total = round2(subtotal + tax);
 
         const orderResult = await tx.queryParams(
@@ -331,16 +333,16 @@ export async function createPurchaseOrders(
         );
         const id_purchase_order = orderResult[0].id_purchase_order;
 
-        for (const { line, product, conversionFactor, lineTotal } of itemsToInsert) {
+        for (const { line, product, conversionFactor, lineTotal, lineTaxAmount } of itemsToInsert) {
           await tx.queryParams(
             `INSERT INTO [CentroPodologico].[inventory].[purchase_order_items]
                ([id_purchase_order],[id_product],[product_name],[product_code],[brand],
                 [id_unit_measurement],[conversion_factor],[quantity],[quantity_received],
-                [unit_price],[discount],[line_total],[created_at])
+                [unit_price],[discount],[line_total],[applies_iva],[tax_amount],[created_at])
              VALUES
                (@id_purchase_order,@id_product,@product_name,@product_code,@brand,
                 @id_unit_measurement,@conversion_factor,@quantity,0,
-                @unit_price,0,@line_total,@created_at)`,
+                @unit_price,0,@line_total,@applies_iva,@tax_amount,@created_at)`,
             {
               id_purchase_order,
               id_product: line.id_product,
@@ -352,6 +354,8 @@ export async function createPurchaseOrders(
               quantity: line.quantity,
               unit_price: line.unit_price,
               line_total: lineTotal,
+              applies_iva: line.applies_iva,
+              tax_amount: lineTaxAmount,
               created_at: now,
             }
           );
