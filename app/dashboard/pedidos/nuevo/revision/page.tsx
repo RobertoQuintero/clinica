@@ -103,6 +103,7 @@ export default function RevisionOrdenPage() {
           id_supplier: line.id_supplier,
           quantity: line.quantity,
           unit_price: line.unit_price,
+          applies_iva: line.applies_iva,
         })),
         paymentMethodBySupplier,
       });
