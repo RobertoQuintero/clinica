@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** ninguno de los specs numerados existentes (toca `tratamientos/[id_tratamiento]/page.tsx`, `AccordionPagos.tsx`, `AccordionRecetas.tsx`, ya existentes desde antes del sistema de specs numerados)
 - **Fecha:** 2026-08-18
 - **Objetivo:** Agregar botones "Copiar" en el detalle del tratamiento (`/dashboard/tratamientos/[id_tratamiento]`) que copien al portapapeles, en tres puntos distintos, el texto ya usado o pensado para WhatsApp — el aviso de nueva solicitud al especialista, el recibo de un pago individual, y el mensaje de una receta — para que el usuario los pegue manualmente en cualquier conversación de WhatsApp que ya tenga abierta.
@@ -114,16 +114,16 @@ Pasada desde `page.tsx`: `<AccordionPagos ... nombre_paciente={detalle.nombre_pa
 
 ## Criterios de aceptación
 
-- [ ] `app/dashboard/componentes/CopyButton.tsx` existe, copia el `text` recibido al portapapeles, y muestra un estado "¡Copiado!" (o equivalente) por ~2 segundos antes de volver a su label normal.
-- [ ] `getTratamientoDetalle` retorna `nombre_sucursal` (nombre de la sucursal de la consulta asociada, o `null` si no tiene), sin romper ningún otro campo ya retornado.
-- [ ] En `/dashboard/tratamientos/[id_tratamiento]`, el botón "Copiar solicitud" copia un texto idéntico en contenido al que hoy abre `wa.me` automáticamente al guardar un tratamiento nuevo (saludo, paciente, fecha, sucursal, cierre), usando `"Desconocida"` si `nombre_sucursal` es `null`.
-- [ ] En la tabla "Pagos (Ingresos)" (`AccordionPagos`), cada fila tiene un botón "Copiar" visible para todos los roles que ya ven la tabla, que copia un recibo con paciente, fecha, tipo, total, método de pago y referencia de esa fila específica.
-- [ ] En `AccordionRecetas`, cada fila con receta tiene un botón "Copiar" junto al botón "WhatsApp" existente (misma visibilidad, `id_role !== 5`), que copia exactamente el mismo texto que ya arma el enlace `wa.me`.
-- [ ] Ninguno de los tres enlaces/acciones `wa.me` existentes (aviso al especialista, botón WhatsApp de recetas) fue modificado ni eliminado — los botones de copiar son adicionales.
-- [ ] `AccordionPagos` sigue oculto para `id_role === 5` (sin cambios a esa regla existente en `page.tsx`).
-- [ ] Los nombres de funciones, variables, componentes y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md`.
-- [ ] Las pantallas se ven correctamente en modo claro y oscuro.
-- [ ] `npm run build` sin errores de TypeScript.
+- [x] `app/dashboard/componentes/CopyButton.tsx` existe, copia el `text` recibido al portapapeles, y muestra un estado "¡Copiado!" (o equivalente) por ~2 segundos antes de volver a su label normal.
+- [x] `getTratamientoDetalle` retorna `nombre_sucursal` (nombre de la sucursal de la consulta asociada, o `null` si no tiene), sin romper ningún otro campo ya retornado.
+- [x] En `/dashboard/tratamientos/[id_tratamiento]`, el botón "Copiar solicitud" copia un texto idéntico en contenido al que hoy abre `wa.me` automáticamente al guardar un tratamiento nuevo (saludo, paciente, fecha, sucursal, cierre), usando `"Desconocida"` si `nombre_sucursal` es `null`.
+- [x] En la tabla "Pagos (Ingresos)" (`AccordionPagos`), cada fila tiene un botón "Copiar" visible para todos los roles que ya ven la tabla, que copia un recibo con paciente, fecha, tipo, total, método de pago y referencia de esa fila específica.
+- [x] En `AccordionRecetas`, cada fila con receta tiene un botón "Copiar" junto al botón "WhatsApp" existente (misma visibilidad, `id_role !== 5`), que copia exactamente el mismo texto que ya arma el enlace `wa.me`.
+- [x] Ninguno de los tres enlaces/acciones `wa.me` existentes (aviso al especialista, botón WhatsApp de recetas) fue modificado ni eliminado — los botones de copiar son adicionales.
+- [x] `AccordionPagos` sigue oculto para `id_role === 5` (sin cambios a esa regla existente en `page.tsx`).
+- [x] Los nombres de funciones, variables, componentes y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md`.
+- [x] Las pantallas se ven correctamente en modo claro y oscuro.
+- [x] `npm run build` sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 

@@ -29,12 +29,13 @@ const fmtDatetime = (val: string) => {
 
 const buildPagoReceiptMessage = (pago: IPagoTratamientoRow, nombre_paciente: string): string =>
   [
+    "*TRATAMIENTO ONICOMICOSIS*",
     `*Paciente:* ${nombre_paciente}`,
     `*Fecha:* ${fmtDatetime(pago.created_at)}`,
     `*Tipo:* ${pago.nombre_tipo}`,
     `*Total:* $${Number(pago.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`,
     `*Método de pago:* ${pago.nombre_metodo}`,
-    `*Referencia:* ${pago.referencia || "—"}`,
+    // `*Referencia:* ${pago.referencia || "—"}`,
   ].join("\n");
 
 export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirstPago,stage }: Props) {
