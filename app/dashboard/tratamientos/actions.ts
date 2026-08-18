@@ -162,6 +162,7 @@ export async function getTratamientoDetalle(
   nombre_especialista: string;
   nombre_usuario:      string;
   nombre_stage:        string;
+  nombre_sucursal:     string | null;
   id_paciente:         number;
   id_podologo:         number;
   whatsapp:            string | null;
@@ -197,7 +198,8 @@ export async function getTratamientoDetalle(
             p.[whatsapp]   AS whatsapp,
             pc.[id_phone_code]      AS phone_code,
             DATEDIFF(YEAR, p.[fecha_nacimiento], GETDATE())
-              - CASE WHEN DATEADD(YEAR, DATEDIFF(YEAR, p.[fecha_nacimiento], GETDATE()), p.[fecha_nacimiento]) > GETDATE() THEN 1 ELSE 0 END AS edad_paciente
+              - CASE WHEN DATEADD(YEAR, DATEDIFF(YEAR, p.[fecha_nacimiento], GETDATE()), p.[fecha_nacimiento]) > GETDATE() THEN 1 ELSE 0 END AS edad_paciente,
+            ISNULL(suc.[nombre], NULL) AS nombre_sucursal
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
@@ -211,6 +213,8 @@ export async function getTratamientoDetalle(
          ON s.[id_stage] = t.[id_stage]
   LEFT JOIN [CentroPodologico].[dbo].[codigos_telefonicos] pc
          ON pc.[id_phone_code] = p.[id_phone_code]
+  LEFT JOIN [CentroPodologico].[dbo].[sucursales] suc
+         ON suc.[id_sucursal] = c.[id_sucursal]
       WHERE t.[id_tratamiento] = @id_tratamiento`,
     { id_tratamiento }
   );
@@ -219,6 +223,7 @@ export async function getTratamientoDetalle(
     nombre_especialista: string;
     nombre_usuario:      string;
     nombre_stage:        string;
+    nombre_sucursal:     string | null;
     id_paciente:         number;
     id_podologo:         number;
     whatsapp:            string | null;

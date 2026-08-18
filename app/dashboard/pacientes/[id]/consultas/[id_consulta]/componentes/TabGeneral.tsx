@@ -286,7 +286,32 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
 
 
 
-  const onSendWhatsApp = () => {
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // fall through to legacy fallback below
+    }
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return success;
+    } catch {
+      return false;
+    }
+  };
+
+  const onSendWhatsApp = async () => {
     if (!paciente?.whatsapp || loading) return;
 
     // Strip non-digits; prepend the patient's country code if not already present
@@ -412,8 +437,17 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
 
     lines.push("", `*TOTAL GENERAL: $${totalGeneral.toFixed(2)}*`);
 
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
-    window.open(url, "_blank");
+    const mensaje = lines.join("\n");
+    const copied = await copyToClipboard(mensaje);
+
+    // Abrimos el chat sin texto precargado: el mensaje ya quedó en el
+    // portapapeles listo para pegarse directamente en la conversación.
+    const url = `https://wa.me/${phone}`;
+    // window.open(url, "_blank");
+
+    if (!copied) {
+      alert("No se pudo copiar el mensaje al portapapeles. Cópialo manualmente si es necesario.");
+    }
   };
 
   useEffect(() => { onServiciosTotalChange?.(totalServicios); }, [totalServicios]); // eslint-disable-line react-hooks/exhaustive-deps

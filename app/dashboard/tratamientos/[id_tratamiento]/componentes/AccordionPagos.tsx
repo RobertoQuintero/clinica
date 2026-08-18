@@ -11,10 +11,12 @@ import {
   IPagoTratamientoRow,
 } from "@/app/dashboard/tratamientos/actions";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
+import CopyButton from "@/app/dashboard/componentes/CopyButton";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
-  id_tratamiento: number;
+  id_tratamiento:  number;
+  nombre_paciente: string;
   onFirstPago?:    () => void;
   stage?:          number;
 }
@@ -25,7 +27,18 @@ const fmtDatetime = (val: string) => {
     .toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 };
 
-export default function AccordionPagos({ id_tratamiento, onFirstPago,stage }: Props) {
+const buildPagoReceiptMessage = (pago: IPagoTratamientoRow, nombre_paciente: string): string =>
+  [
+    "*TRATAMIENTO ONICOMICOSIS*",
+    `*Paciente:* ${nombre_paciente}`,
+    `*Fecha:* ${fmtDatetime(pago.created_at)}`,
+    `*Tipo:* ${pago.nombre_tipo}`,
+    `*Total:* $${Number(pago.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`,
+    `*Método de pago:* ${pago.nombre_metodo}`,
+    // `*Referencia:* ${pago.referencia || "—"}`,
+  ].join("\n");
+
+export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirstPago,stage }: Props) {
   const { user } = useAuth();
   const canEdit  = user?.id_role === 1 || user?.id_role === 4;
 
@@ -182,6 +195,9 @@ export default function AccordionPagos({ id_tratamiento, onFirstPago,stage }: Pr
                           <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                             Referencia
                           </th>
+                          <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Copiar
+                          </th>
                           {canEdit && (
                             <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                               Acciones
@@ -230,7 +246,7 @@ export default function AccordionPagos({ id_tratamiento, onFirstPago,stage }: Pr
                                   className="w-32 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                                 />
                               </td>
-                              <td className="px-4 py-2">
+                              <td className="px-4 py-2" colSpan={2}>
                                 <div className="flex items-center justify-center gap-2">
                                   <button
                                     onClick={handleEditPago}
@@ -269,6 +285,12 @@ export default function AccordionPagos({ id_tratamiento, onFirstPago,stage }: Pr
                               </td>
                               <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">
                                 {p.referencia || "—"}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <CopyButton
+                                  text={buildPagoReceiptMessage(p, nombre_paciente)}
+                                  className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+                                />
                               </td>
                               {canEdit && (
                                 <td className="px-4 py-2">
