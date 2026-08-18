@@ -21,6 +21,7 @@ export interface IPurchaseCartLine {
   split:               boolean;
   quantity:            number;
   unit_price:          number;
+  applies_iva:         boolean;
 }
 
 const SESSION_STORAGE_KEY = "purchaseCart";
@@ -38,6 +39,7 @@ interface PurchaseCartContextType {
   setLineQuantity:         (id_product: number, quantity: number) => void;
   setLineUnitPrice:        (id_product: number, unit_price: number) => void;
   setLineSupplier:         (id_product: number, id_supplier: number | null) => void;
+  setLineAppliesIva:       (id_product: number, applies_iva: boolean) => void;
   removeLine:              (id_product: number) => void;
   /** Reemplaza todas las líneas de golpe (p. ej. al cargar una plantilla), sin tocar fecha/notas/métodos de pago. */
   replaceLines:            (lines: IPurchaseCartLine[]) => void;
@@ -105,6 +107,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         split: product.split,
         quantity: product.suggested_quantity > 0 ? product.suggested_quantity : 1,
         unit_price: product.price,
+        applies_iva: true,
       };
       return [...current, newLine];
     });
@@ -130,6 +133,14 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
     setLines((current) =>
       current.map((line) =>
         line.id_product === id_product ? { ...line, id_supplier } : line
+      )
+    );
+  };
+
+  const setLineAppliesIva = (id_product: number, applies_iva: boolean) => {
+    setLines((current) =>
+      current.map((line) =>
+        line.id_product === id_product ? { ...line, applies_iva } : line
       )
     );
   };
@@ -167,6 +178,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         setLineQuantity,
         setLineUnitPrice,
         setLineSupplier,
+        setLineAppliesIva,
         removeLine,
         replaceLines,
         setEstimatedDate,

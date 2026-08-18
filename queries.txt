@@ -534,3 +534,9 @@ GO
 CREATE INDEX [IX_poti_template] ON [inventory].[purchase_order_template_items] ([id_purchase_order_template] ASC)
 GO
 
+-- spec 20 — IVA por línea en pedidos de compra
+ALTER TABLE [CentroPodologico].[inventory].[purchase_order_items]
+  ADD [applies_iva] [bit] NOT NULL DEFAULT 1,
+      [tax_amount]  [decimal](18,2) NOT NULL DEFAULT 0;
+GO
+

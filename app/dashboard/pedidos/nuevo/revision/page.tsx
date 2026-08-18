@@ -9,6 +9,7 @@ import { useSucursal } from "@/contexts/SucursalContext";
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
 import { getUnitsMeasurement } from "@/app/dashboard/productos/actions";
 import { getMetodosPagos } from "@/app/dashboard/ventas/actions";
+import { round2 } from "@/utils/number_helper";
 import { createPurchaseOrders } from "../../actions";
 import { ISupplier } from "@/interfaces/supplier";
 import { IUnitMeasurement } from "@/interfaces/unit_measurement";
@@ -78,7 +79,12 @@ export default function RevisionOrdenPage() {
   }, [lines]);
 
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
-  const tax = subtotal * (TAX_RATE / 100);
+  const tax = lines.reduce(
+    (sum, line) =>
+      sum +
+      ((line.applies_iva ?? true) ? round2((line.quantity * line.unit_price * TAX_RATE) / 100) : 0),
+    0
+  );
   const total = subtotal + tax;
   const hasLineWithoutSupplier = lines.some((line) => line.id_supplier === null);
   const hasSupplierWithoutPaymentMethod = Array.from(groupedBySupplier.keys()).some(
@@ -98,6 +104,7 @@ export default function RevisionOrdenPage() {
           id_supplier: line.id_supplier,
           quantity: line.quantity,
           unit_price: line.unit_price,
+          applies_iva: line.applies_iva ?? true,
         })),
         paymentMethodBySupplier,
       });

@@ -42,6 +42,8 @@ export interface IPurchaseOrderItem {
   unit_price:              number;
   discount:                number;
   line_total:              number;
+  applies_iva:             boolean;
+  tax_amount:              number;
   created_at:              Date | string;
 }
 
