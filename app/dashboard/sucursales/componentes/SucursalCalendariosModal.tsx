@@ -2,6 +2,7 @@
 
 import { ISucursalCalendario } from "@/interfaces/sucursal";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { deleteSucursalCalendario, getSucursalCalendarios, saveSucursalCalendario } from "../actions";
 import ConfirmModal from "@/app/dashboard/servicios/componentes/ConfirmModal";
 
@@ -27,6 +28,9 @@ export default function SucursalCalendariosModal({ id_sucursal, nombreSucursal, 
   const [deletingId, setDeletingId]   = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting]       = useState(false);
+  const [mounted, setMounted]         = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const fetchCalendarios = async () => {
     setLoading(true);
@@ -97,7 +101,9 @@ export default function SucursalCalendariosModal({ id_sucursal, nombreSucursal, 
     setDeleting(false);
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-700 px-6 py-4">
@@ -270,6 +276,7 @@ export default function SucursalCalendariosModal({ id_sucursal, nombreSucursal, 
           error={deleteError}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
