@@ -379,6 +379,7 @@ export default function TratamientoDetallePage({ params }: Props) {
           <>
           <AccordionPagos
               id_tratamiento={id_tratamiento}
+              nombre_paciente={detalle.nombre_paciente}
               onFirstPago={() => setTienePagoTipo2(true)}
               stage={detalle.id_stage}
             />
