@@ -150,3 +150,33 @@ export async function saveUsuario(
     return { ok: false, message: "Error al guardar el usuario" };
   }
 }
+
+export async function changePasswordUsuario(
+  id_user: number,
+  newPassword: string
+): Promise<{ ok: boolean; message?: string }> {
+  try {
+    if (!newPassword || newPassword.length < 6) {
+      return { ok: false, message: "La contraseña debe tener al menos 6 caracteres" };
+    }
+
+    const password_hash = await bcrypt.hash(newPassword, 10);
+
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[users]
+          SET [password_hash] = @password_hash,
+              [updated_at]    = @updated_at
+        WHERE [id_user] = @id_user`,
+      {
+        id_user,
+        password_hash,
+        updated_at: buildDate(new Date()),
+      }
+    );
+
+    revalidatePath("/dashboard/usuarios");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Error al cambiar la contraseña" };
+  }
+}

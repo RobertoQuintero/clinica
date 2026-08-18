@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsuarioFila from "./componentes/UsuarioFila";
 import UsuarioModal from "./componentes/UsuarioModal";
-import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario } from "./actions";
+import CambiarPasswordModal from "./componentes/CambiarPasswordModal";
+import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario, changePasswordUsuario } from "./actions";
 import { SucursalName } from "../componentes/SucursalName";
 
 const EMPTY: IUser = {
@@ -40,6 +41,9 @@ export default function UsuariosPage() {
   const [form, setForm]           = useState<IUser>(EMPTY);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordUser, setPasswordUser]            = useState<IUser | null>(null);
 
   const [search, setSearch] = useState("");
 
@@ -115,6 +119,20 @@ export default function UsuariosPage() {
         : [...current, idStr];
       return { ...prev, sucursales_string: updated.join(",") };
     });
+  };
+
+  const openChangePassword = (u: IUser) => {
+    setPasswordUser(u);
+    setShowPasswordModal(true);
+  };
+
+  const handleChangePasswordSubmit = async (password: string) => {
+    if (!passwordUser) return;
+    const res = await changePasswordUsuario(passwordUser.id_user, password);
+    if (!res.ok) throw new Error(res.message ?? "Error al cambiar la contraseña");
+    setShowPasswordModal(false);
+    setPasswordUser(null);
+    await fetchUsuarios();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -225,7 +243,7 @@ export default function UsuariosPage() {
                   <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
               ) : usuariosFiltrados.map((u) => (
-                <UsuarioFila key={u.id_user} usuario={u} roles={roles} sucursales={sucursales} onEdit={openEdit} />
+                <UsuarioFila key={u.id_user} usuario={u} roles={roles} sucursales={sucursales} onEdit={openEdit} onChangePassword={openChangePassword} />
               ))}
             </tbody>
           </table>
@@ -245,6 +263,14 @@ export default function UsuariosPage() {
           onSucursalesStringChange={handleSucursalesStringChange}
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {showPasswordModal && passwordUser && (
+        <CambiarPasswordModal
+          usuario={passwordUser}
+          onSubmit={handleChangePasswordSubmit}
+          onClose={() => { setShowPasswordModal(false); setPasswordUser(null); }}
         />
       )}
     </div>
