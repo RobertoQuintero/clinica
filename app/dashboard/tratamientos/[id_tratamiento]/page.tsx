@@ -32,6 +32,7 @@ import { buildDate } from "@/utils/date_helpper";
 import { getPacientes, getPodologos, getServicioOpciones, saveCita } from "@/app/dashboard/citas/actions";
 import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
+import CopyButton from "@/app/dashboard/componentes/CopyButton";
 
 type DetailRow = ITratamientoOnicomicosis & {
   nombre_paciente:     string;
@@ -45,6 +46,25 @@ type DetailRow = ITratamientoOnicomicosis & {
   phone_code:          string | null;
   edad_paciente:       number | null;
 };
+
+function buildSolicitudMessage(detalle: DetailRow): string {
+  const fechaFmt = (() => {
+    if (!detalle.created_at) return "";
+    const d = new Date(String(detalle.created_at).replace(" ", "T"));
+    const dd   = String(d.getDate()).padStart(2, "0");
+    const mm   = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    const hh   = String(d.getHours()).padStart(2, "0");
+    const min  = String(d.getMinutes()).padStart(2, "0");
+    return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+  })();
+  return [
+    `Hola ${detalle.nombre_especialista ?? "especialista"}`,
+    `Usted tiene un nuevo tratamiento de ${detalle.nombre_paciente ?? "Paciente"}${fechaFmt ? `, ${fechaFmt}` : ""}.`,
+    `Sucursal: ${detalle.nombre_sucursal ?? "Desconocida"}.`,
+    `Favor de revisar la página de Piezen.`,
+  ].join("\n");
+}
 
 const EMPTY: ICita = {
   id_cita:            0,
@@ -283,6 +303,11 @@ export default function TratamientoDetallePage({ params }: Props) {
           <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
             Detalle del Tratamiento #{detalle.id_tratamiento}
           </h1>
+          <CopyButton
+            text={buildSolicitudMessage(detalle)}
+            label="Copiar solicitud"
+            className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+          />
           {detalle.new_message && (
             <>
               <span className="rounded-md bg-yellow-100 px-3 py-1.5 text-sm text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">
