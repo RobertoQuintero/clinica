@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/database/connection";
-import { ICatState, ISucursal } from "@/interfaces/sucursal";
+import { ICatState, ISucursal, ISucursalCalendario } from "@/interfaces/sucursal";
 import { IAuthUser } from "@/interfaces/auth";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
@@ -123,6 +123,94 @@ export async function deleteSucursal(
     return { ok: true };
   } catch {
     return { ok: false, message: "Error al eliminar la sucursal" };
+  }
+}
+
+export async function getSucursalCalendarios(
+  id_sucursal: number
+): Promise<ISucursalCalendario[]> {
+  const data = await db.queryParams(
+    `SELECT [id_sucursal_calendario],
+            [id_sucursal],
+            [nombre],
+            [id_calendar],
+            [iframe],
+            [link_calendar],
+            [status],
+            CONVERT(varchar(19), [created_at], 120) AS created_at
+       FROM [CentroPodologico].[dbo].[sucursal_calendarios]
+      WHERE [id_sucursal] = @id_sucursal
+        AND [status] = 1
+      ORDER BY [id_sucursal_calendario]`,
+    { id_sucursal }
+  );
+  return data as ISucursalCalendario[];
+}
+
+export async function saveSucursalCalendario(
+  form: Pick<ISucursalCalendario, "id_sucursal_calendario" | "id_sucursal" | "nombre" | "id_calendar" | "iframe" | "link_calendar">
+): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const { id_sucursal_calendario, id_sucursal, nombre, id_calendar, iframe, link_calendar } = form;
+
+    if (id_sucursal_calendario === 0) {
+      await db.queryParams(
+        `INSERT INTO [CentroPodologico].[dbo].[sucursal_calendarios]
+           ([id_sucursal_calendario], [id_sucursal], [nombre], [id_calendar], [iframe], [link_calendar], [status], [created_at])
+         VALUES (
+           (SELECT ISNULL(MAX([id_sucursal_calendario]), 0) + 1 FROM [CentroPodologico].[dbo].[sucursal_calendarios]),
+           @id_sucursal, @nombre, @id_calendar, @iframe, @link_calendar, 1, @created_at
+         )`,
+        {
+          id_sucursal,
+          nombre,
+          id_calendar: id_calendar ?? null,
+          iframe: iframe ?? null,
+          link_calendar: link_calendar ?? null,
+          created_at: buildDate(new Date()),
+        }
+      );
+    } else {
+      await db.queryParams(
+        `UPDATE [CentroPodologico].[dbo].[sucursal_calendarios]
+            SET [nombre]        = @nombre,
+                [id_calendar]   = @id_calendar,
+                [iframe]        = @iframe,
+                [link_calendar] = @link_calendar
+          WHERE [id_sucursal_calendario] = @id_sucursal_calendario`,
+        {
+          id_sucursal_calendario,
+          nombre,
+          id_calendar: id_calendar ?? null,
+          iframe: iframe ?? null,
+          link_calendar: link_calendar ?? null,
+        }
+      );
+    }
+
+    revalidatePath("/dashboard/sucursales");
+    revalidatePath("/dashboard/citas");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Error al guardar el calendario" };
+  }
+}
+
+export async function deleteSucursalCalendario(
+  id_sucursal_calendario: number
+): Promise<{ ok: boolean; message?: string }> {
+  try {
+    await db.queryParams(
+      `UPDATE [CentroPodologico].[dbo].[sucursal_calendarios]
+          SET [status] = 0
+        WHERE [id_sucursal_calendario] = @id_sucursal_calendario`,
+      { id_sucursal_calendario }
+    );
+    revalidatePath("/dashboard/sucursales");
+    revalidatePath("/dashboard/citas");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Error al eliminar el calendario" };
   }
 }
 

@@ -16,6 +16,17 @@ export interface ISucursal {
     seats: number | null;
 }
 
+export interface ISucursalCalendario {
+    id_sucursal_calendario: number;
+    id_sucursal:            number;
+    nombre:                 string;
+    id_calendar:            string | null;
+    iframe:                 string | null;
+    link_calendar:          string | null;
+    status:                 boolean | number;
+    created_at:              Date | string;
+}
+
 export interface ICatState {
     id_state:    number;
     string_key:  string;

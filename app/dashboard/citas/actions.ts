@@ -17,8 +17,6 @@ import {
 
   type GCalEventRaw,
 } from "@/lib/googleCalendar";
-import { ISucursal } from "@/interfaces/sucursal";
-
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
 async function getActiveUser(): Promise<IAuthUser> {
@@ -27,19 +25,6 @@ async function getActiveUser(): Promise<IAuthUser> {
   if (!token) throw new Error("No autenticado");
   const { payload } = await jwtVerify(token, JWT_SECRET);
   return payload as unknown as IAuthUser;
-}
-
-export const getSucursalIframe = async (id_sucursal: number): Promise<ISucursal> => {
-
-  const data=await db.queryParams(
-    `SELECT [id_sucursal]
-           , iframe
-           , link_calendar
-       FROM [CentroPodologico].[dbo].[sucursales]
-      WHERE [id_sucursal] = @id_sucursal and [status]=1`,
-    { id_sucursal }
-  ) as ISucursal[];
-  return data[0];
 }
 
 export async function getCitas(): Promise<ICita[]> {
