@@ -8,9 +8,9 @@ import { getStates, getSucursales, saveSucursal } from "./actions";
 import SucursalFila from "./componentes/SucursalFila";
 import SucursalModal from "./componentes/SucursalModal";
 
-type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state"| "id_calendar" | "link_calendar" | "iframe" | "seats">;
+type FormData = Pick<ISucursal, "id_sucursal" | "nombre" | "ciudad" | "direccion" | "telefono" | "id_state" | "seats">;
 
-const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, id_calendar: null, link_calendar: null, iframe: null, seats: null };
+const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: null, telefono: null, id_state: null, seats: null };
 
 export default function SucursalesPage() {
   const { user }                    = useAuth();
@@ -68,9 +68,6 @@ export default function SucursalesPage() {
       direccion: s.direccion,
       telefono: s.telefono,
       id_state: s.id_state ?? null,
-      id_calendar: s.id_calendar ?? null,
-      link_calendar: s.link_calendar ?? null,
-      iframe: s.iframe ?? null,
       seats: s.seats ?? null,
     });
     setError(null);
@@ -91,7 +88,10 @@ export default function SucursalesPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await saveSucursal(form) ;
+      // saveSucursal still accepts the legacy calendar fields in its signature (out of
+      // scope to change per spec 22); this form no longer captures them, so they are
+      // sent as null and the sucursal keeps whatever legacy value it already had.
+      const res = await saveSucursal({ ...form, id_calendar: null, iframe: null, link_calendar: null });
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
       await fetchSucursales();
