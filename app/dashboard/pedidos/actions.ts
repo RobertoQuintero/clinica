@@ -542,6 +542,8 @@ export async function getPurchaseOrderById(
               [unit_price],
               [discount],
               [line_total],
+              [applies_iva],
+              [tax_amount],
               CONVERT(varchar(19), [created_at], 120) AS created_at
          FROM [CentroPodologico].[inventory].[purchase_order_items]
         WHERE [id_purchase_order] = @id_purchase_order

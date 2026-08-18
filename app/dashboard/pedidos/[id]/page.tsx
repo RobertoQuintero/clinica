@@ -168,6 +168,7 @@ export default function PurchaseOrderDetailPage() {
                 <th className="px-6 py-3 font-semibold text-right">Cantidad</th>
                 <th className="px-6 py-3 font-semibold text-right">Recibido</th>
                 <th className="px-6 py-3 font-semibold text-right">Precio unit.</th>
+                <th className="px-6 py-3 font-semibold text-center">IVA</th>
                 <th className="px-6 py-3 font-semibold text-right">Subtotal</th>
               </tr>
             </thead>
@@ -187,6 +188,17 @@ export default function PurchaseOrderDetailPage() {
                   </td>
                   <td className="px-6 py-4 text-right text-[#44474f] dark:text-zinc-400">
                     {currencyFormatter.format(item.unit_price)}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    {item.applies_iva ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#e1f7e8] text-[#009c6b] border border-[#c6f0d5] dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+                        IVA
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#dce9ff] text-[#44474f] border border-[#c4c6d0] dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700">
+                        Exento
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-[#0b1c30] dark:text-zinc-100">
                     {currencyFormatter.format(item.line_total)}
