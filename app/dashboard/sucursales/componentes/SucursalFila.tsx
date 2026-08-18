@@ -4,6 +4,7 @@ import { ISucursal } from "@/interfaces/sucursal";
 import { deleteSucursal } from "../actions";
 import { useState } from "react";
 import ConfirmModal from "@/app/dashboard/servicios/componentes/ConfirmModal";
+import SucursalCalendariosModal from "./SucursalCalendariosModal";
 
 interface Props {
   sucursal: ISucursal;
@@ -13,9 +14,10 @@ interface Props {
 }
 
 export default function SucursalFila({ sucursal: s, onEdit, onDeleted, readOnly }: Props) {
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [deleting, setDeleting]       = useState(false);
-  const [errorMsg, setErrorMsg]       = useState<string | null>(null);
+  const [showConfirm, setShowConfirm]         = useState(false);
+  const [deleting, setDeleting]               = useState(false);
+  const [errorMsg, setErrorMsg]               = useState<string | null>(null);
+  const [showCalendariosModal, setShowCalendariosModal] = useState(false);
 
   const handleConfirmDelete = async () => {
     setDeleting(true);
@@ -43,6 +45,14 @@ export default function SucursalFila({ sucursal: s, onEdit, onDeleted, readOnly 
         <td className="px-4 py-3 flex gap-2 justify-end">
           {!readOnly && (
             <button
+              onClick={() => setShowCalendariosModal(true)}
+              className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+            >
+              Calendarios
+            </button>
+          )}
+          {!readOnly && (
+            <button
               onClick={() => onEdit(s)}
               className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
             >
@@ -67,6 +77,14 @@ export default function SucursalFila({ sucursal: s, onEdit, onDeleted, readOnly 
           onCancel={() => setShowConfirm(false)}
           loading={deleting}
           error={errorMsg}
+        />
+      )}
+
+      {showCalendariosModal && (
+        <SucursalCalendariosModal
+          id_sucursal={s.id_sucursal}
+          nombreSucursal={s.nombre}
+          onClose={() => setShowCalendariosModal(false)}
         />
       )}
     </>
