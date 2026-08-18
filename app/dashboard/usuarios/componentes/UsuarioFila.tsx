@@ -10,9 +10,10 @@ interface Props {
   roles: IRole[];
   sucursales: ISucursal[];
   onEdit: (u: IUser) => void;
+  onChangePassword: (u: IUser) => void;
 }
 
-export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit }: Props) {
+export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit, onChangePassword }: Props) {
   const { user: currentUser } = useAuth();
   const canEdit = !(u.id_role === 4 && currentUser?.id_role !== 4);
   const roleName = (id: number) => roles.find((r) => r.id_role === id)?.nombre ?? id;
@@ -23,7 +24,17 @@ export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit }: P
 
   return (
     <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.nombre}</td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">
+        <button
+          type="button"
+          onClick={() => onChangePassword(u)}
+          disabled={!canEdit}
+          title="Cambiar contraseña"
+          className="hover:underline disabled:no-underline disabled:cursor-not-allowed"
+        >
+          {u.nombre}
+        </button>
+      </td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.email}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.telefono}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{roleName(u.id_role)}</td>
