@@ -81,7 +81,8 @@ export default function RevisionOrdenPage() {
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
   const tax = lines.reduce(
     (sum, line) =>
-      sum + (line.applies_iva ? round2((line.quantity * line.unit_price * TAX_RATE) / 100) : 0),
+      sum +
+      ((line.applies_iva ?? true) ? round2((line.quantity * line.unit_price * TAX_RATE) / 100) : 0),
     0
   );
   const total = subtotal + tax;
@@ -103,7 +104,7 @@ export default function RevisionOrdenPage() {
           id_supplier: line.id_supplier,
           quantity: line.quantity,
           unit_price: line.unit_price,
-          applies_iva: line.applies_iva,
+          applies_iva: line.applies_iva ?? true,
         })),
         paymentMethodBySupplier,
       });

@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[09-pedidos-compra-recepcion]] (`inventory.purchase_order_items`, `PurchaseCartContext`, `/dashboard/pedidos/nuevo`, `createPurchaseOrders`), [[18-plantillas-de-pedido]] (`replaceLines`, carga de plantillas)
 - **Fecha:** 2026-08-17
 - **Objetivo:** Permitir marcar por línea, al armar un pedido, si un producto tiene IVA o no, y calcular/mostrar el IVA de la orden solo sobre las líneas marcadas en vez de aplicarlo de forma plana al 16% sobre todo el subtotal.
@@ -163,3 +163,7 @@ const total = round2(subtotal + tax); // subtotal sigue sin IVA, sin cambios
 - **Usuario olvida desmarcar una línea sin IVA.** Como el default es `true`, el riesgo operativo es el opuesto al de antes: en vez de "todo paga IVA sin poder evitarlo", ahora alguien puede olvidar marcar una línea que sí debía ir exenta. Se mitiga con el toggle visible en dos pantallas (armado y revisión), pero no hay validación de negocio que lo fuerce — es una decisión humana, como ya lo son cantidad y precio.
 - **Redondeo por línea vs. redondeo sobre el total.** Sumar `tax_amount` ya redondeados por línea puede diferir en centavos de calcular `subtotal_con_iva × 16%` de una sola vez, especialmente con muchas líneas pequeñas. Es una discrepancia de centavos aceptable y estándar en facturación línea por línea; se documenta aquí para que no se lea como un bug si alguien lo nota.
 - **Tres lugares (cliente en dos pantallas + servidor) recalculando la misma fórmula.** Si algún cambio futuro toca la fórmula de IVA y solo se actualiza uno de los tres sitios, el resumen mostrado en pantalla se desincroniza del total realmente guardado (aunque el servidor sigue siendo la fuente de verdad para lo persistido). El paso 6 del plan mitiga esto extrayendo un `round2` compartido, pero la fórmula de "sumar solo líneas con IVA" queda duplicada por diseño (cliente para feedback inmediato, servidor por seguridad) — no se centraliza en una sola función cliente/servidor porque el server action ya vive en un archivo `"use server"` separado del cliente.
+
+## Pendiente para una futura spec
+
+- **Monto numérico del IVA por línea, no solo el badge.** Durante la implementación se pidió mostrar el importe de `tax_amount` calculado por producto (no solo "IVA"/"Exento") — en el detalle de la orden (`/dashboard/pedidos/[id]`) y posiblemente también al armar/revisar el pedido. Se decidió no ampliar el alcance de esta spec; queda anotado para una spec futura.

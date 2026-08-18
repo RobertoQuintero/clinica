@@ -132,7 +132,7 @@ export default function SupplierOrderGroup({
                   <label className="text-xs text-[#44474f] dark:text-zinc-400">Tiene IVA</label>
                   <input
                     type="checkbox"
-                    checked={line.applies_iva}
+                    checked={line.applies_iva ?? true}
                     onChange={(e) => setLineAppliesIva(line.id_product, e.target.checked)}
                     className="w-4 h-4 accent-[#0051d5]"
                   />
