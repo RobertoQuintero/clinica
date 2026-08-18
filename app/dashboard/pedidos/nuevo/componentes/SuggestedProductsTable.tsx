@@ -38,14 +38,14 @@ export default function SuggestedProductsTable({
           <thead className="bg-[#eff4ff] dark:bg-zinc-800 border-b border-[#c4c6d0] dark:border-zinc-700 text-sm text-[#44474f] dark:text-zinc-400">
             <tr>
               <th className="px-4 py-4 w-12" />
-              <th className="px-6 py-4 font-semibold min-w-[220px]">Producto</th>
+              <th className="px-6 py-4 font-semibold min-w-55">Producto</th>
               <th className="px-6 py-4 font-semibold">Categoría</th>
-              <th className="px-6 py-4 font-semibold text-right">Stock actual</th>
-              <th className="px-6 py-4 font-semibold text-right">Stock mínimo</th>
-              <th className="px-6 py-4 font-semibold text-center">Cantidad a pedir</th>
-              <th className="px-6 py-4 font-semibold">Unidad</th>
-              <th className="px-6 py-4 font-semibold text-right">Precio unit.</th>
-              <th className="px-6 py-4 font-semibold text-center">IVA</th>
+              <th className="px-4 py-4 font-semibold text-right">Stock actual</th>
+              <th className="px-4 py-4 font-semibold text-right">Stock mínimo</th>
+              <th className="px-4 py-4 font-semibold text-center">Cantidad a pedir</th>
+              <th className="px-4 py-4 font-semibold">Unidad</th>
+              <th className="px-4 py-4 font-semibold text-right">Precio unit.</th>
+              <th className="px-3 py-4 font-semibold text-center">IVA</th>
               <th className="px-6 py-4 font-semibold text-right">Subtotal</th>
             </tr>
           </thead>
@@ -99,7 +99,7 @@ export default function SuggestedProductsTable({
                       )}
                     </td>
                     <td
-                      className={`px-6 py-4 text-right font-medium ${
+                      className={`px-4 py-4 text-right font-medium ${
                         product.below_minimum
                           ? "text-[#ba1a1a] dark:text-red-400"
                           : "text-[#009c6b] dark:text-emerald-400"
@@ -107,7 +107,7 @@ export default function SuggestedProductsTable({
                     >
                       {product.current_stock}
                     </td>
-                    <td className="px-6 py-4 text-right text-[#44474f] dark:text-zinc-400">
+                    <td className="px-4 py-4 text-right text-[#44474f] dark:text-zinc-400">
                       {product.min_stock_effective ?? "—"}
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -123,12 +123,12 @@ export default function SuggestedProductsTable({
                         className="w-20 text-center py-1 border border-[#c4c6d0] dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-[#0b1c30] dark:text-zinc-100 outline-none disabled:opacity-50 focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
                       />
                     </td>
-                    <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">
+                    <td className="px-4 py-4 text-[#44474f] dark:text-zinc-400">
                       {product.id_unit_measurement
                         ? unitNameById.get(product.id_unit_measurement) ?? "—"
                         : "—"}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-4 text-right">
                       <input
                         type="number"
                         min={0}
@@ -141,7 +141,7 @@ export default function SuggestedProductsTable({
                         className="w-24 text-right py-1 px-2 border border-[#c4c6d0] dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-[#0b1c30] dark:text-zinc-100 outline-none disabled:opacity-50 focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
                       />
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 py-4 text-center">
                       <input
                         type="checkbox"
                         disabled={!checked}
