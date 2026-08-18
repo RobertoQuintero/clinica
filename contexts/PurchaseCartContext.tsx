@@ -21,6 +21,7 @@ export interface IPurchaseCartLine {
   split:               boolean;
   quantity:            number;
   unit_price:          number;
+  applies_iva:         boolean;
 }
 
 const SESSION_STORAGE_KEY = "purchaseCart";
