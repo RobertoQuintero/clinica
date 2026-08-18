@@ -2,6 +2,7 @@
 
 import db from "@/database/connection";
 import { ISupplier } from "@/interfaces/supplier";
+import { ISupplierProduct } from "@/interfaces/supplier_product";
 import { IAuthUser } from "@/interfaces/auth";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
@@ -80,6 +81,39 @@ export async function getSupplierById(
   );
   const [supplier] = data as ISupplier[];
   return supplier ?? null;
+}
+
+export async function getSupplierProducts(
+  id_proveedor: number
+): Promise<ISupplierProduct[]> {
+  const { id_empresa } = await getActiveUser();
+  const data = await db.queryParams(
+    `SELECT p.[id_product],
+            p.[name],
+            p.[product_code],
+            c.[name] AS category_name,
+            u.[name] AS unit_name,
+            p.[price],
+            CONVERT(varchar(10), lp.[last_purchase], 120) AS last_purchase
+       FROM [CentroPodologico].[inventory].[Products] p
+       LEFT JOIN [CentroPodologico].[inventory].[categories] c ON c.[id_category] = p.[id_category]
+       LEFT JOIN [CentroPodologico].[inventory].[units_measurement] u ON u.[id_unit_measurement] = p.[id_unit_measurement]
+       OUTER APPLY (
+           SELECT MAX(k.[created_at]) AS last_purchase
+             FROM [CentroPodologico].[inventory].[kardex] k
+             JOIN [CentroPodologico].[inventory].[purchase_order_items] poi ON poi.[id_purchase_order_item] = k.[id_purchase_order_item]
+             JOIN [CentroPodologico].[inventory].[purchase_orders] po ON po.[id_purchase_order] = poi.[id_purchase_order]
+            WHERE k.[id_product] = p.[id_product]
+              AND k.[id_movement] = 1
+              AND po.[id_supplier] = p.[id_supplier]
+       ) lp
+      WHERE p.[id_supplier] = @id_proveedor
+        AND p.[status] = 1
+        AND p.[id_empresa] = @id_empresa
+      ORDER BY p.[name]`,
+    { id_proveedor, id_empresa }
+  );
+  return data as ISupplierProduct[];
 }
 
 export async function saveSupplier(

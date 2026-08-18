@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { getPurchaseOrders, IPurchaseOrderListItem } from "./actions";
@@ -19,6 +20,7 @@ const STATUS_OPTIONS = [
 
 export default function PedidosPage() {
   const { selectedId } = useSucursal();
+  const searchParams = useSearchParams();
 
   const [orders, setOrders]     = useState<IPurchaseOrderListItem[]>([]);
   const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
@@ -26,7 +28,7 @@ export default function PedidosPage() {
   const [error, setError]       = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter]     = useState("");
-  const [supplierFilter, setSupplierFilter] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState(searchParams.get("proveedor") ?? "");
   const [dateFrom, setDateFrom]             = useState("");
   const [dateTo, setDateTo]                 = useState("");
 
