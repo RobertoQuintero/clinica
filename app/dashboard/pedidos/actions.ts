@@ -12,6 +12,7 @@ import {
   IPurchaseOrderTemplateListItem,
 } from "@/interfaces/purchase_order_template";
 import { buildDate } from "@/utils/date_helpper";
+import { round2 } from "@/utils/number_helper";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
@@ -196,9 +197,6 @@ export interface ICreatePurchaseOrdersInput {
 }
 
 const TAX_RATE = 16;
-
-/** Redondea a 2 decimales evitando el error de coma flotante de un simple `Math.round(x*100)/100`. */
-const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
 /**
  * Crea una orden de compra por proveedor a partir del carrito revisado, todas

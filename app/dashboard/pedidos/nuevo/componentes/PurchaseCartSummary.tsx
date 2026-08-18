@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
 import { addZeroToday } from "@/utils/date_helpper";
+import { round2 } from "@/utils/number_helper";
 import SaveCartAsTemplateModal from "./SaveCartAsTemplateModal";
 
 const TAX_RATE = 16;
@@ -20,7 +21,11 @@ export default function PurchaseCartSummary() {
   const [templateSaved, setTemplateSaved] = useState(false);
 
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
-  const tax = subtotal * (TAX_RATE / 100);
+  const tax = lines.reduce(
+    (sum, line) =>
+      sum + (line.applies_iva ? round2((line.quantity * line.unit_price * TAX_RATE) / 100) : 0),
+    0
+  );
   const total = subtotal + tax;
   const minDate = addZeroToday(new Date());
 
