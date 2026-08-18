@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[07-proveedores-crud]] (página de detalle del proveedor), [[08-productos-inventario-crud]] (`inventory.Products`, `getCategories`, `getUnitsMeasurement`), [[09-pedidos-compra-recepcion]] (`inventory.purchase_order_items`, `inventory.purchase_orders`, `inventory.kardex`, `/dashboard/pedidos`)
 - **Fecha:** 2026-08-17
 - **Objetivo:** Agregar la sección "Productos Asociados" a `/dashboard/proveedores/[id]`, mostrando en una tabla buscable los productos de `inventory.Products` ligados a ese proveedor (categoría, unidad, precio y última compra recibida), con un botón "Ver Historial de Pedidos" que enlaza al historial de pedidos filtrado por ese proveedor, siguiendo el diseño de `references/suppliers/asociados.html`.
@@ -87,15 +87,15 @@ Filtra por `id_empresa` del usuario autenticado igual que el resto de consultas 
 
 ## Criterios de aceptación
 
-- [ ] `/dashboard/proveedores/[id]` muestra la sección "Productos Asociados" debajo del bento grid, con título y subtítulo como en `asociados.html`.
-- [ ] La tabla lista únicamente productos de `inventory.Products` con `id_supplier` igual al proveedor de la página y `status = 1`, de la empresa del usuario autenticado.
-- [ ] Cada fila muestra nombre + `product_code`, badge de categoría (o "—" si no tiene), nombre de unidad de medida (o "—" si no tiene), precio unitario formateado en MXN y fecha de última compra (o "—" si nunca se ha recibido una compra de ese producto a este proveedor).
-- [ ] "Última Compra" refleja la fecha de la recepción más reciente (`kardex.id_movement = 1`) de ese producto proveniente de una orden de compra a este proveedor, no la fecha del pedido ni la del alta del producto.
-- [ ] El buscador de texto filtra la tabla por nombre o `product_code` en el cliente, sin recargar la página.
-- [ ] Si el proveedor no tiene productos asociados, la tabla muestra un estado vacío (sin filas, sin error).
-- [ ] El botón "Ver Historial de Pedidos" navega a `/dashboard/pedidos?proveedor={id_proveedor}` y esa página carga con el filtro de proveedor ya preseleccionado en el `<select>`.
-- [ ] La sección se ve correctamente en modo claro y en modo oscuro.
-- [ ] No hay errores de TypeScript ni de build (`npm run build`) tras el cambio.
+- [x] `/dashboard/proveedores/[id]` muestra la sección "Productos Asociados" debajo del bento grid, con título y subtítulo como en `asociados.html`.
+- [x] La tabla lista únicamente productos de `inventory.Products` con `id_supplier` igual al proveedor de la página y `status = 1`, de la empresa del usuario autenticado.
+- [x] Cada fila muestra nombre + `product_code`, badge de categoría (o "—" si no tiene), nombre de unidad de medida (o "—" si no tiene), precio unitario formateado en MXN y fecha de última compra (o "—" si nunca se ha recibido una compra de ese producto a este proveedor).
+- [x] "Última Compra" refleja la fecha de la recepción más reciente (`kardex.id_movement = 1`) de ese producto proveniente de una orden de compra a este proveedor, no la fecha del pedido ni la del alta del producto.
+- [x] El buscador de texto filtra la tabla por nombre o `product_code` en el cliente, sin recargar la página.
+- [x] Si el proveedor no tiene productos asociados, la tabla muestra un estado vacío (sin filas, sin error).
+- [x] El botón "Ver Historial de Pedidos" navega a `/dashboard/pedidos?proveedor={id_proveedor}` y esa página carga con el filtro de proveedor ya preseleccionado en el `<select>`.
+- [x] La sección se ve correctamente en modo claro y en modo oscuro.
+- [x] No hay errores de TypeScript ni de build (`npm run build`) tras el cambio.
 
 ## Decisiones tomadas y descartadas
 
