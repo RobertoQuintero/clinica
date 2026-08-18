@@ -107,6 +107,7 @@ export default function OrderTemplatesTab({ onCreateNew }: Props) {
       split: item.split,
       quantity: item.quantity,
       unit_price: item.price,
+      applies_iva: true,
     }));
 
     return { cartLines: cartLinesFromTemplate, omittedNames };
