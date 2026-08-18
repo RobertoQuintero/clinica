@@ -20,8 +20,14 @@ export default function SuggestedProductsTable({
   categoryNameById,
   unitNameById,
 }: Props) {
-  const { lines, isProductInCart, toggleProduct, setLineQuantity, setLineUnitPrice } =
-    usePurchaseCart();
+  const {
+    lines,
+    isProductInCart,
+    toggleProduct,
+    setLineQuantity,
+    setLineUnitPrice,
+    setLineAppliesIva,
+  } = usePurchaseCart();
 
   const lineByProduct = new Map(lines.map((line) => [line.id_product, line]));
 
@@ -39,13 +45,14 @@ export default function SuggestedProductsTable({
               <th className="px-6 py-4 font-semibold text-center">Cantidad a pedir</th>
               <th className="px-6 py-4 font-semibold">Unidad</th>
               <th className="px-6 py-4 font-semibold text-right">Precio unit.</th>
+              <th className="px-6 py-4 font-semibold text-center">IVA</th>
               <th className="px-6 py-4 font-semibold text-right">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {products.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-6 text-center text-[#747780] dark:text-zinc-500">
+                <td colSpan={10} className="px-6 py-6 text-center text-[#747780] dark:text-zinc-500">
                   Sin productos que coincidan con los filtros
                 </td>
               </tr>
@@ -55,6 +62,7 @@ export default function SuggestedProductsTable({
                 const line = lineByProduct.get(product.id_product);
                 const quantity = line?.quantity ?? product.suggested_quantity;
                 const unitPrice = line?.unit_price ?? product.price;
+                const appliesIva = line?.applies_iva ?? true;
                 const subtotal = quantity * unitPrice;
 
                 return (
@@ -131,6 +139,15 @@ export default function SuggestedProductsTable({
                           setLineUnitPrice(product.id_product, Math.max(0, Number(e.target.value) || 0))
                         }
                         className="w-24 text-right py-1 px-2 border border-[#c4c6d0] dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-[#0b1c30] dark:text-zinc-100 outline-none disabled:opacity-50 focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        disabled={!checked}
+                        checked={appliesIva}
+                        onChange={(e) => setLineAppliesIva(product.id_product, e.target.checked)}
+                        className="w-4 h-4 accent-[#0051d5] disabled:opacity-50"
                       />
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-[#0b1c30] dark:text-zinc-100">
