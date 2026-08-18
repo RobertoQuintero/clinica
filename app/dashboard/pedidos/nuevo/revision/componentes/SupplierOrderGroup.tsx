@@ -31,7 +31,8 @@ export default function SupplierOrderGroup({
   selectedPaymentMethodId,
   onPaymentMethodChange,
 }: Props) {
-  const { setLineQuantity, setLineUnitPrice, setLineSupplier, removeLine } = usePurchaseCart();
+  const { setLineQuantity, setLineUnitPrice, setLineSupplier, setLineAppliesIva, removeLine } =
+    usePurchaseCart();
 
   return (
     <div className="space-y-4">
@@ -124,6 +125,16 @@ export default function SupplierOrderGroup({
                       setLineUnitPrice(line.id_product, Math.max(0, Number(e.target.value) || 0))
                     }
                     className="w-24 text-right py-1 px-1 border border-[#c4c6d0] dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-[#0b1c30] dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
+                  />
+                </div>
+
+                <div className="flex flex-col items-center gap-1">
+                  <label className="text-xs text-[#44474f] dark:text-zinc-400">Tiene IVA</label>
+                  <input
+                    type="checkbox"
+                    checked={line.applies_iva}
+                    onChange={(e) => setLineAppliesIva(line.id_product, e.target.checked)}
+                    className="w-4 h-4 accent-[#0051d5]"
                   />
                 </div>
 
