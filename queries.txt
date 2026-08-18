@@ -540,3 +540,34 @@ ALTER TABLE [CentroPodologico].[inventory].[purchase_order_items]
       [tax_amount]  [decimal](18,2) NOT NULL DEFAULT 0;
 GO
 
+
+-- spec 22 — Múltiples calendarios por sucursal
+CREATE TABLE [CentroPodologico].[dbo].[sucursal_calendarios] (
+    [id_sucursal_calendario] INT           NOT NULL PRIMARY KEY,
+    [id_sucursal]            INT           NOT NULL,
+    [nombre]                 NVARCHAR(100) NOT NULL,
+    [id_calendar]            NVARCHAR(255) NULL,
+    [iframe]                 NVARCHAR(MAX) NULL,
+    [link_calendar]          NVARCHAR(MAX) NULL,
+    [status]                 BIT           NOT NULL DEFAULT 1,
+    [created_at]             DATETIME2     NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT FK_sucursal_calendarios_sucursales
+        FOREIGN KEY ([id_sucursal]) REFERENCES [CentroPodologico].[dbo].[sucursales]([id_sucursal])
+);
+GO
+
+-- Migración de datos existentes (una sola vez — NO idempotente, no volver a correr)
+INSERT INTO [CentroPodologico].[dbo].[sucursal_calendarios]
+    ([id_sucursal_calendario], [id_sucursal], [nombre], [id_calendar], [iframe], [link_calendar], [status], [created_at])
+SELECT
+    ROW_NUMBER() OVER (ORDER BY [id_sucursal]),
+    [id_sucursal],
+    N'Calendario 1',
+    [id_calendar],
+    [iframe],
+    [link_calendar],
+    1,
+    GETDATE()
+FROM [CentroPodologico].[dbo].[sucursales]
+WHERE [id_calendar] IS NOT NULL OR [iframe] IS NOT NULL OR [link_calendar] IS NOT NULL;
+GO
