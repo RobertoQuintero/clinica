@@ -89,6 +89,68 @@ export async function getPacientes(): Promise<IPaciente[]> {
   return data as IPaciente[];
 }
 
+/** Fila para exportar a Excel. Sin datos sensibles más allá de whatsapp. */
+export interface IPacienteExportRow {
+  nombre_completo: string; // nombre + apellido_paterno + apellido_materno
+  whatsapp: string;
+  nombre_sucursal: string;
+}
+
+export interface IPacienteExportResult {
+  rows: IPacienteExportRow[];
+  nombre_sucursal: string; // para armar el nombre del archivo, aunque no haya filas
+}
+
+export async function exportPacientesSucursal(): Promise<IPacienteExportResult> {
+  const cookieStore = await cookies();
+  const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
+  const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
+  const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
+
+  const data = await db.queryParams(
+    `SELECT p.[nombre],
+            p.[apellido_paterno],
+            p.[apellido_materno],
+            p.[whatsapp],
+            s.[nombre] AS nombre_sucursal
+       FROM [CentroPodologico].[dbo].[pacientes] p
+       LEFT JOIN [CentroPodologico].[dbo].[sucursales] s
+         ON s.[id_sucursal] = p.[id_sucursal] AND s.[id_empresa] = p.[id_empresa]
+      WHERE p.[id_sucursal] = @id_sucursal
+        AND p.[id_empresa]  = @id_empresa
+      ORDER BY p.[apellido_paterno], p.[nombre]`,
+    { id_sucursal, id_empresa }
+  ) as {
+    nombre: string;
+    apellido_paterno: string;
+    apellido_materno: string;
+    whatsapp: string;
+    nombre_sucursal: string | null;
+  }[];
+
+  const nombreSucursal =
+    data[0]?.nombre_sucursal ??
+    (
+      await db.queryParams(
+        `SELECT [nombre] FROM [CentroPodologico].[dbo].[sucursales]
+          WHERE [id_sucursal] = @id_sucursal AND [id_empresa] = @id_empresa`,
+        { id_sucursal, id_empresa }
+      ) as { nombre: string }[]
+    )[0]?.nombre ??
+    "";
+
+  const rows: IPacienteExportRow[] = data.map((row) => ({
+    nombre_completo: [row.nombre, row.apellido_paterno, row.apellido_materno]
+      .map((part) => (part ?? "").trim())
+      .filter((part) => part.length > 0)
+      .join(" "),
+    whatsapp: row.whatsapp,
+    nombre_sucursal: row.nombre_sucursal ?? "",
+  }));
+
+  return { rows, nombre_sucursal: nombreSucursal };
+}
+
 export async function savePaciente(
   form: IPaciente
 ): Promise<{ ok: boolean; message?: string }> {
