@@ -1,8 +1,9 @@
 "use server";
 
 import db from "@/database/connection";
+import { applyStockMovement } from "@/lib/inventory/stock";
 import { IAuthUser } from "@/interfaces/auth";
-import { StockCountStatus, StockCountType } from "@/interfaces/stock_count";
+import { StockCountDecision, StockCountStatus, StockCountType } from "@/interfaces/stock_count";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -12,6 +13,9 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
 /** Roles con permiso para revisar y cerrar un conteo (mismo criterio que min_stock, spec 11). */
 const SUPERVISOR_ROLE_IDS = [1, 4];
+/** Movimientos de kardex propios del cierre de conteo (ver queries.txt, inventory.movements). */
+const MOVEMENT_ENTRADA_POR_CONTEO = 11;
+const MOVEMENT_SALIDA_POR_CONTEO = 12;
 
 type ActionResult<T> =
   | { ok: true; data: T }
@@ -45,6 +49,19 @@ async function getActiveSession(): Promise<{
 /** Folio de presentación derivado del id, sin columna extra (mismo patrón que `MOV-{id_kardex}`). */
 function buildStockCountFolio(id_stock_count: number): string {
   return `INV-${String(id_stock_count).padStart(5, "0")}`;
+}
+
+/**
+ * Gate de la revisión dentro del propio server action (además del gate de rutas en
+ * `proxy.ts`): protegerlo solo en cliente dejaría expuesto el endpoint que devuelve
+ * el stock del sistema y las diferencias.
+ */
+async function assertSupervisorRole(): Promise<IAuthUser> {
+  const user = await getActiveUser();
+  if (!SUPERVISOR_ROLE_IDS.includes(user.id_role)) {
+    throw new Error("Esta acción requiere permisos de supervisor");
+  }
+  return user;
 }
 
 /** Fila del listado de conteos. */
@@ -534,6 +551,299 @@ export async function cancelStockCount(
     return {
       ok: false,
       message: error instanceof Error ? error.message : "Error al cancelar el conteo",
+    };
+  }
+}
+
+/** Cabecera del documento de referencia que ve el supervisor en la revisión. */
+export interface IStockCountReviewHeader {
+  id_stock_count: number;
+  folio:          string;
+  sucursal_name:  string;
+  count_type:     StockCountType;
+  category_name:  string | null;
+  status:         StockCountStatus;
+  counter_name:   string;
+  created_at:     string;
+  counted_at:     string | null;
+}
+
+/** Línea que ve EL SUPERVISOR. Solo se genera para líneas con diferencia. */
+export interface ICountReviewLine {
+  id_stock_count_item: number;
+  id_product:          number;
+  product_name:        string;
+  product_code:        string;
+  unit_code:           string | null;
+  counted_quantity:    number;   // second_count ?? first_count
+  system_quantity:     number;   // snapshot al generar
+  current_stock:       number;   // stock vivo al momento de abrir la revisión
+  difference:          number;   // counted_quantity - system_quantity
+  decision:            StockCountDecision | null;
+  reviewer_notes:      string | null;
+}
+
+export interface IStockCountReview {
+  header: IStockCountReviewHeader;
+  lines:  ICountReviewLine[];
+}
+
+/** Payload de una línea al guardar una decisión del supervisor. */
+export interface IReviewDecisionInput {
+  id_stock_count_item: number;
+  decision:             StockCountDecision;
+  reviewer_notes:       string | null;
+}
+
+/**
+ * Encabezado + líneas con diferencia (`needs_second_count = 1`) de un conteo, con
+ * `current_stock` leído en vivo de `inventory.stock`. Única función que expone
+ * stock del sistema y diferencias — protegida por `assertSupervisorRole` además
+ * del gate de `proxy.ts`.
+ */
+export async function getCountReview(
+  id_stock_count: number
+): Promise<ActionResult<IStockCountReview>> {
+  try {
+    await assertSupervisorRole();
+    const { id_sucursal, id_empresa } = await getActiveSession();
+
+    const headerRows = await db.queryParams(
+      `SELECT sc.[id_stock_count],
+              sc.[count_type],
+              sc.[status],
+              CONVERT(varchar(19), sc.[created_at], 120) AS created_at,
+              CONVERT(varchar(19), sc.[counted_at], 120) AS counted_at,
+              uc.[nombre] AS counter_name,
+              cat.[name] AS category_name,
+              suc.[nombre] AS sucursal_name
+         FROM [CentroPodologico].[inventory].[stock_counts] sc
+         JOIN [CentroPodologico].[dbo].[users] uc ON uc.[id_user] = sc.[id_user_counter]
+         LEFT JOIN [CentroPodologico].[inventory].[product_categories] cat
+           ON cat.[id_category] = sc.[id_category]
+         JOIN [CentroPodologico].[dbo].[sucursales] suc ON suc.[id_sucursal] = sc.[id_sucursal]
+        WHERE sc.[id_stock_count] = @id_stock_count
+          AND sc.[id_sucursal] = @id_sucursal
+          AND sc.[id_empresa] = @id_empresa`,
+      { id_stock_count, id_sucursal, id_empresa }
+    );
+    if (headerRows.length === 0) {
+      return { ok: false, message: "El conteo no existe o no pertenece a esta sucursal" };
+    }
+    const headerRow = headerRows[0];
+
+    const lineRows = await db.queryParams(
+      `SELECT sci.[id_stock_count_item],
+              sci.[id_product],
+              p.[name] AS product_name,
+              p.[product_code],
+              um.[code] AS unit_code,
+              COALESCE(sci.[second_count], sci.[first_count]) AS counted_quantity,
+              sci.[system_quantity],
+              ISNULL(st.[quantity], 0) AS current_stock,
+              sci.[decision],
+              sci.[reviewer_notes]
+         FROM [CentroPodologico].[inventory].[stock_count_items] sci
+         JOIN [CentroPodologico].[inventory].[Products] p ON p.[id_product] = sci.[id_product]
+         LEFT JOIN [CentroPodologico].[inventory].[units_measurement] um
+           ON um.[id_unit_measurement] = p.[id_stock_unit_measurement]
+         LEFT JOIN [CentroPodologico].[inventory].[stock] st
+           ON st.[id_product] = sci.[id_product] AND st.[id_sucursal] = @id_sucursal
+        WHERE sci.[id_stock_count] = @id_stock_count
+          AND sci.[needs_second_count] = 1
+        ORDER BY p.[name]`,
+      { id_stock_count, id_sucursal }
+    );
+
+    const lines: ICountReviewLine[] = lineRows.map((row) => {
+      const countedQuantity = Number(row.counted_quantity);
+      const systemQuantity = Number(row.system_quantity);
+      return {
+        id_stock_count_item: row.id_stock_count_item,
+        id_product: row.id_product,
+        product_name: row.product_name,
+        product_code: row.product_code,
+        unit_code: row.unit_code,
+        counted_quantity: countedQuantity,
+        system_quantity: systemQuantity,
+        current_stock: Number(row.current_stock),
+        difference: countedQuantity - systemQuantity,
+        decision: row.decision,
+        reviewer_notes: row.reviewer_notes,
+      };
+    });
+
+    const header: IStockCountReviewHeader = {
+      id_stock_count: headerRow.id_stock_count,
+      folio: buildStockCountFolio(headerRow.id_stock_count),
+      sucursal_name: headerRow.sucursal_name,
+      count_type: headerRow.count_type,
+      category_name: headerRow.category_name,
+      status: headerRow.status,
+      counter_name: headerRow.counter_name,
+      created_at: headerRow.created_at,
+      counted_at: headerRow.counted_at,
+    };
+
+    return { ok: true, data: { header, lines } };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Error al obtener la revisión del conteo",
+    };
+  }
+}
+
+/**
+ * Guarda parcialmente las decisiones del supervisor (`decision` + `reviewer_notes`
+ * por línea), sin tocar stock. Rechaza si el conteo no está en `pendiente_revision`.
+ */
+export async function saveReviewDecisions(
+  id_stock_count: number,
+  decisions: IReviewDecisionInput[]
+): Promise<ActionResult<null>> {
+  try {
+    await assertSupervisorRole();
+    const { id_sucursal, id_empresa } = await getActiveSession();
+    const owned = await assertStockCountOwnership(db, id_stock_count, id_sucursal, id_empresa);
+    if (owned.status !== "pendiente_revision") {
+      return { ok: false, message: "Este conteo no está en revisión" };
+    }
+
+    await db.transaction(async (tx) => {
+      for (const decision of decisions) {
+        await tx.queryParams(
+          `UPDATE [CentroPodologico].[inventory].[stock_count_items]
+              SET [decision] = @decision, [reviewer_notes] = @reviewer_notes
+            WHERE [id_stock_count_item] = @id_stock_count_item
+              AND [id_stock_count] = @id_stock_count
+              AND [needs_second_count] = 1`,
+          {
+            decision: decision.decision,
+            reviewer_notes: decision.reviewer_notes,
+            id_stock_count_item: decision.id_stock_count_item,
+            id_stock_count,
+          }
+        );
+      }
+    });
+
+    return { ok: true, data: null };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Error al guardar las decisiones",
+    };
+  }
+}
+
+/**
+ * Cierra el conteo: exige decisión en todas las líneas con diferencia y aplica, en
+ * una sola transacción, un movimiento de kardex por cada línea `aumentar`/`disminuir`.
+ * El ajuste se calcula contra el stock **vivo** al momento del cierre
+ * (`|conteo_final − stock_actual|`), no contra el snapshot, para no pisar ventas,
+ * consultas o recepciones ocurridas entre el conteo y la autorización.
+ */
+export async function closeStockCount(
+  id_stock_count: number
+): Promise<ActionResult<null>> {
+  try {
+    const supervisor = await assertSupervisorRole();
+    const { id_sucursal, id_empresa } = await getActiveSession();
+
+    await db.transaction(async (tx) => {
+      const owned = await assertStockCountOwnership(tx, id_stock_count, id_sucursal, id_empresa);
+      if (owned.status !== "pendiente_revision") {
+        throw new Error("Este conteo no está en revisión");
+      }
+
+      const pendingRows = await tx.queryParams(
+        `SELECT COUNT(*) AS pending
+           FROM [CentroPodologico].[inventory].[stock_count_items]
+          WHERE [id_stock_count] = @id_stock_count
+            AND [needs_second_count] = 1
+            AND [decision] IS NULL`,
+        { id_stock_count }
+      );
+      if (Number(pendingRows[0].pending) > 0) {
+        throw new Error("Faltan líneas con diferencia por decidir");
+      }
+
+      const adjustableLines = await tx.queryParams(
+        `SELECT [id_stock_count_item],
+                [id_product],
+                COALESCE([second_count], [first_count]) AS counted_quantity,
+                [reviewer_notes]
+           FROM [CentroPodologico].[inventory].[stock_count_items]
+          WHERE [id_stock_count] = @id_stock_count
+            AND [needs_second_count] = 1
+            AND [decision] IN ('aumentar', 'disminuir')`,
+        { id_stock_count }
+      );
+
+      for (const line of adjustableLines) {
+        // Relee el stock dentro de la transacción: el resultado final siempre se
+        // calcula contra lo que hay ahora, no contra lo que el supervisor vio al decidir.
+        const stockRows = await tx.queryParams(
+          `SELECT [quantity]
+             FROM [CentroPodologico].[inventory].[stock] WITH (UPDLOCK, HOLDLOCK)
+            WHERE [id_product] = @id_product
+              AND [id_sucursal] = @id_sucursal`,
+          { id_product: line.id_product, id_sucursal }
+        );
+        const currentStock = stockRows.length > 0 ? Number(stockRows[0].quantity) : 0;
+        const countedQuantity = Number(line.counted_quantity);
+        const delta = countedQuantity - currentStock;
+
+        if (delta === 0) continue;
+
+        const id_movement = delta > 0 ? MOVEMENT_ENTRADA_POR_CONTEO : MOVEMENT_SALIDA_POR_CONTEO;
+        await applyStockMovement(tx, {
+          id_product: line.id_product,
+          id_sucursal,
+          id_empresa,
+          id_movement,
+          quantity: Math.abs(delta),
+          id_stock_count,
+          notes: line.reviewer_notes,
+          unit_cost: null,
+          id_user: supervisor.id_user,
+        });
+
+        const kardexRows = await tx.queryParams(
+          `SELECT TOP 1 [id_kardex]
+             FROM [CentroPodologico].[inventory].[kardex]
+            WHERE [id_stock_count] = @id_stock_count
+              AND [id_product] = @id_product
+            ORDER BY [id_kardex] DESC`,
+          { id_stock_count, id_product: line.id_product }
+        );
+        const id_kardex = kardexRows.length > 0 ? Number(kardexRows[0].id_kardex) : null;
+
+        await tx.queryParams(
+          `UPDATE [CentroPodologico].[inventory].[stock_count_items]
+              SET [id_kardex] = @id_kardex
+            WHERE [id_stock_count_item] = @id_stock_count_item`,
+          { id_kardex, id_stock_count_item: line.id_stock_count_item }
+        );
+      }
+
+      const closed_at = buildDate(new Date());
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[inventory].[stock_counts]
+            SET [status] = 'cerrado', [id_user_reviewer] = @id_user_reviewer, [closed_at] = @closed_at
+          WHERE [id_stock_count] = @id_stock_count`,
+        { id_stock_count, id_user_reviewer: supervisor.id_user, closed_at }
+      );
+    });
+
+    revalidatePath("/dashboard/conteos");
+    revalidatePath("/dashboard/movimientos");
+    return { ok: true, data: null };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Error al cerrar el conteo",
     };
   }
 }
