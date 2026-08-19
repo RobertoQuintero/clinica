@@ -2,8 +2,8 @@
 
 ## Header
 
-- **Estado:** Aprobado
-- **Depende de:** [[09-pedidos-compra-recepcion]] (`inventory.kardex`, `inventory.stock`, `applyStockMovement`), [[08-productos-inventario-crud]] (`inventory.Products`, `IProduct`, `inventory.product_categories`), [[14-movimientos-almacen]] (catálogo `inventory.movements`, patrón de pantalla y de server actions de inventario)
+- **Estado:** Implementado
+- **Depende de:** [[09-pedidos-compra-recepcion]] (`inventory.kardex`, `inventory.stock`, `applyStockMovement`), [[08-productos-inventario-crud]] (`inventory.Products`, `IProduct`, `inventory.categories`), [[14-movimientos-almacen]] (catálogo `inventory.movements`, patrón de pantalla y de server actions de inventario)
 - **Fecha:** 2026-08-18
 - **Objetivo:** Agregar a Inventario el proceso de conteo físico en dos etapas, donde quien cuenta captura cantidades sin ver el stock del sistema y un supervisor (rol 1 o 4) decide línea por línea si aumentar, disminuir o dejar el stock, aplicando los ajustes al cerrar el conteo.
 
@@ -228,7 +228,7 @@ export interface ICountReviewLine {
 3. **`lib/inventory/stock.ts`.** Agregar `id_stock_count?: number | null` a `IApplyStockMovementInput` (default `null`) e incluirlo en el `INSERT` de kardex. Ningún llamador existente cambia. *Verificación:* `npm run build` compila y una recepción sigue registrando stock igual que antes.
 
 4. **`app/dashboard/conteos/actions.ts`** (`"use server"`), parte de lectura/creación, todo devolviendo `ActionResult<T>`:
-   - `getStockCounts(id_sucursal)`: listado de conteos de la sucursal, `ORDER BY id_stock_count DESC`, con `JOIN dbo.users` para `counter_name`/`reviewer_name` y `LEFT JOIN inventory.product_categories` para `category_name`. Fechas con `CONVERT(varchar(19), …, 120)`. `items_with_difference` solo se calcula si el usuario del JWT es rol 1 o 4.
+   - `getStockCounts(id_sucursal)`: listado de conteos de la sucursal, `ORDER BY id_stock_count DESC`, con `JOIN dbo.users` para `counter_name`/`reviewer_name` y `LEFT JOIN inventory.categories` para `category_name`. Fechas con `CONVERT(varchar(19), …, 120)`. `items_with_difference` solo se calcula si el usuario del JWT es rol 1 o 4.
    - `getCountableCategories(id_sucursal)`: categorías que tienen al menos un producto con fila en `inventory.stock` de esa sucursal.
    - `createStockCount(count_type, id_category)`: valida que **no exista** otro conteo de la sucursal en estado distinto de `cerrado`/`cancelado`; toma `id_sucursal`, `id_empresa` e `id_user` del JWT. En una transacción, inserta el encabezado (`status = "en_captura"`, `created_at = buildDate(new Date())`) y, con un solo `INSERT … SELECT`, una línea por producto activo con fila en `inventory.stock` de esa sucursal (filtrando por `id_category` si aplica), copiando `stock.quantity` a `system_quantity`.
 
@@ -280,37 +280,37 @@ export interface ICountReviewLine {
 
 ## Criterios de aceptación
 
-- [ ] Existen las tablas `inventory.stock_counts` e `inventory.stock_count_items` con las columnas e índices descritos, los movimientos `11` y `12` en `inventory.movements`, y la columna `inventory.kardex.id_stock_count`; todo anexado a `queries.txt`.
-- [ ] `IKardexEntry` incluye `id_stock_count`, y `applyStockMovement` lo acepta como opcional y lo escribe; recepciones, ventas y consumo por consulta siguen funcionando sin cambios en sus llamadas.
-- [ ] `/dashboard/conteos` aparece como "Conteos" dentro del grupo Inventario del sidebar y el rol 5 no la ve.
-- [ ] Generar un conteo **general** crea una línea por cada producto activo con fila en `inventory.stock` de la sucursal seleccionada, con `system_quantity` igual al stock de ese momento.
-- [ ] Generar un conteo **por categoría** incluye solo productos de esa categoría; el selector ofrece una sola categoría, no varias.
-- [ ] La pantalla de captura (`/dashboard/conteos/[id]`) no muestra en ningún momento `system_quantity`, diferencias ni stock actual, y el server action `getCountEntryLines` no los incluye en su respuesta.
-- [ ] "Guardar avance" persiste las cantidades capturadas y permite retomar el conteo después sin perder nada.
-- [ ] Al finalizar el primer conteo con diferencias, el conteo pasa a `segundo_conteo` y la pantalla pide recontar **solo** los productos con diferencia, sin mostrar la cantidad capturada en el primer conteo.
-- [ ] Al finalizar el primer conteo **sin** diferencias, el conteo salta el segundo conteo y pasa directo a `pendiente_revision`.
-- [ ] El segundo conteo es definitivo: aunque siga difiriendo del sistema, el conteo pasa a `pendiente_revision` y no se pide un tercer conteo.
-- [ ] No existe en ninguna pantalla de captura un botón que actualice el stock.
-- [ ] `/dashboard/conteos/[id]/revision` es accesible solo para `id_role` 1 y 4; con cualquier otro rol `proxy.ts` redirige, y el server action de revisión también lo rechaza.
-- [ ] La revisión lista únicamente las líneas con diferencia, mostrando conteo físico, stock del snapshot, stock actual y diferencia con signo.
-- [ ] Cada línea con diferencia tiene tres decisiones mutuamente excluyentes (`aumentar`, `disminuir`, `dejar_igual`) y un campo de nota opcional.
-- [ ] Las decisiones se pueden guardar parcialmente y recuperar al volver, **sin** que el stock cambie mientras el conteo no se cierre.
-- [ ] "Cerrar inventario" está deshabilitado mientras alguna línea con diferencia no tenga decisión.
-- [ ] Al cerrar, cada línea `aumentar`/`disminuir` genera un movimiento de kardex tipo `11` u `12` con `id_stock_count` y la nota del supervisor, y `inventory.stock` queda en la cantidad contada.
-- [ ] La cantidad del ajuste se calcula como `|conteo_final − stock_actual_al_cerrar|`, no contra el snapshot; si el stock actual ya coincide con el conteo, esa línea no genera movimiento.
-- [ ] Una línea con decisión `dejar_igual` **no** genera movimiento, no modifica el stock, y conserva registrada su diferencia y su nota en `stock_count_items`.
-- [ ] Todo el cierre ocurre en una sola transacción: si falla un movimiento, ninguno persiste y el conteo sigue en `pendiente_revision`.
-- [ ] Un conteo `cerrado` es inmutable: no se puede reabrir, ni cambiar decisiones, ni volver a aplicar ajustes desde la UI.
-- [ ] No se puede generar un conteo nuevo en una sucursal que ya tiene uno en estado distinto de `cerrado`/`cancelado`; se muestra aviso con enlace al conteo abierto.
-- [ ] Quien capturó el conteo y los roles 1/4 pueden cancelarlo mientras no esté `cerrado`; cancelar deja `status = "cancelado"` sin tocar stock ni borrar filas.
-- [ ] Quien capturó el conteo nunca ve stock del sistema ni diferencias, tampoco después de que el supervisor cierra el inventario.
-- [ ] El folio se muestra como `INV-` + id a 5 dígitos (`INV-00025`) en listado, captura y revisión.
-- [ ] Los movimientos `11` y `12` aparecen en `/dashboard/movimientos` con badge propio y son filtrables por tipo, pero **no** son seleccionables en "Registrar movimiento".
-- [ ] Todas las fechas viajan como cadenas (`CONVERT(varchar(19), …, 120)` al leer, `buildDate`/`toDBString` al escribir); no se envía ningún `Date` a `mssql`.
-- [ ] `id_sucursal`, `id_empresa` e `id_user` se toman del JWT en los server actions, nunca de parámetros del cliente.
-- [ ] Los nombres de funciones, variables, componentes y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md`.
-- [ ] Las cuatro pantallas se ven correctamente en modo claro y oscuro, consistentes con Movimientos y Recepciones.
-- [ ] `npm run build` sin errores de TypeScript.
+- [x] Existen las tablas `inventory.stock_counts` e `inventory.stock_count_items` con las columnas e índices descritos, los movimientos `11` y `12` en `inventory.movements`, y la columna `inventory.kardex.id_stock_count`; todo anexado a `queries.txt`.
+- [x] `IKardexEntry` incluye `id_stock_count`, y `applyStockMovement` lo acepta como opcional y lo escribe; recepciones, ventas y consumo por consulta siguen funcionando sin cambios en sus llamadas.
+- [x] `/dashboard/conteos` aparece como "Conteos" dentro del grupo Inventario del sidebar y el rol 5 no la ve.
+- [x] Generar un conteo **general** crea una línea por cada producto activo con fila en `inventory.stock` de la sucursal seleccionada, con `system_quantity` igual al stock de ese momento.
+- [x] Generar un conteo **por categoría** incluye solo productos de esa categoría; el selector ofrece una sola categoría, no varias.
+- [x] La pantalla de captura (`/dashboard/conteos/[id]`) no muestra en ningún momento `system_quantity`, diferencias ni stock actual, y el server action `getCountEntryLines` no los incluye en su respuesta.
+- [x] "Guardar avance" persiste las cantidades capturadas y permite retomar el conteo después sin perder nada.
+- [x] Al finalizar el primer conteo con diferencias, el conteo pasa a `segundo_conteo` y la pantalla pide recontar **solo** los productos con diferencia, sin mostrar la cantidad capturada en el primer conteo.
+- [x] Al finalizar el primer conteo **sin** diferencias, el conteo salta el segundo conteo y pasa directo a `pendiente_revision`.
+- [x] El segundo conteo es definitivo: aunque siga difiriendo del sistema, el conteo pasa a `pendiente_revision` y no se pide un tercer conteo.
+- [x] No existe en ninguna pantalla de captura un botón que actualice el stock.
+- [x] `/dashboard/conteos/[id]/revision` es accesible solo para `id_role` 1 y 4; con cualquier otro rol `proxy.ts` redirige, y el server action de revisión también lo rechaza.
+- [x] La revisión lista únicamente las líneas con diferencia, mostrando conteo físico, stock del snapshot, stock actual y diferencia con signo.
+- [x] Cada línea con diferencia tiene tres decisiones mutuamente excluyentes (`aumentar`, `disminuir`, `dejar_igual`) y un campo de nota opcional.
+- [x] Las decisiones se pueden guardar parcialmente y recuperar al volver, **sin** que el stock cambie mientras el conteo no se cierre.
+- [x] "Cerrar inventario" está deshabilitado mientras alguna línea con diferencia no tenga decisión.
+- [x] Al cerrar, cada línea `aumentar`/`disminuir` genera un movimiento de kardex tipo `11` u `12` con `id_stock_count` y la nota del supervisor, y `inventory.stock` queda en la cantidad contada.
+- [x] La cantidad del ajuste se calcula como `|conteo_final − stock_actual_al_cerrar|`, no contra el snapshot; si el stock actual ya coincide con el conteo, esa línea no genera movimiento.
+- [x] Una línea con decisión `dejar_igual` **no** genera movimiento, no modifica el stock, y conserva registrada su diferencia y su nota en `stock_count_items`.
+- [x] Todo el cierre ocurre en una sola transacción: si falla un movimiento, ninguno persiste y el conteo sigue en `pendiente_revision`.
+- [x] Un conteo `cerrado` es inmutable: no se puede reabrir, ni cambiar decisiones, ni volver a aplicar ajustes desde la UI.
+- [x] No se puede generar un conteo nuevo en una sucursal que ya tiene uno en estado distinto de `cerrado`/`cancelado`; se muestra aviso con enlace al conteo abierto.
+- [x] Quien capturó el conteo y los roles 1/4 pueden cancelarlo mientras no esté `cerrado`; cancelar deja `status = "cancelado"` sin tocar stock ni borrar filas.
+- [x] Quien capturó el conteo nunca ve stock del sistema ni diferencias, tampoco después de que el supervisor cierra el inventario.
+- [x] El folio se muestra como `INV-` + id a 5 dígitos (`INV-00025`) en listado, captura y revisión.
+- [x] Los movimientos `11` y `12` aparecen en `/dashboard/movimientos` con badge propio y son filtrables por tipo, pero **no** son seleccionables en "Registrar movimiento".
+- [x] Todas las fechas viajan como cadenas (`CONVERT(varchar(19), …, 120)` al leer, `buildDate`/`toDBString` al escribir); no se envía ningún `Date` a `mssql`.
+- [x] `id_sucursal`, `id_empresa` e `id_user` se toman del JWT en los server actions, nunca de parámetros del cliente.
+- [x] Los nombres de funciones, variables, componentes y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md`.
+- [x] Las cuatro pantallas se ven correctamente en modo claro y oscuro, consistentes con Movimientos y Recepciones.
+- [x] `npm run build` sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 

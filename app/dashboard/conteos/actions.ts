@@ -109,7 +109,7 @@ export async function getStockCounts(
          FROM [CentroPodologico].[inventory].[stock_counts] sc
          JOIN [CentroPodologico].[dbo].[users] uc ON uc.[id_user] = sc.[id_user_counter]
          LEFT JOIN [CentroPodologico].[dbo].[users] ur ON ur.[id_user] = sc.[id_user_reviewer]
-         LEFT JOIN [CentroPodologico].[inventory].[product_categories] cat
+         LEFT JOIN [CentroPodologico].[inventory].[categories] cat
            ON cat.[id_category] = sc.[id_category]
          CROSS APPLY (
              SELECT COUNT(*) AS items_total,
@@ -149,7 +149,7 @@ export async function getCountableCategories(
     const { id_empresa } = await getActiveUser();
     const rows = await db.queryParams(
       `SELECT DISTINCT cat.[id_category], cat.[name]
-         FROM [CentroPodologico].[inventory].[product_categories] cat
+         FROM [CentroPodologico].[inventory].[categories] cat
          JOIN [CentroPodologico].[inventory].[Products] p ON p.[id_category] = cat.[id_category]
          JOIN [CentroPodologico].[inventory].[stock] s
            ON s.[id_product] = p.[id_product] AND s.[id_sucursal] = @id_sucursal
@@ -331,7 +331,7 @@ export async function getStockCountHeader(
               cat.[name] AS category_name
          FROM [CentroPodologico].[inventory].[stock_counts] sc
          JOIN [CentroPodologico].[dbo].[users] uc ON uc.[id_user] = sc.[id_user_counter]
-         LEFT JOIN [CentroPodologico].[inventory].[product_categories] cat
+         LEFT JOIN [CentroPodologico].[inventory].[categories] cat
            ON cat.[id_category] = sc.[id_category]
         WHERE sc.[id_stock_count] = @id_stock_count
           AND sc.[id_sucursal] = @id_sucursal
@@ -741,7 +741,7 @@ export async function getCountReview(
               suc.[nombre] AS sucursal_name
          FROM [CentroPodologico].[inventory].[stock_counts] sc
          JOIN [CentroPodologico].[dbo].[users] uc ON uc.[id_user] = sc.[id_user_counter]
-         LEFT JOIN [CentroPodologico].[inventory].[product_categories] cat
+         LEFT JOIN [CentroPodologico].[inventory].[categories] cat
            ON cat.[id_category] = sc.[id_category]
          JOIN [CentroPodologico].[dbo].[sucursales] suc ON suc.[id_sucursal] = sc.[id_sucursal]
         WHERE sc.[id_stock_count] = @id_stock_count

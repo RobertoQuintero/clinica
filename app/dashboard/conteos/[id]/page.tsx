@@ -105,6 +105,21 @@ export default function CountEntryPage() {
   const handleFinish = async () => {
     setFinishing(true);
     setFinishError(null);
+    // Asegura que lo tecleado quede persistido antes de finalizar: sin este guardado,
+    // finalizar sin haber pulsado antes "Guardar avance" fallaría contra el servidor
+    // (que valida las cantidades ya guardadas en BD, no el estado local del formulario).
+    const payload = lines
+      .filter((line) => (values[line.id_stock_count_item] ?? "").trim() !== "")
+      .map((line) => ({
+        id_stock_count_item: line.id_stock_count_item,
+        counted_quantity: Number(values[line.id_stock_count_item]),
+      }));
+    const saveResult = await saveCountProgress(id_stock_count, payload);
+    if (!saveResult.ok) {
+      setFinishing(false);
+      setFinishError(saveResult.message);
+      return;
+    }
     const finishAction = header?.status === "segundo_conteo" ? finishSecondCount : finishFirstCount;
     const result = await finishAction(id_stock_count);
     setFinishing(false);
