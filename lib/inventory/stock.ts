@@ -16,6 +16,7 @@ export interface IApplyStockMovementInput {
   id_venta?:               number | null;
   id_sucursal_counterpart?: number | null;
   id_transfer?:            string | null;
+  id_stock_count?:         number | null;
   notes?:                  string | null;
   id_user:                 number;
 }
@@ -45,6 +46,7 @@ export async function applyStockMovement(
     id_venta = null,
     id_sucursal_counterpart = null,
     id_transfer = null,
+    id_stock_count = null,
     notes = null,
     id_user,
   } = input;
@@ -92,11 +94,11 @@ export async function applyStockMovement(
     `INSERT INTO [CentroPodologico].[inventory].[kardex]
        ([id_product],[id_sucursal],[id_empresa],[id_movement],[quantity],[balance_after],
         [id_unit_measurement],[unit_cost],[id_purchase_order_item],[id_reception],[id_consulta],
-        [id_venta],[id_sucursal_counterpart],[id_transfer],[notes],[id_user],[created_at])
+        [id_venta],[id_sucursal_counterpart],[id_transfer],[id_stock_count],[notes],[id_user],[created_at])
      VALUES
        (@id_product, @id_sucursal, @id_empresa, @id_movement, @quantity, @balance_after,
         @id_unit_measurement, @unit_cost, @id_purchase_order_item, @id_reception, @id_consulta,
-        @id_venta, @id_sucursal_counterpart, @id_transfer, @notes, @id_user, @created_at)`,
+        @id_venta, @id_sucursal_counterpart, @id_transfer, @id_stock_count, @notes, @id_user, @created_at)`,
     {
       id_product,
       id_sucursal,
@@ -112,6 +114,7 @@ export async function applyStockMovement(
       id_venta,
       id_sucursal_counterpart,
       id_transfer,
+      id_stock_count,
       notes,
       id_user,
       created_at: now,

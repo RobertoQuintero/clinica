@@ -13,6 +13,7 @@ export interface IKardexEntry {
   id_consulta:            number | null;
   id_sucursal_counterpart: number | null;
   id_transfer:            string | null;
+  id_stock_count:         number | null;
   notes:                  string | null;
   id_user:                number;
   created_at:             Date | string;
