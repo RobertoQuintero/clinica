@@ -305,6 +305,60 @@ export async function createStockCount(
   }
 }
 
+/** Encabezado del conteo para las pantallas de captura (folio, tipo, estado, quien lo generó). */
+export interface IStockCountHeader {
+  id_stock_count: number;
+  folio:          string;
+  count_type:     StockCountType;
+  category_name:  string | null;
+  status:         StockCountStatus;
+  counter_name:   string;
+  created_at:     string;
+}
+
+/** Encabezado de un conteo puntual, validando que pertenezca a la sucursal/empresa activa. */
+export async function getStockCountHeader(
+  id_stock_count: number
+): Promise<ActionResult<IStockCountHeader>> {
+  try {
+    const { id_sucursal, id_empresa } = await getActiveSession();
+    const rows = await db.queryParams(
+      `SELECT sc.[id_stock_count],
+              sc.[count_type],
+              sc.[status],
+              CONVERT(varchar(19), sc.[created_at], 120) AS created_at,
+              uc.[nombre] AS counter_name,
+              cat.[name] AS category_name
+         FROM [CentroPodologico].[inventory].[stock_counts] sc
+         JOIN [CentroPodologico].[dbo].[users] uc ON uc.[id_user] = sc.[id_user_counter]
+         LEFT JOIN [CentroPodologico].[inventory].[product_categories] cat
+           ON cat.[id_category] = sc.[id_category]
+        WHERE sc.[id_stock_count] = @id_stock_count
+          AND sc.[id_sucursal] = @id_sucursal
+          AND sc.[id_empresa] = @id_empresa`,
+      { id_stock_count, id_sucursal, id_empresa }
+    );
+    if (rows.length === 0) {
+      return { ok: false, message: "El conteo no existe o no pertenece a esta sucursal" };
+    }
+    const row = rows[0];
+    return {
+      ok: true,
+      data: {
+        id_stock_count: row.id_stock_count,
+        folio: buildStockCountFolio(row.id_stock_count),
+        count_type: row.count_type,
+        category_name: row.category_name,
+        status: row.status,
+        counter_name: row.counter_name,
+        created_at: row.created_at,
+      },
+    };
+  } catch {
+    return { ok: false, message: "Error al obtener el conteo" };
+  }
+}
+
 /** Línea que ve QUIEN CAPTURA. Sin stock del sistema, sin diferencia. */
 export interface ICountEntryLine {
   id_stock_count_item: number;
