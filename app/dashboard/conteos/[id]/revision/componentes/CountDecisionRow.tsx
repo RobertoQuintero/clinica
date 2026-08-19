@@ -31,6 +31,11 @@ export default function CountDecisionRow({
         ? "text-[#ba1a1a] dark:text-red-400"
         : "text-[#44474f] dark:text-zinc-400";
 
+  const disableIncrease = line.current_stock > line.counted_quantity;
+  const disableDecrease = line.current_stock < line.counted_quantity;
+  const isOptionDisabled = (optionValue: StockCountDecision) =>
+    optionValue === "aumentar" ? disableIncrease : optionValue === "disminuir" ? disableDecrease : false;
+
   return (
     <tr className="border-b border-[#c4c6d0] dark:border-zinc-700 last:border-b-0 align-top">
       <td className="px-6 py-4">
@@ -53,20 +58,24 @@ export default function CountDecisionRow({
           </span>
         ) : (
           <div className="flex gap-1.5">
-            {DECISION_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onDecisionChange(option.value)}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  decision === option.value
-                    ? "border-[#0051d5] bg-[#eff4ff] dark:bg-blue-900/20 text-[#0051d5] dark:text-blue-300"
-                    : "border-[#c4c6d0] dark:border-zinc-600 text-[#44474f] dark:text-zinc-400 hover:bg-[#eff4ff]/60 dark:hover:bg-zinc-800"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+            {DECISION_OPTIONS.map((option) => {
+              const disabled = isOptionDisabled(option.value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => !disabled && onDecisionChange(option.value)}
+                  disabled={disabled}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent ${
+                    decision === option.value
+                      ? "border-[#0051d5] bg-[#eff4ff] dark:bg-blue-900/20 text-[#0051d5] dark:text-blue-300"
+                      : "border-[#c4c6d0] dark:border-zinc-600 text-[#44474f] dark:text-zinc-400 hover:bg-[#eff4ff]/60 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
         )}
       </td>
