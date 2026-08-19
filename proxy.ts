@@ -57,6 +57,14 @@ export const proxy = async (req: NextRequest) => {
     if (pathname.startsWith("/dashboard/usuarios") && userPayload?.id_role !== 1 && userPayload?.id_role !== 4) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
+    // Solo id_role=1 e id_role=4 pueden revisar/cerrar un conteo físico de inventario
+    if (
+      /^\/dashboard\/conteos\/[^/]+\/revision/.test(pathname) &&
+      userPayload?.id_role !== 1 &&
+      userPayload?.id_role !== 4
+    ) {
+      return NextResponse.redirect(new URL("/dashboard/conteos", req.url));
+    }
   }
 
   return NextResponse.next();
