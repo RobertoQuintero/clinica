@@ -18,8 +18,8 @@ export default function PacientesFaltantes() {
   const { user } = useAuth();
   const [pacientes, setPacientes] = useState<IPacienteFaltante[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [dias, setDias]         = useState(60);
-  const [inputDias, setInputDias] = useState(60);
+  const [dias, setDias]         = useState(90);
+  const [inputDias, setInputDias] = useState(90);
 
   useEffect(() => {
     if (!dias || dias < 1) return;
