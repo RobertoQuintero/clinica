@@ -50,6 +50,16 @@ const MOVEMENT_META: Record<number, { label: string; className: string }> = {
     className:
       "bg-[#ffdad6] text-[#ba1a1a] border-[#ffb4ab] dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
   },
+  11: {
+    label: "Entrada por conteo físico",
+    className:
+      "bg-[#f5f3ff] text-[#4c1d95] border-[#e0d7fb] dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+  },
+  12: {
+    label: "Salida por conteo físico",
+    className:
+      "bg-[#f5f3ff] text-[#4c1d95] border-[#e0d7fb] dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+  },
 };
 
 interface Props {
