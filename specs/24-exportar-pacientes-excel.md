@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** Ninguno (feature aislada, no modifica specs previos)
 - **Fecha:** 2026-08-19
 - **Objetivo:** Agregar en `/dashboard/pacientes` un botón "Exportar a Excel" que descarga un `.xlsx` con nombre completo, WhatsApp y sucursal de todos los pacientes de la sucursal seleccionada.
@@ -85,18 +85,18 @@ export interface IPacienteExportResult {
 
 ## Criterios de aceptación
 
-- [ ] `xlsx` está agregado como dependencia en `package.json` y `npm run build` compila sin errores.
-- [ ] `/dashboard/pacientes` muestra el botón "Exportar a Excel" junto a "+ Nuevo paciente" **solo** para usuarios con `id_role` 1 o 4; para el resto de roles el botón no se renderiza.
-- [ ] `exportPacientesSucursal()` devuelve **todos** los pacientes de la sucursal activa (no limitado a 20), filtrando por `id_sucursal`/`id_empresa` resueltos igual que `getPacientes()`.
-- [ ] El Excel generado contiene las columnas "Nombre completo" y "Sucursal" siempre, y "WhatsApp" únicamente cuando el usuario tiene `id_role` 1 o 4.
-- [ ] El nombre completo en el Excel es la concatenación de nombre + apellido paterno + apellido materno, sin espacios dobles cuando algún apellido está vacío.
-- [ ] El nombre del archivo descargado sigue el patrón `pacientes_{sucursal_slug}_{YYYY-MM-DD}.xlsx`, con la fecha calculada vía `addZeroToday(new Date())` (no `toISOString()`).
-- [ ] Si la sucursal seleccionada no tiene pacientes, no se descarga ningún archivo y se muestra un aviso al usuario.
-- [ ] El botón queda deshabilitado y muestra estado de carga ("Exportando…") mientras se obtienen los datos.
-- [ ] Exportar refleja la sucursal actualmente seleccionada en `SucursalContext`, no una sucursal distinta ni todas a la vez.
-- [ ] El botón y su estado de carga se ven correctamente en modo claro y oscuro.
-- [ ] Los nombres de funciones, variables y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md` (el contenido/encabezados del Excel y el texto del botón sí van en español, por ser UI/salida de cara al usuario).
-- [ ] `npm run build` sin errores de TypeScript.
+- [x] `xlsx` está agregado como dependencia en `package.json` y `npm run build` compila sin errores.
+- [x] `/dashboard/pacientes` muestra el botón "Exportar a Excel" junto a "+ Nuevo paciente" **solo** para usuarios con `id_role` 1 o 4; para el resto de roles el botón no se renderiza.
+- [x] `exportPacientesSucursal()` devuelve **todos** los pacientes de la sucursal activa (no limitado a 20), filtrando por `id_sucursal`/`id_empresa` resueltos igual que `getPacientes()`.
+- [x] El Excel generado contiene las columnas "Nombre completo" y "Sucursal" siempre, y "WhatsApp" únicamente cuando el usuario tiene `id_role` 1 o 4.
+- [x] El nombre completo en el Excel es la concatenación de nombre + apellido paterno + apellido materno, sin espacios dobles cuando algún apellido está vacío.
+- [x] El nombre del archivo descargado sigue el patrón `pacientes_{sucursal_slug}_{YYYY-MM-DD}.xlsx`, con la fecha calculada vía `addZeroToday(new Date())` (no `toISOString()`).
+- [x] Si la sucursal seleccionada no tiene pacientes, no se descarga ningún archivo y se muestra un aviso al usuario.
+- [x] El botón queda deshabilitado y muestra estado de carga ("Exportando…") mientras se obtienen los datos.
+- [x] Exportar refleja la sucursal actualmente seleccionada en `SucursalContext`, no una sucursal distinta ni todas a la vez.
+- [x] El botón y su estado de carga se ven correctamente en modo claro y oscuro.
+- [x] Los nombres de funciones, variables y tipos nuevos están en inglés y son descriptivos, conforme a `CLAUDE.md` (el contenido/encabezados del Excel y el texto del botón sí van en español, por ser UI/salida de cara al usuario).
+- [x] `npm run build` sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 
