@@ -571,3 +571,55 @@ SELECT
 FROM [CentroPodologico].[dbo].[sucursales]
 WHERE [id_calendar] IS NOT NULL OR [iframe] IS NOT NULL OR [link_calendar] IS NOT NULL;
 GO
+
+-- spec 23 — conteo físico de inventario
+-- Nota: id_movement = 10 ya estaba en uso ("Descuento por consumo"), así que los
+-- nuevos movimientos de conteo físico usan 11 y 12 en vez de 10 y 11.
+CREATE TABLE [inventory].[stock_counts](
+    [id_stock_count]   [int] IDENTITY(1,1) NOT NULL,
+    [id_sucursal]      [int] NOT NULL,
+    [id_empresa]       [int] NOT NULL,
+    [count_type]       [varchar](20) NOT NULL,  -- 'general' | 'category'
+    [id_category]      [int] NULL,              -- obligatorio si count_type = 'category'
+    [status]           [varchar](20) NOT NULL,  -- ver estados abajo
+    [id_user_counter]  [int] NOT NULL,          -- quien generó y capturó el conteo
+    [id_user_reviewer] [int] NULL,              -- supervisor que cerró
+    [created_at]       [datetime2](7) NOT NULL,
+    [counted_at]       [datetime2](7) NULL,     -- momento en que pasó a pendiente_revision
+    [closed_at]        [datetime2](7) NULL,     -- momento del cierre o cancelación
+    CONSTRAINT [PK_stock_counts] PRIMARY KEY CLUSTERED ([id_stock_count] ASC)
+);
+GO
+CREATE INDEX [IX_stock_counts_sucursal_status]
+    ON [inventory].[stock_counts] ([id_sucursal] ASC, [status] ASC, [id_stock_count] DESC);
+GO
+
+CREATE TABLE [inventory].[stock_count_items](
+    [id_stock_count_item] [int] IDENTITY(1,1) NOT NULL,
+    [id_stock_count]      [int] NOT NULL,
+    [id_product]          [int] NOT NULL,
+    [system_quantity]     [decimal](18, 4) NOT NULL,  -- snapshot al generar el conteo
+    [first_count]         [decimal](18, 4) NULL,      -- NULL mientras no se captura
+    [second_count]        [decimal](18, 4) NULL,      -- solo en líneas con diferencia
+    [needs_second_count]  [bit] NOT NULL DEFAULT 0,
+    [decision]            [varchar](20) NULL,         -- 'aumentar' | 'disminuir' | 'dejar_igual'
+    [reviewer_notes]      [nvarchar](500) NULL,
+    [id_kardex]           [int] NULL,                 -- movimiento generado al cerrar, si lo hubo
+    CONSTRAINT [PK_stock_count_items] PRIMARY KEY CLUSTERED ([id_stock_count_item] ASC),
+    CONSTRAINT [FK_stock_count_items_counts]
+        FOREIGN KEY ([id_stock_count]) REFERENCES [inventory].[stock_counts]([id_stock_count])
+);
+GO
+CREATE UNIQUE INDEX [UQ_stock_count_items_count_product]
+    ON [inventory].[stock_count_items] ([id_stock_count] ASC, [id_product] ASC);
+GO
+
+INSERT [inventory].[movements]
+    ([id_movement],[name],[short_name],[status],[activo],[increases_storage],[id_empresa],[description])
+VALUES
+    (11, N'Entrada por conteo físico', N'EXCF', 1, 1, 1, 1, N'Ajuste positivo autorizado por el supervisor tras un conteo físico'),
+    (12, N'Salida por conteo físico',  N'SXCF', 1, 1, 0, 1, N'Ajuste negativo autorizado por el supervisor tras un conteo físico');
+GO
+
+ALTER TABLE [inventory].[kardex] ADD [id_stock_count] [int] NULL;
+GO
