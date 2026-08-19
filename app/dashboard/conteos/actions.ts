@@ -167,6 +167,74 @@ export async function getCountableCategories(
   }
 }
 
+/** Conteo abierto (si lo hay) en la sucursal, para el aviso con enlace de "Nuevo conteo". */
+export interface IOpenStockCount {
+  id_stock_count: number;
+  folio:          string;
+  status:         StockCountStatus;
+}
+
+/**
+ * Conteo no cerrado/cancelado más reciente de la sucursal, si existe. Usado por la
+ * pantalla "Nuevo conteo" para mostrar el aviso con enlace en vez del formulario
+ * (solo puede haber un conteo abierto por sucursal a la vez).
+ */
+export async function getOpenStockCount(
+  id_sucursal: number
+): Promise<ActionResult<IOpenStockCount | null>> {
+  try {
+    const rows = await db.queryParams(
+      `SELECT TOP 1 [id_stock_count], [status]
+         FROM [CentroPodologico].[inventory].[stock_counts]
+        WHERE [id_sucursal] = @id_sucursal
+          AND [status] NOT IN ('cerrado', 'cancelado')
+        ORDER BY [id_stock_count] DESC`,
+      { id_sucursal }
+    );
+    if (rows.length === 0) return { ok: true, data: null };
+    return {
+      ok: true,
+      data: {
+        id_stock_count: rows[0].id_stock_count,
+        folio: buildStockCountFolio(rows[0].id_stock_count),
+        status: rows[0].status as StockCountStatus,
+      },
+    };
+  } catch {
+    return { ok: false, message: "Error al verificar si hay un conteo abierto" };
+  }
+}
+
+/**
+ * Cuenta cuántos productos incluiría un conteo con este tipo/categoría en la
+ * sucursal, sin generarlo — mismo filtro que usa `createStockCount` al insertar
+ * las líneas, para que el número mostrado antes de generar sea exacto.
+ */
+export async function getCountableProductCount(
+  id_sucursal: number,
+  count_type: StockCountType,
+  id_category: number | null
+): Promise<ActionResult<{ product_count: number }>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+    const categoryFilter = count_type === "category" ? "AND p.[id_category] = @id_category" : "";
+    const rows = await db.queryParams(
+      `SELECT COUNT(*) AS product_count
+         FROM [CentroPodologico].[inventory].[Products] p
+         JOIN [CentroPodologico].[inventory].[stock] s
+           ON s.[id_product] = p.[id_product] AND s.[id_sucursal] = @id_sucursal
+        WHERE p.[id_empresa] = @id_empresa
+          AND p.[activo] = 1
+          AND p.[status] = 1
+          ${categoryFilter}`,
+      { id_sucursal, id_empresa, id_category }
+    );
+    return { ok: true, data: { product_count: Number(rows[0].product_count) } };
+  } catch {
+    return { ok: false, message: "Error al calcular los productos del conteo" };
+  }
+}
+
 /**
  * Genera un nuevo conteo: valida que no haya otro abierto en la sucursal, congela el
  * snapshot de `inventory.stock` en `system_quantity` para cada producto incluido, y
