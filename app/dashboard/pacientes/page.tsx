@@ -7,8 +7,18 @@ import { IPhoneCode } from "@/interfaces/phone_code";
 import { useEffect, useState } from "react";
 import PacienteFila from "./componentes/PacienteFila";
 import PacienteModal from "./componentes/PacienteModal";
-import { getPacientes, savePaciente, buscarPacientesExternos, buscarPacientesPorSucursal, getPhoneCodes } from "./actions";
+import { getPacientes, savePaciente, buscarPacientesExternos, buscarPacientesPorSucursal, getPhoneCodes, exportPacientesSucursal } from "./actions";
 import { SucursalName } from "../componentes/SucursalName";
+import { addZeroToday } from "@/utils/date_helpper";
+
+function slugifySucursalName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // quita acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 const EMPTY: IPaciente = {
   id_paciente:                  0,
@@ -40,6 +50,7 @@ const EMPTY: IPaciente = {
 export default function PacientesPage() {
   const { user } = useAuth();
   const canSeeWhatsapp = user?.id_role === 1 || user?.id_role === 4;
+  const canExportExcel = user?.id_role === 1 || user?.id_role === 4;
   const { selectedId, sucursales } = useSucursal();
   const [pacientes, setPacientes] = useState<IPaciente[]>([]);
   const [phoneCodes, setPhoneCodes] = useState<IPhoneCode[]>([]);
@@ -48,6 +59,8 @@ export default function PacientesPage() {
   const [form, setForm]           = useState<IPaciente>(EMPTY);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [search, setSearch]         = useState("");
   const [extSearch, setExtSearch]   = useState("");
   const [extResults, setExtResults] = useState<IPaciente[]>([]);
@@ -139,6 +152,31 @@ export default function PacientesPage() {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    setExportNotice(null);
+    try {
+      const { rows, nombre_sucursal } = await exportPacientesSucursal();
+      if (rows.length === 0) {
+        setExportNotice("No hay pacientes para exportar en esta sucursal");
+        return;
+      }
+      const XLSX = await import("xlsx");
+      const sheetRows = rows.map((row) => ({
+        "Nombre completo": row.nombre_completo,
+        ...(canSeeWhatsapp ? { WhatsApp: row.whatsapp } : {}),
+        Sucursal: row.nombre_sucursal,
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(sheetRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Pacientes");
+      const fileName = `pacientes_${slugifySucursalName(nombre_sucursal)}_${addZeroToday(new Date())}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const baseList = searchResults ?? pacientes;
   const pacientesFiltrados = baseList
     .filter((p) => {
@@ -174,6 +212,16 @@ export default function PacientesPage() {
           {extLoading && <span className="text-xs text-zinc-400">Buscando…</span>}
         </div>
           
+        {canExportExcel && (
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          >
+            {exporting ? "Exportando…" : "Exportar a Excel"}
+          </button>
+        )}
+
         <button
           onClick={openNew}
           className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
@@ -181,6 +229,10 @@ export default function PacientesPage() {
           + Nuevo paciente
         </button>
       </div>
+
+      {exportNotice && (
+        <p className="mb-4 -mt-2 text-sm text-amber-600 dark:text-amber-400">{exportNotice}</p>
+      )}
 
       {extSearched && (
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
