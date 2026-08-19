@@ -70,7 +70,7 @@ export interface IStockCountListItem {
   folio:          string;          // "INV-00025", derivado del id
   count_type:     StockCountType;
   category_name:  string | null;
-  status:         string;
+  status:         StockCountStatus;
   counter_name:   string;
   reviewer_name:  string | null;
   created_at:     string;
