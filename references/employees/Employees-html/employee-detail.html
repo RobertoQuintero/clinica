@@ -1,0 +1,394 @@
+<!DOCTYPE html><html lang="es" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Detalle del Empleado - PodoCentro HR</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary": "#000000",
+                      "surface-tint": "#525f77",
+                      "surface-dim": "#dbd9db",
+                      "secondary-fixed": "#dbe1ff",
+                      "surface-variant": "#e4e2e4",
+                      "on-surface": "#1b1b1d",
+                      "surface-container": "#e5eeff",
+                      "on-secondary-fixed-variant": "#003ea7",
+                      "primary-container": "#0f1c31",
+                      "error": "#ba1a1a",
+                      "surface": "#f8f9ff",
+                      "on-surface-variant": "#45474d",
+                      "primary-fixed": "#d7e3ff",
+                      "tertiary-fixed": "#d2e8d9",
+                      "secondary-container": "#346cef",
+                      "inverse-on-surface": "#f2f0f2",
+                      "secondary-fixed-dim": "#b4c5ff",
+                      "on-error-container": "#93000a",
+                      "on-error": "#ffffff",
+                      "surface-container-low": "#f5f3f5",
+                      "on-primary-fixed-variant": "#3b475e",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#eae7e9",
+                      "on-tertiary-fixed": "#0d1f16",
+                      "inverse-primary": "#bac7e3",
+                      "on-tertiary-container": "#75887c",
+                      "outline-variant": "#c5c6cd",
+                      "on-secondary-container": "#fefcff",
+                      "on-primary-fixed": "#0f1c31",
+                      "surface-bright": "#fbf8fb",
+                      "on-tertiary-fixed-variant": "#384b40",
+                      "tertiary-container": "#0d1f16",
+                      "background": "#fbf8fb",
+                      "on-primary-container": "#78849e",
+                      "on-primary": "#ffffff",
+                      "inverse-surface": "#303032",
+                      "on-secondary": "#ffffff",
+                      "on-secondary-fixed": "#00174b",
+                      "tertiary-success": "#009c6b",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-highest": "#e4e2e4",
+                      "tertiary-fixed-dim": "#b7ccbe",
+                      "on-background": "#1b1b1d",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#747780",
+                      "secondary": "#0051d5",
+                      "primary": "#000000",
+                      "primary-fixed-dim": "#bac7e3"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter-inline": "16px",
+                      "card-gap": "20px",
+                      "inline-gutter": "16px",
+                      "container-padding": "24px",
+                      "sidebar-width": "240px",
+                      "base-unit": "4px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "label-subtle": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "label-bold": [
+                              "Inter"
+                      ],
+                      "title-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-subtle": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-bold": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "title-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        body {
+            background-color: theme('colors.surface');
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md text-body-md text-on-surface antialiased bg-surface">
+<!-- Top Navigation Bar (JSON Guided) -->
+
+<div class="flex flex-1 overflow-hidden">
+<!-- Side Navigation (JSON Guided) -->
+
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto p-container-padding bg-surface">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<h1 class="font-headline-md text-headline-md text-on-surface">Detalle del Empleado</h1>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-secondary font-label-bold text-label-bold hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+                        Editar
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-full border border-error bg-error-container/20 text-error font-label-bold text-label-bold hover:bg-error-container/40 transition-colors">
+                        Desactivar
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-bold text-label-bold hover:bg-surface-variant transition-colors">
+                        Más
+                        <span class="material-symbols-outlined text-[18px]" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Employee Profile Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 mb-6 shadow-sm">
+<div class="flex flex-col lg:flex-row gap-8">
+<!-- Photo Column -->
+<div class="flex flex-col items-center gap-4 shrink-0">
+<div class="w-48 h-48 rounded-lg overflow-hidden border border-outline-variant bg-surface-container-low">
+<img alt="María Fernanda López" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDu4dBsav4JbKbcyg2dvtmx9oMdN6zUt35bsvdnOQGDoXiEuMekTcUqFzCf4GfTyxn5A4ZwOrmwqA9Bbv8qrDfJWr7fKKAyfmh-fuxiA00oqF2gIcND7RTjk8wEBmivt0-QdiDLxIa9NgeqgEmh1VZ9XaCfvGfiIe-Co5VIXG-5CIsVheCTXZIibwJbMbZfoedjdbBakqKOZBTJtQkh07a_KO0QBDqUfADHTsjmyL6taJnYSfgce0SNA6MAOn7YPXOR">
+</div>
+<button class="flex items-center justify-center gap-2 w-full py-2 bg-surface-container-low border border-outline-variant rounded-lg hover:bg-surface-variant transition-colors font-label-bold text-label-bold text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="photo_camera">photo_camera</span>
+                            Cambiar foto
+                        </button>
+</div>
+<!-- Info Grid -->
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-2">
+<h2 class="font-display-lg text-display-lg text-on-surface">María Fernanda López</h2>
+<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded-full font-label-bold text-label-subtle flex items-center gap-1">
+                                Activo
+                            </span>
+</div>
+<p class="text-secondary font-title-sm text-title-sm mb-6">Podóloga Especialista</p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">ID Empleado:</span>
+<span class="text-on-surface col-span-2">EMP-2024-015</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Teléfono:</span>
+<span class="text-on-surface col-span-2">55 1234 5678</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Fecha de Ingreso:</span>
+<span class="text-on-surface col-span-2">12/03/2024</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Correo:</span>
+<span class="text-on-surface col-span-2">maria.lopez@podocentro.com</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Tipo de Contrato:</span>
+<span class="text-on-surface col-span-2">Indeterminado</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">RFC:</span>
+<span class="text-on-surface col-span-2">LOPM950812123</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Sucursal:</span>
+<span class="text-on-surface col-span-2">PodoCentro Matriz</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">CURP:</span>
+<span class="text-on-surface col-span-2">LOPM950812MDFPRS08</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Supervisor:</span>
+<span class="text-on-surface col-span-2">Dr. Alejandro Ruiz</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">NSS:</span>
+<span class="text-on-surface col-span-2">12349567890</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Tabs Navigation -->
+<div class="border-b border-outline-variant mb-6 flex overflow-x-auto no-scrollbar">
+<button class="px-6 py-3 font-title-sm text-title-sm font-semibold text-secondary border-b-2 border-secondary whitespace-nowrap bg-surface-container-lowest">
+                    Información General
+                </button>
+<button class="px-6 py-3 font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-variant transition-colors whitespace-nowrap bg-surface-container-low">
+                    Nómina y Salario
+                </button>
+<button class="px-6 py-3 font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-variant transition-colors whitespace-nowrap bg-surface-container-low">
+                    Asistencia
+                </button>
+
+<button class="px-6 py-3 font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-variant transition-colors whitespace-nowrap bg-surface-container-low">
+                    Documentos
+                </button>
+<button class="px-6 py-3 font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-variant transition-colors whitespace-nowrap bg-surface-container-low">
+                    Incidencias
+                </button>
+<button class="px-6 py-3 font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-variant transition-colors whitespace-nowrap bg-surface-container-low">
+                    Productividad
+                </button>
+<button class="px-6 py-3 font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-variant transition-colors whitespace-nowrap bg-surface-container-low rounded-tr-lg">
+                    Inventario Asignado
+                </button>
+</div>
+<!-- Tab Content (Información General) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-6">
+<!-- Datos Personales Section -->
+<div class="mb-8">
+<h3 class="font-title-sm text-title-sm font-bold text-on-surface mb-4 pb-2 border-b border-surface-variant">Datos Personales</h3>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
+<div class="space-y-4">
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Fecha de Nacimiento:</span>
+<span class="text-on-surface col-span-2">12/08/1995</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Edad:</span>
+<span class="text-on-surface col-span-2">28 años</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Género:</span>
+<span class="text-on-surface col-span-2">Femenino</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Estado Civil:</span>
+<span class="text-on-surface col-span-2">Soltera</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Dirección:</span>
+<span class="text-on-surface col-span-2">Av. Salud 123, Col. Centro,<br>Ciudad de México, CP 06700</span>
+</div>
+</div>
+<div class="space-y-4">
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Teléfono Personal:</span>
+<span class="text-on-surface col-span-2">55 9876 5432</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Contacto de Emergencia:</span>
+<span class="text-on-surface col-span-2">Luis López (Padre)</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Tel. Emergencia:</span>
+<span class="text-on-surface col-span-2">55 1111 2222</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Correo Personal:</span>
+<span class="text-on-surface col-span-2">mariafernanda.lopez@gmail.com</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Información Laboral Section -->
+<div>
+<h3 class="font-title-sm text-title-sm font-bold text-on-surface mb-4 pb-2 border-b border-surface-variant">Información Laboral</h3>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
+<div class="space-y-4">
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Puesto:</span>
+<span class="text-on-surface col-span-2">Podóloga Especialista</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Departamento:</span>
+<span class="text-on-surface col-span-2">Área de Podología</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Turno:</span>
+<span class="text-on-surface col-span-2">Matutino</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Días Laborales:</span>
+<span class="text-on-surface col-span-2">Lunes a Sábado</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Horario:</span>
+<span class="text-on-surface col-span-2">09:00 - 18:00</span>
+</div>
+</div>
+<div class="space-y-4">
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Salario Diario:</span>
+<span class="text-on-surface col-span-2">$350.00</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Salario Mensual:</span>
+<span class="text-on-surface col-span-2">$10,500.00</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Tipo de Salario:</span>
+<span class="text-on-surface col-span-2">Mixto (Base + Comisión)</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Comisión:</span>
+<span class="text-on-surface col-span-2">10%</span>
+</div>
+<div class="grid grid-cols-3 gap-2">
+<span class="font-label-bold text-label-bold text-on-surface-variant col-span-1">Cuenta Bancaria:</span>
+<span class="text-on-surface col-span-2">BBVA - 1234 5678 9012 3456</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+
+</body></html>

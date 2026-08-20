@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nuevo Empleado - PodoCentro HR</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-primary": "#bac7e3",
+                      "on-primary": "#ffffff",
+                      "surface": "#f8f9ff",
+                      "on-tertiary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "surface-dim": "#dbd9db",
+                      "tertiary-container": "#0d1f16",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed": "#d7e3ff",
+                      "on-primary-container": "#78849e",
+                      "surface-variant": "#e4e2e4",
+                      "outline-variant": "#c5c6cd",
+                      "secondary-container": "#346cef",
+                      "on-tertiary-fixed": "#0d1f16",
+                      "on-secondary-container": "#fefcff",
+                      "on-secondary-fixed": "#00174b",
+                      "error-container": "#ffdad6",
+                      "surface-tint": "#525f77",
+                      "secondary-fixed-dim": "#b4c5ff",
+                      "on-secondary-fixed-variant": "#003ea7",
+                      "surface-container-highest": "#e4e2e4",
+                      "secondary": "#0051d5",
+                      "primary-container": "#0f1c31",
+                      "error": "#ba1a1a",
+                      "surface-container": "#e5eeff",
+                      "on-primary-fixed-variant": "#3b475e",
+                      "tertiary-success": "#009c6b",
+                      "inverse-on-surface": "#f2f0f2",
+                      "primary-fixed-dim": "#bac7e3",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed": "#dbe1ff",
+                      "on-surface-variant": "#45474d",
+                      "tertiary-fixed-dim": "#b7ccbe",
+                      "surface-container-high": "#eae7e9",
+                      "on-error-container": "#93000a",
+                      "on-background": "#1b1b1d",
+                      "inverse-surface": "#303032",
+                      "on-surface": "#0b1c30",
+                      "on-tertiary-container": "#75887c",
+                      "tertiary-fixed": "#d2e8d9",
+                      "surface-bright": "#fbf8fb",
+                      "background": "#fbf8fb",
+                      "outline": "#747780",
+                      "on-primary-fixed": "#0f1c31",
+                      "tertiary": "#000000",
+                      "primary": "#000000",
+                      "surface-container-low": "#f5f3f5",
+                      "on-tertiary-fixed-variant": "#384b40"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "container-padding": "24px",
+                      "gutter-inline": "16px",
+                      "sidebar-width": "240px",
+                      "unit": "4px",
+                      "card-gap": "20px",
+                      "base-unit": "4px",
+                      "inline-gutter": "16px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "title-sm": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-subtle": ["Inter"],
+                      "label-bold": ["Inter"]
+              },
+              "fontSize": {
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "title-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                      "display-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-subtle": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "600"}]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md h-screen overflow-hidden flex">
+<!-- Background Mock (Employee List Screen Context) -->
+<div class="flex flex-1 w-full relative">
+<!-- Side Nav Mock -->
+<div class="hidden md:flex flex-col bg-surface-container-low border-r border-outline-variant w-sidebar-width h-full py-6 px-4 gap-4">
+<div class="flex items-center gap-3 mb-6 px-2">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold">P</div>
+<div>
+<h1 class="font-title-sm text-title-sm text-primary font-bold">Gestión RRHH</h1>
+<p class="font-label-subtle text-label-subtle text-on-surface-variant">Clínica Podológica</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-full text-secondary font-bold bg-secondary-fixed/30 transition-transform scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-bold text-label-bold">Empleados</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-full text-on-surface-variant font-medium hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span class="font-label-bold text-label-bold">Departamentos</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-full text-on-surface-variant font-medium hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-label-bold text-label-bold">Sucursales</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-full text-on-surface-variant font-medium hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-bold text-label-bold">Configuración</span>
+</a>
+</nav>
+<div class="mt-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-full text-on-surface-variant font-medium hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-bold text-label-bold">Cerrar Sesión</span>
+</a>
+</div>
+</div>
+<!-- Main Content Area Mock -->
+<div class="flex-1 flex flex-col h-full relative">
+<!-- Top App Bar Mock -->
+<header class="flex justify-between items-center h-16 px-6 w-full bg-primary text-on-primary shadow-sm z-10">
+<div class="flex md:hidden items-center">
+<span class="material-symbols-outlined text-2xl mr-4" data-icon="menu">menu</span>
+<span class="font-title-sm text-title-sm font-bold">PodoCentro HR</span>
+</div>
+<div class="hidden md:flex flex-1"></div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined cursor-pointer hover:bg-primary-fixed-dim/20 rounded-full p-2 transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-primary-fixed-dim/20 rounded-full p-2 transition-colors" data-icon="help">help</span>
+<div class="flex items-center gap-2 ml-2 pl-4 border-l border-on-primary-container">
+<img alt="Administrator Profile" class="w-8 h-8 rounded-full object-cover" data-alt="A professional headshot of a corporate administrator, wearing glasses and a neat button-down shirt. Clean, bright studio lighting, plain light gray background. Clinical and modern corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUQ6atPbEQSow6V4zM2HPJWSfzqofAMN7efCcslj1jc3C8GtyjCz7KpOjL_tQYyR024mRkLSAVik6J-EMS75LUhW6EsL37WIhHM8o_Y2DB2Um2pcjSUR5qvNBbksEbOX_aU1bGG49yb3GRYNYKi9GMPRVZpOwYM4nAQyrf1wN81aQ8dGz_sW_4bKeVMxYXKA0c_PP3Nb_YkZ0on0HUcGKtqNhLB19kMxP8LoDQLYwgKJ2pPWsSo0k"/>
+<div class="hidden md:block">
+<p class="font-label-bold text-label-bold">Administrador</p>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-1 p-container-padding bg-surface overflow-auto filter blur-[2px]">
+<!-- Blurred background content -->
+<div class="mb-6 flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Empleados</h2>
+<button class="bg-primary text-on-primary px-4 py-2 rounded font-label-bold text-label-bold flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="add">add</span> Nuevo Empleado
+                    </button>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 opacity-60">
+<div class="h-64 bg-surface-container-low rounded-lg mb-4"></div>
+<div class="h-64 bg-surface-container-low rounded-lg"></div>
+</div>
+</main>
+</div>
+</div>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+<!-- Modal Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-lg border border-outline-variant w-full max-w-4xl max-h-[90vh] flex flex-col relative my-auto">
+<!-- Modal Header -->
+<div class="flex justify-between items-center px-6 py-4 border-b border-outline-variant bg-surface-container-lowest rounded-t-xl sticky top-0 z-10">
+<h2 class="font-headline-md text-headline-md text-on-surface">Registrar Nuevo Empleado</h2>
+<button class="text-on-surface-variant hover:bg-surface-variant p-2 rounded-full transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Modal Body (Form) -->
+<div class="flex-1 overflow-y-auto p-6">
+<form class="space-y-8">
+<!-- Section 1: Datos Generales -->
+<section>
+<h3 class="font-title-sm text-title-sm text-primary mb-4 pb-2 border-b border-outline-variant/50">Datos Generales</h3>
+<div class="flex flex-col sm:flex-row gap-6">
+<!-- Photo Upload Area -->
+<div class="flex-shrink-0 flex flex-col items-center gap-3">
+<div class="w-32 h-32 bg-surface-container-low border border-dashed border-outline-variant rounded-lg flex flex-col items-center justify-center text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-3xl mb-1 group-hover:text-primary transition-colors" data-icon="add_a_photo">add_a_photo</span>
+<span class="font-label-subtle text-label-subtle">Subir Foto</span>
+</div>
+</div>
+<!-- General Inputs -->
+<div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="col-span-1 md:col-span-2">
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Nombre Completo</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="Ej. Juan Pérez García" type="text"/>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">ID Empleado (Generado Automáticamente)</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md text-on-surface-variant opacity-70 cursor-not-allowed" disabled="" type="text" value="EMP-2024-XXX"/>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Fecha de Ingreso</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="date"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2: Datos Personales -->
+<section>
+<h3 class="font-title-sm text-title-sm text-primary mb-4 pb-2 border-b border-outline-variant/50">Datos Personales</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Fecha de Nacimiento</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" type="date"/>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Género</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors appearance-none">
+<option disabled="" selected="" value="">Seleccione...</option>
+<option value="femenino">Femenino</option>
+<option value="masculino">Masculino</option>
+<option value="otro">Otro</option>
+</select>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Estado Civil</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors appearance-none">
+<option disabled="" selected="" value="">Seleccione...</option>
+<option value="soltero">Soltero/a</option>
+<option value="casado">Casado/a</option>
+<option value="divorciado">Divorciado/a</option>
+<option value="viudo">Viudo/a</option>
+</select>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Teléfono Personal</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="Ej. 55 1234 5678" type="tel"/>
+</div>
+<div class="col-span-1 md:col-span-2">
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Dirección Completa</label>
+<textarea class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors resize-none h-20" placeholder="Calle, Número, Colonia, Alcaldía/Municipio, C.P."></textarea>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Contacto de Emergencia (Nombre)</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="Nombre completo" type="text"/>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Teléfono de Emergencia</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="Ej. 55 9876 5432" type="tel"/>
+</div>
+</div>
+</section>
+<!-- Section 3: Información Laboral -->
+<section>
+<h3 class="font-title-sm text-title-sm text-primary mb-4 pb-2 border-b border-outline-variant/50">Información Laboral</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Puesto</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="Ej. Podólogo Especialista" type="text"/>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Departamento</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors appearance-none">
+<option disabled="" selected="" value="">Seleccione Departamento...</option>
+<option value="podologia">Podología</option>
+<option value="suministros">Suministros</option>
+<option value="recepcion">Recepción</option>
+<option value="administracion">Administración</option>
+</select>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Sucursal Asignada</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors appearance-none">
+<option disabled="" selected="" value="">Seleccione Sucursal...</option>
+<option value="matriz">PodoCentro Matriz</option>
+<option value="papantla">Papantla</option>
+<option value="poza_rica">Poza Rica</option>
+<option value="puebla">Puebla</option>
+</select>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Tipo de Salario</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors appearance-none">
+<option disabled="" selected="" value="">Seleccione...</option>
+<option value="fijo">Fijo</option>
+<option value="comision">Por Comisión</option>
+<option value="mixto">Mixto (Base + Comisión)</option>
+</select>
+</div>
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-1">Monto Salarial (Mensual/Base)</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-3 flex items-center text-on-surface-variant pointer-events-none">$</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded pl-8 pr-3 py-2 text-body-md focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-colors" placeholder="0.00" type="number"/>
+</div>
+</div>
+</div>
+</section>
+</form>
+</div>
+<!-- Modal Footer -->
+<div class="px-6 py-4 border-t border-outline-variant bg-surface-container-lowest rounded-b-xl flex justify-end gap-3 sticky bottom-0 z-10">
+<button class="px-4 py-2 rounded border border-outline-variant text-on-surface hover:bg-surface-variant font-label-bold text-label-bold transition-colors" type="button">
+                    Cancelar
+                </button>
+<button class="px-4 py-2 rounded bg-primary text-on-primary hover:bg-primary/90 font-label-bold text-label-bold transition-colors" type="submit">
+                    Guardar Empleado
+                </button>
+</div>
+</div>
+</div>
+</body></html>
