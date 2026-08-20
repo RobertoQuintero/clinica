@@ -316,7 +316,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
                       <td className="px-4 py-3">
                         {id_role!==5? (
                           <div className="flex items-center gap-1.5">
-                            {waUrl ? (
+                            {/* {waUrl ? (
                               <a
                                 href={waUrl}
                                 target="_blank"
@@ -331,7 +331,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
                               </a>
                             ) : (
                               <span className="text-xs text-zinc-400">Sin WhatsApp</span>
-                            )}
+                            )} */}
                             <CopyButton
                               text={buildRecetaMessage(r, nombre_paciente, nombre_podologo, nombre_especialista)}
                               className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap"
