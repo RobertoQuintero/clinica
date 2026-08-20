@@ -627,3 +627,184 @@ GO
 
 CREATE SCHEMA RH
 GO
+
+-------------------------------------------------------------
+-------------------------------------------------------------
+------------ RECURSOS HUMANOS(EMPLEADOS)----------------------
+--------------------------------------------------------------
+
+USE [CentroPodologico]
+GO
+/****** Object:  Table [RH].[departamentos]    Script Date: 19/08/2026 08:43:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [RH].[departamentos](
+	[id_department] [int] NOT NULL,
+	[name] [varchar](100) NULL,
+	[id_empresa] [int] NULL,
+	[status] [bit] NULL,
+	[activo] [bit] NULL,
+	[description] [varchar](1000) NULL,
+ CONSTRAINT [PK_departamentos] PRIMARY KEY CLUSTERED 
+(
+	[id_department] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [RH].[puestos]    Script Date: 19/08/2026 08:43:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [RH].[puestos](
+	[id_puesto] [smallint] NOT NULL,
+	[id_department] [int] NULL,
+	[name] [varchar](250) NULL,
+	[status] [bit] NULL,
+	[activo] [bit] NULL,
+	[description] [varchar](500) NULL,
+ CONSTRAINT [PK_puestos] PRIMARY KEY CLUSTERED 
+(
+	[id_puesto] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [RH].[departamentos] ([id_department], [name], [id_empresa], [status], [activo], [description]) VALUES (1, N'Podología', 1, 1, 1, N'Personal que realiza las consultas y supervisores')
+GO
+INSERT [RH].[departamentos] ([id_department], [name], [id_empresa], [status], [activo], [description]) VALUES (2, N'Suministros', 1, 1, 1, NULL)
+GO
+INSERT [RH].[departamentos] ([id_department], [name], [id_empresa], [status], [activo], [description]) VALUES (3, N'Recepción', 1, 1, 1, NULL)
+GO
+INSERT [RH].[departamentos] ([id_department], [name], [id_empresa], [status], [activo], [description]) VALUES (4, N'Marketing', 1, 1, 1, NULL)
+GO
+INSERT [RH].[departamentos] ([id_department], [name], [id_empresa], [status], [activo], [description]) VALUES (5, N'Recursos Humanos', 1, 1, 1, NULL)
+GO
+INSERT [RH].[departamentos] ([id_department], [name], [id_empresa], [status], [activo], [description]) VALUES (6, N'Finanzas', 1, 1, 1, NULL)
+GO
+INSERT [RH].[departamentos] ([id_department], [name], [id_empresa], [status], [activo], [description]) VALUES (7, N'Socios', 1, 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (1, 1, N'Podólogo', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (2, 1, N'Auxiliar de podología', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (3, 2, N'Gerente de suministros', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (4, 2, N'Supervisor de suministros', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (5, 3, N'Gerente de recepción', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (6, 3, N'Supervisor de recepción', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (7, 4, N'Gerente de marketing', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (8, 4, N'Diseñador', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (9, 5, N'Gerente de RH', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (10, 5, N'Auxiliar de RH', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (11, 6, N'Gerente de Contaduría', 1, 1, NULL)
+GO
+INSERT [RH].[puestos] ([id_puesto], [id_department], [name], [status], [activo], [description]) VALUES (12, 7, N'Socio', 1, 1, NULL)
+GO
+
+
+-------------------- TABLA TURNOS---------------------
+USE [CentroPodologico]
+GO
+/****** Object:  Table [RH].[turnos]   Script Date: 19/08/2026 08:46:52 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [RH].[turnos](
+	[id_turno] [tinyint] NOT NULL,
+	[description] [varchar](50) NULL,
+	[status] [bit] NULL,
+ CONSTRAINT [PK_turnos] PRIMARY KEY CLUSTERED 
+(
+	[id_turno] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [RH].[turnos] ([id_turno], [description], [status]) VALUES (1, N'Matutino', 1)
+GO
+INSERT [RH].[turnos] ([id_turno], [description], [status]) VALUES (2, N'Vespertino', 1)
+GO
+INSERT [RH].[turnos] ([id_turno], [description], [status]) VALUES (3, N'Matutino/Vespertino', 1)
+GO
+
+-------------------- TABLA EMPLEADOS---------------------
+USE [CentroPodologico]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [RH].[empleados](
+    [id_empleado]         [int] IDENTITY(1,1) NOT NULL,
+    [codigo_empleado]     [varchar](20)  NOT NULL,   -- EMP-2026-001, generado en el server action
+    [id_empresa]          [int]          NOT NULL,
+    [id_sucursal]         [int]          NOT NULL,
+
+    -- Datos generales
+    [nombre]              [varchar](100) NOT NULL,
+    [apellido_paterno]    [varchar](100) NULL,
+    [apellido_materno]    [varchar](100) NULL,
+    [foto_url]            [varchar](500) NULL,
+    [fecha_ingreso]       [date]         NOT NULL,
+    [id_supervisor]       [int]          NULL,        -- FK autoreferencial a RH.empleados
+    [whatsapp]            [varchar](25)  NULL,
+    [email]               [varchar](150) NULL,
+    [rfc]                 [varchar](13)  NULL,
+    [curp]                [varchar](18)  NULL,
+    [nss]                 [varchar](15)  NULL,
+
+    -- Datos personales
+    [fecha_nacimiento]    [date]         NULL,
+    [genero]              [varchar](20)  NULL,        -- 'femenino' | 'masculino' | 'otro'
+    [estado_civil]        [varchar](20)  NULL,        -- 'soltero' | 'casado' | 'divorciado' | 'viudo'
+    [direccion]           [varchar](500) NULL,
+    [telefono]            [varchar](25)  NULL,
+    [contacto_emergencia] [varchar](150) NULL,
+    [whatsapp_emergencia] [varchar](25)  NULL,
+
+    -- Información laboral
+    [id_department]       [int]          NOT NULL,
+    [id_puesto]           [smallint]     NOT NULL,
+    [id_turno]            [tinyint]      NULL,
+    [dias_laborales]      [varchar](100) NULL,        -- texto libre: "Lunes a Sábado"
+    [horario]             [varchar](50)  NULL,        -- texto libre: "09:00 - 18:00"
+    [salario_diario]      [decimal](12,2) NULL,
+    [salario_quincenal]   [decimal](12,2) NULL,
+    [salario_mensual]     [decimal](12,2) NULL,
+    [tipo_salario]        [varchar](20)  NULL,        -- 'fijo' | 'comision' | 'mixto'
+    [comision]            [decimal](5,2) NULL,        -- porcentaje, ej. 10.00
+    [cuenta_bancaria]     [varchar](100) NULL,
+
+    -- Control
+    [activo]              [bit]          NOT NULL CONSTRAINT [DF_empleados_activo] DEFAULT (1),
+    [status]              [bit]          NOT NULL CONSTRAINT [DF_empleados_status] DEFAULT (1),
+    [created_at]          [datetime2](0) NULL,
+    [updated_at]          [datetime2](0) NULL,
+
+ CONSTRAINT [PK_empleados] PRIMARY KEY CLUSTERED ([id_empleado] ASC),
+ CONSTRAINT [UQ_empleados_codigo] UNIQUE ([codigo_empleado]),
+ CONSTRAINT [FK_empleados_departamento] FOREIGN KEY ([id_department])
+     REFERENCES [RH].[departamentos] ([id_department]),
+ CONSTRAINT [FK_empleados_puesto] FOREIGN KEY ([id_puesto])
+     REFERENCES [RH].[puestos] ([id_puesto]),
+ CONSTRAINT [FK_empleados_turno] FOREIGN KEY ([id_turno])
+     REFERENCES [RH].[turnos] ([id_turno]),
+ CONSTRAINT [FK_empleados_supervisor] FOREIGN KEY ([id_supervisor])
+     REFERENCES [RH].[empleados] ([id_empleado])
+) ON [PRIMARY]
+GO
+CREATE INDEX [IX_empleados_empresa_sucursal]
+    ON [RH].[empleados] ([id_empresa], [id_sucursal]) INCLUDE ([activo], [status])
+GO
+CREATE INDEX [IX_empleados_apellido]
+    ON [RH].[empleados] ([apellido_paterno], [apellido_materno], [nombre])
+GO

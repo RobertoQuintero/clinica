@@ -11,7 +11,7 @@ import {
   IPagoTratamientoRow,
 } from "@/app/dashboard/tratamientos/actions";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
-import CopyButton from "@/app/dashboard/componentes/CopyButton";
+import CopyButton, { WhatsAppIcon } from "@/app/dashboard/componentes/CopyButton";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
@@ -288,8 +288,10 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                               </td>
                               <td className="px-4 py-2 text-center">
                                 <CopyButton
+                                  label="Copiar recibo"
+                                  icon={<WhatsAppIcon />}
                                   text={buildPagoReceiptMessage(p, nombre_paciente)}
-                                  className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-green-300 dark:border-green-700 bg-white dark:bg-zinc-800 px-2.5 py-1 text-xs font-medium text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors whitespace-nowrap"
                                 />
                               </td>
                               {canEdit && (
