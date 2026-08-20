@@ -1,0 +1,344 @@
+<!DOCTYPE html><html class="light" lang="es" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Documentación del Empleado - PodoCentro HR</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "tertiary": "#000000",
+                            "surface-tint": "#525f77",
+                            "surface-dim": "#dbd9db",
+                            "secondary-fixed": "#dbe1ff",
+                            "surface-variant": "#e4e2e4",
+                            "on-surface": "#1b1b1d",
+                            "surface-container": "#e5eeff",
+                            "on-secondary-fixed-variant": "#003ea7",
+                            "primary-container": "#0f1c31",
+                            "error": "#ba1a1a",
+                            "surface": "#f8f9ff",
+                            "on-surface-variant": "#45474d",
+                            "primary-fixed": "#d7e3ff",
+                            "tertiary-fixed": "#d2e8d9",
+                            "secondary-container": "#346cef",
+                            "inverse-on-surface": "#f2f0f2",
+                            "secondary-fixed-dim": "#b4c5ff",
+                            "on-error-container": "#93000a",
+                            "on-error": "#ffffff",
+                            "surface-container-low": "#f5f3f5",
+                            "on-primary-fixed-variant": "#3b475e",
+                            "error-container": "#ffdad6",
+                            "surface-container-high": "#eae7e9",
+                            "on-tertiary-fixed": "#0d1f16",
+                            "inverse-primary": "#bac7e3",
+                            "on-tertiary-container": "#75887c",
+                            "outline-variant": "#c5c6cd",
+                            "on-secondary-container": "#fefcff",
+                            "on-primary-fixed": "#0f1c31",
+                            "surface-bright": "#fbf8fb",
+                            "on-tertiary-fixed-variant": "#384b40",
+                            "tertiary-container": "#0d1f16",
+                            "background": "#fbf8fb",
+                            "on-primary-container": "#78849e",
+                            "on-primary": "#ffffff",
+                            "inverse-surface": "#303032",
+                            "on-secondary": "#ffffff",
+                            "on-secondary-fixed": "#00174b",
+                            "tertiary-success": "#009c6b",
+                            "on-tertiary": "#ffffff",
+                            "surface-container-highest": "#e4e2e4",
+                            "tertiary-fixed-dim": "#b7ccbe",
+                            "on-background": "#1b1b1d",
+                            "surface-container-lowest": "#ffffff",
+                            "outline": "#747780",
+                            "secondary": "#0051d5",
+                            "primary": "#000000",
+                            "primary-fixed-dim": "#bac7e3"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.125rem",
+                            "lg": "0.25rem",
+                            "xl": "0.5rem",
+                            "full": "0.75rem"
+                    },
+                    "spacing": {
+                            "gutter-inline": "16px",
+                            "card-gap": "20px",
+                            "inline-gutter": "16px",
+                            "container-padding": "24px",
+                            "sidebar-width": "240px",
+                            "base-unit": "4px",
+                            "unit": "4px"
+                    },
+                    "fontFamily": {
+                            "label-subtle": ["Inter"],
+                            "display-lg": ["Inter"],
+                            "body-sm": ["Inter"],
+                            "body-md": ["Inter"],
+                            "headline-md": ["Inter"],
+                            "label-bold": ["Inter"],
+                            "title-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                            "label-subtle": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                            "display-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                            "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                            "title-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col md:flex-row font-body-md">
+<!-- SideNavBar (Desktop) -->
+
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-h-screen md:ml-[240px] bg-surface">
+<!-- TopNavBar (Mobile) -->
+<header class="md:hidden flex justify-between items-center h-16 px-6 w-full bg-primary text-on-primary shadow-sm sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined font-bold text-xl cursor-pointer">menu</span>
+<span class="font-display-lg text-display-lg font-bold text-on-primary">PodoCentro HR</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined hover:bg-primary-fixed-dim/20 transition-colors p-2 rounded-full cursor-pointer">notifications</span>
+<span class="material-symbols-outlined hover:bg-primary-fixed-dim/20 transition-colors p-2 rounded-full cursor-pointer">help</span>
+<img class="w-8 h-8 rounded-full border border-on-primary" data-alt="A professional headshot of a corporate administrator in a modern office setting. The lighting is bright and clean, emphasizing a trustworthy and competent appearance suitable for an HR profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3D_FusXmk8F5sKFboQqOA3SnSEQmpUxPlWPCxWWI1UHWXaSx-qFgtqOocBvRg2sQq9z5xGf6w5noaMfxHoTu97IvFpXG4aY4Vy00mYO0wH5meTeK3hX_aCT_yZL7VaJLs7iOfasmW2Us1ZzWdA1JRYg48C7ZHXaHuVqfX0KV_eap-W4NIGmW_bjWteklAZoqPrZGBcHYIq6bRj1YIWLabKsZtBKj5nYONTWRTHmoe7-eu8BRzS3o">
+</div>
+</header>
+<!-- TopNavBar (Desktop) -->
+
+<!-- Content Canvas -->
+<div class="flex-1 p-[24px] max-w-7xl mx-auto w-full">
+<!-- Employee Header Context -->
+<div class="mb-[20px] bg-surface-container-lowest p-[24px] rounded-xl border border-outline-variant flex items-center gap-6">
+<img class="w-20 h-20 rounded-full object-cover" data-alt="A close-up portrait of a young medical professional in a clinical setting. They are wearing light blue scrubs and have a friendly, professional expression. The background is a slightly blurred, bright, and sterile clinical environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4q25NILs-cDqNqfNXHBy4Bm0BEtHhC8orzvZuy3Z5g923kzAnunT1sGLF54vpNPj6nodetW8nmpqqCE7qXgoMQeERsNx5cxHL7FjY4XkoMOngD9ARHaqIWd7KkUZdzwlNaGo0OPakbG-mAUgZPm4PfJVm8uIVkG3Iw4gHH9u7whEKUKC2Xe92FbEnZtGs1ced9g_brsHRkx2Ecd4ooFIwEB1B8s-8ogd6PvzwTfLuEpYUNlqQWuo">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Ana García López</h2>
+
+<div class="flex gap-2">
+
+
+</div>
+</div>
+</div>
+<!-- Tab Navigation (Internal to Employee File) -->
+<div class="flex border-b border-outline-variant mb-[24px] overflow-x-auto hide-scrollbar">
+<button class="px-6 py-3 font-label-bold text-label-bold text-on-surface-variant hover:bg-surface-variant transition-colors whitespace-nowrap">Datos Personales</button>
+<button class="px-6 py-3 font-label-bold text-label-bold text-secondary border-b-2 border-secondary bg-surface-variant/30 whitespace-nowrap">Documentación</button>
+
+
+</div>
+<!-- Main Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-[20px]">
+<!-- Left Column: Document Grid (2/3 width) -->
+<div class="lg:col-span-2 flex flex-col gap-[20px]">
+<div class="flex justify-between items-end">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Documentos Requeridos</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Gestiona y revisa la documentación obligatoria del empleado.</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full font-label-bold text-label-bold text-xs">5/8 Completados</span>
+</div>
+</div>
+<!-- Bento Grid for Documents -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
+<!-- Document Card: INE (Uploaded) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 flex flex-col gap-4 hover:shadow-sm transition-shadow">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
+<span class="material-symbols-outlined">badge</span>
+</div>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-surface">Identificación Oficial (INE)</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">PDF • 1.2 MB</p>
+</div>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-1 rounded-full font-label-bold text-label-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Cargado
+                                </span>
+</div>
+<div class="flex justify-end gap-2 mt-auto pt-2">
+<button class="px-3 py-1.5 text-secondary font-label-bold text-label-bold hover:bg-secondary-fixed/50 rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">visibility</span> Ver
+                                </button>
+<button class="px-3 py-1.5 text-secondary font-label-bold text-label-bold hover:bg-secondary-fixed/50 rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+<button class="px-3 py-1.5 text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+</button>
+</div>
+</div>
+<!-- Document Card: Comprobante Domicilio (Uploaded) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 flex flex-col gap-4 hover:shadow-sm transition-shadow">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
+<span class="material-symbols-outlined">home</span>
+</div>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-surface">Comprobante de Domicilio</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">PDF • 0.8 MB</p>
+</div>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-1 rounded-full font-label-bold text-label-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Cargado
+                                </span>
+</div>
+<div class="flex justify-end gap-2 mt-auto pt-2">
+<button class="px-3 py-1.5 text-secondary font-label-bold text-label-bold hover:bg-secondary-fixed/50 rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">visibility</span> Ver
+                                </button>
+<button class="px-3 py-1.5 text-secondary font-label-bold text-label-bold hover:bg-secondary-fixed/50 rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">download</span>
+</button>
+<button class="px-3 py-1.5 text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+</button>
+</div>
+</div>
+<!-- Document Card: Constancia Fiscal (Pending) -->
+<div class="bg-surface-container-lowest border border-error-container rounded-xl p-5 flex flex-col gap-4 hover:shadow-sm transition-shadow relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-error"></div>
+<div class="flex justify-between items-start pl-2">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">request_quote</span>
+</div>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-surface">Constancia Situación Fiscal</h4>
+<p class="font-body-sm text-body-sm text-error">Requerido</p>
+</div>
+</div>
+<span class="bg-error-container text-on-error-container px-2 py-1 rounded-full font-label-bold text-label-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">pending_actions</span> Pendiente
+                                </span>
+</div>
+<div class="flex justify-end gap-2 mt-auto pt-2">
+<button class="px-4 py-2 bg-secondary text-on-secondary font-label-bold text-label-bold rounded-lg hover:bg-secondary/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">upload</span> Subir
+                                </button>
+</div>
+</div>
+<!-- Document Card: CURP (Uploaded) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 flex flex-col gap-4 hover:shadow-sm transition-shadow">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
+<span class="material-symbols-outlined">fingerprint</span>
+</div>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-surface">CURP</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">PDF • 0.5 MB</p>
+</div>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-1 rounded-full font-label-bold text-label-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Cargado
+                                </span>
+</div>
+<div class="flex justify-end gap-2 mt-auto pt-2">
+<button class="px-3 py-1.5 text-secondary font-label-bold text-label-bold hover:bg-secondary-fixed/50 rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">visibility</span> Ver
+                                </button>
+</div>
+</div>
+<!-- Document Card: NSS (Pending) -->
+<div class="bg-surface-container-lowest border border-error-container rounded-xl p-5 flex flex-col gap-4 hover:shadow-sm transition-shadow relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-error"></div>
+<div class="flex justify-between items-start pl-2">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">health_and_safety</span>
+</div>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-surface">Número Seguridad Social</h4>
+<p class="font-body-sm text-body-sm text-error">Requerido</p>
+</div>
+</div>
+<span class="bg-error-container text-on-error-container px-2 py-1 rounded-full font-label-bold text-label-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">pending_actions</span> Pendiente
+                                </span>
+</div>
+<div class="flex justify-end gap-2 mt-auto pt-2">
+<button class="px-4 py-2 bg-secondary text-on-secondary font-label-bold text-label-bold rounded-lg hover:bg-secondary/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">upload</span> Subir
+                                </button>
+</div>
+</div>
+<!-- Document Card: Contrato (Uploaded) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 flex flex-col gap-4 hover:shadow-sm transition-shadow">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
+<span class="material-symbols-outlined">contract</span>
+</div>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-surface">Contrato Firmado</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">PDF • 2.4 MB</p>
+</div>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-1 rounded-full font-label-bold text-label-bold text-[10px] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Cargado
+                                </span>
+</div>
+<div class="flex justify-end gap-2 mt-auto pt-2">
+<button class="px-3 py-1.5 text-secondary font-label-bold text-label-bold hover:bg-secondary-fixed/50 rounded-lg transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">visibility</span> Ver
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Upload Area (1/3 width) -->
+<div class="lg:col-span-1 flex flex-col gap-[20px]">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 h-full flex flex-col">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Cargar Documento</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6">Sube archivos adicionales o reemplaza existentes.</p>
+<!-- Drag and Drop Zone -->
+<div class="border-2 border-dashed border-outline-variant rounded-xl p-8 flex flex-col items-center justify-center text-center bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer flex-1 mb-6">
+<div class="w-16 h-16 bg-secondary-fixed rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-3xl text-secondary">cloud_upload</span>
+</div>
+<h4 class="font-title-sm text-title-sm text-on-surface mb-2">Arrastra y suelta tu archivo aquí</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">o</p>
+<button class="px-6 py-2 bg-secondary text-on-secondary font-label-bold text-label-bold rounded-lg hover:bg-secondary/90 transition-colors">
+                                Explorar Archivos
+                            </button>
+<p class="font-label-subtle text-label-subtle text-on-surface-variant mt-4">Formatos soportados: PDF, JPG, PNG (Max. 5MB)</p>
+</div>
+<!-- Upload Selector -->
+<div class="flex flex-col gap-2">
+<label class="font-label-bold text-label-bold text-on-surface">Asignar a:</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:border-secondary font-body-md text-body-md">
+<option>Selecciona un tipo de documento...</option>
+<option>Constancia de Situación Fiscal</option>
+<option>Número de Seguridad Social</option>
+<option>Otro documento...</option>
+</select>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+
+
+
+</body></html>

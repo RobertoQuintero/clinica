@@ -808,3 +808,54 @@ GO
 CREATE INDEX [IX_empleados_apellido]
     ON [RH].[empleados] ([apellido_paterno], [apellido_materno], [nombre])
 GO
+
+-------------------- DOCUMENTOS DEL EMPLEADO ---------------------
+USE [CentroPodologico]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [RH].[tipos_documento](
+    [id_tipo_documento] [tinyint]      NOT NULL,
+    [nombre]            [varchar](150) NOT NULL,
+    [icono]             [varchar](50)  NULL,   -- nombre del icono de lucide-react
+    [obligatorio]       [bit]          NOT NULL CONSTRAINT [DF_tipos_documento_obligatorio] DEFAULT (1),
+    [orden]             [tinyint]      NOT NULL,
+    [status]            [bit]          NOT NULL CONSTRAINT [DF_tipos_documento_status] DEFAULT (1),
+ CONSTRAINT [PK_tipos_documento] PRIMARY KEY CLUSTERED ([id_tipo_documento] ASC)
+) ON [PRIMARY]
+GO
+
+INSERT [RH].[tipos_documento] ([id_tipo_documento],[nombre],[icono],[obligatorio],[orden],[status]) VALUES
+ (1, N'INE — frente y reverso',            N'BadgeCheck',      1, 1, 1),
+ (2, N'Comprobante de domicilio',          N'Home',            1, 2, 1),
+ (3, N'Constancia de situación fiscal',    N'ReceiptText',     1, 3, 1),
+ (4, N'CURP',                              N'Fingerprint',     1, 4, 1),
+ (5, N'Hoja de Seguro Social',             N'HeartPulse',      1, 5, 1),
+ (6, N'Contrato firmado',                  N'FileSignature',   1, 6, 1),
+ (7, N'Firma de recibido del equipo',      N'PackageCheck',    1, 7, 1),
+ (8, N'Firma de recibido del instrumental',N'Stethoscope',     1, 8, 1)
+GO
+
+CREATE TABLE [RH].[empleado_documentos](
+    [id_empleado_documento] [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]           [int]           NOT NULL,
+    [id_tipo_documento]     [tinyint]       NULL,   -- NULL = documento libre ("Otro")
+    [nombre_personalizado]  [varchar](150)  NULL,   -- requerido cuando id_tipo_documento es NULL
+    [url]                   [varchar](500)  NOT NULL,
+    [mime_type]             [varchar](100)  NULL,   -- 'application/pdf' | 'image/jpeg' | 'image/png'
+    [size_bytes]            [int]           NULL,
+    [id_usuario_carga]      [int]           NULL,   -- quién lo subió (dbo.usuarios)
+    [status]                [bit]           NOT NULL CONSTRAINT [DF_empleado_documentos_status] DEFAULT (1),
+    [created_at]            [datetime2](0)  NULL,
+ CONSTRAINT [PK_empleado_documentos] PRIMARY KEY CLUSTERED ([id_empleado_documento] ASC),
+ CONSTRAINT [FK_empleado_documentos_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [FK_empleado_documentos_tipo] FOREIGN KEY ([id_tipo_documento])
+     REFERENCES [RH].[tipos_documento] ([id_tipo_documento])
+) ON [PRIMARY]
+GO
+CREATE INDEX [IX_empleado_documentos_empleado]
+    ON [RH].[empleado_documentos] ([id_empleado], [status]) INCLUDE ([id_tipo_documento])
+GO
