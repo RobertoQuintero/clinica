@@ -198,9 +198,23 @@ export default function PacientesPage() {
   return (
     <div>
       <SucursalName/>
-      <div className="mb-4 flex items-center gap-4">
-        <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Pacientes</h2>
-        <div className="flex flex-1 items-center gap-2">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-50">Pacientes</h2>
+          <div className="flex flex-1 items-center gap-2 sm:hidden">
+            <input
+              type="text"
+              placeholder="Buscar pacientes en todas las sucursales por nombre, apellidos o whatsapp… (Enter para buscar)"
+              value={extSearch}
+              onChange={(e) => setExtSearch(e.target.value)}
+              onKeyDown={handleExtSearch}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 placeholder-zinc-400 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500"
+            />
+            {extLoading && <span className="text-xs text-zinc-400">Buscando…</span>}
+          </div>
+        </div>
+
+        <div className="hidden flex-1 items-center gap-2 sm:flex">
           <input
             type="text"
             placeholder="Buscar pacientes en todas las sucursales por nombre, apellidos o whatsapp… (Enter para buscar)"
@@ -211,23 +225,25 @@ export default function PacientesPage() {
           />
           {extLoading && <span className="text-xs text-zinc-400">Buscando…</span>}
         </div>
-          
-        {canExportExcel && (
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-          >
-            {exporting ? "Exportando…" : "Exportar a Excel"}
-          </button>
-        )}
 
-        <button
-          onClick={openNew}
-          className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
-        >
-          + Nuevo paciente
-        </button>
+        <div className="flex items-center gap-4">
+          {canExportExcel && (
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+            >
+              {exporting ? "Exportando…" : "Exportar a Excel"}
+            </button>
+          )}
+
+          <button
+            onClick={openNew}
+            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          >
+            + Nuevo paciente
+          </button>
+        </div>
       </div>
 
       {exportNotice && (

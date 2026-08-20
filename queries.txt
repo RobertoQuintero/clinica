@@ -623,3 +623,7 @@ GO
 
 ALTER TABLE [inventory].[kardex] ADD [id_stock_count] [int] NULL;
 GO
+
+
+CREATE SCHEMA RH
+GO
