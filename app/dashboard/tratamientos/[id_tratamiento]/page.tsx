@@ -32,7 +32,7 @@ import { buildDate } from "@/utils/date_helpper";
 import { getPacientes, getPodologos, getServicioOpciones, saveCita } from "@/app/dashboard/citas/actions";
 import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
-import CopyButton from "@/app/dashboard/componentes/CopyButton";
+import CopyButton, { WhatsAppIcon } from "@/app/dashboard/componentes/CopyButton";
 
 type DetailRow = ITratamientoOnicomicosis & {
   nombre_paciente:     string;
@@ -306,7 +306,8 @@ export default function TratamientoDetallePage({ params }: Props) {
           <CopyButton
             text={buildSolicitudMessage(detalle)}
             label="Copiar solicitud"
-            className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+            icon={<WhatsAppIcon />}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-green-300 dark:border-green-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
           />
           {detalle.new_message && (
             <>
