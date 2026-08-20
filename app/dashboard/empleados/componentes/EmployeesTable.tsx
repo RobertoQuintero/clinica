@@ -5,6 +5,7 @@ import { Search, Plus } from "lucide-react";
 import { IEmployeeListItem } from "@/interfaces/employee";
 import { IEmployeeCatalogs } from "../actions";
 import EmployeeRow from "./EmployeeRow";
+import EmployeeModal from "./EmployeeModal";
 
 type StatusFilter = "todos" | "activos" | "inactivos";
 
@@ -19,8 +20,6 @@ export default function EmployeesTable({ employees, catalogs }: Props) {
   const [sucursalFilter, setSucursalFilter]     = useState("");
   const [statusFilter, setStatusFilter]         = useState<StatusFilter>("todos");
 
-  // El modal de alta/edición se conecta en el Paso 6 (EmployeeModal.tsx); el estado ya
-  // queda listo aquí para no reestructurar la tabla cuando se agregue.
   const [showModal, setShowModal]           = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<IEmployeeListItem | null>(null);
 
@@ -146,7 +145,13 @@ export default function EmployeesTable({ employees, catalogs }: Props) {
         </div>
       </div>
 
-      {/* Paso 6: <EmployeeModal employee={editingEmployee ?? undefined} catalogs={catalogs} onClose={() => setShowModal(false)} /> */}
+      {showModal && (
+        <EmployeeModal
+          employee={editingEmployee ?? undefined}
+          catalogs={catalogs}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 }
