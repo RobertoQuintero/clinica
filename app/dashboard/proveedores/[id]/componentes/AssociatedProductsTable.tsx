@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { ISupplierProduct } from "@/interfaces/supplier_product";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 interface Props {
   products: ISupplierProduct[];
@@ -70,7 +71,10 @@ export default function AssociatedProductsTable({ products }: Props) {
                 className="hover:bg-[#eff4ff]/50 dark:hover:bg-zinc-800/50 transition-colors"
               >
                 <td className="px-6 py-3">
-                  <p className="text-sm font-medium text-[#0b1c30] dark:text-zinc-100">{product.name}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-sm font-medium text-[#0b1c30] dark:text-zinc-100">{product.name}</p>
+                    <ProductQuickViewButton id_product={product.id_product} />
+                  </div>
                   <p className="text-xs text-[#44474f] dark:text-zinc-400">{product.product_code}</p>
                 </td>
                 <td className="px-6 py-3">

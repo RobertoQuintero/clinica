@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 import {
   deleteConsultaProducto,
   updateConsultaProducto,
@@ -61,7 +62,10 @@ export default function ProductoRow({ producto, onUpdate, onDelete }: Props) {
       <>
         <tr className="bg-zinc-50 dark:bg-zinc-800/50">
           <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">
-            {producto.nombre_producto || `#${producto.id_producto}`}
+            <div className="flex items-center gap-1">
+              {producto.nombre_producto || `#${producto.id_producto}`}
+              <ProductQuickViewButton id_product={producto.id_producto} />
+            </div>
           </td>
           <td className="px-4 py-3">
             <input
@@ -124,7 +128,10 @@ export default function ProductoRow({ producto, onUpdate, onDelete }: Props) {
     <>
       <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">
-          {producto.nombre_producto || `#${producto.id_producto}`}
+          <div className="flex items-center gap-1">
+            {producto.nombre_producto || `#${producto.id_producto}`}
+            <ProductQuickViewButton id_product={producto.id_producto} />
+          </div>
         </td>
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{producto.cantidad}</td>
         <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">${Number(producto.precio).toFixed(2)}</td>

@@ -13,6 +13,7 @@ import {
   ITransferDestination,
 } from "../actions";
 import { useMovementsRefresh } from "./MovementsRefreshContext";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 /** Tipos seleccionables manualmente en este modal (nunca 1 "compra", 5 "consulta" ni 6 "venta"). */
 const MOVEMENT_SALIDA_POR_TRASPASO = 4;
@@ -225,17 +226,22 @@ export default function RegisterMovementModal() {
                       <p className="px-3 py-2 text-sm text-[#747780] dark:text-zinc-500">Sin resultados</p>
                     ) : (
                       productResults.map((product) => (
-                        <button
-                          type="button"
+                        <div
                           key={product.id_product}
-                          onClick={() => handleSelectProduct(product)}
-                          className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-[#eff4ff] dark:hover:bg-zinc-700"
+                          className="flex w-full items-center gap-1 px-3 py-2 hover:bg-[#eff4ff] dark:hover:bg-zinc-700"
                         >
-                          <span className="text-[#0b1c30] dark:text-zinc-100 font-medium">{product.name}</span>
-                          <span className="text-xs text-[#747780] dark:text-zinc-500">
-                            {product.product_code} · stock actual: {product.current_stock}
-                          </span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectProduct(product)}
+                            className="flex flex-1 flex-col items-start text-left text-sm"
+                          >
+                            <span className="text-[#0b1c30] dark:text-zinc-100 font-medium">{product.name}</span>
+                            <span className="text-xs text-[#747780] dark:text-zinc-500">
+                              {product.product_code} · stock actual: {product.current_stock}
+                            </span>
+                          </button>
+                          <ProductQuickViewButton id_product={product.id_product} />
+                        </div>
                       ))
                     )}
                   </div>

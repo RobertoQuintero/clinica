@@ -5,6 +5,7 @@ import { IPurchaseCartLine, usePurchaseCart } from "@/contexts/PurchaseCartConte
 import { ISupplier } from "@/interfaces/supplier";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
 import QuantityStepper from "@/app/dashboard/componentes/QuantityStepper";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 interface Props {
   supplierName:             string;
@@ -103,7 +104,10 @@ export default function SupplierOrderGroup({
                 className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 p-6 hover:bg-[#eff4ff]/50 dark:hover:bg-zinc-800/50 transition-colors"
               >
                 <div className="flex-1 min-w-[180px]">
-                  <h5 className="font-semibold text-[#0b1c30] dark:text-zinc-100">{line.product_name}</h5>
+                  <div className="flex items-center gap-1">
+                    <h5 className="font-semibold text-[#0b1c30] dark:text-zinc-100">{line.product_name}</h5>
+                    <ProductQuickViewButton id_product={line.id_product} />
+                  </div>
                   <p className="text-xs text-[#44474f] dark:text-zinc-400">
                     {line.product_code || "—"}
                     {line.id_unit_measurement && unitNameById.get(line.id_unit_measurement)

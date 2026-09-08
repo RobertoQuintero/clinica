@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
 import { VentaForm, ISaleProduct } from "../actions";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 interface Props {
   form:                  VentaForm;
@@ -120,8 +121,9 @@ export default function VentaModal({
                       className="flex flex-col gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 px-3 py-2"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="flex-1 text-sm text-zinc-800 dark:text-zinc-100">
+                        <span className="flex flex-1 items-center gap-1 text-sm text-zinc-800 dark:text-zinc-100">
                           {producto?.name ?? `#${linea.id_producto}`}
+                          <ProductQuickViewButton id_product={linea.id_producto} />
                         </span>
                         <input
                           type="number"
