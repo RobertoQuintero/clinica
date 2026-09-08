@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [[11-min-stock-por-sillones]] (fórmula de escalado por `seats` que `max_stock` reutiliza), [[09-pedidos-compra-recepcion]] (`getSuggestedProducts`, `ISuggestedProduct`)
 - **Modifica base de datos:** Sí. Nueva columna `inventory.Products.max_stock` (`decimal(18,2) NULL`), vía `ALTER TABLE`.
 - **Fecha:** 2026-09-07
@@ -158,19 +158,19 @@ Cada paso deja el sistema funcional y compilando.
 
 ## Criterios de aceptación
 
-- [ ] La columna `max_stock` existe en `[CentroPodologico].[inventory].[Products]` como `DECIMAL(18, 2) NULL`.
-- [ ] `IProduct` incluye `max_stock: number | null`; `ISuggestedProduct` incluye `max_stock_effective: number | null`.
-- [ ] `ProductModal.tsx` muestra un input "Stock Máximo" junto a "Stock Mínimo", editable solo por `id_role` 1 o 4 (deshabilitado con mensaje de ayuda para otros roles, igual que `min_stock`).
-- [ ] Capturar `max_stock` menor a `min_stock` (ambos con valor) bloquea el guardado, tanto en cliente (mensaje visible sin llamar al servidor) como en servidor (`saveProduct` rechaza aunque se hiciera un llamado directo).
-- [ ] Un rol sin permiso que intenta modificar `max_stock` no logra cambiarlo: el valor guardado es el previo (o `null` en producto nuevo), sin importar lo enviado en el formulario.
-- [ ] Guardar un producto con `max_stock` capturado persiste el valor; recargar el listado y reabrir "Editar" muestra el mismo valor.
-- [ ] `ProductViewModal.tsx` muestra un campo "Stock Máximo": el valor capturado o "—" cuando está vacío.
-- [ ] `getSuggestedProducts` calcula `max_stock_effective` como `CEILING(max_stock * seats)` (mismo `seatsEffective` fallback a `1` que `min_stock_effective`), y `NULL` cuando el producto no tiene `max_stock` capturado.
-- [ ] Con `max_stock` definido, `suggested_quantity` nunca sugiere una cantidad tal que `current_stock + suggested_quantity * conversionFactor` exceda `max_stock_effective`.
-- [ ] Si `current_stock` ya es mayor o igual a `max_stock_effective`, `suggested_quantity` es `0` (independientemente de si `below_minimum` es `true`).
-- [ ] Un producto con `max_stock = NULL` mantiene exactamente el mismo `suggested_quantity` que antes de esta spec (sin tope).
-- [ ] `getPurchaseOrdersSummary` y las tabs de `/dashboard/pedidos/nuevo` ("Sugeridos para pedir", "Todos los productos") reflejan el nuevo tope sin requerir cambios propios adicionales.
-- [ ] `npm run build` compila sin errores ni warnings nuevos.
+- [x] La columna `max_stock` existe en `[CentroPodologico].[inventory].[Products]` como `DECIMAL(18, 2) NULL`.
+- [x] `IProduct` incluye `max_stock: number | null`; `ISuggestedProduct` incluye `max_stock_effective: number | null`.
+- [x] `ProductModal.tsx` muestra un input "Stock Máximo" junto a "Stock Mínimo", editable solo por `id_role` 1 o 4 (deshabilitado con mensaje de ayuda para otros roles, igual que `min_stock`).
+- [x] Capturar `max_stock` menor a `min_stock` (ambos con valor) bloquea el guardado, tanto en cliente (mensaje visible sin llamar al servidor) como en servidor (`saveProduct` rechaza aunque se hiciera un llamado directo).
+- [x] Un rol sin permiso que intenta modificar `max_stock` no logra cambiarlo: el valor guardado es el previo (o `null` en producto nuevo), sin importar lo enviado en el formulario.
+- [x] Guardar un producto con `max_stock` capturado persiste el valor; recargar el listado y reabrir "Editar" muestra el mismo valor.
+- [x] `ProductViewModal.tsx` muestra un campo "Stock Máximo": el valor capturado o "—" cuando está vacío.
+- [x] `getSuggestedProducts` calcula `max_stock_effective` como `CEILING(max_stock * seats)` (mismo `seatsEffective` fallback a `1` que `min_stock_effective`), y `NULL` cuando el producto no tiene `max_stock` capturado.
+- [x] Con `max_stock` definido, `suggested_quantity` nunca sugiere una cantidad tal que `current_stock + suggested_quantity * conversionFactor` exceda `max_stock_effective`.
+- [x] Si `current_stock` ya es mayor o igual a `max_stock_effective`, `suggested_quantity` es `0` (independientemente de si `below_minimum` es `true`).
+- [x] Un producto con `max_stock = NULL` mantiene exactamente el mismo `suggested_quantity` que antes de esta spec (sin tope).
+- [x] `getPurchaseOrdersSummary` y las tabs de `/dashboard/pedidos/nuevo` ("Sugeridos para pedir", "Todos los productos") reflejan el nuevo tope sin requerir cambios propios adicionales.
+- [x] `npm run build` compila sin errores ni warnings nuevos.
 
 ## Decisiones tomadas y descartadas
 
