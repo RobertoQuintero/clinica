@@ -107,6 +107,7 @@ export default function ProductViewModal({ product, categoryName, supplierName, 
             />
             <Field label={product.split ? "Piezas por Paquete/Caja" : "Piezas por Producto"} value={product.pieces ?? "—"} />
             <Field label="Stock Mínimo" value={product.min_stock ?? "—"} />
+            <Field label="Stock Máximo" value={product.max_stock ?? "—"} />
             <Field
               label="Consumo automático por consulta"
               value={product.auto_consume ? (product.consumption_per_consultation ?? "—") : "No"}
