@@ -53,6 +53,22 @@ export const proxy = async (req: NextRequest) => {
     if (userPayload?.id_role === 5 && !pathname.startsWith("/dashboard/tratamientos")) {
       return NextResponse.redirect(new URL("/dashboard/tratamientos", req.url));
     }
+    const INVENTORY_PATH_PREFIXES = [
+      "/dashboard/inventario",
+      "/dashboard/productos",
+      "/dashboard/proveedores",
+      "/dashboard/pedidos",
+      "/dashboard/recepciones",
+      "/dashboard/movimientos",
+      "/dashboard/conteos",
+    ];
+    // id_role=6 (Compras) solo puede acceder al módulo de Inventario
+    if (
+      userPayload?.id_role === 6 &&
+      !INVENTORY_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    ) {
+      return NextResponse.redirect(new URL("/dashboard/inventario", req.url));
+    }
     // Solo id_role=1 e id_role=4 pueden acceder a /dashboard/usuarios
     if (pathname.startsWith("/dashboard/usuarios") && userPayload?.id_role !== 1 && userPayload?.id_role !== 4) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
