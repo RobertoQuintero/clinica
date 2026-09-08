@@ -25,6 +25,7 @@ const EMPTY: ProductFormData = {
   id_supplier: null,
   pieces: null,
   min_stock: null,
+  max_stock: null,
   auto_consume: false,
   consumption_per_consultation: null,
   description: "",
@@ -100,6 +101,7 @@ export default function ProductosPage() {
       id_supplier: product.id_supplier,
       pieces: product.pieces,
       min_stock: product.min_stock,
+      max_stock: product.max_stock,
       auto_consume: product.auto_consume,
       consumption_per_consultation: product.consumption_per_consultation,
       description: product.description ?? "",
@@ -117,7 +119,7 @@ export default function ProductosPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    const numericFields = ["id_category", "id_unit_measurement", "id_supplier", "pieces", "min_stock"];
+    const numericFields = ["id_category", "id_unit_measurement", "id_supplier", "pieces", "min_stock", "max_stock"];
     setForm((prev) => ({
       ...prev,
       [name]:
