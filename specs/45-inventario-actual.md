@@ -1,12 +1,12 @@
-# 45 — Inventario actual (vista general por sucursal)
+# 45 — Inventario actual (Inventario Actual por sucursal)
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** 
 - **Depende de:** [[09-pedidos-compra-recepcion]] (`getSuggestedProducts`, `ISuggestedProduct`), [[42-producto-max-stock]] (`max_stock_effective`), [[44-stock-min-max-conversion-piezas]] (cálculo correcto de min/max en piezas), [[43-producto-quick-view-boton]] (`ProductQuickViewButton`), [[11-min-stock-por-sillones]] (escalado por sillones)
 - **Modifica base de datos:** No.
 - **Fecha:** 2026-09-07
-- **Objetivo:** Crear la página `/dashboard/inventario` (nuevo hijo "Vista general" del grupo del sidebar "Inventario"), con una tabla de solo lectura "Inventario actual" para la sucursal seleccionada — Producto (+ ícono Ver), Categoría, Stock, Stock mín., Stock máx. — reutilizando `getSuggestedProducts` sin agregar columnas ni acciones nuevas al servidor.
+- **Objetivo:** Crear la página `/dashboard/inventario` (nuevo hijo "Inventario Actual" del grupo del sidebar "Inventario"), con una tabla de solo lectura "Inventario actual" para la sucursal seleccionada — Producto (+ ícono Ver), Categoría, Stock, Stock mín., Stock máx. — reutilizando `getSuggestedProducts` sin agregar columnas ni acciones nuevas al servidor.
 
 ## Alcance
 
@@ -21,7 +21,7 @@
   - Recibe `products: ISuggestedProduct[]` (ya filtrados/buscados en la página) y `categoryNameById: Map<number, string>`.
   - Muestra **todo el catálogo** de la sucursal (no solo `below_minimum`), a diferencia de la tab "Sugeridos para pedir" de pedidos.
   - Coloreado de `Stock` (rojo si `below_minimum`, verde si no) igual que `SuggestedProductsTable.tsx`.
-- **`navConfig.tsx`**: agregar `{ href: "/dashboard/inventario", label: "Vista general", icon: Warehouse }` como primer `NavChild` del grupo "Inventario" (antes de "Productos").
+- **`navConfig.tsx`**: agregar `{ href: "/dashboard/inventario", label: "Inventario Actual", icon: Warehouse }` como primer `NavChild` del grupo "Inventario" (antes de "Productos").
 - **`proxy.ts`**: ninguna regla nueva — hereda el comportamiento general (autenticado + `status` aprobado); igual que `/dashboard/productos` y `/dashboard/movimientos`, que hoy no tienen restricción propia en `proxy.ts` más allá de `excludeRoles` del sidebar.
 
 **No incluye:**
@@ -54,9 +54,9 @@ interface Props {
 
 ## Plan de implementación
 
-1. **`navConfig.tsx`**: importar el ícono `Warehouse` (lucide-react) y agregar `{ href: "/dashboard/inventario", label: "Vista general", icon: Warehouse }` como primer elemento de `children` en el grupo "Inventario" (antes de "Productos").
+1. **`navConfig.tsx`**: importar el ícono `Warehouse` (lucide-react) y agregar `{ href: "/dashboard/inventario", label: "Inventario Actual", icon: Warehouse }` como primer elemento de `children` en el grupo "Inventario" (antes de "Productos").
 
-   *Verificación:* el sidebar muestra "Vista general" como primer hijo de "Inventario"; el link resalta como activo al visitar `/dashboard/inventario` (una vez creada en el paso 3); rol 5 sigue sin ver el grupo completo (hereda `excludeRoles: [5]` del padre).
+   *Verificación:* el sidebar muestra "Inventario Actual" como primer hijo de "Inventario"; el link resalta como activo al visitar `/dashboard/inventario` (una vez creada en el paso 3); rol 5 sigue sin ver el grupo completo (hereda `excludeRoles: [5]` del padre).
 
 2. **`app/dashboard/inventario/componentes/CurrentInventoryTable.tsx`** (nuevo, client component): tabla con columnas Producto (+ `ProductQuickViewButton`), Categoría, Stock, Stock mín., Stock máx., copiando estructura/estilos de `SuggestedProductsTable.tsx` pero eliminando checkbox, cantidad a pedir, unidad, precio, IVA, subtotal y `PendingOrderBadge`. Mismo coloreado rojo/verde de `Stock` según `below_minimum`. Estado vacío: "Sin productos que coincidan con los filtros".
 
@@ -78,7 +78,7 @@ Cada paso deja el sistema funcional y compilando.
 
 ## Criterios de aceptación
 
-- [ ] Existe la ruta `/dashboard/inventario` y aparece "Vista general" como primer hijo del grupo "Inventario" en el sidebar, con ícono `Warehouse`.
+- [ ] Existe la ruta `/dashboard/inventario` y aparece "Inventario Actual" como primer hijo del grupo "Inventario" en el sidebar, con ícono `Warehouse`.
 - [ ] La tabla muestra el catálogo **completo** de la sucursal seleccionada (no solo productos bajo mínimo), con columnas Producto, Categoría, Stock, Stock mín., Stock máx.
 - [ ] Cada fila tiene el ícono "Ver" (`ProductQuickViewButton`) junto al nombre del producto, que abre `ProductViewModal` con los datos correctos al hacer click.
 - [ ] La columna "Stock" se muestra en rojo cuando `below_minimum` es `true` y en verde cuando es `false`, igual que en `SuggestedProductsTable.tsx`.
@@ -108,4 +108,4 @@ Cada paso deja el sistema funcional y compilando.
 - **Sin indicador de pedido pendiente en esta vista.** Al excluir `PendingOrderBadge`, un producto bajo mínimo con un pedido ya en curso se ve igual aquí que uno sin pedido activo — riesgo de que alguien duplique un pedido por no ver esa señal (mitigado porque "Sugeridos para pedir" en `/dashboard/pedidos/nuevo` sigue mostrando el badge).
 - **Dependencia total de la corrección de specs 42/44.** Si en el futuro se modifica la fórmula de `min_stock_effective`/`max_stock_effective` en `getSuggestedProducts` sin actualizar esta spec, la nueva página hereda automáticamente cualquier bug introducido ahí, sin capa propia de validación.
 - **Catálogos grandes sin paginación/virtualización.** Igual que `productos/page.tsx` hoy, la tabla renderiza todo el catálogo filtrado de una sola vez; si el catálogo de una sucursal crece mucho, el rendimiento podría degradarse (riesgo preexistente en el patrón que se está replicando, no introducido por esta spec).
-- **Nombre "Vista general" podría no comunicar claramente que es inventario actual.** Es una decisión de UI menor; si el usuario final no lo entiende, un ajuste de copy no requeriría tocar la arquitectura de la spec.
+- **Nombre "Inventario Actual" podría no comunicar claramente que es inventario actual.** Es una decisión de UI menor; si el usuario final no lo entiende, un ajuste de copy no requeriría tocar la arquitectura de la spec.

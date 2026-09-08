@@ -48,7 +48,7 @@ export const NAV_LINKS: NavLink[] = [
     minRole: 0,
     excludeRoles: [5],
     children: [
-      { href: "/dashboard/inventario", label: "Vista general", icon: Warehouse },
+      { href: "/dashboard/inventario", label: "Inventario Actual", icon: Warehouse },
       { href: "/dashboard/productos", label: "Productos", icon: Box },
       { href: "/dashboard/proveedores", label: "Proveedores", icon: Truck },
       { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingBag },
