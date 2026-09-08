@@ -10,6 +10,7 @@ import {
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
 import { IPurchaseOrderTemplateItemDetail } from "@/interfaces/purchase_order_template";
 import { ISupplier } from "@/interfaces/supplier";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 interface Props {
   id_purchase_order_template: number;
@@ -160,9 +161,12 @@ export default function EditOrderTemplateModal({ id_purchase_order_template, onC
                         }`}
                       >
                         <div className="flex-1 min-w-[160px]">
-                          <p className="text-sm font-medium text-[#0b1c30] dark:text-zinc-100">
-                            {item.product_name || `Producto #${item.id_product}`}
-                          </p>
+                          <div className="flex items-center gap-1">
+                            <p className="text-sm font-medium text-[#0b1c30] dark:text-zinc-100">
+                              {item.product_name || `Producto #${item.id_product}`}
+                            </p>
+                            <ProductQuickViewButton id_product={item.id_product} />
+                          </div>
                           {!item.is_available && (
                             <p className="flex items-center gap-1 text-xs text-[#d94f27] dark:text-orange-400">
                               <TriangleAlert size={12} /> Ya no disponible

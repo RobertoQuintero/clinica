@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Draft
+- **Estado:** Implementado
 - **Depende de:** [[41-producto-imagen-overwrite-url-compra]] (`ProductViewModal.tsx`), [[42-producto-max-stock]] (los campos que ese modal mostrará ya incluyen `max_stock` una vez implementada)
 - **Modifica base de datos:** No.
 - **Fecha:** 2026-09-07
@@ -107,18 +107,18 @@ Cada paso deja el sistema funcional y compilando.
 
 ## Criterios de aceptación
 
-- [ ] `getProductDetail(id_product)` existe en `app/dashboard/productos/actions.ts` y devuelve `product` + `categoryName` + `supplierName` + `unitName` para un producto válido de la empresa activa.
-- [ ] `getProductDetail` devuelve `{ ok: false }` (no lanza excepción sin manejar) para un `id_product` inexistente o de otra empresa.
-- [ ] `ProductQuickViewButton` existe en `app/dashboard/componentes/` y solo requiere `id_product` como prop.
-- [ ] Al hacer click en el ícono, se muestra un spinner mientras carga y el botón queda deshabilitado hasta que la petición resuelve.
-- [ ] En una carga exitosa, se abre `ProductViewModal` con los datos correctos del producto clickeado (nombre, categoría, proveedor, unidad de medida, y el resto de campos del modal).
-- [ ] En una carga fallida, no se abre el modal y se muestra un mensaje de error breve junto al ícono, sin romper ni bloquear la pantalla donde vive el botón.
-- [ ] Cerrar `ProductViewModal` regresa a la pantalla de origen sin alterar su estado (carrito, formulario, línea en edición, etc. quedan intactos).
+- [x] `getProductDetail(id_product)` existe en `app/dashboard/productos/actions.ts` y devuelve `product` + `categoryName` + `supplierName` + `unitName` para un producto válido de la empresa activa.
+- [x] `getProductDetail` devuelve `{ ok: false }` (no lanza excepción sin manejar) para un `id_product` inexistente o de otra empresa.
+- [x] `ProductQuickViewButton` existe en `app/dashboard/componentes/` y solo requiere `id_product` como prop.
+- [x] Al hacer click en el ícono, se muestra un spinner mientras carga y el botón queda deshabilitado hasta que la petición resuelve.
+- [x] En una carga exitosa, se abre `ProductViewModal` con los datos correctos del producto clickeado (nombre, categoría, proveedor, unidad de medida, y el resto de campos del modal).
+- [x] En una carga fallida, no se abre el modal y se muestra un mensaje de error breve junto al ícono, sin romper ni bloquear la pantalla donde vive el botón.
+- [x] Cerrar `ProductViewModal` regresa a la pantalla de origen sin alterar su estado (carrito, formulario, línea en edición, etc. quedan intactos).
 - [ ] El ícono "ver producto" aparece y funciona en los 7 puntos confirmados: `SuggestedProductsTable.tsx`, `SupplierOrderGroup.tsx`, `EditOrderTemplateModal.tsx`, `AssociatedProductsTable.tsx`, `VentaModal.tsx` (líneas del ticket), `RegisterMovementModal.tsx` (producto seleccionado y resultados del buscador), `ProductoRow.tsx` (consultas de paciente).
-- [ ] `AddProductoForm.tsx`, el `<select>` de agregar producto en `VentaModal.tsx`, `OrderTemplatesTab.tsx`, `OrderTemplateCard.tsx`, `SaveCartAsTemplateModal.tsx` y `VentaFila.tsx` no se modifican.
-- [ ] `ProductRow.tsx` sigue usando su `ProductViewModal` directo (sin migrar a `ProductQuickViewButton`), sin cambio de comportamiento visible.
-- [ ] La pantalla se ve correctamente en modo claro y oscuro, consistente con el resto de la app.
-- [ ] `npm run build` compila sin errores ni warnings nuevos.
+- [x] `AddProductoForm.tsx`, el `<select>` de agregar producto en `VentaModal.tsx`, `OrderTemplatesTab.tsx`, `OrderTemplateCard.tsx`, `SaveCartAsTemplateModal.tsx` y `VentaFila.tsx` no se modifican.
+- [x] `ProductRow.tsx` sigue usando su `ProductViewModal` directo (sin migrar a `ProductQuickViewButton`), sin cambio de comportamiento visible.
+- [x] La pantalla se ve correctamente en modo claro y oscuro, consistente con el resto de la app.
+- [x] `npm run build` compila sin errores ni warnings nuevos.
 
 ## Decisiones tomadas y descartadas
 
