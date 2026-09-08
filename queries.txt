@@ -1093,3 +1093,7 @@ GO
 
 ALTER TABLE [CentroPodologico].[inventory].[Products] ADD [url_compra] NVARCHAR(500) NULL -- URL de compra del producto (opcional, sin validacion de formato)
 GO
+
+-- spec 42 — producto: campo stock máximo (tope de suggested_quantity en getSuggestedProducts)
+ALTER TABLE [CentroPodologico].[inventory].[Products] ADD [max_stock] DECIMAL(18, 2) NULL;
+GO

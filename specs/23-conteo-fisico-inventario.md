@@ -25,7 +25,7 @@
 - **Sin diferencias en el primer conteo:** se salta el segundo conteo y el conteo pasa directo a `pendiente_revision`, visible para el supervisor como "sin diferencias" (queda el registro de auditoría).
 - **Cero botón "actualizar stock" para quien captura.** Al finalizar, el conteo queda en `pendiente_revision` y aparece en la bandeja del supervisor.
 - **Revisión del supervisor (roles 1 y 4, gate en `proxy.ts`):** lista solo las líneas con diferencia, mostrando conteo final, stock del snapshot, stock **actual** y diferencia. Tres decisiones por línea — `aumentar`, `disminuir`, `dejar_igual` — más una **nota opcional por línea**. Las decisiones se guardan parcialmente y se puede volver después.
-- **Cierre del conteo:** el botón "Cerrar inventario" exige que **todas** las líneas con diferencia tengan decisión y aplica, en **una sola transacción**, un movimiento de kardex por cada línea con decisión `aumentar` o `disminuir`; las de `dejar_igual` no generan movimiento pero conservan su diferencia registrada. Estado final `cerrado`, **inmutable**.
+- **Cierre del conteo:** el botón "Finalizar Conteo" exige que **todas** las líneas con diferencia tengan decisión y aplica, en **una sola transacción**, un movimiento de kardex por cada línea con decisión `aumentar` o `disminuir`; las de `dejar_igual` no generan movimiento pero conservan su diferencia registrada. Estado final `cerrado`, **inmutable**.
 - **Ajuste calculado contra el stock vivo:** la cantidad del movimiento es `|conteo_final − stock_actual_al_cerrar|`, no la diferencia contra el snapshot, para no pisar ventas, consultas o recepciones ocurridas entre el conteo y la autorización. Si al cerrar el stock actual ya coincide con el conteo, no se genera movimiento para esa línea.
 - **Dos tipos de movimiento nuevos en `inventory.movements`:** `11` "Entrada por conteo físico" (`increases_storage = 1`) y `12` "Salida por conteo físico" (`increases_storage = 0`), con su badge propio en `/dashboard/movimientos`. (`id_movement = 10` ya existe en la BD como "Descuento por consumo" — no está libre.)
 - **Trazabilidad en el kardex:** nueva columna `inventory.kardex.id_stock_count` (`int NULL`) para saber qué conteo originó cada ajuste; `notes` guarda la nota del supervisor.
@@ -83,7 +83,7 @@ GO
 | `en_captura` | Primer conteo abierto, se puede retomar. | Al generar el conteo. |
 | `segundo_conteo` | Hubo diferencias; falta recontar solo esos productos. | Al finalizar el primer conteo con ≥1 diferencia. |
 | `pendiente_revision` | Terminó la participación de quien captura. | Al finalizar el segundo conteo, o el primero si no hubo diferencias. |
-| `cerrado` | El supervisor decidió todo y se aplicaron los ajustes. Inmutable. | "Cerrar inventario". |
+| `cerrado` | El supervisor decidió todo y se aplicaron los ajustes. Inmutable. | "Finalizar Conteo". |
 | `cancelado` | Conteo abandonado. No aplica ajustes. | Quien capturó o el supervisor. |
 
 **Nueva tabla — `[CentroPodologico].[inventory].[stock_count_items]`** (una fila por producto incluido, con o sin diferencia):
@@ -252,7 +252,7 @@ export interface ICountReviewLine {
 
 10. **`/dashboard/conteos/[id]/page.tsx` + `componentes/CountEntryTable.tsx`.** Tabla de captura con una fila por producto (nombre, código, unidad, input numérico). Encabezado con folio, tipo y — cuando el estado es `segundo_conteo` — el mensaje "Se detectaron diferencias en N productos. Realice un segundo conteo." Botones "Guardar avance" y "Finalizar conteo" (con confirmación). En estados `pendiente_revision`/`cerrado`/`cancelado` la pantalla es de solo lectura y **no** muestra cantidades del sistema.
 
-11. **`/dashboard/conteos/[id]/revision/page.tsx` + `componentes/CountReviewTable.tsx` + `componentes/CountDecisionRow.tsx`.** Cabecera con los datos del documento de referencia (folio, sucursal, capturado por, fecha, hora, tipo, categoría, estado). Una fila por diferencia: producto, conteo físico, stock sistema, stock actual, diferencia con signo y color, tres botones de decisión mutuamente excluyentes y un campo de nota opcional. Botones "Guardar decisiones" y "Cerrar inventario" (deshabilitado hasta que todas las líneas tengan decisión, con confirmación que resume cuántas suben, bajan y quedan igual). Si el conteo no tiene diferencias, se muestra el estado "Sin diferencias" y "Cerrar inventario" queda disponible directo.
+11. **`/dashboard/conteos/[id]/revision/page.tsx` + `componentes/CountReviewTable.tsx` + `componentes/CountDecisionRow.tsx`.** Cabecera con los datos del documento de referencia (folio, sucursal, capturado por, fecha, hora, tipo, categoría, estado). Una fila por diferencia: producto, conteo físico, stock sistema, stock actual, diferencia con signo y color, tres botones de decisión mutuamente excluyentes y un campo de nota opcional. Botones "Guardar decisiones" y "Finalizar Conteo" (deshabilitado hasta que todas las líneas tengan decisión, con confirmación que resume cuántas suben, bajan y quedan igual). Si el conteo no tiene diferencias, se muestra el estado "Sin diferencias" y "Finalizar Conteo" queda disponible directo.
 
 12. **`componentes/StockCountStatusBadge.tsx`.** Badge por estado, reutilizando el patrón de `OrderStatusBadge`/`MovementTypeBadge`.
 
@@ -295,7 +295,7 @@ export interface ICountReviewLine {
 - [x] La revisión lista únicamente las líneas con diferencia, mostrando conteo físico, stock del snapshot, stock actual y diferencia con signo.
 - [x] Cada línea con diferencia tiene tres decisiones mutuamente excluyentes (`aumentar`, `disminuir`, `dejar_igual`) y un campo de nota opcional.
 - [x] Las decisiones se pueden guardar parcialmente y recuperar al volver, **sin** que el stock cambie mientras el conteo no se cierre.
-- [x] "Cerrar inventario" está deshabilitado mientras alguna línea con diferencia no tenga decisión.
+- [x] "Finalizar Conteo" está deshabilitado mientras alguna línea con diferencia no tenga decisión.
 - [x] Al cerrar, cada línea `aumentar`/`disminuir` genera un movimiento de kardex tipo `11` u `12` con `id_stock_count` y la nota del supervisor, y `inventory.stock` queda en la cantidad contada.
 - [x] La cantidad del ajuste se calcula como `|conteo_final − stock_actual_al_cerrar|`, no contra el snapshot; si el stock actual ya coincide con el conteo, esa línea no genera movimiento.
 - [x] Una línea con decisión `dejar_igual` **no** genera movimiento, no modifica el stock, y conserva registrada su diferencia y su nota en `stock_count_items`.
