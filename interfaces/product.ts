@@ -12,6 +12,7 @@ export interface IProduct {
   id_supplier:          number | null;
   pieces:               number | null;
   min_stock:            number | null;
+  max_stock:            number | null;
   auto_consume:         boolean;
   consumption_per_consultation: number | null;
   id_empresa:            number;

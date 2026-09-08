@@ -12,6 +12,7 @@ export interface ISuggestedProduct {
   split:                boolean;
   current_stock:        number;
   min_stock_effective:  number | null;
+  max_stock_effective:  number | null;
   suggested_quantity:   number;
   below_minimum:        boolean;
   has_pending_order:    boolean;
