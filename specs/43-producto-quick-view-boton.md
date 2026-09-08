@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Draft
+- **Estado:** Aprobado
 - **Depende de:** [[41-producto-imagen-overwrite-url-compra]] (`ProductViewModal.tsx`), [[42-producto-max-stock]] (los campos que ese modal mostrará ya incluyen `max_stock` una vez implementada)
 - **Modifica base de datos:** No.
 - **Fecha:** 2026-09-07

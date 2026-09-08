@@ -9,6 +9,7 @@ import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import { ActionResult } from "@/app/actions/auth";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
@@ -55,6 +56,82 @@ export async function getProducts(): Promise<IProduct[]> {
     { id_empresa }
   );
   return data as IProduct[];
+}
+
+export interface IProductDetail {
+  product:       IProduct;
+  categoryName:  string;
+  supplierName:  string;
+  unitName:      string;
+}
+
+export async function getProductDetail(
+  id_product: number
+): Promise<ActionResult<IProductDetail>> {
+  try {
+    const { id_empresa } = await getActiveUser();
+    const data = await db.queryParams(
+      `SELECT p.[id_product],
+              p.[name],
+              p.[id_category],
+              p.[brand],
+              p.[presentation],
+              p.[id_unit_measurement],
+              p.[size],
+              p.[price],
+              p.[sale_price],
+              p.[product_code],
+              p.[id_supplier],
+              p.[pieces],
+              p.[min_stock],
+              p.[max_stock],
+              p.[auto_consume],
+              p.[consumption_per_consultation],
+              p.[id_empresa],
+              p.[description],
+              CONVERT(varchar(19), p.[created_at], 120) AS created_at,
+              p.[activo],
+              p.[status],
+              p.[split],
+              p.[url_product],
+              p.[bono_venta],
+              p.[url_compra],
+              c.[name]           AS category_name,
+              s.[nombre_corto]   AS supplier_name,
+              u.[name]           AS unit_name
+         FROM [CentroPodologico].[inventory].[Products] p
+         LEFT JOIN [CentroPodologico].[inventory].[categories] c ON c.[id_category] = p.[id_category]
+         LEFT JOIN [CentroPodologico].[inventory].[proveedores] s ON s.[id_proveedor] = p.[id_supplier]
+         LEFT JOIN [CentroPodologico].[inventory].[units_measurement] u ON u.[id_unit_measurement] = p.[id_unit_measurement]
+        WHERE p.[id_product] = @id_product
+          AND p.[id_empresa] = @id_empresa`,
+      { id_product, id_empresa }
+    );
+
+    const row = data[0];
+    if (!row) {
+      return { ok: false, message: "Producto no encontrado" };
+    }
+
+    const {
+      category_name,
+      supplier_name,
+      unit_name,
+      ...product
+    } = row;
+
+    return {
+      ok: true,
+      data: {
+        product: product as IProduct,
+        categoryName: category_name ?? "",
+        supplierName: supplier_name ?? "",
+        unitName: unit_name ?? "",
+      },
+    };
+  } catch {
+    return { ok: false, message: "Producto no encontrado" };
+  }
 }
 
 export async function getCategories(): Promise<IProductCategory[]> {
