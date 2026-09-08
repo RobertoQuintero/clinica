@@ -234,7 +234,7 @@ export default function CountReviewPage() {
               disabled={!hasNoDifferences && !allDecided}
               className="rounded-lg bg-[#0051d5] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0051d5]/90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Cerrar inventario
+              Finalizar Conteo
             </button>
           </div>
         </div>
@@ -247,7 +247,7 @@ export default function CountReviewPage() {
               ? "¿Cerrar el inventario? No hubo diferencias, así que no se generará ningún ajuste de stock."
               : `¿Cerrar el inventario? Se aplicarán los ajustes: ${summary.increase} suben, ${summary.decrease} bajan, ${summary.keep} quedan igual. Esta acción es definitiva.`
           }
-          confirmLabel="Cerrar inventario"
+          confirmLabel="Finalizar Conteo"
           loading={closing}
           error={closeError}
           onConfirm={handleClose}

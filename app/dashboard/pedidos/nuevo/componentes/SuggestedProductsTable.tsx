@@ -42,6 +42,7 @@ export default function SuggestedProductsTable({
               <th className="px-6 py-4 font-semibold">Categoría</th>
               <th className="px-4 py-4 font-semibold text-right">Stock</th>
               <th className="px-4 py-4 font-semibold text-right">Stock mín.</th>
+              <th className="px-4 py-4 font-semibold text-right">Stock máx.</th>
               <th className="px-4 py-4 font-semibold text-center">Cantidad a pedir</th>
               <th className="px-4 py-4 font-semibold">Unidad</th>
               <th className="px-4 py-4 font-semibold text-right">Precio unit.</th>
@@ -52,7 +53,7 @@ export default function SuggestedProductsTable({
           <tbody>
             {products.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-6 py-6 text-center text-[#747780] dark:text-zinc-500">
+                <td colSpan={11} className="px-6 py-6 text-center text-[#747780] dark:text-zinc-500">
                   Sin productos que coincidan con los filtros
                 </td>
               </tr>
@@ -109,6 +110,9 @@ export default function SuggestedProductsTable({
                     </td>
                     <td className="px-4 py-4 text-right text-[#44474f] dark:text-zinc-400">
                       {product.min_stock_effective ?? "—"}
+                    </td>
+                    <td className="px-4 py-4 text-right text-[#44474f] dark:text-zinc-400">
+                      {product.max_stock_effective ?? "—"}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex flex-col items-center gap-0.5">

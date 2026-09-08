@@ -62,6 +62,7 @@ export async function getSuggestedProducts(
               p.[pieces],
               p.[split],
               p.[min_stock] AS product_min_stock,
+              p.[max_stock] AS product_max_stock,
               s.[quantity] AS stock_quantity,
               suc.[seats] AS seats,
               pending.[folios] AS pending_order_folios
@@ -96,15 +97,29 @@ export async function getSuggestedProducts(
         row.product_min_stock !== null && row.product_min_stock !== undefined
           ? Math.ceil(Number(row.product_min_stock) * seatsEffective)
           : null;
+      const maxStockEffective =
+        row.product_max_stock !== null && row.product_max_stock !== undefined
+          ? Math.ceil(Number(row.product_max_stock) * seatsEffective)
+          : null;
       const conversionFactor = row.split ? Number(row.pieces) || 1 : 1;
       const belowMinimum =
         minStockEffective !== null && currentStock < minStockEffective;
-      const suggestedQuantity = belowMinimum
+      let suggestedQuantity = belowMinimum
         ? Math.max(
             1,
             Math.ceil((minStockEffective! - currentStock) / conversionFactor)
           )
         : 0;
+
+      // Tope duro: la cantidad sugerida nunca hace que current_stock + suggested_quantity
+      // * conversionFactor exceda maxStockEffective (ver spec 42). No cambia el objetivo
+      // ("llenar hasta el mínimo"), solo lo limita por arriba.
+      if (maxStockEffective !== null) {
+        const maxUnitsAllowed = Math.max(0, maxStockEffective - currentStock);
+        const maxQuantityAllowed = Math.floor(maxUnitsAllowed / conversionFactor);
+        suggestedQuantity = Math.min(suggestedQuantity, maxQuantityAllowed);
+      }
+
       const pendingOrderFolios = row.pending_order_folios
         ? String(row.pending_order_folios)
             .split(",")
@@ -125,6 +140,7 @@ export async function getSuggestedProducts(
         split: Boolean(row.split),
         current_stock: currentStock,
         min_stock_effective: minStockEffective,
+        max_stock_effective: maxStockEffective,
         suggested_quantity: suggestedQuantity,
         below_minimum: belowMinimum,
         has_pending_order: pendingOrderFolios.length > 0,

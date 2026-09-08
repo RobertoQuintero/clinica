@@ -73,6 +73,22 @@ export default function ProductModal({
   const isVentaSplit = form.id_category === 4 && !!form.split;
   const isVenta = form.id_category === 4;
 
+  const [stockRangeError, setStockRangeError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    if (
+      form.max_stock !== null && form.max_stock !== undefined &&
+      form.min_stock !== null && form.min_stock !== undefined &&
+      Number(form.max_stock) < Number(form.min_stock)
+    ) {
+      e.preventDefault();
+      setStockRangeError("El Stock Máximo no puede ser menor al Stock Mínimo");
+      return;
+    }
+    setStockRangeError(null);
+    onSubmit(e);
+  };
+
   const imageInputRef                    = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError]         = useState<string | null>(null);
@@ -125,9 +141,9 @@ export default function ProductModal({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="p-6 flex flex-col gap-4 overflow-y-auto">
-          {error && (
-            <p className="rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4 overflow-y-auto">
+          {(stockRangeError ?? error) && (
+            <p className="rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">{stockRangeError ?? error}</p>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -363,12 +379,31 @@ export default function ProductModal({
                 onChange={onChange}
                 min={0}
                 disabled={!canEditMinStock}
-                title={canEditMinStock ? undefined : "Solo un administrador puede ajustar el Stock Mínimo"}
+                title={canEditMinStock ? undefined : "Solo un administrador puede ajustar el Stock Mínimo y el Stock Máximo"}
                 className={`${inputClass} disabled:opacity-50 disabled:cursor-not-allowed`}
               />
               {!canEditMinStock && (
                 <p className="text-xs text-[#747780] dark:text-zinc-500 mt-1">
-                  Solo un administrador puede ajustar el Stock Mínimo.
+                  Solo un administrador puede ajustar el Stock Mínimo y el Stock Máximo.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className={labelClass}>Stock Máximo</label>
+              <input
+                type="number"
+                name="max_stock"
+                value={form.max_stock ?? ""}
+                onChange={onChange}
+                min={0}
+                disabled={!canEditMinStock}
+                title={canEditMinStock ? undefined : "Solo un administrador puede ajustar el Stock Mínimo y el Stock Máximo"}
+                className={`${inputClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+              />
+              {!canEditMinStock && (
+                <p className="text-xs text-[#747780] dark:text-zinc-500 mt-1">
+                  Solo un administrador puede ajustar el Stock Mínimo y el Stock Máximo.
                 </p>
               )}
             </div>
