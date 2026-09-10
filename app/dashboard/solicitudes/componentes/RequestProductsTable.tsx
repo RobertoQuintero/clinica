@@ -2,6 +2,7 @@
 
 import { IRequestProduct } from "@/interfaces/purchase_request";
 import QuantityStepper from "@/app/dashboard/componentes/QuantityStepper";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 interface Props {
   products:         IRequestProduct[];
@@ -58,7 +59,10 @@ export default function RequestProductsTable({
                     }`}
                   >
                     <td className="px-6 py-4">
-                      <p className="font-semibold text-[#0b1c30] dark:text-zinc-100">{product.name}</p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-semibold text-[#0b1c30] dark:text-zinc-100">{product.name}</p>
+                        <ProductQuickViewButton id_product={product.id_product} />
+                      </div>
                       <p className="text-xs text-[#44474f] dark:text-zinc-400">
                         {product.product_code || "—"}
                         {product.brand ? ` · ${product.brand}` : ""}

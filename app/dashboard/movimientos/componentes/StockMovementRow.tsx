@@ -2,6 +2,7 @@
 
 import { IStockMovementListItem } from "../actions";
 import MovementTypeBadge from "./MovementTypeBadge";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 interface Props {
   movement: IStockMovementListItem;
@@ -37,7 +38,10 @@ export default function StockMovementRow({ movement }: Props) {
         <MovementTypeBadge id_movement={movement.id_movement} />
       </td>
       <td className="px-6 py-4">
-        <div className="text-[#0b1c30] dark:text-zinc-100 font-medium">{movement.product_name}</div>
+        <div className="flex items-center gap-1">
+          <div className="text-[#0b1c30] dark:text-zinc-100 font-medium">{movement.product_name}</div>
+          <ProductQuickViewButton id_product={movement.id_product} />
+        </div>
         <div className="text-[#747780] dark:text-zinc-500 text-xs">{movement.product_code}</div>
       </td>
       <td className={`px-6 py-4 text-right font-semibold whitespace-nowrap ${quantityClassName}`}>
