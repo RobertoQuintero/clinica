@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, PackageSearch, TriangleAlert, CheckCircle2 } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import {
   getSuggestedProducts,
@@ -23,6 +24,7 @@ type TabKey = "sugeridos" | "todos" | "plantillas";
 
 export default function NuevoPedidoPage() {
   const { selectedId } = useSucursal();
+  const { lines, isProductInCart } = usePurchaseCart();
 
   const [products, setProducts]     = useState<ISuggestedProduct[]>([]);
   const [summary, setSummary]       = useState<IPurchaseOrdersSummary | null>(null);
@@ -75,7 +77,7 @@ export default function NuevoPedidoPage() {
 
   const filteredProducts = useMemo(() => {
     const base = activeTab === "sugeridos" ? products.filter((p) => p.below_minimum) : products;
-    return base.filter((product) => {
+    const filtered = base.filter((product) => {
       const matchesSearch =
         !search ||
         product.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -84,7 +86,13 @@ export default function NuevoPedidoPage() {
       const matchesSupplier = !supplierFilter || String(product.id_supplier) === supplierFilter;
       return matchesSearch && matchesCategory && matchesSupplier;
     });
-  }, [products, activeTab, search, categoryFilter, supplierFilter]);
+    return [...filtered].sort((a, b) => {
+      const aChecked = isProductInCart(a.id_product);
+      const bChecked = isProductInCart(b.id_product);
+      if (aChecked === bChecked) return 0;
+      return aChecked ? -1 : 1;
+    });
+  }, [products, activeTab, search, categoryFilter, supplierFilter, lines, isProductInCart]);
 
   return (
     <div className="flex flex-col gap-5">

@@ -71,6 +71,7 @@ export default function SuggestedProductsTable({
                   <tr
                     key={product.id_product}
                     className="border-b border-[#c4c6d0] dark:border-zinc-700 hover:bg-[#eff4ff]/50 dark:hover:bg-zinc-800/50 transition-colors"
+                    
                   >
                     <td className="px-4 py-4">
                       <input

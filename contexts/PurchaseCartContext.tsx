@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
+import { useSucursal } from "@/contexts/SucursalContext";
 
 /** Línea del carrito de pedido: snapshot del producto + cantidad/precio/proveedor editables. */
 export interface IPurchaseCartLine {
@@ -25,6 +26,26 @@ export interface IPurchaseCartLine {
 }
 
 const SESSION_STORAGE_KEY = "purchaseCart";
+
+/** Estado del carrito de una sola sucursal (mismos campos que hoy, antes planos en el contexto). */
+interface IPurchaseCartState {
+  lines:                   IPurchaseCartLine[];
+  estimatedDate:           string;
+  notes:                   string;
+  paymentMethodBySupplier: Record<number, number>;
+  shippingCostBySupplier:  Record<number, number>;
+}
+
+// Estado interno del provider: un carrito por id_sucursal.
+type PurchaseCartBySucursal = Record<number, IPurchaseCartState>;
+
+const EMPTY_CART_STATE: IPurchaseCartState = {
+  lines: [],
+  estimatedDate: "",
+  notes: "",
+  paymentMethodBySupplier: {},
+  shippingCostBySupplier: {},
+};
 
 interface PurchaseCartContextType {
   lines:                   IPurchaseCartLine[];
@@ -55,24 +76,29 @@ interface PurchaseCartContextType {
 const PurchaseCartContext = createContext<PurchaseCartContextType | null>(null);
 
 export function PurchaseCartProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<IPurchaseCartLine[]>([]);
-  const [estimatedDate, setEstimatedDate] = useState("");
-  const [notes, setNotes] = useState("");
-  const [paymentMethodBySupplier, setPaymentMethodBySupplier] = useState<Record<number, number>>({});
-  const [shippingCostBySupplier, setShippingCostBySupplier] = useState<Record<number, number>>({});
+  const { selectedId } = useSucursal();
+  const [cartsBySucursal, setCartsBySucursal] = useState<PurchaseCartBySucursal>({});
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Carga el carrito de sessionStorage una sola vez, al montar en el cliente.
+  const currentCart = (selectedId != null ? cartsBySucursal[selectedId] : undefined) ?? EMPTY_CART_STATE;
+
+  // Actualiza el carrito de la sucursal actualmente seleccionada, dejando el resto intacto.
+  // Si aún no hay sucursal seleccionada, no hay dónde escribir y no hace nada.
+  const updateCurrentCart = (updater: (cart: IPurchaseCartState) => IPurchaseCartState) => {
+    if (selectedId == null) return;
+    setCartsBySucursal((current) => ({
+      ...current,
+      [selectedId]: updater(current[selectedId] ?? EMPTY_CART_STATE),
+    }));
+  };
+
+  // Carga los carritos de sessionStorage una sola vez, al montar en el cliente.
   useEffect(() => {
     const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setLines(parsed.lines ?? []);
-        setEstimatedDate(parsed.estimatedDate ?? "");
-        setNotes(parsed.notes ?? "");
-        setPaymentMethodBySupplier(parsed.paymentMethodBySupplier ?? {});
-        setShippingCostBySupplier(parsed.shippingCostBySupplier ?? {});
+        setCartsBySucursal(parsed ?? {});
       } catch {
         // sessionStorage corrupto o con un formato viejo: se ignora y arranca vacío
       }
@@ -84,22 +110,19 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
   // armado y revisión. No se guarda como orden en BD (ver decisiones del spec).
   useEffect(() => {
     if (!isHydrated) return;
-    sessionStorage.setItem(
-      SESSION_STORAGE_KEY,
-      JSON.stringify({ lines, estimatedDate, notes, paymentMethodBySupplier, shippingCostBySupplier })
-    );
-  }, [lines, estimatedDate, notes, paymentMethodBySupplier, shippingCostBySupplier, isHydrated]);
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(cartsBySucursal));
+  }, [cartsBySucursal, isHydrated]);
 
   const isProductInCart = (id_product: number) =>
-    lines.some((line) => line.id_product === id_product);
+    currentCart.lines.some((line) => line.id_product === id_product);
 
   const toggleProduct = (product: ISuggestedProduct, checked: boolean) => {
-    setLines((current) => {
+    updateCurrentCart((cart) => {
       if (!checked) {
-        return current.filter((line) => line.id_product !== product.id_product);
+        return { ...cart, lines: cart.lines.filter((line) => line.id_product !== product.id_product) };
       }
-      if (current.some((line) => line.id_product === product.id_product)) {
-        return current;
+      if (cart.lines.some((line) => line.id_product === product.id_product)) {
+        return cart;
       }
       const newLine: IPurchaseCartLine = {
         id_product: product.id_product,
@@ -114,75 +137,91 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         unit_price: product.price,
         applies_iva: true,
       };
-      return [...current, newLine];
+      return { ...cart, lines: [...cart.lines, newLine] };
     });
   };
 
   const setLineQuantity = (id_product: number, quantity: number) => {
-    setLines((current) =>
-      current.map((line) =>
+    updateCurrentCart((cart) => ({
+      ...cart,
+      lines: cart.lines.map((line) =>
         line.id_product === id_product ? { ...line, quantity } : line
-      )
-    );
+      ),
+    }));
   };
 
   const setLineUnitPrice = (id_product: number, unit_price: number) => {
-    setLines((current) =>
-      current.map((line) =>
+    updateCurrentCart((cart) => ({
+      ...cart,
+      lines: cart.lines.map((line) =>
         line.id_product === id_product ? { ...line, unit_price } : line
-      )
-    );
+      ),
+    }));
   };
 
   const setLineSupplier = (id_product: number, id_supplier: number | null) => {
-    setLines((current) =>
-      current.map((line) =>
+    updateCurrentCart((cart) => ({
+      ...cart,
+      lines: cart.lines.map((line) =>
         line.id_product === id_product ? { ...line, id_supplier } : line
-      )
-    );
+      ),
+    }));
   };
 
   const setLineAppliesIva = (id_product: number, applies_iva: boolean) => {
-    setLines((current) =>
-      current.map((line) =>
+    updateCurrentCart((cart) => ({
+      ...cart,
+      lines: cart.lines.map((line) =>
         line.id_product === id_product ? { ...line, applies_iva } : line
-      )
-    );
+      ),
+    }));
   };
 
   const removeLine = (id_product: number) => {
-    setLines((current) => current.filter((line) => line.id_product !== id_product));
+    updateCurrentCart((cart) => ({
+      ...cart,
+      lines: cart.lines.filter((line) => line.id_product !== id_product),
+    }));
   };
 
   const replaceLines = (newLines: IPurchaseCartLine[]) => {
-    setLines(newLines);
+    updateCurrentCart((cart) => ({ ...cart, lines: newLines }));
+  };
+
+  const setEstimatedDate = (date: string) => {
+    updateCurrentCart((cart) => ({ ...cart, estimatedDate: date }));
+  };
+
+  const setNotes = (notes: string) => {
+    updateCurrentCart((cart) => ({ ...cart, notes }));
   };
 
   const setSupplierPaymentMethod = (id_supplier: number, idMetodoPago: number) => {
-    setPaymentMethodBySupplier((current) => ({ ...current, [id_supplier]: idMetodoPago }));
+    updateCurrentCart((cart) => ({
+      ...cart,
+      paymentMethodBySupplier: { ...cart.paymentMethodBySupplier, [id_supplier]: idMetodoPago },
+    }));
   };
 
   const setSupplierShippingCost = (id_supplier: number, shipping_cost: number) => {
-    setShippingCostBySupplier((current) => ({ ...current, [id_supplier]: shipping_cost }));
+    updateCurrentCart((cart) => ({
+      ...cart,
+      shippingCostBySupplier: { ...cart.shippingCostBySupplier, [id_supplier]: shipping_cost },
+    }));
   };
 
   const clearCart = () => {
-    setLines([]);
-    setEstimatedDate("");
-    setNotes("");
-    setPaymentMethodBySupplier({});
-    setShippingCostBySupplier({});
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    updateCurrentCart(() => EMPTY_CART_STATE);
   };
 
   return (
     <PurchaseCartContext.Provider
       value={{
-        lines,
-        estimatedDate,
-        notes,
-        paymentMethodBySupplier,
-        shippingCostBySupplier,
+        lines: currentCart.lines,
+        estimatedDate: currentCart.estimatedDate,
+        notes: currentCart.notes,
+        paymentMethodBySupplier: currentCart.paymentMethodBySupplier,
+        shippingCostBySupplier: currentCart.shippingCostBySupplier,
         isHydrated,
         isProductInCart,
         toggleProduct,
