@@ -45,7 +45,7 @@ export default function CountEntryTable({ lines, values, readOnly, onChange }: P
                         step="any"
                         value={values[line.id_stock_count_item] ?? ""}
                         onChange={(e) => onChange(line.id_stock_count_item, e.target.value)}
-                        placeholder="0"
+                        // placeholder="0"
                         className="w-32 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-[#eff4ff] dark:bg-zinc-800 px-3 py-2 text-sm text-right text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5]"
                       />
                     )}
