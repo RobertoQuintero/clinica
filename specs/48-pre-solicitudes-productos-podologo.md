@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [[45-inventario-actual]] — el grupo "Inventario" y sus sub-secciones donde se agrega "Solicitudes".
   - [[46-rol-compras-acceso-inventario]] — patrón de gating por rol (`navConfig.tsx` + `proxy.ts`) que esta spec replica para el rol 2.
@@ -266,27 +266,27 @@ Cada paso deja el sistema funcional y compilando.
 
 ## Criterios de aceptación
 
-- [ ] Un usuario con `id_role = 2` ve en el grupo "Inventario" del sidebar **únicamente** el hijo "Solicitudes"; los otros 6 (Inventario Actual, Productos, Proveedores, Pedidos, Recepciones, Movimientos, Conteos) no aparecen.
-- [ ] Un usuario con `id_role = 2` que visita `/dashboard/productos`, `/dashboard/proveedores`, `/dashboard/pedidos`, `/dashboard/recepciones`, `/dashboard/movimientos`, `/dashboard/conteos` o `/dashboard/inventario` es redirigido server-side a `/dashboard/solicitudes`.
-- [ ] Un usuario con `id_role = 2` conserva su acceso actual a Dashboard, Pacientes, Citas, Servicios, Sucursales, Ventas y Tratamientos, sin cambios.
-- [ ] En `/dashboard/solicitudes/nueva`, el rol 2 puede buscar entre **todos los productos activos** de la empresa, filtrarlos por categoría, ver el **stock actual** de su sucursal y capturar una cantidad por producto.
-- [ ] La pantalla de armado **no muestra en ningún punto** precio, proveedor, IVA, método de pago ni totales, y el payload de `getProductsForRequest` no incluye `price` ni `id_supplier`.
-- [ ] Enviar la solicitud crea un registro en `inventory.purchase_requests` con estado `1` (Pendiente), folio consecutivo `SOL-<año>-NNNN` por empresa, y una fila por producto en `inventory.purchase_request_items` con `quantity` y snapshot del producto.
-- [ ] Un rol 2 puede **editar cantidades y notas** de una solicitud propia mientras esté `Pendiente`, y **cancelarla**; una vez confirmada, rechazada o cancelada, ya no puede editarla.
-- [ ] El listado de `/dashboard/solicitudes` muestra **solo solicitudes pendientes** de la sucursal seleccionada, e incluye las creadas por **cualquier usuario** de esa sucursal, no solo las propias.
-- [ ] Cambiar de sucursal en el selector global cambia el listado a las solicitudes pendientes de la nueva sucursal.
-- [ ] Un usuario con `id_role` 1, 4 o 6 ve en el detalle los botones "Confirmar y pasar al carrito" y "Rechazar"; un `id_role = 2` no los ve, y la server action los rechaza aunque se invoquen directamente.
-- [ ] Rechazar exige un **motivo no vacío**: sin texto, el modal no permite enviar y la action falla con `{ ok: false }`; al rechazar se guardan `rejection_reason`, `id_user_reviewed` y `reviewed_at`.
-- [ ] Confirmar una solicitud pasa su estado a `2` (Confirmada), la saca del listado de pendientes, y aterriza al usuario en `/dashboard/pedidos/nuevo` con los productos de la solicitud **ya marcados en el carrito de esa sucursal**, con proveedor y precio por defecto del producto, editables.
-- [ ] Si un producto de la solicitud **ya estaba** en el carrito, `mergeLines` **suma** su cantidad en vez de duplicar la línea o reemplazarla.
-- [ ] Fusionar líneas **no altera** la fecha estimada, las notas, el método de pago ni el envío que ya tuviera el carrito.
-- [ ] Confirmar una solicitud **no vacía ni reemplaza** el carrito preexistente de esa sucursal, ni afecta el carrito de otras sucursales.
-- [ ] Confirmar dos veces la misma solicitud (recargando `/dashboard/pedidos/nuevo?solicitud=<id>`) falla con mensaje de error y **no vuelve a fusionar** las líneas.
-- [ ] Un usuario con `id_role` 1, 4 o 6 ve junto a "Solicitudes" en el sidebar un contador con el número de solicitudes pendientes de la sucursal seleccionada; el contador no se renderiza cuando es 0 ni para el rol 2.
-- [ ] Los roles 1, 3, 4, 5 y 6 no cambian su comportamiento actual en `navConfig.tsx` ni en `proxy.ts` (sin regresiones), y el flujo existente de pedidos → revisión → orden de compra funciona igual que antes cuando no interviene ninguna solicitud.
-- [ ] Todas las server actions nuevas validan su entrada con `zod` antes de tocar `queryParams` y devuelven `ActionResult`.
-- [ ] `created_at` y `reviewed_at` se escriben con `buildDate(new Date())` y se leen con `CONVERT(varchar(19), [col], 120)`; ninguna fecha viaja como objeto `Date`.
-- [ ] `npm run build` compila sin errores de TypeScript ni warnings nuevos.
+- [x] Un usuario con `id_role = 2` ve en el grupo "Inventario" del sidebar **únicamente** el hijo "Solicitudes"; los otros 6 (Inventario Actual, Productos, Proveedores, Pedidos, Recepciones, Movimientos, Conteos) no aparecen.
+- [x] Un usuario con `id_role = 2` que visita `/dashboard/productos`, `/dashboard/proveedores`, `/dashboard/pedidos`, `/dashboard/recepciones`, `/dashboard/movimientos`, `/dashboard/conteos` o `/dashboard/inventario` es redirigido server-side a `/dashboard/solicitudes`.
+- [x] Un usuario con `id_role = 2` conserva su acceso actual a Dashboard, Pacientes, Citas, Servicios, Sucursales, Ventas y Tratamientos, sin cambios.
+- [x] En `/dashboard/solicitudes/nueva`, el rol 2 puede buscar entre **todos los productos activos** de la empresa, filtrarlos por categoría, ver el **stock actual** de su sucursal y capturar una cantidad por producto.
+- [x] La pantalla de armado **no muestra en ningún punto** precio, proveedor, IVA, método de pago ni totales, y el payload de `getProductsForRequest` no incluye `price` ni `id_supplier`.
+- [x] Enviar la solicitud crea un registro en `inventory.purchase_requests` con estado `1` (Pendiente), folio consecutivo `SOL-<año>-NNNN` por empresa, y una fila por producto en `inventory.purchase_request_items` con `quantity` y snapshot del producto.
+- [x] Un rol 2 puede **editar cantidades y notas** de una solicitud propia mientras esté `Pendiente`, y **cancelarla**; una vez confirmada, rechazada o cancelada, ya no puede editarla.
+- [x] El listado de `/dashboard/solicitudes` muestra **solo solicitudes pendientes** de la sucursal seleccionada, e incluye las creadas por **cualquier usuario** de esa sucursal, no solo las propias.
+- [x] Cambiar de sucursal en el selector global cambia el listado a las solicitudes pendientes de la nueva sucursal.
+- [x] Un usuario con `id_role` 1, 4 o 6 ve en el detalle los botones "Confirmar y pasar al carrito" y "Rechazar"; un `id_role = 2` no los ve, y la server action los rechaza aunque se invoquen directamente.
+- [x] Rechazar exige un **motivo no vacío**: sin texto, el modal no permite enviar y la action falla con `{ ok: false }`; al rechazar se guardan `rejection_reason`, `id_user_reviewed` y `reviewed_at`.
+- [x] Confirmar una solicitud pasa su estado a `2` (Confirmada), la saca del listado de pendientes, y aterriza al usuario en `/dashboard/pedidos/nuevo` con los productos de la solicitud **ya marcados en el carrito de esa sucursal**, con proveedor y precio por defecto del producto, editables.
+- [x] Si un producto de la solicitud **ya estaba** en el carrito, `mergeLines` **suma** su cantidad en vez de duplicar la línea o reemplazarla.
+- [x] Fusionar líneas **no altera** la fecha estimada, las notas, el método de pago ni el envío que ya tuviera el carrito.
+- [x] Confirmar una solicitud **no vacía ni reemplaza** el carrito preexistente de esa sucursal, ni afecta el carrito de otras sucursales.
+- [x] Confirmar dos veces la misma solicitud (recargando `/dashboard/pedidos/nuevo?solicitud=<id>`) falla con mensaje de error y **no vuelve a fusionar** las líneas.
+- [x] Un usuario con `id_role` 1, 4 o 6 ve junto a "Solicitudes" en el sidebar un contador con el número de solicitudes pendientes de la sucursal seleccionada; el contador no se renderiza cuando es 0 ni para el rol 2.
+- [x] Los roles 1, 3, 4, 5 y 6 no cambian su comportamiento actual en `navConfig.tsx` ni en `proxy.ts` (sin regresiones), y el flujo existente de pedidos → revisión → orden de compra funciona igual que antes cuando no interviene ninguna solicitud.
+- [x] Todas las server actions nuevas validan su entrada con `zod` antes de tocar `queryParams` y devuelven `ActionResult`.
+- [x] `created_at` y `reviewed_at` se escriben con `buildDate(new Date())` y se leen con `CONVERT(varchar(19), [col], 120)`; ninguna fecha viaja como objeto `Date`.
+- [x] `npm run build` compila sin errores de TypeScript ni warnings nuevos.
 
 ## Decisiones tomadas y descartadas
 

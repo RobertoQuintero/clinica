@@ -9,6 +9,7 @@ import { Inter } from "next/font/google";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sun, Moon, LogOut, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordModal";
+import PendingRequestsBadge from "@/app/dashboard/solicitudes/componentes/PendingRequestsBadge";
 import { NAV_LINKS, type NavChild, type NavLink } from "@/app/dashboard/componentes/navConfig";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
@@ -91,7 +92,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
             }`}
           >
             <ChildIcon className="h-4 w-4" />
-            {child.label}
+            <span className="flex-1">{child.label}</span>
+            {child.href === "/dashboard/solicitudes" && <PendingRequestsBadge />}
           </Link>
         );
       });
@@ -323,7 +325,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
                             }`}
                           >
                             <ChildIcon className="h-4 w-4" />
-                            {child.label}
+                            <span className="flex-1">{child.label}</span>
+                            {child.href === "/dashboard/solicitudes" && <PendingRequestsBadge />}
                           </Link>
                         );
                       })}
