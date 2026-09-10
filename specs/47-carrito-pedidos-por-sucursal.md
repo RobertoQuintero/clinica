@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** ninguna spec previa relevante (usa `PurchaseCartContext` y `SucursalContext` ya existentes)
 - **Modifica base de datos:** No
 - **Fecha:** 2026-09-10
@@ -90,14 +90,14 @@ Cada paso deja el sistema funcional y compilando.
 
 ## Criterios de aceptación
 
-- [ ] Marcar productos en la sucursal A y cambiar a la sucursal B muestra el carrito de B (vacío si nunca se tocó), no los productos marcados en A.
-- [ ] Volver de la sucursal B a la sucursal A restaura exactamente las líneas, cantidades, proveedor e IVA que se habían marcado antes en A.
-- [ ] `estimatedDate`, `notes`, `paymentMethodBySupplier` y `shippingCostBySupplier` capturados para una sucursal no se mezclan ni se pierden al cambiar a otra sucursal y volver.
-- [ ] Generar una orden de compra (`clearCart()`) vacía únicamente el carrito de la sucursal activa en ese momento; el carrito de cualquier otra sucursal con productos marcados permanece intacto.
-- [ ] Cargar una plantilla de pedido (`OrderTemplatesTab`) reemplaza el carrito de la sucursal actualmente seleccionada, sin afectar el carrito de otras sucursales.
-- [ ] Cerrar y reabrir la pestaña (dentro de la misma sesión de `sessionStorage`) conserva los carritos de todas las sucursales que se hayan tocado, cada uno con sus propios productos.
-- [ ] `usePurchaseCart()` mantiene su misma firma pública (`lines`, `estimatedDate`, `notes`, `paymentMethodBySupplier`, `shippingCostBySupplier`, `isHydrated`, y todos los métodos) — ningún componente consumidor requiere cambios de código.
-- [ ] `npm run build` compila sin errores ni warnings nuevos.
+- [x] Marcar productos en la sucursal A y cambiar a la sucursal B muestra el carrito de B (vacío si nunca se tocó), no los productos marcados en A.
+- [x] Volver de la sucursal B a la sucursal A restaura exactamente las líneas, cantidades, proveedor e IVA que se habían marcado antes en A.
+- [x] `estimatedDate`, `notes`, `paymentMethodBySupplier` y `shippingCostBySupplier` capturados para una sucursal no se mezclan ni se pierden al cambiar a otra sucursal y volver.
+- [x] Generar una orden de compra (`clearCart()`) vacía únicamente el carrito de la sucursal activa en ese momento; el carrito de cualquier otra sucursal con productos marcados permanece intacto.
+- [x] Cargar una plantilla de pedido (`OrderTemplatesTab`) reemplaza el carrito de la sucursal actualmente seleccionada, sin afectar el carrito de otras sucursales.
+- [x] Cerrar y reabrir la pestaña (dentro de la misma sesión de `sessionStorage`) conserva los carritos de todas las sucursales que se hayan tocado, cada uno con sus propios productos.
+- [x] `usePurchaseCart()` mantiene su misma firma pública (`lines`, `estimatedDate`, `notes`, `paymentMethodBySupplier`, `shippingCostBySupplier`, `isHydrated`, y todos los métodos) — ningún componente consumidor requiere cambios de código.
+- [x] `npm run build` compila sin errores ni warnings nuevos.
 
 ## Decisiones tomadas y descartadas
 
