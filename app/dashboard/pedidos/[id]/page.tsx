@@ -7,6 +7,7 @@ import { ArrowLeft, FileUp, Ban, PackageCheck } from "lucide-react";
 import { getPurchaseOrderById, cancelPurchaseOrder, IPurchaseOrderDetailView } from "../actions";
 import { useSucursal } from "@/contexts/SucursalContext";
 import OrderStatusBadge from "@/app/dashboard/componentes/OrderStatusBadge";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 import UploadInvoiceModal from "./componentes/UploadInvoiceModal";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
 import { dayFirst } from "@/utils/date_helpper";
@@ -179,7 +180,10 @@ export default function PurchaseOrderDetailPage() {
                   className="border-b border-[#c4c6d0] dark:border-zinc-700"
                 >
                   <td className="px-6 py-4">
-                    <p className="font-semibold text-[#0b1c30] dark:text-zinc-100">{item.product_name}</p>
+                    <div className="flex items-center gap-1">
+                      <p className="font-semibold text-[#0b1c30] dark:text-zinc-100">{item.product_name}</p>
+                      <ProductQuickViewButton id_product={item.id_product} />
+                    </div>
                     <p className="text-xs text-[#44474f] dark:text-zinc-400">{item.product_code || "—"}</p>
                   </td>
                   <td className="px-6 py-4 text-right text-[#0b1c30] dark:text-zinc-100">{item.quantity}</td>

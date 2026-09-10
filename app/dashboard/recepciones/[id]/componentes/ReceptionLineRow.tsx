@@ -2,6 +2,7 @@
 
 import { IReceptionLineDetail } from "../../actions";
 import QuantityStepper from "@/app/dashboard/componentes/QuantityStepper";
+import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 
 interface Props {
   line:         IReceptionLineDetail;
@@ -42,7 +43,10 @@ export default function ReceptionLineRow({ line, quantityNow, onChange }: Props)
   return (
     <tr className="hover:bg-[#eff4ff]/50 dark:hover:bg-zinc-800/50 transition-colors">
       <td className="p-4">
-        <p className="font-medium text-[#0b1c30] dark:text-zinc-100">{line.product_name}</p>
+        <div className="flex items-center gap-1">
+          <p className="font-medium text-[#0b1c30] dark:text-zinc-100">{line.product_name}</p>
+          <ProductQuickViewButton id_product={line.id_product} />
+        </div>
         <p className="text-xs text-[#44474f] dark:text-zinc-400 mt-0.5">
           {line.product_code || "—"}
           {line.quantity_received > 0 ? ` • Ya recibido: ${line.quantity_received}` : ""}
