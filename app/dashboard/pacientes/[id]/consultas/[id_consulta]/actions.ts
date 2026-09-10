@@ -1152,7 +1152,7 @@ export async function getGeneralTabData(
 
   const patologiaUrls: Record<string, string> = {};
   (urlRows as { nombre_patologia: string; url: string }[]).forEach((r) => {
-    patologiaUrls[r.nombre_patologia] = r.url;
+    patologiaUrls[r.nombre_patologia.trim()] = r.url;
   });
 
   const pago  = (pagoRows[0]  as { webid?:  string } | undefined);
