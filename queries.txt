@@ -1097,3 +1097,42 @@ GO
 -- spec 42 — producto: campo stock máximo (tope de suggested_quantity en getSuggestedProducts)
 ALTER TABLE [CentroPodologico].[inventory].[Products] ADD [max_stock] DECIMAL(18, 2) NULL;
 GO
+
+-- spec 48 — pre-solicitudes de productos por el Podólogo (rol 2)
+-- Cabecera: sin precio/proveedor/IVA/totales, esos se definen despues en el carrito de pedidos.
+CREATE TABLE [CentroPodologico].[inventory].[purchase_requests] (
+  [id_purchase_request] INT IDENTITY(1,1) PRIMARY KEY,
+  [folio]               NVARCHAR(20)  NOT NULL,
+  [id_empresa]          INT           NOT NULL,
+  [id_sucursal]         INT           NOT NULL,
+  [id_status_request]   INT           NOT NULL DEFAULT 1,  -- 1 Pendiente, 2 Confirmada, 3 Rechazada, 4 Cancelada
+  [notes]               NVARCHAR(MAX) NULL,
+  [rejection_reason]    NVARCHAR(500) NULL,
+  [id_user_created]     INT           NOT NULL,
+  [id_user_reviewed]    INT           NULL,
+  [created_at]          DATETIME2     NOT NULL,
+  [reviewed_at]         DATETIME2     NULL,
+  [status]              BIT           NOT NULL DEFAULT 1
+);
+GO
+CREATE INDEX IX_purchase_requests_pending
+  ON [CentroPodologico].[inventory].[purchase_requests] ([id_sucursal], [id_status_request], [status]);
+GO
+
+-- Lineas: solo producto + cantidad, con snapshot del producto al momento de solicitar.
+CREATE TABLE [CentroPodologico].[inventory].[purchase_request_items] (
+  [id_purchase_request_item] INT IDENTITY(1,1) PRIMARY KEY,
+  [id_purchase_request]      INT           NOT NULL
+    REFERENCES [CentroPodologico].[inventory].[purchase_requests]([id_purchase_request]),
+  [id_product]               INT           NOT NULL,
+  [product_name]             NVARCHAR(255) NULL,
+  [product_code]             NVARCHAR(50)  NULL,
+  [brand]                    NVARCHAR(100) NULL,
+  [id_unit_measurement]      INT           NULL,
+  [quantity]                 DECIMAL(18,2) NOT NULL,
+  [created_at]               DATETIME2     NOT NULL
+);
+GO
+CREATE INDEX IX_purchase_request_items_request
+  ON [CentroPodologico].[inventory].[purchase_request_items] ([id_purchase_request]);
+GO
