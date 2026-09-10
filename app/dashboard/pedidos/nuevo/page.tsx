@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, PackageSearch, TriangleAlert, CheckCircle2 } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
@@ -10,6 +11,7 @@ import {
   getPurchaseOrdersSummary,
   IPurchaseOrdersSummary,
 } from "../actions";
+import { confirmPurchaseRequest } from "@/app/dashboard/solicitudes/actions";
 import { getCategories, getUnitsMeasurement } from "@/app/dashboard/productos/actions";
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
 import { IProductCategory } from "@/interfaces/product_category";
@@ -24,7 +26,9 @@ type TabKey = "sugeridos" | "todos" | "plantillas";
 
 export default function NuevoPedidoPage() {
   const { selectedId } = useSucursal();
-  const { lines, isProductInCart } = usePurchaseCart();
+  const { lines, isProductInCart, mergeLines } = usePurchaseCart();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [products, setProducts]     = useState<ISuggestedProduct[]>([]);
   const [summary, setSummary]       = useState<IPurchaseOrdersSummary | null>(null);
@@ -38,6 +42,30 @@ export default function NuevoPedidoPage() {
   const [search, setSearch]               = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
+
+  // Confirmación de una pre-solicitud (spec 48): llega como ?solicitud=<id>, se
+  // resuelve una sola vez (el `useRef` evita la doble ejecución de StrictMode) y
+  // el query param se limpia al terminar, haya fusionado o no.
+  const [requestNotice, setRequestNotice] = useState<string | null>(null);
+  const [requestError, setRequestError]   = useState<string | null>(null);
+  const confirmedRequestIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    const solicitudId = searchParams.get("solicitud");
+    if (!solicitudId || confirmedRequestIds.current.has(solicitudId)) return;
+    confirmedRequestIds.current.add(solicitudId);
+
+    confirmPurchaseRequest(Number(solicitudId)).then((result) => {
+      if (result.ok) {
+        mergeLines(result.data.lines);
+        setRequestNotice(`Solicitud ${result.data.folio} agregada al carrito`);
+      } else {
+        setRequestError(result.message);
+      }
+      router.replace("/dashboard/pedidos/nuevo");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -104,6 +132,13 @@ export default function NuevoPedidoPage() {
           Crea pedidos a tus proveedores para reabastecer los productos que necesitas.
         </p>
       </div>
+
+      {requestNotice && (
+        <p className="text-sm text-[#009c6b] dark:text-emerald-400">{requestNotice}</p>
+      )}
+      {requestError && (
+        <p className="text-sm text-[#ba1a1a] dark:text-red-400">{requestError}</p>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-[#eff4ff] dark:bg-zinc-900 p-5 rounded-xl border border-[#c4c6d0] dark:border-zinc-700 flex items-start gap-4">
