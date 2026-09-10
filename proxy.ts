@@ -69,6 +69,15 @@ export const proxy = async (req: NextRequest) => {
     ) {
       return NextResponse.redirect(new URL("/dashboard/inventario", req.url));
     }
+    // id_role=2 (Podólogo) dentro de Inventario solo puede acceder a "Solicitudes"
+    // (spec 48); el resto del sistema (Pacientes, Citas, Tratamientos, Ventas, etc.)
+    // sigue intacto para este rol.
+    if (
+      userPayload?.id_role === 2 &&
+      INVENTORY_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    ) {
+      return NextResponse.redirect(new URL("/dashboard/solicitudes", req.url));
+    }
     // Solo id_role=1 e id_role=4 pueden acceder a /dashboard/usuarios
     if (pathname.startsWith("/dashboard/usuarios") && userPayload?.id_role !== 1 && userPayload?.id_role !== 4) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
