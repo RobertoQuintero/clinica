@@ -66,6 +66,8 @@ interface PurchaseCartContextType {
   removeLine:              (id_product: number) => void;
   /** Reemplaza todas las líneas de golpe (p. ej. al cargar una plantilla), sin tocar fecha/notas/métodos de pago. */
   replaceLines:            (lines: IPurchaseCartLine[]) => void;
+  /** Fusiona líneas en el carrito de la sucursal actual: suma cantidad si el producto ya está, agrega si no. */
+  mergeLines:              (lines: IPurchaseCartLine[]) => void;
   setEstimatedDate:        (date: string) => void;
   setNotes:                (notes: string) => void;
   setSupplierPaymentMethod: (id_supplier: number, idMetodoPago: number) => void;
@@ -188,6 +190,30 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
     updateCurrentCart((cart) => ({ ...cart, lines: newLines }));
   };
 
+  /**
+   * Fusiona líneas entrantes (p. ej. de una solicitud confirmada, spec 48) con las
+   * ya presentes: si el producto ya está en el carrito, suma la cantidad; si no,
+   * agrega la línea completa. Un solo `updateCurrentCart` para todo el lote, y no
+   * toca fecha estimada, notas, métodos de pago ni envío.
+   */
+  const mergeLines = (incomingLines: IPurchaseCartLine[]) => {
+    updateCurrentCart((cart) => {
+      const lines = [...cart.lines];
+      for (const incoming of incomingLines) {
+        const existingIndex = lines.findIndex((line) => line.id_product === incoming.id_product);
+        if (existingIndex === -1) {
+          lines.push(incoming);
+        } else {
+          lines[existingIndex] = {
+            ...lines[existingIndex],
+            quantity: lines[existingIndex].quantity + incoming.quantity,
+          };
+        }
+      }
+      return { ...cart, lines };
+    });
+  };
+
   const setEstimatedDate = (date: string) => {
     updateCurrentCart((cart) => ({ ...cart, estimatedDate: date }));
   };
@@ -231,6 +257,7 @@ export function PurchaseCartProvider({ children }: { children: ReactNode }) {
         setLineAppliesIva,
         removeLine,
         replaceLines,
+        mergeLines,
         setEstimatedDate,
         setNotes,
         setSupplierPaymentMethod,
