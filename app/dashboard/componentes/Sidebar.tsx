@@ -9,7 +9,8 @@ import { Inter } from "next/font/google";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Sun, Moon, LogOut, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordModal";
-import { NAV_LINKS, type NavLink } from "@/app/dashboard/componentes/navConfig";
+import PendingRequestsBadge from "@/app/dashboard/solicitudes/componentes/PendingRequestsBadge";
+import { NAV_LINKS, type NavChild, type NavLink } from "@/app/dashboard/componentes/navConfig";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -60,6 +61,10 @@ export default function Sidebar({ children }: { children: ReactNode }) {
       !l.excludeRoles.includes(user?.id_role ?? 0)
   );
 
+  /** Hijos de un grupo visibles para el rol actual (p. ej. el rol 2 solo ve "Solicitudes" en Inventario). */
+  const visibleChildren = (link: NavLink): NavChild[] =>
+    (link.children ?? []).filter((child) => !child.excludeRoles?.includes(user?.id_role ?? 0));
+
   const asideWidth = collapsed ? RAIL_WIDTH : EXPANDED_WIDTH;
   const isActive = (href?: string) => !!href && pathname.startsWith(href);
   const isGroupActive = (link: NavLink) => !!link.children?.some((c) => pathname.startsWith(c.href));
@@ -75,7 +80,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
 
     if (link.children) {
       const active = isGroupActive(link);
-      const submenu = link.children.map((child) => {
+      const submenu = visibleChildren(link).map((child) => {
         const ChildIcon = child.icon;
         const childActive = pathname.startsWith(child.href);
         return (
@@ -87,7 +92,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
             }`}
           >
             <ChildIcon className="h-4 w-4" />
-            {child.label}
+            <span className="flex-1">{child.label}</span>
+            {child.href === "/dashboard/solicitudes" && <PendingRequestsBadge />}
           </Link>
         );
       });
@@ -306,7 +312,7 @@ export default function Sidebar({ children }: { children: ReactNode }) {
                   </button>
                   {openGroups[link.label] && (
                     <div className="pl-9 py-1 space-y-1">
-                      {link.children.map((child) => {
+                      {visibleChildren(link).map((child) => {
                         const ChildIcon = child.icon;
                         const childActive = pathname.startsWith(child.href);
                         return (
@@ -319,7 +325,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
                             }`}
                           >
                             <ChildIcon className="h-4 w-4" />
-                            {child.label}
+                            <span className="flex-1">{child.label}</span>
+                            {child.href === "/dashboard/solicitudes" && <PendingRequestsBadge />}
                           </Link>
                         );
                       })}

@@ -16,6 +16,7 @@ import {
   PackageCheck,
   ArrowLeftRight,
   ClipboardCheck,
+  ClipboardPlus,
   Receipt,
   Warehouse,
   type LucideIcon,
@@ -25,6 +26,8 @@ export interface NavChild {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Roles que no deben ver este hijo del grupo (p. ej. el rol 2 fuera de "Solicitudes", spec 48). */
+  excludeRoles?: number[];
 }
 
 export interface NavLink {
@@ -48,13 +51,14 @@ export const NAV_LINKS: NavLink[] = [
     minRole: 0,
     excludeRoles: [5],
     children: [
-      { href: "/dashboard/inventario", label: "Inventario Actual", icon: Warehouse },
-      { href: "/dashboard/productos", label: "Productos", icon: Box },
-      { href: "/dashboard/proveedores", label: "Proveedores", icon: Truck },
-      { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingBag },
-      { href: "/dashboard/recepciones", label: "Recepciones", icon: PackageCheck },
-      { href: "/dashboard/movimientos", label: "Movimientos", icon: ArrowLeftRight },
-      { href: "/dashboard/conteos", label: "Conteos", icon: ClipboardCheck },
+      { href: "/dashboard/solicitudes", label: "Solicitudes", icon: ClipboardPlus },
+      { href: "/dashboard/inventario", label: "Inventario Actual", icon: Warehouse, excludeRoles: [2] },
+      { href: "/dashboard/productos", label: "Productos", icon: Box, excludeRoles: [2] },
+      { href: "/dashboard/proveedores", label: "Proveedores", icon: Truck, excludeRoles: [2] },
+      { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingBag, excludeRoles: [2] },
+      { href: "/dashboard/recepciones", label: "Recepciones", icon: PackageCheck, excludeRoles: [2] },
+      { href: "/dashboard/movimientos", label: "Movimientos", icon: ArrowLeftRight, excludeRoles: [2] },
+      { href: "/dashboard/conteos", label: "Conteos", icon: ClipboardCheck, excludeRoles: [2] },
     ],
   },
   { href: "/dashboard/sucursales", label: "Sucursales", icon: Store, minRole: 0, excludeRoles: [5, 6] },
