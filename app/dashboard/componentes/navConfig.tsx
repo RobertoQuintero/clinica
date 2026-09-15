@@ -58,7 +58,7 @@ export const NAV_LINKS: NavLink[] = [
       { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingBag, excludeRoles: [2] },
       { href: "/dashboard/recepciones", label: "Recepciones", icon: PackageCheck, excludeRoles: [2] },
       { href: "/dashboard/movimientos", label: "Movimientos", icon: ArrowLeftRight, excludeRoles: [2] },
-      { href: "/dashboard/conteos", label: "Conteos", icon: ClipboardCheck, excludeRoles: [2] },
+      { href: "/dashboard/conteos", label: "Conteos", icon: ClipboardCheck },
     ],
   },
   { href: "/dashboard/sucursales", label: "Sucursales", icon: Store, minRole: 0, excludeRoles: [5, 6] },
