@@ -15,7 +15,7 @@ import {
   PAYROLL_PERIODS_PAGE_SIZE,
 } from "@/lib/payroll/constants";
 import { suggestPeriodDates } from "@/lib/payroll/periodDates";
-import { createPayrollPeriodSchema } from "@/lib/payroll/schemas";
+import { createPayrollPeriodSchema, updatePayrollPeriodSchema } from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -235,12 +235,18 @@ export async function getSuggestedPeriodDates(
 }
 
 const PERIOD_OVERLAP_MARKER = "PERIOD_OVERLAP";
+const PERIOD_NOT_EDITABLE_MARKER = "PERIOD_NOT_EDITABLE";
+const PERIOD_NOT_EDITABLE_MESSAGE =
+  "El periodo no existe en esta sucursal o ya no está en estatus Programada";
 
 /** Traduce los errores de SQL Server de escritura de periodos a un mensaje en español. */
 function describePeriodWriteError(error: unknown): string {
   const sqlError = error as { message?: string; number?: number };
   if (sqlError.message?.includes(PERIOD_OVERLAP_MARKER)) {
     return "Las fechas se traslapan con otro periodo de la misma frecuencia en esta sucursal";
+  }
+  if (sqlError.message?.includes(PERIOD_NOT_EDITABLE_MARKER)) {
+    return PERIOD_NOT_EDITABLE_MESSAGE;
   }
   if (sqlError.number === 2627 || sqlError.number === 2601) {
     return "Otro usuario creó un periodo al mismo tiempo. Intenta de nuevo";
@@ -327,5 +333,98 @@ export async function createPayrollPeriod(input: unknown): Promise<ActionResult<
   } catch (error) {
     console.error("createPayrollPeriod", error);
     return { ok: false, message: describePeriodWriteError(error) };
+  }
+}
+
+export async function updatePayrollPeriod(input: unknown): Promise<ActionResult<IPayrollPeriod>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  const parsed = updatePayrollPeriodSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_period, fecha_inicio, fecha_fin, fecha_corte, fecha_pago } = parsed.data;
+
+  try {
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @id_payment_period smallint = (
+         SELECT id_payment_period
+           FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 1
+       );
+       IF @id_payment_period IS NULL
+         THROW 50002, '${PERIOD_NOT_EDITABLE_MARKER}', 1;
+
+       IF EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_sucursal = @id_sucursal
+            AND id_payment_period = @id_payment_period
+            AND id_period <> @id_period
+            AND fecha_inicio <= CAST(@fecha_fin AS date)
+            AND fecha_fin >= CAST(@fecha_inicio AS date)
+       )
+         THROW 50001, '${PERIOD_OVERLAP_MARKER}', 1;
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET fecha_inicio = CAST(@fecha_inicio AS date),
+              fecha_fin    = CAST(@fecha_fin AS date),
+              fecha_corte  = CAST(@fecha_corte AS date),
+              fecha_pago   = CAST(@fecha_pago AS date),
+              updated_at   = CAST(@updated_at AS datetime2(0))
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 1;
+
+       COMMIT;
+
+       SELECT ${PERIOD_ROW_SELECT}
+         FROM [CentroPodologico].[payroll].[periods] p
+         JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = p.id_payment_period
+        WHERE p.id_period = @id_period;`,
+      {
+        id_period,
+        id_sucursal,
+        fecha_inicio,
+        fecha_fin,
+        fecha_corte,
+        fecha_pago,
+        updated_at: buildDate(new Date()),
+      },
+    );
+
+    revalidatePath("/dashboard/nomina/periodos");
+    return { ok: true, data: rows[0] as IPayrollPeriod };
+  } catch (error) {
+    console.error("updatePayrollPeriod", error);
+    return { ok: false, message: describePeriodWriteError(error) };
+  }
+}
+
+export async function deletePayrollPeriod(idPeriod: number): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  if (!Number.isInteger(idPeriod) || idPeriod <= 0) {
+    return { ok: false, message: "Periodo inválido" };
+  }
+
+  try {
+    const deletedRows = await db.queryParams(
+      `DELETE FROM [CentroPodologico].[payroll].[periods]
+       OUTPUT deleted.id_period
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 1`,
+      { id_period: idPeriod, id_sucursal },
+    );
+    if (deletedRows.length === 0) return { ok: false, message: PERIOD_NOT_EDITABLE_MESSAGE };
+
+    revalidatePath("/dashboard/nomina/periodos");
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("deletePayrollPeriod", error);
+    return { ok: false, message: "No se pudo eliminar el periodo de nómina" };
   }
 }
