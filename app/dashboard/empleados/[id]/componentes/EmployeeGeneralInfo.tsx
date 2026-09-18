@@ -102,6 +102,7 @@ export default function EmployeeGeneralInfo({ employee }: Props) {
               label="Tipo de salario"
               value={employee.tipo_salario ? TIPO_SALARIO_LABELS[employee.tipo_salario] ?? employee.tipo_salario : "—"}
             />
+            <InfoRow label="Periodo de pago" value={employee.nombre_periodo_pago || "—"} />
             <InfoRow label="Cuenta bancaria" value={employee.cuenta_bancaria || "—"} />
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** [25 — Módulo de Empleados (RH): alta, listado y expediente](25-empleados-alta-listado-detalle.md). No modifica la estructura base de `RH.empleados` salvo por agregar una columna FK nueva.
 - **Fecha:** 2026-09-18
 - **Objetivo:** Agregar el campo "Periodo de pago" (catálogo `RH.payment_periods`) al modal de alta/edición de empleado y al expediente, como un nuevo `select` opcional junto a los demás datos laborales.
@@ -132,17 +132,17 @@ Cada paso deja el sistema en un estado funcional (compilable) al terminar.
 
 ## Criterios de aceptación
 
-- [ ] `RH.empleados` tiene la columna `id_periodo_pago` (`tinyint`, `NULL`) con FK a `RH.payment_periods`, documentada con `ALTER TABLE` en `queries.txt`.
-- [ ] `RH.payment_periods` queda documentada con `CREATE TABLE` en `queries.txt`.
-- [ ] `IPaymentPeriod` existe en `interfaces/rh_catalogs.ts` con los campos `id_payment_period`, `clave_sat`, `description`, `days`, `status`.
-- [ ] `IEmployee` declara `id_periodo_pago: number | null`; `IEmployeeRecord` declara `nombre_periodo_pago: string | null`.
-- [ ] `getEmployeeCatalogs()` devuelve `paymentPeriods` con los periodos activos (`status = 1`), ordenados por `id_payment_period`.
-- [ ] El modal de alta/edición de empleado muestra un `<select>` "Periodo de pago" en la sección "Información laboral", junto a "Turno", con las opciones del catálogo y una opción "Sin periodo".
-- [ ] El campo "Periodo de pago" no es obligatorio: se puede guardar/editar un empleado sin seleccionarlo.
-- [ ] Al dar de alta un empleado nuevo seleccionando un periodo de pago, y luego abrir su expediente, se muestra la fila "Periodo de pago" con la descripción correspondiente.
-- [ ] Al editar un empleado existente, cambiar el periodo de pago persiste correctamente (se refleja tras `router.refresh()`).
-- [ ] `EmployeeGeneralInfo.tsx` muestra la fila "Periodo de pago" con `nombre_periodo_pago` o "—" si es `null`.
-- [ ] `npm run build` (o `tsc --noEmit`) no reporta errores de tipos relacionados con los campos agregados en ningún archivo del proyecto.
+- [x] `RH.empleados` tiene la columna `id_periodo_pago` (`tinyint`, `NULL`) con FK a `RH.payment_periods`, documentada con `ALTER TABLE` en `queries.txt`.
+- [x] `RH.payment_periods` queda documentada con `CREATE TABLE` en `queries.txt`.
+- [x] `IPaymentPeriod` existe en `interfaces/rh_catalogs.ts` con los campos `id_payment_period`, `clave_sat`, `description`, `days`, `status`.
+- [x] `IEmployee` declara `id_periodo_pago: number | null`; `IEmployeeRecord` declara `nombre_periodo_pago: string | null`.
+- [x] `getEmployeeCatalogs()` devuelve `paymentPeriods` con los periodos activos (`status = 1`), ordenados por `id_payment_period`.
+- [x] El modal de alta/edición de empleado muestra un `<select>` "Periodo de pago" en la sección "Información laboral", junto a "Turno", con las opciones del catálogo y una opción "Sin periodo".
+- [x] El campo "Periodo de pago" no es obligatorio: se puede guardar/editar un empleado sin seleccionarlo.
+- [x] Al dar de alta un empleado nuevo seleccionando un periodo de pago, y luego abrir su expediente, se muestra la fila "Periodo de pago" con la descripción correspondiente.
+- [x] Al editar un empleado existente, cambiar el periodo de pago persiste correctamente (se refleja tras `router.refresh()`).
+- [x] `EmployeeGeneralInfo.tsx` muestra la fila "Periodo de pago" con `nombre_periodo_pago` o "—" si es `null`.
+- [x] `npm run build` (o `tsc --noEmit`) no reporta errores de tipos relacionados con los campos agregados en ningún archivo del proyecto.
 
 ## Decisiones tomadas y descartadas
 
