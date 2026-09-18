@@ -817,6 +817,29 @@ ALTER TABLE [RH].[empleados] ADD
     [salario_diario_fiscal] [decimal](12,2) NULL;
 GO
 
+-- Spec 51: catálogo de periodos de pago (tabla ya existente en BD, documentada por completitud).
+-- Nota: tipos reales verificados contra la BD (difieren de lo asumido originalmente en la spec:
+-- id_payment_period es smallint, no tinyint; clave_sat es varchar(50), no varchar(10)).
+CREATE TABLE [RH].[payment_periods](
+    [id_payment_period] [smallint]     NOT NULL,
+    [clave_sat]         [varchar](50)  NULL,   -- clave del catálogo SAT c_PeriodicidadPago
+    [description]       [varchar](50)  NOT NULL,
+    [days]              [smallint]     NULL,   -- duración del periodo en días, ej. 7, 15, 30
+    [status]            [bit]          NOT NULL CONSTRAINT [DF_payment_periods_status] DEFAULT (1),
+
+ CONSTRAINT [PK_payment_periods] PRIMARY KEY CLUSTERED ([id_payment_period] ASC)
+) ON [PRIMARY]
+GO
+
+-- Spec 51: periodo de pago del empleado (catálogo RH.payment_periods).
+-- id_periodo_pago es smallint (no tinyint) para coincidir con el tipo real de
+-- RH.payment_periods.id_payment_period.
+ALTER TABLE [RH].[empleados] ADD
+    [id_periodo_pago] [smallint] NULL
+    CONSTRAINT [FK_empleados_periodo_pago]
+        FOREIGN KEY REFERENCES [RH].[payment_periods] ([id_payment_period]);
+GO
+
 -------------------- DOCUMENTOS DEL EMPLEADO ---------------------
 USE [CentroPodologico]
 GO
