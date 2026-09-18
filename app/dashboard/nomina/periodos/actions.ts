@@ -3,6 +3,7 @@
 import db from "@/database/connection";
 import { IAuthUser } from "@/interfaces/auth";
 import {
+  IPayrollPeriod,
   IPayrollPeriodDates,
   IPayrollPeriodFilters,
   IPayrollPeriodRow,
@@ -14,7 +15,9 @@ import {
   PAYROLL_PERIODS_PAGE_SIZE,
 } from "@/lib/payroll/constants";
 import { suggestPeriodDates } from "@/lib/payroll/periodDates";
-import { addZeroToday } from "@/utils/date_helpper";
+import { createPayrollPeriodSchema } from "@/lib/payroll/schemas";
+import { addZeroToday, buildDate } from "@/utils/date_helpper";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 
@@ -228,5 +231,101 @@ export async function getSuggestedPeriodDates(
   } catch (error) {
     console.error("getSuggestedPeriodDates", error);
     return { ok: false, message: "No se pudieron calcular las fechas sugeridas" };
+  }
+}
+
+const PERIOD_OVERLAP_MARKER = "PERIOD_OVERLAP";
+
+/** Traduce los errores de SQL Server de escritura de periodos a un mensaje en español. */
+function describePeriodWriteError(error: unknown): string {
+  const sqlError = error as { message?: string; number?: number };
+  if (sqlError.message?.includes(PERIOD_OVERLAP_MARKER)) {
+    return "Las fechas se traslapan con otro periodo de la misma frecuencia en esta sucursal";
+  }
+  if (sqlError.number === 2627 || sqlError.number === 2601) {
+    return "Otro usuario creó un periodo al mismo tiempo. Intenta de nuevo";
+  }
+  if (sqlError.number === 547) {
+    return "Las fechas del periodo no son válidas";
+  }
+  return "No se pudo guardar el periodo de nómina";
+}
+
+export async function createPayrollPeriod(input: unknown): Promise<ActionResult<IPayrollPeriod>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user } = access.data;
+
+  const parsed = createPayrollPeriodSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_payment_period, fecha_inicio, fecha_fin, fecha_corte, fecha_pago } = parsed.data;
+
+  try {
+    const frequency = (await queryAllowedFrequencies()).find(
+      (candidate) => candidate.id_payment_period === id_payment_period,
+    );
+    if (!frequency) return { ok: false, message: "Frecuencia no permitida" };
+
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       IF EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_sucursal = @id_sucursal
+            AND id_payment_period = @id_payment_period
+            AND fecha_inicio <= CAST(@fecha_fin AS date)
+            AND fecha_fin >= CAST(@fecha_inicio AS date)
+       )
+         THROW 50001, '${PERIOD_OVERLAP_MARKER}', 1;
+
+       DECLARE @consecutivo smallint = (
+         SELECT ISNULL(MAX(consecutivo), 0) + 1
+           FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_sucursal = @id_sucursal
+            AND ejercicio = @ejercicio
+            AND id_payment_period = @id_payment_period
+       );
+       DECLARE @codigo varchar(20) =
+         'NOM-' + CAST(@ejercicio AS varchar(4)) + '-' + @letter
+         + CASE WHEN @consecutivo < 10 THEN '0' ELSE '' END + CAST(@consecutivo AS varchar(5));
+
+       INSERT INTO [CentroPodologico].[payroll].[periods]
+         (id_sucursal, id_payment_period, codigo, ejercicio, consecutivo,
+          fecha_inicio, fecha_fin, fecha_corte, fecha_pago, status, created_by, created_at)
+       VALUES
+         (@id_sucursal, @id_payment_period, @codigo, @ejercicio, @consecutivo,
+          CAST(@fecha_inicio AS date), CAST(@fecha_fin AS date),
+          CAST(@fecha_corte AS date), CAST(@fecha_pago AS date),
+          1, @created_by, CAST(@created_at AS datetime2(0)));
+       DECLARE @id_period int = SCOPE_IDENTITY();
+
+       COMMIT;
+
+       SELECT ${PERIOD_ROW_SELECT}
+         FROM [CentroPodologico].[payroll].[periods] p
+         JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = p.id_payment_period
+        WHERE p.id_period = @id_period;`,
+      {
+        id_sucursal,
+        id_payment_period,
+        ejercicio: Number(fecha_inicio.slice(0, 4)),
+        letter: PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY[frequency.clave_sat],
+        fecha_inicio,
+        fecha_fin,
+        fecha_corte,
+        fecha_pago,
+        created_by: id_user,
+        created_at: buildDate(new Date()),
+      },
+    );
+
+    revalidatePath("/dashboard/nomina/periodos");
+    return { ok: true, data: rows[0] as IPayrollPeriod };
+  } catch (error) {
+    console.error("createPayrollPeriod", error);
+    return { ok: false, message: describePeriodWriteError(error) };
   }
 }
