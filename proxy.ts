@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { IAuthUser } from "@/interfaces/auth";
+import { PAYROLL_ALLOWED_ROLE_IDS } from "@/lib/payroll/constants";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
@@ -91,6 +92,13 @@ export const proxy = async (req: NextRequest) => {
     }
     // Solo id_role=1 e id_role=4 pueden acceder a /dashboard/facturacion
     if (pathname.startsWith("/dashboard/facturacion") && userPayload?.id_role !== 1 && userPayload?.id_role !== 4) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    // Solo los roles de PAYROLL_ALLOWED_ROLE_IDS (1 y 4) pueden acceder a /dashboard/nomina
+    if (
+      pathname.startsWith("/dashboard/nomina") &&
+      !PAYROLL_ALLOWED_ROLE_IDS.includes(userPayload?.id_role ?? -1)
+    ) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     // Solo id_role=1 e id_role=4 pueden revisar/cerrar un conteo físico de inventario
