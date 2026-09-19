@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { PAYROLL_PERIODS_PAGE_SIZE } from "@/lib/payroll/constants";
 import { formatPeriodDate, formatPeriodRange } from "@/lib/payroll/periodFormat";
+import DeletePayrollPeriodButton from "./DeletePayrollPeriodButton";
 import { PayrollFrequencyBadge, PayrollStatusBadge } from "./PayrollBadges";
+import { EditPayrollPeriodButton } from "./PayrollPeriodActions";
 
 interface Props {
   rows: IPayrollPeriodRow[];
@@ -42,12 +44,13 @@ export default function PayrollPeriodsTable({ rows, totalRows, page, ejercicio, 
               <th className="px-6 py-4 font-semibold">Corte</th>
               <th className="px-6 py-4 font-semibold">Fecha de pago</th>
               <th className="px-6 py-4 font-semibold">Estatus</th>
+              <th className="px-6 py-4 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-[#747780] dark:text-zinc-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-[#747780] dark:text-zinc-500">
                   No hay periodos que coincidan con los filtros.
                 </td>
               </tr>
@@ -71,6 +74,14 @@ export default function PayrollPeriodsTable({ rows, totalRows, page, ejercicio, 
                   </td>
                   <td className="px-6 py-4">
                     <PayrollStatusBadge status={period.status} />
+                  </td>
+                  <td className="px-6 py-4">
+                    {period.status === 1 && (
+                      <div className="flex items-center justify-end gap-1">
+                        <EditPayrollPeriodButton period={period} />
+                        <DeletePayrollPeriodButton idPeriod={period.id_period} periodCode={period.codigo} />
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))

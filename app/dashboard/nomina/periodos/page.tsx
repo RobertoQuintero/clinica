@@ -1,8 +1,9 @@
 import { ChevronRight } from "lucide-react";
 import type { IPayrollPeriodFilters, PayrollPeriodStatus } from "@/interfaces/payroll_period";
 import { addZeroToday } from "@/utils/date_helpper";
-import { getPayrollPeriodsPage } from "./actions";
+import { getPayrollFrequencies, getPayrollPeriodsPage } from "./actions";
 import ActivePayrollPeriodCard from "./componentes/ActivePayrollPeriodCard";
+import { NewPayrollPeriodButton } from "./componentes/PayrollPeriodActions";
 import PayrollPeriodsFilterBar from "./componentes/PayrollPeriodsFilterBar";
 import PayrollPeriodsTable from "./componentes/PayrollPeriodsTable";
 
@@ -35,7 +36,10 @@ export default async function PeriodosNominaPage({
     page: readPositiveInteger(readSingleParam(rawSearchParams, "pagina")) ?? 1,
   };
 
-  const result = await getPayrollPeriodsPage(filters);
+  const [result, frequenciesResult] = await Promise.all([
+    getPayrollPeriodsPage(filters),
+    getPayrollFrequencies(),
+  ]);
 
   const currentSearchParams: Record<string, string> = {};
   for (const key of ["frecuencia", "estatus", "ejercicio", "q"]) {
@@ -45,16 +49,19 @@ export default async function PeriodosNominaPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <div className="flex items-center gap-1.5 text-sm text-[#44474f] dark:text-zinc-400">
-          <span>Nómina</span>
-          <ChevronRight size={14} />
-          <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Periodos de Nómina</span>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-1.5 text-sm text-[#44474f] dark:text-zinc-400">
+            <span>Nómina</span>
+            <ChevronRight size={14} />
+            <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Periodos de Nómina</span>
+          </div>
+          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mt-1 mb-1">Periodos de Nómina</h2>
+          <p className="text-sm text-[#44474f] dark:text-zinc-400">
+            Calendario de corte y pago de la sucursal seleccionada.
+          </p>
         </div>
-        <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mt-1 mb-1">Periodos de Nómina</h2>
-        <p className="text-sm text-[#44474f] dark:text-zinc-400">
-          Calendario de corte y pago de la sucursal seleccionada.
-        </p>
+        {frequenciesResult.ok && <NewPayrollPeriodButton frequencies={frequenciesResult.data} />}
       </div>
 
       {!result.ok ? (
