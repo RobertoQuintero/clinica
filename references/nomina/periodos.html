@@ -1,0 +1,607 @@
+<!DOCTYPE html><html lang="es" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-fixed": "#d7e2ff", "secondary": "#0051d5", "surface": "#f8f9ff", "outline": "#747780", "on-tertiary": "#ffffff", "on-tertiary-fixed-variant": "#384b40", "on-secondary-fixed-variant": "#003ea7", "on-error": "#ffffff", "surface-container-high": "#dce9ff", "on-secondary-container": "#fefcff", "secondary-fixed-dim": "#b4c5ff", "on-surface": "#0b1c30", "inverse-on-surface": "#eaf1ff", "surface-dim": "#cbdbf5", "primary-container": "#0f1c31", "on-surface-variant": "#44474f", "surface-container-low": "#eff4ff", "primary": "#000000", "inverse-surface": "#213145", "tertiary-fixed-dim": "#b7ccbe", "surface-bright": "#f8f9ff", "on-secondary": "#ffffff", "on-primary-container": "#7189b8", "secondary-fixed": "#dbe1ff", "secondary-container": "#316bf3", "on-tertiary-container": "#009c6b", "surface-container-highest": "#d3e4fe", "success": "#009c6b", "on-error-container": "#93000a", "on-tertiary-fixed": "#0d1f16", "surface-container": "#e6eeff", "tertiary-container": "#0d1f16", "tertiary-fixed": "#d2e8d9", "surface-container-lowest": "#ffffff", "on-primary-fixed-variant": "#2e4772", "error": "#ba1a1a", "outline-variant": "#c4c6d0", "surface-tint": "#465e8b", "on-primary-fixed": "#0f1c31", "on-secondary-fixed": "#00174b", "inverse-primary": "#bac7e3", "primary-fixed-dim": "#aec7fa", "tertiary": "#000000", "on-background": "#0b1c30", "error-container": "#ffdad6", "on-primary": "#ffffff", "surface-variant": "#d3e3ff", "background": "#f8f9ff" }, borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, spacing: { "space-md": "1rem", "space-xl": "1.5rem", "sidebar-width": "240px", "space-sm": "0.5rem", "unit": "4px", "space-lg": "1.25rem", "container-padding": "24px", "margin": "1.5rem", "space-xs": "0.25rem", "gutter-inline": "16px", "gutter": "1rem", "card-gap": "20px", "inline-gutter": "16px", "base-unit": "4px" }, fontFamily: { "display-lg": ["Inter"], "title-sm": ["Inter"], "label-bold": ["Inter"], "body-md": ["Inter"], "label-subtle": ["Inter"], "headline-md": ["Inter"], "body-sm": ["Inter"] }, fontSize: { "display-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "700" }], "title-sm": ["16px", { lineHeight: "24px", fontWeight: "600" }], "label-bold": ["12px", { lineHeight: "16px", fontWeight: "600" }], "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }], "label-subtle": ["12px", { lineHeight: "16px", fontWeight: "500" }], "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }], "body-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }] } } } }</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><div class=""><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Content Canvas Area -->
+<div class="p-margin flex flex-col gap-card-gap">
+<!-- Top Action & Breadcrumb Bar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2 text-body-sm font-body-sm text-on-surface-variant">
+<span class="">Nómina</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface font-label-subtle">Periodos de Nómina</span>
+</div>
+<h1 class="text-display-lg font-display-lg text-on-surface tracking-tight mt-0.5">Periodos de Nómina</h1>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="h-9 px-3 rounded bg-surface-container-low hover:bg-surface-container text-on-surface flex items-center gap-2 font-label-bold text-label-bold transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+          Reglas de Cálculo
+        </button>
+
+<button class="h-9 px-4 rounded bg-primary text-on-primary hover:bg-primary-container flex items-center gap-2 font-label-bold text-label-bold shadow-sm transition-all" id="btn-open-modal" type="button">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+          + Nuevo Periodo de Nómina
+        </button>
+</div>
+</div>
+<!-- Metric Cards: Active Operations & Dispersion Outlook -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Card 1: Active Period -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-label-bold font-label-bold text-on-surface-variant uppercase tracking-wider text-[11px]">Periodo Activo en Curso</span>
+<span class="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]">event_available</span>
+</span>
+</div>
+<div class="mt-3">
+<div class="flex items-center gap-2">
+<span class="text-headline-md font-headline-md text-on-surface">NOM-2025-S21</span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-secondary-fixed text-on-secondary-fixed">Semanal</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">19 May 2025 — 25 May 2025</p>
+</div>
+
+</div>
+<!-- Card 2: Next Cutoff & Payday -->
+
+<!-- Card 3: Headcount & Active Roster -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-label-bold font-label-bold text-on-surface-variant uppercase tracking-wider text-[11px]">Colaboradores Auditados</span>
+<span class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">badge</span>
+</span>
+</div>
+<div class="mt-3">
+<div class="flex items-baseline gap-2">
+<span class="text-headline-md font-headline-md text-on-surface">26</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">de 28 registrados</span>
+</div>
+<p class="text-body-sm font-body-sm text-success flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+            100% Reloj Checador sincronizado
+          </p>
+</div>
+
+</div>
+<!-- Card 4: Projected Dual Payout Split -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-label-bold font-label-bold text-on-surface-variant uppercase tracking-wider text-[11px]">Cálculo Estimado</span>
+<span class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+</span>
+</div>
+<div class="mt-2 flex items-center justify-between">
+<div>
+<span class="text-headline-md font-headline-md text-on-surface">$148,650.00</span>
+<p class="text-body-sm font-body-sm text-on-surface-variant text-[11px]">Monto Bruto Global</p>
+</div>
+<div class="text-right">
+<span class="text-title-sm font-title-sm text-secondary">$114,820</span>
+<p class="text-body-sm font-body-sm text-on-surface-variant text-[10px]">Neto Bancario</p>
+</div>
+</div>
+<div class="mt-3 grid grid-cols-2 gap-2 text-center text-[11px]">
+<div class="bg-secondary-fixed/50 p-1 rounded text-on-secondary-fixed font-label-bold">
+            Transf: $114,820
+          </div>
+<div class="bg-surface-container-high p-1 rounded text-on-surface font-label-bold">
+            Efectivo: $19,450
+          </div>
+</div>
+</div>
+</div>
+<!-- Operational Rule & Split Logic Showcase Banner -->
+
+<!-- Active Filter & View Controls -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm w-full md:w-auto flex-wrap">
+<div class="flex items-center bg-surface-container-low rounded p-1">
+<button class="px-3 py-1.5 rounded bg-surface-container-lowest text-on-surface font-label-bold text-label-bold shadow-xs" type="button">Todos (18)</button>
+<button class="px-3 py-1.5 rounded hover:text-on-surface text-on-surface-variant font-label-subtle text-label-subtle" type="button">Semanales (12)</button>
+<button class="px-3 py-1.5 rounded hover:text-on-surface text-on-surface-variant font-label-subtle text-label-subtle" type="button">Quincenales (6)</button>
+</div>
+<div class="relative min-w-[200px]">
+<span class="material-symbols-outlined absolute left-3 top-2 text-on-surface-variant text-[18px]">filter_list</span>
+<select class="w-full h-9 pl-9 pr-8 rounded bg-surface-container-low text-body-sm font-body-sm text-on-surface appearance-none focus:outline-none cursor-pointer">
+<option value="all">Estatus: Todos los estados</option>
+<option value="active">En Cálculo / Activo</option>
+<option value="approved">Aprobada</option>
+<option value="paid">Pagada / Dispersada</option>
+<option value="draft">Borrador</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2.5 text-on-surface-variant text-[16px] pointer-events-none">expand_more</span>
+</div>
+<div class="relative min-w-[150px]">
+<select class="w-full h-9 px-3 pr-8 rounded bg-surface-container-low text-body-sm font-body-sm text-on-surface appearance-none focus:outline-none cursor-pointer">
+<option value="2025">Ejercicio 2025</option>
+<option value="2024">Ejercicio 2024</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2.5 text-on-surface-variant text-[16px] pointer-events-none">calendar_today</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm w-full md:w-auto justify-end">
+<div class="relative w-full md:w-64">
+<span class="material-symbols-outlined absolute left-3 top-2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full h-9 pl-9 pr-3 rounded bg-surface-container-low text-body-sm font-body-sm text-on-surface focus:outline-none focus:bg-surface-container-lowest" placeholder="Filtrar por código o fecha..." type="text">
+</div>
+</div>
+</div>
+<!-- Main Table: Payroll Periods Register -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="h-10 bg-surface-container-low text-on-surface-variant font-label-bold text-[11px] uppercase tracking-wider">
+<th class="px-space-md py-2">Código Periodo</th>
+<th class="px-space-md py-2">Tipo</th>
+<th class="px-space-md py-2">Rango del Periodo</th>
+
+<th class="px-space-md py-2">Fecha de Pago</th>
+<th class="px-space-md py-2 text-right">Percepciones</th>
+<th class="px-space-md py-2 text-right">Deducciones</th>
+<th class="px-space-md py-2 text-right">transfer.</th>
+<th class="px-space-md py-2 text-right">Efectivo</th>
+<th class="px-space-md py-2 text-center">Estatus</th>
+<th class="px-space-md py-2 text-right">Acciones</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<!-- Row 1: Active In-Process -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-space-md py-3 font-label-bold text-secondary flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="">NOM-2025-S21</span>
+</td>
+<td class="px-space-md py-3">
+<span class="px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-secondary-fixed text-on-secondary-fixed">Semanal</span>
+</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface">19 May — 25 May, 2025</td>
+
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface">23 May 2025</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface text-right">$148,650.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-error text-right">-$14,380.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-secondary text-right">$114,820.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-success text-right">$19,450.00</td>
+<td class="px-space-md py-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-secondary-fixed text-on-secondary-fixed">
+                  En Cálculo
+                </span>
+</td>
+<td class="px-space-md py-3 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary transition-colors" title="Procesar Periodo">
+<span class="material-symbols-outlined text-[18px]">calculate</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Configurar Reglas">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Ver Detalle">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Paid Weekly Period -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-space-md py-3 font-label-bold text-on-surface">
+<span class="">NOM-2025-S20</span>
+</td>
+<td class="px-space-md py-3">
+<span class="px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-secondary-fixed text-on-secondary-fixed">Semanal</span>
+</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface">12 May — 18 May, 2025</td>
+
+<td class="px-space-md py-3 text-body-sm text-on-surface">16 May 2025</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface text-right">$144,300.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-error text-right">-$13,920.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface text-right">$112,080.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-success text-right">$18,300.00</td>
+<td class="px-space-md py-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-tertiary-fixed text-on-tertiary-fixed">
+                  Pagada
+                </span>
+</td>
+<td class="px-space-md py-3 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Recibos Generados">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Póliza de Dispersión">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Ver Detalle">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Biweekly (Quincenal Q09) Paid -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-space-md py-3 font-label-bold text-on-surface">
+<span class="">NOM-2025-Q09</span>
+</td>
+<td class="px-space-md py-3">
+<span class="px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-surface-container-high text-on-surface">Quincenal</span>
+</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface">01 May — 15 May, 2025</td>
+
+<td class="px-space-md py-3 text-body-sm text-on-surface">15 May 2025</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface text-right">$112,860.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-error text-right">-$38,919.75</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface text-right">$89,540.25</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-success text-right">$15,600.00</td>
+<td class="px-space-md py-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-tertiary-fixed text-on-tertiary-fixed">
+                  Pagada
+                </span>
+</td>
+<td class="px-space-md py-3 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Recibos Generados">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Póliza de Dispersión">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Ver Detalle">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4: Weekly SEM19 Paid -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-space-md py-3 font-label-bold text-on-surface">
+<span class="">NOM-2025-S19</span>
+</td>
+<td class="px-space-md py-3">
+<span class="px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-secondary-fixed text-on-secondary-fixed">Semanal</span>
+</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface">05 May — 11 May, 2025</td>
+
+<td class="px-space-md py-3 text-body-sm text-on-surface">09 May 2025</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface text-right">$141,900.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-error text-right">-$12,850.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-on-surface text-right">$111,250.00</td>
+<td class="px-space-md py-3 text-body-sm font-label-bold text-success text-right">$17,800.00</td>
+<td class="px-space-md py-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-tertiary-fixed text-on-tertiary-fixed">
+                  Pagada
+                </span>
+</td>
+<td class="px-space-md py-3 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Recibos Generados">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Póliza de Dispersión">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Ver Detalle">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5: Weekly SEM22 Scheduled / Draft -->
+<tr class="hover:bg-surface transition-colors bg-surface/50">
+<td class="px-space-md py-3 font-label-bold text-on-surface-variant">
+<span class="">NOM-2025-S22</span>
+</td>
+<td class="px-space-md py-3">
+<span class="px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-secondary-fixed text-on-secondary-fixed">Semanal</span>
+</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface">26 May — 01 Jun, 2025</td>
+
+<td class="px-space-md py-3 text-body-sm text-on-surface">30 May 2025</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface-variant text-right">Por calcular</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface-variant text-right">—</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface-variant text-right">—</td>
+<td class="px-space-md py-3 text-body-sm text-on-surface-variant text-right">—</td>
+<td class="px-space-md py-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-label-subtle bg-surface-container-high text-on-surface-variant">
+                  Programada
+                </span>
+</td>
+<td class="px-space-md py-3 text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-1">
+<button class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant transition-colors" title="Editar Configuración">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-error transition-colors" title="Eliminar Borrador">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="px-space-md py-3 bg-surface-container-low flex items-center justify-between text-body-sm text-on-surface-variant">
+<span class="">Mostrando 5 de 18 periodos registrados en el ejercicio 2025</span>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container disabled:opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<span class="px-2 py-1 font-label-bold text-on-surface bg-surface-container-lowest rounded text-[12px]">Pág 1</span>
+<button class="p-1 rounded hover:bg-surface-container" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Dual-Channel Breakdown Quick Cards (Inspiration Workflow) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-card-gap">
+<!-- Transfer Channel Definition Card -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="w-7 h-7 rounded bg-secondary flex items-center justify-center text-on-secondary">
+<span class="material-symbols-outlined text-[18px]">account_balance</span>
+</span>
+<span class="font-title-sm text-title-sm text-on-surface">Canal Dispersión: Transferencia Bancaria</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-label-bold bg-secondary-fixed text-on-secondary-fixed">Fiscalizable LFT / SAT</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-2">
+          Se dispersa mediante archivo layout BBVA / STP directo a cuenta de nómina. Incluye conceptos base y retenciones legales obligatorias.
+        </p>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Salario Diario</span>
+<span class="text-label-bold font-label-bold text-on-surface">$315.04 MXN / día</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Horas Extra ≤ 9h</span>
+<span class="text-label-bold font-label-bold text-on-surface">Al Doble ($78.76/h)</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Aguinaldo Legal</span>
+<span class="text-label-bold font-label-bold text-on-surface">15 Días Sueldo</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Vacaciones</span>
+<span class="text-label-bold font-label-bold text-on-surface">Tabla LFT (12 a 30 d)</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Prima Vacacional</span>
+<span class="text-label-bold font-label-bold text-on-surface">25% sobre Salario</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Días Económicos</span>
+<span class="text-label-bold font-label-bold text-on-surface">3 al año c/goce</span>
+</div>
+</div>
+</div>
+<!-- Cash Channel Definition Card -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="w-7 h-7 rounded bg-tertiary-container flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+</span>
+<span class="font-title-sm text-title-sm text-on-surface">Canal Dispersión: Efectivo en Clínica</span>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-label-bold bg-tertiary-fixed text-on-tertiary-fixed">Incentivos Clínicos</span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-2">
+          Entregado en sobre sellado con firma autógrafa de contra-recibo en administración de sucursal los días viernes de corte.
+        </p>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Bono Puntualidad</span>
+<span class="text-label-bold font-label-bold text-on-surface">$500.00 (12/12 días)</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Bono Asistencia</span>
+<span class="text-label-bold font-label-bold text-on-surface">$500.00 (0 Faltas)</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Comisión Onicomicosis</span>
+<span class="text-label-bold font-label-bold text-secondary">+$500.00 por tto.</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">+11 Pacientes/Día</span>
+<span class="text-label-bold font-label-bold text-secondary">+$350.00 / jornada</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Horas Excedentes &gt; 9h</span>
+<span class="text-label-bold font-label-bold text-error">Al Triple ($118.14/h)</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-[10px] font-label-bold text-on-surface-variant block uppercase">Recibo Físico</span>
+<span class="text-label-bold font-label-bold text-on-surface">Auto-generado PDF</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Modal: Configurar / Crear Nuevo Periodo de Nómina -->
+<div class="fixed inset-0 z-50 bg-on-surface/40 backdrop-blur-sm hidden flex items-center justify-center p-space-md" id="payroll-period-modal">
+<div class="bg-surface-container-lowest w-full max-w-3xl rounded-xl shadow-xl overflow-hidden max-h-[942px] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+<!-- Modal Header -->
+<div class="px-space-lg py-4 bg-primary-container text-surface flex items-center justify-between shrink-0">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded bg-secondary flex items-center justify-center text-on-secondary">
+<span class="material-symbols-outlined text-[20px]">date_range</span>
+</div>
+<div class="flex flex-col">
+<h2 class="text-title-sm font-title-sm text-on-primary leading-tight">Configurar Nuevo Periodo de Nómina</h2>
+<span class="text-label-subtle font-label-subtle text-on-primary-container text-[11px]">Establece calendario de corte, tolerancias biométricas y reglas duales</span>
+</div>
+</div>
+<button class="text-on-primary-container hover:text-on-primary p-1 rounded transition-colors" id="btn-close-modal" type="button">
+<span class="material-symbols-outlined text-[22px]">close</span>
+</button>
+</div>
+<!-- Modal Body (Scrollable) -->
+<div class="p-space-lg overflow-y-auto flex flex-col gap-space-lg">
+<!-- Frequency Toggle -->
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface mb-1.5 uppercase text-[11px] tracking-wide">Frecuencia del Periodo</label>
+<div class="grid grid-cols-2 gap-space-sm">
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" id="radio-semanal" name="modal_freq" type="radio" value="semanal">
+<div class="p-space-md rounded-lg bg-surface-container-low peer-checked:bg-secondary/10 peer-checked:text-secondary flex items-start gap-3 transition-all">
+<span class="material-symbols-outlined text-[22px] text-secondary">view_week</span>
+<div>
+<span class="font-label-bold text-label-bold block text-on-surface">Nómina Semanal</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant text-[12px]">Corte los miércoles, pago los viernes por la tarde. Empleados clínicos operativos.</span>
+</div>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" id="radio-quincenal" name="modal_freq" type="radio" value="quincenal">
+<div class="p-space-md rounded-lg bg-surface-container-low peer-checked:bg-secondary/10 peer-checked:text-secondary flex items-start gap-3 transition-all">
+<span class="material-symbols-outlined text-[22px] text-on-surface-variant">calendar_view_month</span>
+<div>
+<span class="font-label-bold text-label-bold block text-on-surface">Nómina Quincenal</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant text-[12px]">Días 1 al 15 / 16 al último de mes. Médicos podólogos y personal corporativo.</span>
+</div>
+</div>
+</label>
+</div>
+</div>
+<!-- Period Identification & Key Dates -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface mb-1">Código Identificador</label>
+<input class="w-full h-9 px-3 rounded bg-surface-container-low text-body-md font-body-md text-on-surface focus:bg-surface-container-lowest focus:outline-none" type="text" value="NOM-2025-SEM22">
+<span class="text-[11px] text-on-surface-variant mt-1 block">Generado automáticamente según nomenclatura institucional</span>
+</div>
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface mb-1">Sucursal / Centro de Costos</label>
+<select class="w-full h-9 px-3 rounded bg-surface-container-low text-body-md font-body-md text-on-surface focus:outline-none cursor-pointer">
+<option>Todas las sucursales (Consolidado)</option>
+<option selected="">Sucursal Central Médica</option>
+<option>Sucursal Norte Plaza</option>
+<option>Sucursal San Pedro Valle</option>
+</select>
+</div>
+</div>
+<!-- Date Range Pickers -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-md">
+<span class="text-label-bold font-label-bold text-on-surface text-[12px] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-secondary">date_range</span>
+            Calendario Operativo del Periodo
+          </span>
+<div class="grid grid-cols-1 sm:grid-cols-4 gap-space-sm">
+<div>
+<label class="block text-[11px] font-label-subtle text-on-surface-variant mb-1">Fecha Inicio</label>
+<input class="w-full h-9 px-2.5 rounded bg-surface-container-lowest text-body-sm text-on-surface focus:outline-none" type="date" value="2025-05-26">
+</div>
+<div>
+<label class="block text-[11px] font-label-subtle text-on-surface-variant mb-1">Fecha Fin</label>
+<input class="w-full h-9 px-2.5 rounded bg-surface-container-lowest text-body-sm text-on-surface focus:outline-none" type="date" value="2025-06-01">
+</div>
+<div>
+<label class="block text-[11px] font-label-subtle text-on-surface-variant mb-1">Corte Asistencias</label>
+<input class="w-full h-9 px-2.5 rounded bg-surface-container-lowest text-body-sm text-on-surface focus:outline-none" type="date" value="2025-05-28">
+</div>
+<div>
+<label class="block text-[11px] font-label-subtle text-on-surface-variant mb-1">Fecha de Pago</label>
+<input class="w-full h-9 px-2.5 rounded bg-surface-container-lowest text-body-sm text-on-surface focus:outline-none" type="date" value="2025-05-30">
+</div>
+</div>
+</div>
+<!-- Calculation Rules: Penalties & Overtime Engine -->
+<div class="flex flex-col gap-space-sm">
+<span class="text-label-bold font-label-bold text-on-surface uppercase text-[11px] tracking-wide">Reglas Biométricas y de Ajuste Automático</span>
+<div class="space-y-2">
+<label class="flex items-center justify-between p-2.5 rounded bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-secondary" type="checkbox">
+<div>
+<span class="text-body-sm font-label-bold text-on-surface block">Regla de Faltas y Retardos Automática</span>
+<span class="text-[11px] text-on-surface-variant">Tolerancia 10 min. 2 retardos descuentan 1/2 día; 4 retardos descuentan 1 día completo de salario base transferido.</span>
+</div>
+</div>
+<span class="text-label-bold font-label-bold text-secondary text-[12px]">Activo</span>
+</label>
+<label class="flex items-center justify-between p-2.5 rounded bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-secondary" type="checkbox">
+<div>
+<span class="text-body-sm font-label-bold text-on-surface block">Cálculo de Horas Extras Dobles / Triples</span>
+<span class="text-[11px] text-on-surface-variant">Fórmula: (Sueldo diario / 8) * 2 para las primeras 9 hrs semanales. Excedentes se pagan al triple en sobre de efectivo.</span>
+</div>
+</div>
+<span class="text-label-bold font-label-bold text-secondary text-[12px]">Activo</span>
+</label>
+<label class="flex items-center justify-between p-2.5 rounded bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<input checked="" class="w-4 h-4 rounded text-secondary" type="checkbox">
+<div>
+<span class="text-body-sm font-label-bold text-on-surface block">Incentivos Clínicos (Efectivo)</span>
+<span class="text-[11px] text-on-surface-variant">Vincular tickets de venta POS con bono de $500 por onicomicosis y meta de &gt;11 pacientes diarios ($350).</span>
+</div>
+</div>
+<span class="text-label-bold font-label-bold text-secondary text-[12px]">Sincronizado</span>
+</label>
+</div>
+</div>
+<!-- Staff Inclusion Quick Summary -->
+<div class="p-3 bg-secondary-fixed/40 rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">groups</span>
+<span class="text-body-sm text-on-secondary-fixed font-body-md">Personal programado para este periodo: <strong>26 colaboradores operativos</strong></span>
+</div>
+<button class="text-label-bold font-label-bold text-secondary text-[12px] hover:underline" type="button">Modificar Lista</button>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="px-space-lg py-3 bg-surface-container-low flex items-center justify-end gap-space-sm shrink-0">
+<button class="h-9 px-4 rounded bg-transparent hover:bg-surface-container text-on-surface font-label-bold text-label-bold transition-colors" id="btn-cancel-modal" type="button">
+          Cancelar
+        </button>
+<button class="h-9 px-5 rounded bg-primary text-on-primary hover:bg-primary-container font-label-bold text-label-bold transition-colors flex items-center gap-2" id="btn-save-modal" type="button">
+<span class="material-symbols-outlined text-[18px]">save</span>
+          Crear Periodo
+        </button>
+</div>
+</div>
+</div>
+<script>
+    (function() {
+      const openBtn = document.getElementById('btn-open-modal');
+      const closeBtn = document.getElementById('btn-close-modal');
+      const cancelBtn = document.getElementById('btn-cancel-modal');
+      const saveBtn = document.getElementById('btn-save-modal');
+      const modal = document.getElementById('payroll-period-modal');
+
+      function showModal() {
+        modal.classList.remove('hidden');
+      }
+
+      function hideModal() {
+        modal.classList.add('hidden');
+      }
+
+      if (openBtn) openBtn.addEventListener('click', showModal);
+      if (closeBtn) closeBtn.addEventListener('click', hideModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+          hideModal();
+        });
+      }
+
+      // Close on clicking backdrop
+      if (modal) {
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            hideModal();
+          }
+        });
+      }
+    })();
+  </script>
+</div></main></div>
+
+
+
+</body></html>

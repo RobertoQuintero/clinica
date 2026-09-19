@@ -8,7 +8,7 @@ import {
   IEmployeeRecord,
   EmployeeFormInput,
 } from "@/interfaces/employee";
-import { IDepartment, IPosition, IShift } from "@/interfaces/rh_catalogs";
+import { IDepartment, IPosition, IShift, IPaymentPeriod } from "@/interfaces/rh_catalogs";
 import { ISucursal } from "@/interfaces/sucursal";
 import { getSucursalesForUser } from "@/app/dashboard/sucursales/actions";
 import { toDBString, buildDate } from "@/utils/date_helpper";
@@ -32,6 +32,7 @@ export interface IEmployeeCatalogs {
   departments: IDepartment[];
   positions: IPosition[];
   shifts: IShift[];
+  paymentPeriods: IPaymentPeriod[];
   sucursales: ISucursal[];
   supervisors: IEmployeeSupervisorOption[];
 }
@@ -102,6 +103,7 @@ const EMPLOYEE_SELECT_COLUMNS = `
             e.[id_department],
             e.[id_puesto],
             e.[id_turno],
+            e.[id_periodo_pago],
             e.[dias_laborales],
             e.[horario],
             e.[salario_diario],
@@ -154,6 +156,7 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
   const data = (await db.queryParams(
     `SELECT ${EMPLOYEE_SELECT_COLUMNS},
             t.[description] AS nombre_turno,
+            pp.[description] AS nombre_periodo_pago,
             sup.[nombre] AS sup_nombre,
             sup.[apellido_paterno] AS sup_apellido_paterno,
             sup.[apellido_materno] AS sup_apellido_materno
@@ -162,6 +165,7 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
        JOIN [CentroPodologico].[RH].[puestos] p ON p.[id_puesto] = e.[id_puesto]
        JOIN [CentroPodologico].[dbo].[sucursales] s ON s.[id_sucursal] = e.[id_sucursal]
        LEFT JOIN [CentroPodologico].[RH].[turnos] t ON t.[id_turno] = e.[id_turno]
+       LEFT JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.[id_payment_period] = e.[id_periodo_pago]
        LEFT JOIN [CentroPodologico].[RH].[empleados] sup ON sup.[id_empleado] = e.[id_supervisor]
       WHERE e.[id_empleado] = @id_empleado
         AND e.[id_empresa] = @id_empresa
@@ -172,6 +176,7 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
     nombre_puesto: string;
     nombre_sucursal: string;
     nombre_turno: string | null;
+    nombre_periodo_pago: string | null;
     sup_nombre: string | null;
     sup_apellido_paterno: string | null;
     sup_apellido_materno: string | null;
@@ -195,7 +200,7 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
 export async function getEmployeeCatalogs(): Promise<IEmployeeCatalogs> {
   const { id_empresa } = await getActiveUser();
 
-  const [departments, positions, shifts, sucursales, supervisors] = await Promise.all([
+  const [departments, positions, shifts, paymentPeriods, sucursales, supervisors] = await Promise.all([
     db.queryParams(
       `SELECT [id_department], [name], [id_empresa], [status], [activo], [description]
          FROM [CentroPodologico].[RH].[departamentos]
@@ -218,6 +223,13 @@ export async function getEmployeeCatalogs(): Promise<IEmployeeCatalogs> {
         ORDER BY [id_turno]`,
       {}
     ) as Promise<IShift[]>,
+    db.queryParams(
+      `SELECT [id_payment_period], [clave_sat], [description], [days], [status]
+         FROM [CentroPodologico].[RH].[payment_periods]
+        WHERE [status] = 1
+        ORDER BY [id_payment_period]`,
+      {}
+    ) as Promise<IPaymentPeriod[]>,
     getSucursalesForUser(),
     db.queryParams(
       `SELECT [id_empleado], [nombre], [apellido_paterno], [apellido_materno]
@@ -234,6 +246,7 @@ export async function getEmployeeCatalogs(): Promise<IEmployeeCatalogs> {
     departments,
     positions,
     shifts,
+    paymentPeriods,
     sucursales,
     supervisors: supervisors.map((row) => ({
       id_empleado: row.id_empleado,
@@ -302,6 +315,7 @@ function buildEmployeeWriteParams(input: EmployeeFormInput, fechaIngresoDb: stri
     id_department: input.id_department,
     id_puesto: input.id_puesto,
     id_turno: input.id_turno ?? null,
+    id_periodo_pago: input.id_periodo_pago ?? null,
     dias_laborales: input.dias_laborales ?? null,
     horario: input.horario ?? null,
     salario_diario: input.salario_diario ?? null,
@@ -329,7 +343,7 @@ export async function createEmployee(input: EmployeeFormInput): Promise<ActionRe
           [foto_url],[fecha_ingreso],[id_supervisor],[whatsapp],[email],[rfc],[curp],[nss],
           [fecha_nacimiento],[genero],[estado_civil],[direccion],[contacto_emergencia],[whatsapp_emergencia],
           [contacto_emergencia_2],[whatsapp_emergencia_2],
-          [id_department],[id_puesto],[id_turno],[dias_laborales],[horario],
+          [id_department],[id_puesto],[id_turno],[id_periodo_pago],[dias_laborales],[horario],
           [salario_diario],[salario_diario_fiscal],[tipo_salario],[cuenta_bancaria],
           [activo],[status],[created_at])
        OUTPUT INSERTED.[id_empleado]
@@ -338,7 +352,7 @@ export async function createEmployee(input: EmployeeFormInput): Promise<ActionRe
           @foto_url,@fecha_ingreso,@id_supervisor,@whatsapp,@email,@rfc,@curp,@nss,
           @fecha_nacimiento,@genero,@estado_civil,@direccion,@contacto_emergencia,@whatsapp_emergencia,
           @contacto_emergencia_2,@whatsapp_emergencia_2,
-          @id_department,@id_puesto,@id_turno,@dias_laborales,@horario,
+          @id_department,@id_puesto,@id_turno,@id_periodo_pago,@dias_laborales,@horario,
           @salario_diario,@salario_diario_fiscal,@tipo_salario,@cuenta_bancaria,
           1,1,@created_at)`,
       { ...writeParams, codigo_empleado, id_empresa, created_at: buildDate(new Date()) }
@@ -391,6 +405,7 @@ export async function updateEmployee(
          [id_department]        = @id_department,
          [id_puesto]            = @id_puesto,
          [id_turno]             = @id_turno,
+         [id_periodo_pago]      = @id_periodo_pago,
          [dias_laborales]       = @dias_laborales,
          [horario]              = @horario,
          [salario_diario]       = @salario_diario,

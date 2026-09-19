@@ -1,0 +1,844 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-fixed": "#d7e2ff", "secondary": "#0051d5", "surface": "#f8f9ff", "outline": "#747780", "on-tertiary": "#ffffff", "on-tertiary-fixed-variant": "#384b40", "on-secondary-fixed-variant": "#003ea7", "on-error": "#ffffff", "surface-container-high": "#dce9ff", "on-secondary-container": "#fefcff", "secondary-fixed-dim": "#b4c5ff", "on-surface": "#0b1c30", "inverse-on-surface": "#eaf1ff", "surface-dim": "#cbdbf5", "primary-container": "#0f1c31", "on-surface-variant": "#44474f", "surface-container-low": "#eff4ff", "primary": "#000000", "inverse-surface": "#213145", "tertiary-fixed-dim": "#b7ccbe", "surface-bright": "#f8f9ff", "on-secondary": "#ffffff", "on-primary-container": "#7189b8", "secondary-fixed": "#dbe1ff", "secondary-container": "#316bf3", "on-tertiary-container": "#009c6b", "surface-container-highest": "#d3e4fe", "success": "#009c6b", "on-error-container": "#93000a", "on-tertiary-fixed": "#0d1f16", "surface-container": "#e6eeff", "tertiary-container": "#0d1f16", "tertiary-fixed": "#d2e8d9", "surface-container-lowest": "#ffffff", "on-primary-fixed-variant": "#2e4772", "error": "#ba1a1a", "outline-variant": "#c4c6d0", "surface-tint": "#465e8b", "on-primary-fixed": "#0f1c31", "on-secondary-fixed": "#00174b", "inverse-primary": "#bac7e3", "primary-fixed-dim": "#aec7fa", "tertiary": "#000000", "on-background": "#0b1c30", "error-container": "#ffdad6", "on-primary": "#ffffff", "surface-variant": "#d3e3ff", "background": "#f8f9ff" }, borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, spacing: { "space-md": "1rem", "space-xl": "1.5rem", "sidebar-width": "240px", "space-sm": "0.5rem", "unit": "4px", "space-lg": "1.25rem", "container-padding": "24px", "margin": "1.5rem", "space-xs": "0.25rem", "gutter-inline": "16px", "gutter": "1rem", "card-gap": "20px", "inline-gutter": "16px", "base-unit": "4px" }, fontFamily: { "display-lg": ["Inter"], "title-sm": ["Inter"], "label-bold": ["Inter"], "body-md": ["Inter"], "label-subtle": ["Inter"], "headline-md": ["Inter"], "body-sm": ["Inter"] }, fontSize: { "display-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "700" }], "title-sm": ["16px", { lineHeight: "24px", fontWeight: "600" }], "label-bold": ["12px", { lineHeight: "16px", fontWeight: "600" }], "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }], "label-subtle": ["12px", { lineHeight: "16px", fontWeight: "500" }], "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }], "body-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }] } } } }</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-sidebar-width bg-primary-container z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 flex items-center px-space-md gap-3 bg-primary"><img alt="PodoCentro Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1UqI0aOLXswcDMfBQBWvsA4z1Ve-WYhBmYaO6Fqa2uW006jeNbarTUv6PuB26kKCAV56onHasmpTl7Fm1g8A7R20U2yg_OQ3ZGuCLXrwOMk8bjfUi055XPr3QeFkJPTfxK6yIMaz0jGhxQBSCo2-j--Cq1GQKM1ilQjiv16n9tD72YOipXr5lDJ9pBCEpEK6kh2kFjpHswuXm_Gmre861F6rTOmxzQJ2CassX4mj7Lw-LjAx7n7Vs-HuPk"><div class="flex flex-col"><span class="font-title-sm text-title-sm text-on-primary tracking-tight">PodoCentro</span><span class="font-label-subtle text-label-subtle text-on-primary-container uppercase tracking-wider text-[10px]">Nómina &amp; HRM ERP</span></div></div><nav class="flex flex-col gap-space-xs px-space-sm pt-space-md" data-active-classes="bg-secondary text-on-secondary font-label-bold"><span class="px-space-sm py-space-xs font-label-subtle text-label-subtle uppercase text-on-primary-container tracking-wider text-[10px]">General</span><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span>Inicio</a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="empleados" href="#"><span class="material-symbols-outlined text-[18px]">badge</span>Empleados</a><span class="px-space-sm pt-space-sm py-space-xs font-label-subtle text-label-subtle uppercase text-on-primary-container tracking-wider text-[10px]">Gestión de Nómina</span><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="periodos-de-nomina" href="#"><span class="material-symbols-outlined text-[18px]">date_range</span>Periodos de Nómina</a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="procesar-nomina" href="#"><span class="material-symbols-outlined text-[18px]">payments</span>Procesar Nómina</a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="detalle-de-nomina" href="#"><span class="material-symbols-outlined text-[18px]">receipt_long</span>Detalle de Nómina</a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="recibos-de-nomina" href="#"><span class="material-symbols-outlined text-[18px]">description</span>Recibos de Nómina</a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="conceptos-y-reglas" href="#"><span class="material-symbols-outlined text-[18px]">rule</span>Conceptos &amp; Reglas</a><span class="px-space-sm pt-space-sm py-space-xs font-label-subtle text-label-subtle uppercase text-on-primary-container tracking-wider text-[10px]">Control Laboral</span><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-2 rounded transition-colors bg-secondary text-on-secondary font-label-bold" data-path="asistencia-e-incidencias" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span>Faltas y Retardos</a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="vacaciones-y-prestaciones" href="#"><span class="material-symbols-outlined text-[18px]">beach_access</span>Vacaciones &amp; Prestaciones</a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="reportes-fiscales-y-dispersion" href="#"><span class="material-symbols-outlined text-[18px]">account_balance</span>Reportes &amp; Dispersión</a></nav></div><div class="px-space-sm pb-space-md flex flex-col gap-space-xs"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded text-surface-variant hover:bg-inverse-surface hover:text-inverse-on-surface transition-colors font-body-sm text-body-sm" data-path="configuracion" href="#"><span class="material-symbols-outlined text-[18px]">settings</span>Configuración</a><div class="mt-space-xs p-space-sm rounded bg-inverse-surface flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-secondary text-[16px]">domain</span></div><div class="flex flex-col min-w-0"><span class="font-label-bold text-label-bold text-inverse-on-surface truncate">Clínica PodoCentro</span><span class="font-body-sm text-body-sm text-on-primary-container text-[11px] truncate">RFC: POD180422HR8</span></div></div></div></aside><div class="pl-sidebar-width"><header class="fixed top-0 left-sidebar-width right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 flex items-center justify-between px-margin shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-md w-full max-w-md"><div class="relative w-full flex items-center"><span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-[18px]">search</span><input class="w-full h-9 pl-9 pr-3 rounded bg-surface-container-low text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant focus:bg-surface-container-lowest focus:outline-none" placeholder="Buscar empleado, RFC, nómina o recibo..." type="text"></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded"><span class="material-symbols-outlined text-secondary text-[18px]">location_city</span><select class="bg-transparent font-label-subtle text-label-subtle text-on-surface focus:outline-none cursor-pointer"><option value="central">Sucursal Central Médica</option><option value="norte">Sucursal Norte Plaza</option><option value="valle">Sucursal San Pedro Valle</option></select></div><button class="relative p-2 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span></button><button class="p-2 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">help</span></button><div class="flex items-center gap-3 pl-space-xs"><div class="flex flex-col text-right hidden sm:flex"><span class="font-label-bold text-label-bold text-on-surface">Lic. Mariana Cortés</span><span class="font-label-subtle text-label-subtle text-on-surface-variant text-[11px]">Administrador HRM</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Dynamic Notification / Policy Ribbon Banner -->
+<div class="px-margin pt-space-lg pb-0">
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[24px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-title-sm text-title-sm text-on-surface">Reglamento y Validación Automática de Incidencias</span>
+<span class="px-2 py-0.5 rounded-full text-[11px] font-label-bold bg-surface-container text-secondary">Motor Activo</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+            A partir de 10 min es retardo; a partir de 30 min se descuenta medio día. Con 2 retardos quincenales se descuenta medio día y con 4 equivale a 1 día completo. <strong class="text-on-surface">Si el sistema valida justificante médico PDF, se exime automáticamente del descuento.</strong>
+</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface font-label-subtle text-label-subtle hover:bg-surface-container transition-colors flex items-center gap-1.5" onclick="document.getElementById('modal-reglas').classList.toggle('hidden')" type="button">
+<span class="material-symbols-outlined text-[16px]">menu_book</span>
+          Ver Reglamento
+        </button>
+</div>
+</div>
+</div>
+<!-- Header Actions Bar -->
+<div class="px-margin pt-space-md pb-space-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex flex-col">
+<h1 class="font-headline-md text-headline-md text-on-surface tracking-tight">Faltas y Retardos</h1>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-subtle text-label-subtle">
+<span>Empleados</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Asistencia</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-secondary font-label-bold">Faltas y Retardos</span>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex items-center gap-space-sm flex-wrap">
+<!-- Employee Profile Quick Selector -->
+<div class="flex items-center gap-2 bg-surface-container-lowest px-3 py-1.5 rounded-lg shadow-sm">
+<div class="w-6 h-6 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed text-[11px] font-label-bold">
+          RM
+        </div>
+<select class="bg-transparent font-label-bold text-label-bold text-on-surface focus:outline-none cursor-pointer text-body-sm" id="employee-select">
+<option value="1">Lic. Rodrigo Morales - Podólogo Titular (#POD-042)</option>
+<option value="2">Dra. Claudia Benítez - Cirugía Podológica (#POD-018)</option>
+<option value="3">Lic. Sofia Treviño - Asistente Clínico (#POD-089)</option>
+</select>
+</div>
+<button class="px-space-md py-2 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-bold text-label-bold shadow-sm flex items-center gap-2 transition-all" onclick="exportData()" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+        Exportar
+      </button>
+<button class="px-space-md py-2 rounded bg-success hover:bg-on-tertiary-container text-on-primary font-label-bold text-label-bold shadow-sm flex items-center gap-2 transition-all" onclick="document.getElementById('modal-registro').classList.remove('hidden')" type="button">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+        Registrar Incidencia
+      </button>
+</div>
+</div>
+<!-- KPI Cards Row -->
+<div class="px-margin py-space-sm">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- KPI 1: Faltas -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex flex-col">
+<span class="font-label-bold text-label-bold text-error tracking-wide uppercase text-[11px]">Faltas (mes actual)</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-display-lg text-display-lg text-error">2</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Días no asistidos</span>
+</div>
+<span class="font-label-subtle text-label-subtle text-error/80 mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">priority_high</span> 2 no justificadas (-$800.00)
+          </span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-error-container/40 text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[26px]">event_busy</span>
+</div>
+</div>
+<!-- KPI 2: Retardos -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex flex-col">
+<span class="font-label-bold text-label-bold text-outline tracking-wide uppercase text-[11px]">Retardos (mes actual)</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-display-lg text-display-lg text-on-surface">4</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Retardos acumulados</span>
+</div>
+<span class="font-label-subtle text-label-subtle text-on-surface-variant mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span> Aplica descuento de 1 día
+          </span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-surface-container-high text-on-surface flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[26px]">schedule</span>
+</div>
+</div>
+<!-- KPI 3: Minutos de Retardo -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex flex-col">
+<span class="font-label-bold text-label-bold text-secondary tracking-wide uppercase text-[11px]">Minutos de retardo</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-display-lg text-display-lg text-secondary">95</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Minutos en total</span>
+</div>
+<span class="font-label-subtle text-label-subtle text-on-surface-variant mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">timelapse</span> Prom. 23.7 min por incidencia
+          </span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed/50 text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[26px]">hourglass_bottom</span>
+</div>
+</div>
+<!-- KPI 4: Porcentaje de Asistencia -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="flex flex-col">
+<span class="font-label-bold text-label-bold text-success tracking-wide uppercase text-[11px]">Asistencia del mes</span>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-display-lg text-display-lg text-success">92%</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Porcentaje asistido</span>
+</div>
+<span class="font-label-subtle text-label-subtle text-success mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> Cumple mínimo de bono asist.
+          </span>
+</div>
+<div class="w-12 h-12 rounded-xl bg-tertiary-fixed/60 text-success flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[26px]">monitoring</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Main 2-Column Content Layout (65% / 35%) -->
+<div class="px-margin py-space-sm mb-space-xl">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- COLUMN 1: Main Incident History Table (8 cols = ~66%) -->
+<div class="lg:col-span-8 flex flex-col gap-space-md">
+<div class="bg-surface-container-lowest rounded-xl p-space-md sm:p-space-lg shadow-sm flex flex-col">
+<!-- Table Controls Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pb-space-md">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Historial de Faltas y Retardos</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Registro cronológico y estado de comprobantes de incidencias del colaborador</p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<!-- Period Dropdown -->
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded text-body-sm">
+<span class="material-symbols-outlined text-secondary text-[16px]">calendar_month</span>
+<select class="bg-transparent font-label-bold text-label-bold text-on-surface focus:outline-none cursor-pointer" id="filter-period">
+<option value="may-2025">Mayo 2025</option>
+<option value="abr-2025">Abril 2025</option>
+<option value="mar-2025">Marzo 2025</option>
+</select>
+</div>
+<!-- Type Filter -->
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded text-body-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">tune</span>
+<select class="bg-transparent font-label-bold text-label-bold text-on-surface focus:outline-none cursor-pointer" id="filter-type" onchange="filterIncidents()">
+<option value="all">Todos los tipos</option>
+<option value="falta-inj">Falta injustificada</option>
+<option value="falta-just">Falta justificada (médica)</option>
+<option value="retardo">Retardos</option>
+<option value="dia-eco">Días Económicos</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Quick Notice Banner -->
+<div class="mb-space-md p-2.5 rounded bg-surface-container-low flex items-center gap-2.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+<strong>Regla activa:</strong> El justificante médico validado (<span class="text-success font-label-bold">badge verde</span>) anula automáticamente el descuento salarial y no penaliza el corte semanal de percepciones.
+            </span>
+</div>
+<!-- Incidents Table -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse" id="incidents-table">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-label-bold text-label-bold uppercase text-[11px] h-9">
+<th class="px-3 rounded-l">Fecha</th>
+<th class="px-3">Tipo de Incidencia</th>
+<th class="px-3">Descripción / Motivo</th>
+<th class="px-3 text-center">Tiempo</th>
+<th class="px-3 text-right">Descuento</th>
+<th class="px-3 text-center">Estatus</th>
+<th class="px-3 text-center rounded-r">Comprobante</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low font-body-sm text-body-sm">
+<!-- Row 1: Falta Injustificada -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="falta-inj">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    15 May 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Jueves</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-error-container/40 text-on-error-container font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px]">person_off</span>
+                      Falta Injustificada
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate" title="No se presentó a laborar en turno vespertino">
+                    No se presentó a laborar
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">1 día</td>
+<td class="px-3 text-right font-label-bold text-error tabular-nums">$400.00</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-error-container text-on-error-container">
+                      Aplicada
+                    </span>
+</td>
+<td class="px-3 text-center">
+<button class="inline-flex items-center gap-1 text-[11px] font-label-subtle text-secondary hover:text-on-secondary-fixed-variant bg-secondary-fixed/30 hover:bg-secondary-fixed/60 px-2 py-1 rounded transition-colors" onclick="uploadJustificante('15 May 2025')" type="button">
+<span class="material-symbols-outlined text-[14px]">upload_file</span>
+                      Adjuntar
+                    </button>
+</td>
+</tr>
+<!-- Row 2: Retardo 25 min -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="retardo">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    13 May 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Martes</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-on-surface font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">schedule</span>
+                      Retardo
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate" title="Llegada tarde por tráfico en Av. Constitución">
+                    Llegada tarde (Reg: 09:25 AM)
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">25 min</td>
+<td class="px-3 text-right font-label-bold text-on-surface-variant tabular-nums">$20.83</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-surface-container-high text-on-surface">
+                      Aplicada
+                    </span>
+</td>
+<td class="px-3 text-center">
+<span class="text-outline text-[11px] italic font-body-sm">Sin documento</span>
+</td>
+</tr>
+<!-- Row 3: Retardo 15 min -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="retardo">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    09 May 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Viernes</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-on-surface font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">schedule</span>
+                      Retardo
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate" title="Llegada tarde tras descanso">
+                    Llegada tarde
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">15 min</td>
+<td class="px-3 text-right font-label-bold text-on-surface-variant tabular-nums">$12.50</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-surface-container-high text-on-surface">
+                      Aplicada
+                    </span>
+</td>
+<td class="px-3 text-center">
+<span class="text-outline text-[11px] italic font-body-sm">Sin documento</span>
+</td>
+</tr>
+<!-- Row 4: Retardo 30 min (Medio d&iacute;a) -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="retardo">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    07 May 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Miércoles</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-on-surface font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">schedule</span>
+                      Retardo &gt;30m
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate" title="Descuento reglamentario de medio turno por retardo prolongado">
+                    Llegada tarde (&gt;30 min regla)
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">30 min</td>
+<td class="px-3 text-right font-label-bold text-error tabular-nums">$25.00</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-surface-container-high text-on-surface">
+                      Aplicada
+                    </span>
+</td>
+<td class="px-3 text-center">
+<button class="inline-flex items-center gap-1 text-[11px] font-label-subtle text-secondary hover:text-on-secondary-fixed-variant bg-secondary-fixed/30 hover:bg-secondary-fixed/60 px-2 py-1 rounded transition-colors" onclick="uploadJustificante('07 May 2025')" type="button">
+<span class="material-symbols-outlined text-[14px]">upload_file</span>
+                      Adjuntar
+                    </button>
+</td>
+</tr>
+<!-- Row 5: Falta Justificada con PDF m&eacute;dico -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="falta-just">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    02 May 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Viernes</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px] text-success">check_circle</span>
+                      Falta Justificada
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate" title="Cita con especialista IMSS acreditada con receta y folio">
+                    Cita médica IMSS (Folio #8491)
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">1 día</td>
+<td class="px-3 text-right font-label-bold text-success tabular-nums">$0.00</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-tertiary-fixed text-on-tertiary-fixed">
+                      Justificada
+                    </span>
+</td>
+<td class="px-3 text-center">
+<button class="inline-flex items-center gap-1 text-[11px] font-label-bold text-secondary hover:underline" onclick="previewDoc('Justificante_Medico_IMSS_02May.pdf')" type="button">
+<span class="material-symbols-outlined text-[16px] text-error">picture_as_pdf</span>
+                      Ver PDF
+                    </button>
+</td>
+</tr>
+<!-- Row 6: D&iacute;a Econ&oacute;mico con Huella Desactivada -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="dia-eco">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    30 Abr 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Miércoles</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-secondary-fixed text-on-secondary-fixed font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px]">fingerprint_off</span>
+                      Día Económico
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate" title="Permiso acordado con Administración. Huella biométrica pausada">
+                    Día Económico (Huella desactivada)
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">1 día</td>
+<td class="px-3 text-right font-label-bold text-success tabular-nums">$0.00</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-secondary-fixed text-on-secondary-fixed">
+                      Autorizado
+                    </span>
+</td>
+<td class="px-3 text-center">
+<button class="inline-flex items-center gap-1 text-[11px] font-label-bold text-secondary hover:underline" onclick="previewDoc('Autorizacion_Dia_Economico_30Abr.pdf')" type="button">
+<span class="material-symbols-outlined text-[16px] text-error">picture_as_pdf</span>
+                      Ver PDF
+                    </button>
+</td>
+</tr>
+<!-- Row 7: Retardo 15 min -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="retardo">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    28 Abr 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Lunes</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-on-surface font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">schedule</span>
+                      Retardo
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate">
+                    Llegada tarde
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">15 min</td>
+<td class="px-3 text-right font-label-bold text-on-surface-variant tabular-nums">$12.50</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-surface-container-high text-on-surface">
+                      Aplicada
+                    </span>
+</td>
+<td class="px-3 text-center">
+<span class="text-outline text-[11px] italic font-body-sm">Sin documento</span>
+</td>
+</tr>
+<!-- Row 8: Falta Injustificada -->
+<tr class="hover:bg-surface-bright transition-colors h-14 incident-row" data-type="falta-inj">
+<td class="px-3 font-label-bold text-on-surface whitespace-nowrap">
+                    25 Abr 2025
+                    <span class="block text-[11px] font-body-sm text-on-surface-variant">Viernes</span>
+</td>
+<td class="px-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-error-container/40 text-on-error-container font-label-bold text-[11px]">
+<span class="material-symbols-outlined text-[14px]">person_off</span>
+                      Falta Injustificada
+                    </div>
+</td>
+<td class="px-3 text-on-surface-variant max-w-[180px] truncate" title="Inasistencia no programada ni reportada">
+                    No se presentó a laborar
+                  </td>
+<td class="px-3 text-center font-label-bold text-on-surface">1 día</td>
+<td class="px-3 text-right font-label-bold text-error tabular-nums">$400.00</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-subtle text-[11px] bg-error-container text-on-error-container">
+                      Aplicada
+                    </span>
+</td>
+<td class="px-3 text-center">
+<button class="inline-flex items-center gap-1 text-[11px] font-label-subtle text-secondary hover:text-on-secondary-fixed-variant bg-secondary-fixed/30 hover:bg-secondary-fixed/60 px-2 py-1 rounded transition-colors" onclick="uploadJustificante('25 Abr 2025')" type="button">
+<span class="material-symbols-outlined text-[14px]">upload_file</span>
+                      Adjuntar
+                    </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Count -->
+<div class="pt-space-md mt-space-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+<span class="font-body-sm text-body-sm text-on-surface-variant" id="showing-text">Mostrando 1 a 8 de 8 registros de incidencias</span>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded bg-surface-container-low text-on-surface hover:bg-surface-container flex items-center justify-center transition-colors disabled:opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-secondary text-on-secondary font-label-bold text-[12px] flex items-center justify-center" type="button">1</button>
+<button class="w-8 h-8 rounded bg-surface-container-low text-on-surface hover:bg-surface-container font-label-subtle text-[12px] flex items-center justify-center transition-colors" type="button">2</button>
+<button class="w-8 h-8 rounded bg-surface-container-low text-on-surface hover:bg-surface-container flex items-center justify-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Podiatrist Privacy & Self-Service Rule Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex items-start gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined text-[22px]">visibility_lock</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface">Privacidad de Perfiles y Visualización por Rol</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+              Los <strong>podólogos y especialistas clínicos</strong> únicamente tienen permiso para consultar su salario base, comisiones acumuladas del mes y estatus de sus justificantes adjuntos. El desglose de deducciones patronales de clínica, retenciones IMSS/ISR globales y costos patronales son exclusivos del rol de Administración General.
+            </p>
+</div>
+</div>
+</div>
+<!-- COLUMN 2: Sidebar Panels (Interactive Calendar + Payroll Summary + Recibo Module) (4 cols = ~34%) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Interactive Attendance Calendar -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="font-title-sm text-title-sm text-on-surface">Calendario - Mayo 2025</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container-low text-on-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container-low text-on-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Calendar Grid -->
+<div class="w-full mt-2">
+<!-- Day Names -->
+<div class="grid grid-cols-7 gap-1 text-center font-label-bold text-label-bold text-on-surface-variant text-[11px] pb-2">
+<span>Lun</span>
+<span>Mar</span>
+<span>Mié</span>
+<span>Jue</span>
+<span>Vie</span>
+<span>Sáb</span>
+<span>Dom</span>
+</div>
+<!-- Calendar Days -->
+<div class="grid grid-cols-7 gap-1 text-center text-[12px] font-body-sm">
+<!-- Prior Month Overflow -->
+<span class="py-2 text-outline/50">28</span>
+<span class="py-2 text-outline/50">29</span>
+<span class="py-2 text-outline/50">30</span>
+<!-- Day 1 -->
+<span class="py-2 text-on-surface font-label-subtle">1</span>
+<!-- Day 2: Falta Justificada (Verde) -->
+<div class="py-1 flex flex-col items-center justify-center cursor-pointer group" title="Falta Justificada (Cita médica)">
+<span class="font-label-bold text-on-surface">2</span>
+<span class="w-2 h-2 rounded-full bg-success"></span>
+</div>
+<span class="py-2 text-on-surface font-label-subtle">3</span>
+<span class="py-2 text-on-surface font-label-subtle">4</span>
+<!-- Week 2 -->
+<span class="py-2 text-on-surface font-label-subtle">5</span>
+<span class="py-2 text-on-surface font-label-subtle">6</span>
+<!-- Day 7: Retardo -->
+<div class="py-1 flex flex-col items-center justify-center cursor-pointer group" title="Retardo 30 min">
+<span class="font-label-bold text-on-surface">7</span>
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+</div>
+<span class="py-2 text-on-surface font-label-subtle">8</span>
+<!-- Day 9: Retardo -->
+<div class="py-1 flex flex-col items-center justify-center cursor-pointer group" title="Retardo 15 min">
+<span class="font-label-bold text-on-surface">9</span>
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+</div>
+<span class="py-2 text-on-surface font-label-subtle">10</span>
+<span class="py-2 text-on-surface font-label-subtle">11</span>
+<!-- Week 3 -->
+<span class="py-2 text-on-surface font-label-subtle">12</span>
+<!-- Day 13: Retardo -->
+<div class="py-1 flex flex-col items-center justify-center cursor-pointer group" title="Retardo 25 min">
+<span class="font-label-bold text-on-surface">13</span>
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+</div>
+<span class="py-2 text-on-surface font-label-subtle">14</span>
+<!-- Day 15: Falta Injustificada (Rojo Marcado) -->
+<div class="py-1 flex flex-col items-center justify-center cursor-pointer" title="Falta injustificada (-$400.00)">
+<span class="w-6 h-6 rounded-full bg-error-container text-error font-label-bold flex items-center justify-center text-[11px]">15</span>
+</div>
+<span class="py-2 text-on-surface font-label-subtle">16</span>
+<span class="py-2 text-on-surface font-label-subtle">17</span>
+<span class="py-2 text-on-surface font-label-subtle">18</span>
+<!-- Week 4 -->
+<span class="py-2 text-on-surface font-label-subtle">19</span>
+<span class="py-2 text-on-surface font-label-subtle">20</span>
+<span class="py-2 text-on-surface font-label-subtle">21</span>
+<span class="py-2 text-on-surface font-label-subtle">22</span>
+<span class="py-2 text-on-surface font-label-subtle">23</span>
+<span class="py-2 text-on-surface font-label-subtle">24</span>
+<span class="py-2 text-on-surface font-label-subtle">25</span>
+<!-- Week 5 -->
+<span class="py-2 text-on-surface font-label-subtle">26</span>
+<span class="py-2 text-on-surface font-label-subtle">27</span>
+<!-- Day 28: Retardo -->
+<div class="py-1 flex flex-col items-center justify-center cursor-pointer group" title="Retardo 15 min">
+<span class="font-label-bold text-on-surface">28</span>
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+</div>
+<span class="py-2 text-on-surface font-label-subtle">29</span>
+<!-- Day 30: Retardo / D&iacute;a Eco -->
+<div class="py-1 flex flex-col items-center justify-center cursor-pointer group" title="Día Económico">
+<span class="font-label-bold text-secondary">30</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<span class="py-2 text-on-surface font-label-subtle">31</span>
+<span class="py-2 text-outline/50">1</span>
+</div>
+</div>
+<!-- Calendar Indicators Legend -->
+<div class="mt-space-md pt-space-sm flex items-center justify-around text-[11px] font-label-subtle text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-error"></span>
+<span>Falta injust.</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-success"></span>
+<span>Justificada</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 rounded-full bg-outline"></span>
+<span>Retardo</span>
+</div>
+</div>
+</div>
+<!-- Monthly Payroll Impact Summary Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col">
+<div class="flex items-center justify-between pb-space-sm">
+<h3 class="font-title-sm text-title-sm text-on-surface">Resumen de Impacto en Nómina</h3>
+<span class="px-2 py-0.5 rounded text-[11px] font-label-bold bg-secondary-fixed text-on-secondary-fixed">Periodo Mayo</span>
+</div>
+<div class="flex flex-col gap-2.5 mt-2 font-body-sm text-body-sm">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span>Faltas injustificadas (2 días)</span>
+<span class="font-label-bold text-error tabular-nums">-$800.00 MXN</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span>Faltas justificadas (1 comprobante)</span>
+<span class="font-label-bold text-success tabular-nums">$0.00 MXN</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span>Retardos acumulados (4 / 95 min)</span>
+<span class="font-label-bold text-error tabular-nums">-$79.16 MXN</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span>Días Económicos tomados (1 de 3)</span>
+<span class="font-label-bold text-secondary tabular-nums">Exento</span>
+</div>
+<div class="mt-2 pt-space-sm flex items-center justify-between">
+<span class="font-label-bold text-label-bold text-on-surface">Descuento total a nómina</span>
+<span class="font-title-sm text-title-sm text-error tabular-nums">-$879.16 MXN</span>
+</div>
+</div>
+<!-- Payout Notice -->
+<div class="mt-space-md p-space-sm rounded bg-surface-container-low text-[11px] text-on-surface-variant flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5">info</span>
+<span>Los cortes semanales de percepciones son los <strong>miércoles</strong> para pago en viernes (o jueves para sábado). El tope de bono de despensa mensual es de $1,420 MXN.</span>
+</div>
+</div>
+<!-- Electronic Signature & Photo Validation Card (from recibos.png) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">draw</span>
+<h3 class="font-title-sm text-title-sm text-on-surface">Recibo de Nómina &amp; Firma Digital</h3>
+</div>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-label-bold text-[10px] bg-tertiary-fixed text-on-tertiary-fixed">
+              Biométrico OK
+            </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Recibo quincenal generado con firma electrónica avanzada y captura fotográfica simultánea de autenticación.
+          </p>
+<!-- Receipt Signature Details Box -->
+<div class="mt-3 p-3 rounded-lg bg-surface-container-low flex flex-col gap-2">
+<div class="flex items-center justify-between text-[11px]">
+<span class="text-on-surface-variant font-label-subtle">Recibo Quincena 1 - Mayo 2025:</span>
+<span class="font-label-bold text-success flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">check</span> Firmado
+              </span>
+</div>
+<div class="flex items-center gap-3 pt-1">
+<!-- Podiatrist Photo Placeholder with Signature Stamp -->
+<div class="relative w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+<img class="w-full h-full object-cover" data-alt="Close up professional biometric identity photo of male clinical podiatrist looking directly into camera with soft clinical lighting in modern medical office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9X8ClvKWWrlVADXPRSnrXOVCCAUPWTIzuxRzYoCpytNPVny4Mjkd3B8cWwdqkN2ioGoIEpVgjT_CSLjwuw3zYOHSdGTzQuW7Y1mE6Gg-1LunrmYcjsYwm_u4j62QzqNOU7lr5NFxTDmsWef7bpJV8J5Ypp_7bFba2s2FMRqddbms040CKoBCoFXH6h0a96MARaFyDXhckQUao0aEHQbBufzIsXKfEAjnf9tSj6AK4u9RVEyeEJmiS">
+<div class="absolute bottom-0 right-0 bg-success text-on-primary rounded-full p-0.5">
+<span class="material-symbols-outlined text-[10px] block">verified</span>
+</div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-bold text-on-surface text-[12px] truncate">Rodrigo Morales T.</span>
+<span class="font-body-sm text-on-surface-variant text-[10px]">Hash: 4b9a8f2c-e1...</span>
+<span class="font-label-subtle text-outline text-[10px]">15/05/2025 - 14:22 hrs</span>
+</div>
+</div>
+<div class="pt-2 flex items-center gap-2">
+<button class="w-full py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-bold text-[11px] transition-colors flex items-center justify-center gap-1.5" onclick="previewReceiptDoc()" type="button">
+<span class="material-symbols-outlined text-[14px]">receipt_long</span>
+                Ver Recibo Digital PDF
+              </button>
+<button class="px-2.5 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" onclick="printReceipt()" title="Imprimir copia física" type="button">
+<span class="material-symbols-outlined text-[16px]">print</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- MODAL: REGISTRAR NUEVA INCIDENCIA -->
+<div class="fixed inset-0 z-50 bg-primary/60 backdrop-blur-sm flex items-center justify-center p-space-md hidden" id="modal-registro">
+<div class="bg-surface-container-lowest w-full max-w-lg rounded-xl shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+<div class="px-space-md py-space-sm bg-primary text-on-primary flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-secondary-fixed">add_circle</span>
+<span class="font-title-sm text-title-sm">Registrar Incidencia Laboral</span>
+</div>
+<button class="text-on-primary hover:opacity-75 transition-opacity" onclick="document.getElementById('modal-registro').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<form class="p-space-md flex flex-col gap-space-md" id="incident-form" onsubmit="saveIncident(event)">
+<!-- Colaborador -->
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface">Colaborador / Podólogo</label>
+<input class="h-9 px-3 rounded bg-surface-container-low text-on-surface font-body-sm focus:outline-none cursor-not-allowed" readonly="" type="text" value="Lic. Rodrigo Morales (POD-042)">
+</div>
+<!-- Tipo y Fecha -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface">Tipo de Incidencia</label>
+<select class="h-9 px-3 rounded bg-surface-container-low text-on-surface font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary" id="new-incident-type" required="">
+<option value="retardo">Retardo</option>
+<option value="falta-inj">Falta Injustificada</option>
+<option value="falta-just">Falta Justificada (Médica)</option>
+<option value="dia-eco">Día Económico</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface">Fecha de Ocurrencia</label>
+<input class="h-9 px-3 rounded bg-surface-container-low text-on-surface font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary" required="" type="date" value="2025-05-16">
+</div>
+</div>
+<!-- Tiempo y Afectación -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface">Tiempo / Duración</label>
+<input class="h-9 px-3 rounded bg-surface-container-low text-on-surface font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="Ej. 15 min / 1 día" required="" type="text">
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface">Descuento Estimado ($)</label>
+<input class="h-9 px-3 rounded bg-surface-container-low text-on-surface font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="0.00" step="0.01" type="number">
+</div>
+</div>
+<!-- Adjuntar Justificante PDF -->
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface">Justificante Médico / Comprobante Oficial (PDF)</label>
+<div class="border-2 border-dashed border-outline-variant hover:border-secondary rounded-lg p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[24px] text-secondary">upload_file</span>
+<span class="font-body-sm text-body-sm text-on-surface mt-1">Arrastra aquí el justificante PDF o da clic para examinar</span>
+<span class="font-label-subtle text-outline text-[11px]">Si es validado, el sistema exime del descuento en nómina</span>
+<input accept=".pdf" class="hidden" id="file-uploader" onchange="handleFileSelect(event)" type="file">
+</div>
+<span class="text-[11px] font-label-bold text-success hidden flex items-center gap-1 mt-1" id="selected-file-label">
+<span class="material-symbols-outlined text-[14px]">check</span> Archivo seleccionado listo para validación
+          </span>
+</div>
+<!-- Botones de Acción -->
+<div class="flex items-center justify-end gap-space-sm pt-space-sm border-t border-surface-container">
+<button class="px-space-md py-2 rounded text-on-surface font-label-bold text-label-bold hover:bg-surface-container transition-colors" onclick="document.getElementById('modal-registro').classList.add('hidden')" type="button">
+            Cancelar
+          </button>
+<button class="px-space-md py-2 rounded bg-secondary hover:bg-on-secondary-fixed-variant text-on-secondary font-label-bold text-label-bold shadow transition-colors flex items-center gap-1.5" type="submit">
+<span class="material-symbols-outlined text-[18px]">save</span>
+            Guardar Incidencia
+          </button>
+</div>
+</form>
+</div>
+</div>
+<!-- MODAL: REGLAMENTO DETALLADO DE ASISTENCIA Y DEDUCCIONES -->
+<div class="fixed inset-0 z-50 bg-primary/60 backdrop-blur-sm flex items-center justify-center p-space-md hidden" id="modal-reglas">
+<div class="bg-surface-container-lowest w-full max-w-2xl rounded-xl shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150 max-h-[85vh]">
+<div class="px-space-md py-space-sm bg-primary text-on-primary flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-secondary-fixed">menu_book</span>
+<span class="font-title-sm text-title-sm">Políticas Clínicas de Asistencia, Deducciones e Impuestos</span>
+</div>
+<button class="text-on-primary hover:opacity-75 transition-opacity" onclick="document.getElementById('modal-reglas').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="p-space-md overflow-y-auto flex flex-col gap-space-md font-body-sm text-body-sm text-on-surface-variant">
+<!-- Faltas -->
+<div class="p-3 rounded-lg bg-surface-container-low">
+<h4 class="font-label-bold text-label-bold text-on-surface flex items-center gap-1.5 mb-1">
+<span class="material-symbols-outlined text-error text-[18px]">cancel</span> Faltas (Injustificadas vs. Justificadas)
+          </h4>
+<ul class="list-disc list-inside space-y-1 text-[13px]">
+<li><strong>Injustificadas:</strong> Se descuentan los días completos faltados de manera íntegra. Si el sistema no detecta justificante aprobado, se ejecuta el descuento.</li>
+<li><strong>Justificadas:</strong> El colaborador debe subir comprobante médico en PDF. Si el módulo detecta y valida el justificante oficial, <em>no cuenta como falta y no se aplica deducción económica</em>.</li>
+</ul>
+</div>
+<!-- Retardos -->
+<div class="p-3 rounded-lg bg-surface-container-low">
+<h4 class="font-label-bold text-label-bold text-on-surface flex items-center gap-1.5 mb-1">
+<span class="material-symbols-outlined text-outline text-[18px]">timelapse</span> Regla de Retardos Acumulativos
+          </h4>
+<ul class="list-disc list-inside space-y-1 text-[13px]">
+<li>A partir de <strong>10 minutos</strong> de tolerancia llegando tarde se tipifica como retardo.</li>
+<li>A partir de <strong>30 minutos</strong> tarde se descuenta automáticamente <strong>medio día laboral</strong>.</li>
+<li><strong>2 retardos quincenales:</strong> Se aplica sanción equivalente a media falta (se descuenta medio día).</li>
+<li><strong>4 retardos quincenales:</strong> Equivale a 1 falta completa (se descuenta el día entero).</li>
+<li>Si el sistema detecta justificante médico PDF aprobado, el retardo queda justificado.</li>
+</ul>
+</div>
+<!-- Deducciones Legales & Podología -->
+<div class="p-3 rounded-lg bg-surface-container-low">
+<h4 class="font-label-bold text-label-bold text-on-surface flex items-center gap-1.5 mb-1">
+<span class="material-symbols-outlined text-secondary text-[18px]">gavel</span> Deducciones Legales y Clínica PodoCentro
+          </h4>
+<ul class="list-disc list-inside space-y-1 text-[13px]">
+<li><strong>Seguro Social (IMSS):</strong> Se calcula por mes o bimestre. (Ej: $1,386 MXN donde la clínica absorbe $1,257 MXN patronal y el empleado $129 MXN; bimestral $4,214 MXN con patrón $3,861 MXN).</li>
+<li><strong>Percepciones del Podólogo:</strong> Salario base ($4,500 MXN quincenal típico) más horas extras liquidadas en efectivo. El bono de despensa tiene un límite reglamentario de <strong>$1,420 MXN mensuales</strong>.</li>
+<li><strong>Privacidad de Visualización:</strong> Los podólogos solo tienen visibilidad sobre su salario, comisiones del mes y recibo individual. El resto de cálculos patronales son de acceso restringido para la gerencia.</li>
+</ul>
+</div>
+</div>
+<div class="p-space-sm bg-surface-container flex justify-end">
+<button class="px-space-md py-1.5 rounded bg-primary text-on-primary font-label-bold text-label-bold" onclick="document.getElementById('modal-reglas').classList.add('hidden')" type="button">
+          Entendido
+        </button>
+</div>
+</div>
+</div>
+<!-- Toast Notification Template -->
+<div class="fixed bottom-6 right-6 bg-primary text-on-primary px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none" id="toast-notif">
+<span class="material-symbols-outlined text-success" id="toast-icon">check_circle</span>
+<span class="font-body-sm text-body-sm" id="toast-msg">Acción procesada exitosamente.</span>
+</div>
+</div>
+<script>
+  function showToast(message, isSuccess = true) {
+    const toast = document.getElementById('toast-notif');
+    const msg = document.getElementById('toast-msg');
+    const icon = document.getElementById('toast-icon');
+    
+    msg.textContent = message;
+    icon.textContent = isSuccess ? 'check_circle' : 'info';
+    icon.className = isSuccess ? 'material-symbols-outlined text-success' : 'material-symbols-outlined text-secondary';
+    
+    toast.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+    setTimeout(() => {
+      toast.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+    }, 3200);
+  }
+
+  function filterIncidents() {
+    const type = document.getElementById('filter-type').value;
+    const rows = document.querySelectorAll('.incident-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const rowType = row.getAttribute('data-type');
+      if (type === 'all' || rowType === type) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    document.getElementById('showing-text').textContent = 'Mostrando ' + visibleCount + ' de ' + rows.length + ' registros de incidencias';
+  }
+
+  function exportData() {
+    showToast('Exportando reporte de faltas y deducciones a Excel/PDF...');
+  }
+
+  function previewDoc(docName) {
+    showToast('Abriendo justificante digital: ' + docName);
+  }
+
+  function previewReceiptDoc() {
+    showToast('Visualizando recibo digital de nómina con sello biométrico y firma.');
+  }
+
+  function printReceipt() {
+    window.print();
+  }
+
+  function uploadJustificante(fecha) {
+    document.getElementById('modal-registro').classList.remove('hidden');
+    showToast('Adjuntando documento para la incidencia del ' + fecha);
+  }
+
+  function handleFileSelect(e) {
+    if (e.target.files.length > 0) {
+      const label = document.getElementById('selected-file-label');
+      label.classList.remove('hidden');
+      label.innerHTML = '<span class="material-symbols-outlined text-[14px]">check</span> Justificante ' + e.target.files[0].name + ' validado';
+    }
+  }
+
+  function saveIncident(e) {
+    e.preventDefault();
+    document.getElementById('modal-registro').classList.add('hidden');
+    showToast('Incidencia registrada y regla de descuento calculada correctamente.', true);
+  }
+</script></main></div></body></html>

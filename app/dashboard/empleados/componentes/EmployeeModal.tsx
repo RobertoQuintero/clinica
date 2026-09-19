@@ -46,6 +46,7 @@ function buildEmptyForm(): EmployeeFormInput {
     id_department: 0,
     id_puesto: 0,
     id_turno: null,
+    id_periodo_pago: null,
     dias_laborales: null,
     horario: null,
     salario_diario: null,
@@ -80,6 +81,7 @@ function employeeToFormInput(employee: IEmployeeListItem): EmployeeFormInput {
     id_department: employee.id_department,
     id_puesto: employee.id_puesto,
     id_turno: employee.id_turno,
+    id_periodo_pago: employee.id_periodo_pago,
     dias_laborales: employee.dias_laborales,
     horario: employee.horario,
     salario_diario: employee.salario_diario,
@@ -133,9 +135,10 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
     setForm((prev) => ({ ...prev, id_department, id_puesto: 0 }));
   };
 
-  const handleSelectIdChange = (field: "id_puesto" | "id_sucursal" | "id_turno" | "id_supervisor") =>
+  const handleSelectIdChange = (field: "id_puesto" | "id_sucursal" | "id_turno" | "id_periodo_pago" | "id_supervisor") =>
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const value = e.target.value === "" ? (field === "id_turno" || field === "id_supervisor" ? null : 0) : Number(e.target.value);
+      const nullableFields = ["id_turno", "id_periodo_pago", "id_supervisor"];
+      const value = e.target.value === "" ? (nullableFields.includes(field) ? null : 0) : Number(e.target.value);
       setForm((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -406,6 +409,17 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
                   {catalogs.shifts.map((shift) => (
                     <option key={shift.id_turno} value={shift.id_turno}>
                       {shift.description}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Periodo de pago</span>
+                <select name="id_periodo_pago" value={form.id_periodo_pago ?? ""} onChange={handleSelectIdChange("id_periodo_pago")} className={inputClass}>
+                  <option value="">Sin periodo</option>
+                  {catalogs.paymentPeriods.map((paymentPeriod) => (
+                    <option key={paymentPeriod.id_payment_period} value={paymentPeriod.id_payment_period}>
+                      {paymentPeriod.description}
                     </option>
                   ))}
                 </select>

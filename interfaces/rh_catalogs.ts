@@ -21,3 +21,11 @@ export interface IShift {
   description:   string;
   status:        boolean;
 }
+
+export interface IPaymentPeriod {
+  id_payment_period: number;
+  clave_sat:          string | null;
+  description:        string;
+  days:               number | null;
+  status:             boolean;
+}

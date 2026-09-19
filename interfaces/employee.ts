@@ -29,6 +29,7 @@ export interface IEmployee {
   id_department:       number;
   id_puesto:           number;
   id_turno:            number | null;
+  id_periodo_pago:     number | null;
   dias_laborales:      string | null;
   horario:             string | null;
   salario_diario:      number | null;
@@ -55,6 +56,7 @@ export interface IEmployeeListItem extends IEmployee {
 export interface IEmployeeRecord extends IEmployeeListItem {
   nombre_supervisor:   string | null;   // concatenación de las tres columnas del supervisor
   nombre_turno:        string | null;
+  nombre_periodo_pago: string | null;
 }
 
 /** Payload del modal de alta/edición. Sin campos derivados ni generados. */

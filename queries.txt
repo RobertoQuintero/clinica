@@ -817,6 +817,29 @@ ALTER TABLE [RH].[empleados] ADD
     [salario_diario_fiscal] [decimal](12,2) NULL;
 GO
 
+-- Spec 51: catálogo de periodos de pago (tabla ya existente en BD, documentada por completitud).
+-- Nota: tipos reales verificados contra la BD (difieren de lo asumido originalmente en la spec:
+-- id_payment_period es smallint, no tinyint; clave_sat es varchar(50), no varchar(10)).
+CREATE TABLE [RH].[payment_periods](
+    [id_payment_period] [smallint]     NOT NULL,
+    [clave_sat]         [varchar](50)  NULL,   -- clave del catálogo SAT c_PeriodicidadPago
+    [description]       [varchar](50)  NOT NULL,
+    [days]              [smallint]     NULL,   -- duración del periodo en días, ej. 7, 15, 30
+    [status]            [bit]          NOT NULL CONSTRAINT [DF_payment_periods_status] DEFAULT (1),
+
+ CONSTRAINT [PK_payment_periods] PRIMARY KEY CLUSTERED ([id_payment_period] ASC)
+) ON [PRIMARY]
+GO
+
+-- Spec 51: periodo de pago del empleado (catálogo RH.payment_periods).
+-- id_periodo_pago es smallint (no tinyint) para coincidir con el tipo real de
+-- RH.payment_periods.id_payment_period.
+ALTER TABLE [RH].[empleados] ADD
+    [id_periodo_pago] [smallint] NULL
+    CONSTRAINT [FK_empleados_periodo_pago]
+        FOREIGN KEY REFERENCES [RH].[payment_periods] ([id_payment_period]);
+GO
+
 -------------------- DOCUMENTOS DEL EMPLEADO ---------------------
 USE [CentroPodologico]
 GO
@@ -1136,3 +1159,96 @@ GO
 CREATE INDEX IX_purchase_request_items_request
   ON [CentroPodologico].[inventory].[purchase_request_items] ([id_purchase_request]);
 GO
+
+-------------------NOMINA PAYROLL------------------
+
+CREATE SCHEMA payroll
+
+USE [CentroPodologico]
+GO
+/****** Object:  Table [payroll].[cat_taxed_exempt]    Script Date: 18/09/2026 05:30:35 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [payroll].[cat_taxed_exempt](
+	[id_taxed_exempt] [smallint] NOT NULL,
+	[description] [varchar](50) NULL,
+	[status] [bit] NULL,
+ CONSTRAINT [PK_cat_taxed_exempt] PRIMARY KEY CLUSTERED 
+(
+	[id_taxed_exempt] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [payroll].[perceptions]    Script Date: 18/09/2026 05:30:35 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [payroll].[perceptions](
+	[id_perception] [smallint] NULL,
+	[clave_sat] [varchar](50) NULL,
+	[description] [varchar](250) NULL,
+	[id_taxed_exempt] [smallint] NULL,
+	[exempt_limit] [varchar](250) NULL,
+	[is_billed] [bit] NULL,
+	[status] [bit] NULL
+) ON [PRIMARY]
+GO
+/****** Object:  Table [payroll].[tablas_retencion]    Script Date: 18/09/2026 05:30:35 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [payroll].[tablas_retencion](
+	[id_tarifa] [int] NOT NULL,
+	[limite_inferior] [decimal](18, 2) NOT NULL,
+	[limite_superior] [decimal](18, 2) NULL,
+	[cuota_fija] [decimal](18, 2) NOT NULL,
+	[porcentaje_excedente] [decimal](5, 2) NOT NULL,
+	[id_payment_period] [int] NULL,
+	[status] [bit] NULL,
+	[ejercicio] [int] NULL,
+ CONSTRAINT [PK__tablas_retencion__3213E83F4043899B] PRIMARY KEY CLUSTERED 
+(
+	[id_tarifa] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+-- Spec 52: periodos de nómina por sucursal.
+CREATE TABLE [payroll].[periods](
+    [id_period]         [int] IDENTITY(1,1) NOT NULL,
+    [id_sucursal]       [int]          NOT NULL,
+    [id_payment_period] [smallint]     NOT NULL,   -- frecuencia (clave SAT c_PeriodicidadPago)
+    [codigo]            [varchar](20)  NOT NULL,   -- NOM-2026-S38, generado en servidor
+    [ejercicio]         [smallint]     NOT NULL,   -- año de fecha_inicio; base del consecutivo
+    [consecutivo]       [smallint]     NOT NULL,   -- por sucursal + ejercicio + frecuencia
+    [fecha_inicio]      [date]         NOT NULL,
+    [fecha_fin]         [date]         NOT NULL,
+    [fecha_corte]       [date]         NOT NULL,
+    [fecha_pago]        [date]         NOT NULL,
+    [status]            [tinyint]      NOT NULL CONSTRAINT [DF_periods_status] DEFAULT (1),
+    [created_by]        [int]          NOT NULL,
+    [created_at]        [datetime2](0) NOT NULL,
+    [updated_at]        [datetime2](0) NULL,
+ CONSTRAINT [PK_periods] PRIMARY KEY CLUSTERED ([id_period] ASC),
+ CONSTRAINT [UQ_periods_sucursal_codigo] UNIQUE ([id_sucursal], [codigo]),
+ CONSTRAINT [UQ_periods_consecutivo] UNIQUE ([id_sucursal], [ejercicio], [id_payment_period], [consecutivo]),
+ CONSTRAINT [CK_periods_status] CHECK ([status] BETWEEN 1 AND 4),
+ CONSTRAINT [CK_periods_fechas] CHECK (
+     [fecha_fin] >= [fecha_inicio]
+     AND [fecha_corte] BETWEEN [fecha_inicio] AND [fecha_fin]
+     AND [fecha_pago] >= [fecha_corte]),
+ CONSTRAINT [FK_periods_sucursal] FOREIGN KEY ([id_sucursal])
+     REFERENCES [dbo].[sucursales] ([id_sucursal]),
+ CONSTRAINT [FK_periods_payment_period] FOREIGN KEY ([id_payment_period])
+     REFERENCES [RH].[payment_periods] ([id_payment_period])
+) ON [PRIMARY]
+GO
+CREATE INDEX [IX_periods_sucursal_ejercicio]
+    ON [payroll].[periods] ([id_sucursal], [ejercicio], [id_payment_period], [fecha_inicio])
+GO
+
+----------------------------------------------------
