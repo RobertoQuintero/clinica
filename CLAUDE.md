@@ -39,7 +39,7 @@ When writing or modifying any component or page, prioritize idiomatic Next.js (A
 
 ### Mutations go through Server Actions, not API routes
 
-- Almost all data mutation/reads happen via Next.js Server Actions (`"use server"` files named `actions.ts`), one per dashboard feature: `app/dashboard/<feature>/actions.ts` (citas, conteos, empleados, enlaces, facturacion, movimientos, pacientes, pedidos, productos, proveedores, recepciones, servicios, sucursales, tratamientos, usuarios, ventas) plus `app/dashboard/actions.ts` and `app/actions/auth.ts`. `facturacion` is the exception to "one `actions.ts`": each of its five tabs under `[id]/` has its own (see Domain modules below).
+- Almost all data mutation/reads happen via Next.js Server Actions (`"use server"` files named `actions.ts`), one per dashboard feature: `app/dashboard/<feature>/actions.ts` (citas, conteos, empleados, enlaces, facturacion, movimientos, nomina, pacientes, pedidos, productos, proveedores, recepciones, servicios, sucursales, tratamientos, usuarios, ventas) plus `app/dashboard/nomina/periodos/actions.ts`, `app/dashboard/actions.ts` and `app/actions/auth.ts`. `facturacion` is the exception to "one `actions.ts`": each of its five tabs under `[id]/` has its own (see Domain modules below).
 - `app/api/` only has two real REST routes, both out of protocol necessity rather than CRUD: `app/api/upload` (file/image upload to Cloudinary) and `app/api/asistencias/iclock/*` (ADMS/iClock webhook that ZKTeco biometric attendance devices push to — see Attendance/biometric checadores below). Don't add new REST endpoints for CRUD — follow the server-action pattern instead; a new REST route is only justified when an external system dictates the wire protocol, like the checador webhook.
 - Actions commonly return a discriminated union like `ActionResult<T> = { ok: true; data: T } | { ok: false; message: string }` (see `app/actions/auth.ts`) — follow this convention for new actions so client code can branch on `result.ok`.
 - **Validation**: use `zod` (already a dependency, see `lib/billing/schemas.ts`) to validate any input crossing a trust boundary — server action payloads coming from a form/client, and API route bodies (e.g. `app/api/asistencias/iclock/*`). Define the schema near the action/route (or in a shared `schemas.ts` for a feature, following the `lib/billing/schemas.ts` pattern) and parse before using the data, returning an `ActionResult`-style failure on a failed parse rather than letting bad input reach `queryParams`.
@@ -69,6 +69,7 @@ The sections below used to live inline here but are long and only relevant when 
 - Inventory (productos, proveedores, pedidos, recepciones, movimientos, conteos): `docs/inventario.md`
 - Google Calendar integration internals (service account JWT, PKCS conversion, env vars): `docs/google-calendar.md`
 - Billing / electronic invoicing (Facturapi, `BILLING` schema, API key encryption, audit log): `docs/facturacion.md`
+- Payroll (`nomina/`, `payroll` schema, payroll periods, code and date rules): `docs/nomina.md`
 
 ### Date/time handling (critical, mssql-specific)
 
@@ -91,7 +92,7 @@ Rules when touching any code with `fecha*`/`created_at`/date fields:
 
 ### Directory conventions
 
-- `app/dashboard/<feature>/` — one folder per feature (citas, conteos, empleados, enlaces, facturacion, movimientos, pacientes, pedidos, productos, proveedores, recepciones, servicios, sucursales, tratamientos, usuarios, ventas), each with `page.tsx`, `actions.ts`, and a `componentes/` subfolder for feature-local components. A feature with a detail view nests it under `<feature>/[id]/` (see `empleados/[id]/`, tabbed via its own `layout.tsx`; `facturacion/[id]/` follows the same tabbed pattern but with one `actions.ts` per tab instead of a single shared one).
+- `app/dashboard/<feature>/` — one folder per feature (citas, conteos, empleados, enlaces, facturacion, movimientos, nomina, pacientes, pedidos, productos, proveedores, recepciones, servicios, sucursales, tratamientos, usuarios, ventas), each with `page.tsx`, `actions.ts`, and a `componentes/` subfolder for feature-local components. `nomina/` nests its screens one level deeper (`nomina/periodos/` holds the `page.tsx`, `actions.ts` and `componentes/`). A feature with a detail view nests it under `<feature>/[id]/` (see `empleados/[id]/`, tabbed via its own `layout.tsx`; `facturacion/[id]/` follows the same tabbed pattern but with one `actions.ts` per tab instead of a single shared one).
 - `app/api/asistencias/iclock/` — ADMS/iClock webhook for ZKTeco biometric checadores (see `docs/asistencias-biometricas.md`); the only other REST route besides `app/api/upload`.
 - `interfaces/` — one file per domain entity (`paciente.ts`, `cita.ts`, `tratamiento.ts`, `employee.ts`, `checador.ts`, `purchase_order.ts`, `movement.ts`, `stock_count.ts`, etc.), plain TS interfaces mirroring DB rows/DTOs.
 - `contexts/` — global client providers: `AuthContext`, `SucursalContext`, `ThemeContext`.

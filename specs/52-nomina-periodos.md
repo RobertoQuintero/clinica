@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [51 — Empleados: campo periodo de pago](51-periodo-pago-empleado.md): reusa el catálogo `RH.payment_periods` (claves SAT `c_PeriodicidadPago`) como frecuencia del periodo.
   - [25 — Módulo de Empleados (RH)](25-empleados-alta-listado-detalle.md): primer módulo de RH; esta spec abre el módulo hermano de Nómina.
@@ -302,48 +302,48 @@ Cada paso deja el sistema compilando y funcional.
 
 **Permisos y navegación**
 
-- [ ] Los usuarios con `id_role` 1 o 4 ven en el sidebar el grupo "Nómina" con el hijo "Periodos" y pueden abrir `/dashboard/nomina/periodos`.
-- [ ] Los usuarios con `id_role` 2, 3, 5 o 6 no ven el grupo "Nómina". Si escriben `/dashboard/nomina` o `/dashboard/nomina/periodos`, se les redirige server-side a `/dashboard`.
-- [ ] Si un rol distinto de 1 o 4 llama a cualquier action de `nomina/periodos/actions.ts`, recibe `{ ok: false }` y no se lee ni escribe nada.
-- [ ] `/dashboard/nomina` redirige a `/dashboard/nomina/periodos`.
+- [x] Los usuarios con `id_role` 1 o 4 ven en el sidebar el grupo "Nómina" con el hijo "Periodos" y pueden abrir `/dashboard/nomina/periodos`.
+- [x] Los usuarios con `id_role` 2, 3, 5 o 6 no ven el grupo "Nómina". Si escriben `/dashboard/nomina` o `/dashboard/nomina/periodos`, se les redirige server-side a `/dashboard`.
+- [x] Si un rol distinto de 1 o 4 llama a cualquier action de `nomina/periodos/actions.ts`, recibe `{ ok: false }` y no se lee ni escribe nada.
+- [x] `/dashboard/nomina` redirige a `/dashboard/nomina/periodos`.
 
 **Alta**
 
-- [ ] El selector de frecuencia del modal muestra solo las frecuencias activas de `RH.payment_periods` con clave SAT 01, 02, 03, 04, 05, 06 o 10.
-- [ ] En una sucursal sin periodos semanales, con hoy = 2026-09-18, elegir "Semanal" rellena inicio 2026-09-14, fin 2026-09-20, corte 2026-09-16 y pago 2026-09-18.
-- [ ] Si el último periodo quincenal de la sucursal termina el 2026-09-15, elegir "Quincenal" rellena inicio 2026-09-16, fin 2026-09-30, corte 2026-09-23 y pago 2026-09-25.
-- [ ] Las 4 fechas sugeridas se pueden editar antes de guardar.
-- [ ] Al crear el primer periodo semanal de 2026 en una sucursal, su código es `NOM-2026-S01`. El siguiente semanal de la misma sucursal y el mismo año es `NOM-2026-S02`.
-- [ ] Dos sucursales distintas pueden tener cada una su propio `NOM-2026-S01`.
-- [ ] Un periodo nuevo se guarda con `status = 1` y la sucursal seleccionada en `SucursalContext`, y aparece en la tabla como "Programada" sin recargar manualmente.
-- [ ] Si se intenta guardar con fin < inicio, corte fuera del rango o pago < corte, se muestra un mensaje de error en el modal y no se inserta nada.
-- [ ] Si se intenta crear un periodo que se traslapa con otro de la misma frecuencia en la misma sucursal, se muestra un mensaje de traslape y no se inserta nada.
-- [ ] Un periodo quincenal que se traslapa en fechas con uno semanal de la misma sucursal **sí** se puede crear.
+- [x] El selector de frecuencia del modal muestra solo las frecuencias activas de `RH.payment_periods` con clave SAT 01, 02, 03, 04, 05, 06 o 10.
+- [x] En una sucursal sin periodos semanales, con hoy = 2026-09-18, elegir "Semanal" rellena inicio 2026-09-14, fin 2026-09-20, corte 2026-09-16 y pago 2026-09-18.
+- [x] Si el último periodo quincenal de la sucursal termina el 2026-09-15, elegir "Quincenal" rellena inicio 2026-09-16, fin 2026-09-30, corte 2026-09-23 y pago 2026-09-25.
+- [x] Las 4 fechas sugeridas se pueden editar antes de guardar.
+- [x] Al crear el primer periodo semanal de 2026 en una sucursal, su código es `NOM-2026-S01`. El siguiente semanal de la misma sucursal y el mismo año es `NOM-2026-S02`.
+- [x] Dos sucursales distintas pueden tener cada una su propio `NOM-2026-S01`.
+- [x] Un periodo nuevo se guarda con `status = 1` y la sucursal seleccionada en `SucursalContext`, y aparece en la tabla como "Programada" sin recargar manualmente.
+- [x] Si se intenta guardar con fin < inicio, corte fuera del rango o pago < corte, se muestra un mensaje de error en el modal y no se inserta nada.
+- [x] Si se intenta crear un periodo que se traslapa con otro de la misma frecuencia en la misma sucursal, se muestra un mensaje de traslape y no se inserta nada.
+- [x] Un periodo quincenal que se traslapa en fechas con uno semanal de la misma sucursal **sí** se puede crear.
 
 **Edición y borrado**
 
-- [ ] En las filas con estatus Programada aparecen los botones editar y eliminar. En los demás estatus no aparecen.
-- [ ] Al editar, la frecuencia y el código están bloqueados. Solo las 4 fechas se pueden modificar, y los cambios persisten con `updated_at` actualizado.
-- [ ] Editar las fechas para que se traslapen con otro periodo de la misma frecuencia muestra un error y no guarda.
-- [ ] Una fila con `status` distinto de 1 (ajustado a mano en la BD) no se puede editar ni eliminar, ni siquiera llamando a la action directamente: la action devuelve `{ ok: false }`.
-- [ ] Al eliminar se pide confirmación dentro de la UI, sin diálogo nativo del navegador. Si se confirma, la fila desaparece de la tabla y de la BD.
+- [x] En las filas con estatus Programada aparecen los botones editar y eliminar. En los demás estatus no aparecen.
+- [x] Al editar, la frecuencia y el código están bloqueados. Solo las 4 fechas se pueden modificar, y los cambios persisten con `updated_at` actualizado.
+- [x] Editar las fechas para que se traslapen con otro periodo de la misma frecuencia muestra un error y no guarda.
+- [x] Una fila con `status` distinto de 1 (ajustado a mano en la BD) no se puede editar ni eliminar, ni siquiera llamando a la action directamente: la action devuelve `{ ok: false }`.
+- [x] Al eliminar se pide confirmación dentro de la UI, sin diálogo nativo del navegador. Si se confirma, la fila desaparece de la tabla y de la BD.
 
 **Listado**
 
-- [ ] La tabla muestra solo los periodos de la sucursal seleccionada. Al cambiar de sucursal en el selector, la lista se actualiza.
-- [ ] La tabla muestra las columnas Código, Tipo, Rango, Corte, Fecha de pago, Estatus y Acciones. No hay columnas de montos.
-- [ ] Las pestañas de frecuencia muestran solo las frecuencias con periodos en el ejercicio seleccionado, con su conteo correcto, más "Todos".
-- [ ] El select de estatus, el de ejercicio y la búsqueda por código (coincidencia parcial) filtran los resultados y quedan reflejados en la URL. Recargar la página conserva los filtros.
-- [ ] Con más de 20 periodos en el filtro activo, la tabla muestra 20 y la paginación permite ir a la siguiente página.
-- [ ] La tarjeta "Periodo activo en curso" muestra el código, la frecuencia y el rango del periodo cuyo rango incluye hoy. Si no hay ninguno, muestra un estado vacío.
-- [ ] Las fechas mostradas coinciden exactamente con las guardadas en la BD, sin corrimiento de un día por UTC.
+- [x] La tabla muestra solo los periodos de la sucursal seleccionada. Al cambiar de sucursal en el selector, la lista se actualiza.
+- [x] La tabla muestra las columnas Código, Tipo, Rango, Corte, Fecha de pago, Estatus y Acciones. No hay columnas de montos.
+- [x] Las pestañas de frecuencia muestran solo las frecuencias con periodos en el ejercicio seleccionado, con su conteo correcto, más "Todos".
+- [x] El select de estatus, el de ejercicio y la búsqueda por código (coincidencia parcial) filtran los resultados y quedan reflejados en la URL. Recargar la página conserva los filtros.
+- [x] Con más de 20 periodos en el filtro activo, la tabla muestra 20 y la paginación permite ir a la siguiente página.
+- [x] La tarjeta "Periodo activo en curso" muestra el código, la frecuencia y el rango del periodo cuyo rango incluye hoy. Si no hay ninguno, muestra un estado vacío.
+- [x] Las fechas mostradas coinciden exactamente con las guardadas en la BD, sin corrimiento de un día por UTC.
 
 **Técnico**
 
-- [ ] `page.tsx`, `ActivePayrollPeriodCard` y `PayrollPeriodsTable` son Server Components. Solo `PayrollPeriodsFilterBar`, `PayrollPeriodModal` y `DeletePayrollPeriodButton` llevan `"use client"`.
-- [ ] Ninguna query de `nomina/periodos/actions.ts` devuelve un `Date` de JS: todas las fechas llegan como string.
-- [ ] Existen `docs/nomina.md` y la referencia correspondiente en `CLAUDE.md`.
-- [ ] `npm run build` compila sin errores de TypeScript.
+- [x] `page.tsx`, `ActivePayrollPeriodCard` y `PayrollPeriodsTable` son Server Components. Solo `PayrollPeriodsFilterBar`, `PayrollPeriodModal` y `DeletePayrollPeriodButton` llevan `"use client"`.
+- [x] Ninguna query de `nomina/periodos/actions.ts` devuelve un `Date` de JS: todas las fechas llegan como string.
+- [x] Existen `docs/nomina.md` y la referencia correspondiente en `CLAUDE.md`.
+- [x] `npm run build` compila sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 
