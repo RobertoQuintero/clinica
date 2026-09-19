@@ -129,7 +129,7 @@ export async function getPayrollPeriodsPage(
     }
     const search = filters.search.trim();
     if (search) {
-      conditions.push("p.codigo LIKE @search ESCAPE '\\'");
+      conditions.push("p.codigo LIKE @search");
       params.search = `%${escapeLikePattern(search)}%`;
     }
     const whereClause = conditions.join(" AND ");
