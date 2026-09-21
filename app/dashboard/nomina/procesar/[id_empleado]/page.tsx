@@ -10,7 +10,9 @@ import {
   type SearchParamsInput,
 } from "@/lib/payroll/processUrls";
 import { getPayrollEmployeeDetail } from "../actions";
+import PayrollEmployeeNavigation from "./componentes/PayrollEmployeeNavigation";
 import PayrollEmployeeProfileCard from "./componentes/PayrollEmployeeProfileCard";
+import PayrollTypeToggle from "./componentes/PayrollTypeToggle";
 import PayrollPerceptionsCard from "./componentes/PayrollPerceptionsCard";
 
 export default async function PayrollEmployeeDetailPage({
@@ -63,14 +65,25 @@ export default async function PayrollEmployeeDetailPage({
             )}
           </div>
         </div>
-        <Link
-          href={processHref}
-          className="inline-flex items-center justify-center gap-2 self-start sm:self-auto rounded-lg border border-[#c4c6d0] dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-2 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"
-        >
-          <ArrowLeft size={16} aria-hidden />
-          Regresar
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href={processHref}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#c4c6d0] dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-2 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"
+          >
+            <ArrowLeft size={16} aria-hidden />
+            Regresar
+          </Link>
+          {result.ok && result.data && (
+            <PayrollEmployeeNavigation
+              previousEmployeeId={result.data.navigation.previousEmployeeId}
+              nextEmployeeId={result.data.navigation.nextEmployeeId}
+              filters={filters}
+            />
+          )}
+        </div>
       </div>
+
+      {result.ok && result.data && <PayrollTypeToggle idEmpleado={idEmpleado} filters={filters} />}
 
       {!result.ok ? (
         <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">
