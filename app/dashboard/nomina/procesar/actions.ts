@@ -9,7 +9,9 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
-import { addZeroToday } from "@/utils/date_helpper";
+import { calculatePayrollPeriodSchema, revertPayrollCalculationSchema } from "@/lib/payroll/schemas";
+import { addZeroToday, buildDate } from "@/utils/date_helpper";
+import { revalidatePath } from "next/cache";
 
 const PERIOD_FROM = `
   FROM [CentroPodologico].[payroll].[periods] p
@@ -180,5 +182,151 @@ export async function getPayrollProcessPage(
   } catch (error) {
     console.error("getPayrollProcessPage", error);
     return { ok: false, message: "No se pudo cargar el cálculo de nómina" };
+  }
+}
+
+const PERIOD_NOT_CALCULABLE_MARKER = "PERIOD_NOT_CALCULABLE";
+const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
+
+/** Traduce los errores de SQL Server de calcular/revertir nómina a un mensaje en español. */
+function describePayrollCalculationError(error: unknown): string {
+  const sqlError = error as { message?: string; number?: number };
+  if (sqlError.message?.includes(PERIOD_NOT_CALCULABLE_MARKER)) {
+    return "El periodo no existe en esta sucursal o ya no está en estatus Programada o En cálculo";
+  }
+  if (sqlError.message?.includes(PERIOD_NOT_REVERTIBLE_MARKER)) {
+    return "El periodo no existe en esta sucursal o ya no está en estatus En cálculo";
+  }
+  if (sqlError.number === 2627 || sqlError.number === 2601 || sqlError.number === 1205) {
+    return "Otro usuario modificó la nómina al mismo tiempo. Intenta de nuevo";
+  }
+  return "No se pudo procesar la nómina del periodo";
+}
+
+function revalidatePayrollPaths() {
+  revalidatePath("/dashboard/nomina/procesar");
+  revalidatePath("/dashboard/nomina/periodos");
+}
+
+/**
+ * Calcular (estatus 1) y Recalcular (estatus 2): en un solo batch con bloqueo reemplaza el
+ * snapshot del periodo (filas 'O' y 'F') y deja el periodo en estatus 2 (En cálculo).
+ * La regla de elegibilidad y de días vive aquí; `lib/payroll/salaryCalculation.ts` la espeja.
+ */
+export async function calculatePayrollPeriod(
+  input: unknown,
+): Promise<ActionResult<{ operativa: number; fiscal: number }>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user } = access.data;
+
+  const parsed = calculatePayrollPeriodSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  try {
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @id_payment_period smallint, @fecha_inicio date, @fecha_fin date;
+       SELECT @id_payment_period = id_payment_period,
+              @fecha_inicio      = fecha_inicio,
+              @fecha_fin         = fecha_fin
+         FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status IN (1, 2);
+       IF @id_payment_period IS NULL
+         THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
+
+       DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
+
+       INSERT INTO [CentroPodologico].[payroll].[period_employees]
+         (id_period, id_empleado, tipo_nomina, salario_diario, dias, importe_salario, calculated_by, calculated_at)
+       SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, paid.dias,
+              ROUND(salary.salario_diario * paid.dias, 2),
+              @calculated_by, CAST(@calculated_at AS datetime2(0))
+         FROM [CentroPodologico].[RH].[empleados] e
+        CROSS APPLY (VALUES ('O', e.salario_diario), ('F', e.salario_diario_fiscal))
+                    AS salary (tipo_nomina, salario_diario)
+        CROSS APPLY (SELECT DATEDIFF(day,
+                              CASE WHEN e.fecha_ingreso > @fecha_inicio THEN e.fecha_ingreso ELSE @fecha_inicio END,
+                              @fecha_fin) + 1 AS dias) AS paid
+        WHERE e.status = 1 AND e.activo = 1
+          AND e.id_sucursal = @id_sucursal
+          AND e.id_periodo_pago = @id_payment_period
+          AND e.fecha_ingreso <= @fecha_fin
+          AND salary.salario_diario > 0;
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))
+        WHERE id_period = @id_period;
+
+       COMMIT;
+
+       SELECT ISNULL(SUM(CASE WHEN tipo_nomina = 'O' THEN 1 ELSE 0 END), 0) AS operativa,
+              ISNULL(SUM(CASE WHEN tipo_nomina = 'F' THEN 1 ELSE 0 END), 0) AS fiscal
+         FROM [CentroPodologico].[payroll].[period_employees]
+        WHERE id_period = @id_period;`,
+      {
+        id_period: parsed.data.id_period,
+        id_sucursal,
+        calculated_by: id_user,
+        calculated_at: buildDate(new Date()),
+      },
+    );
+
+    revalidatePayrollPaths();
+    return {
+      ok: true,
+      data: { operativa: Number(rows[0]?.operativa ?? 0), fiscal: Number(rows[0]?.fiscal ?? 0) },
+    };
+  } catch (error) {
+    console.error("calculatePayrollPeriod", error);
+    return { ok: false, message: describePayrollCalculationError(error) };
+  }
+}
+
+/** Revertir a Programada (solo estatus 2): borra el snapshot y regresa el periodo a estatus 1. */
+export async function revertPayrollCalculation(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  const parsed = revertPayrollCalculationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  try {
+    await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       IF NOT EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 2
+       )
+         THROW 50004, '${PERIOD_NOT_REVERTIBLE_MARKER}', 1;
+
+       DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET status = 1, updated_at = CAST(@updated_at AS datetime2(0))
+        WHERE id_period = @id_period;
+
+       COMMIT;`,
+      {
+        id_period: parsed.data.id_period,
+        id_sucursal,
+        updated_at: buildDate(new Date()),
+      },
+    );
+
+    revalidatePayrollPaths();
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("revertPayrollCalculation", error);
+    return { ok: false, message: describePayrollCalculationError(error) };
   }
 }
