@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Nómina: cálculo del salario](53-nomina-calculo-salario.md): el detalle lee el snapshot `payroll.period_employees` y cuelga de `/dashboard/nomina/procesar`.
   - [52 — Nómina: periodos de nómina](52-nomina-periodos.md): periodo, sucursal y estatus.
@@ -205,48 +205,48 @@ Cada paso deja el sistema compilando y funcional.
 
 **Permisos y rutas**
 
-- [ ] Los roles 1 y 4 pueden abrir `/dashboard/nomina/procesar/{id_empleado}?periodo={id}`. Con los roles 2, 3, 5 y 6, la URL redirige a `/dashboard`.
-- [ ] Si un rol distinto de 1 o 4 llama a `getPayrollEmployeeDetail`, recibe `{ ok: false }` y no se lee nada.
-- [ ] Sin `periodo`, con un `periodo` de otra sucursal o inexistente, o con un `id_empleado` inexistente o no numérico, la página responde 404.
-- [ ] Un empleado que cambió de sucursal después del cálculo sigue abriendo su detalle en ese periodo.
+- [x] Los roles 1 y 4 pueden abrir `/dashboard/nomina/procesar/{id_empleado}?periodo={id}`. Con los roles 2, 3, 5 y 6, la URL redirige a `/dashboard`.
+- [x] Si un rol distinto de 1 o 4 llama a `getPayrollEmployeeDetail`, recibe `{ ok: false }` y no se lee nada.
+- [x] Sin `periodo`, con un `periodo` de otra sucursal o inexistente, o con un `id_empleado` inexistente o no numérico, la página responde 404.
+- [x] Un empleado que cambió de sucursal después del cálculo sigue abriendo su detalle en ese periodo.
 
 **Entrada y salida**
 
-- [ ] En la tabla de Procesar, el nombre de cada empleado y el ícono "Ver detalle" abren su detalle con el mismo `periodo` y `tipo`.
-- [ ] Si Procesar tenía `puesto` y `q`, el detalle los conserva, y "Regresar" vuelve a `/dashboard/nomina/procesar` con los mismos `periodo`, `tipo`, `puesto` y `q`.
-- [ ] La tabla de Procesar mantiene su fila de totales y su mensaje de "sin resultados" alineados después de agregar la columna.
+- [x] En la tabla de Procesar, el nombre de cada empleado y el ícono "Ver detalle" abren su detalle con el mismo `periodo` y `tipo`.
+- [x] Si Procesar tenía `puesto` y `q`, el detalle los conserva, y "Regresar" vuelve a `/dashboard/nomina/procesar` con los mismos `periodo`, `tipo`, `puesto` y `q`.
+- [x] La tabla de Procesar mantiene su fila de totales y su mensaje de "sin resultados" alineados después de agregar la columna.
 
 **Contenido**
 
-- [ ] La tarjeta del empleado muestra foto (o iniciales si no hay `foto_url`), nombre, código, puesto, badge Activo/Inactivo, salario diario del tipo seleccionado, rango del periodo y fecha de pago.
-- [ ] Un empleado quincenal con `salario_diario = 333.33` en el periodo `2026-09-16 – 2026-09-30` muestra una línea "Sueldo base" con "15 días × $333.33 diarios" y `$4,999.95`. El encabezado dice "1 concepto" y "Percepciones totales $4,999.95".
-- [ ] Un empleado que ingresó el `2026-09-22` en ese periodo muestra "9 días × …" y la nota "Ingresó el 22/09/2026, proporcional". Uno con ingreso anterior al periodo no muestra nota.
-- [ ] El importe de "Sueldo base" en el detalle es idéntico al de la columna Sueldo de Procesar, para el mismo periodo y tipo.
-- [ ] No aparecen deducciones, neto, transferencia/efectivo, clave SAT, botones de exportar, firmar o dispersar, ni ninguna tarjeta o columna vacía.
+- [x] La tarjeta del empleado muestra foto (o iniciales si no hay `foto_url`), nombre, código, puesto, badge Activo/Inactivo, salario diario del tipo seleccionado, rango del periodo y fecha de pago.
+- [x] Un empleado quincenal con `salario_diario = 333.33` en el periodo `2026-09-16 – 2026-09-30` muestra una línea "Sueldo base" con "15 días × $333.33 diarios" y `$4,999.95`. El encabezado dice "1 concepto" y "Percepciones totales $4,999.95".
+- [x] Un empleado que ingresó el `2026-09-22` en ese periodo muestra "9 días × …" y la nota "Ingresó el 22/09/2026, proporcional". Uno con ingreso anterior al periodo no muestra nota.
+- [x] El importe de "Sueldo base" en el detalle es idéntico al de la columna Sueldo de Procesar, para el mismo periodo y tipo.
+- [x] No aparecen deducciones, neto, transferencia/efectivo, clave SAT, botones de exportar, firmar o dispersar, ni ninguna tarjeta o columna vacía.
 
 **Operativa | Fiscal**
 
-- [ ] El toggle cambia el salario diario, la línea de sueldo y el total, y queda en la URL (`tipo`).
-- [ ] Un empleado con `salario_diario_fiscal` `NULL` o `0` muestra, con `tipo=fiscal`, el aviso "Este empleado no está en la nómina fiscal de este periodo", la tarjeta del empleado con salario "—" y sin Anterior / Siguiente. Con `tipo=operativa` muestra su detalle normal.
+- [x] El toggle cambia el salario diario, la línea de sueldo y el total, y queda en la URL (`tipo`).
+- [x] Un empleado con `salario_diario_fiscal` `NULL` o `0` muestra, con `tipo=fiscal`, el aviso "Este empleado no está en la nómina fiscal de este periodo", la tarjeta del empleado con salario "—" y sin Anterior / Siguiente. Con `tipo=operativa` muestra su detalle normal.
 
 **Anterior / Siguiente**
 
-- [ ] Anterior / Siguiente recorren a los empleados en el mismo orden que la tabla de Procesar para ese periodo y tipo.
-- [ ] Con `puesto` o `q` en la URL, solo se recorren los empleados que cumplen esos filtros.
-- [ ] En el primer empleado "Anterior" se ve deshabilitado y no es un enlace. En el último pasa lo mismo con "Siguiente".
+- [x] Anterior / Siguiente recorren a los empleados en el mismo orden que la tabla de Procesar para ese periodo y tipo.
+- [x] Con `puesto` o `q` en la URL, solo se recorren los empleados que cumplen esos filtros.
+- [x] En el primer empleado "Anterior" se ve deshabilitado y no es un enlace. En el último pasa lo mismo con "Siguiente".
 
 **Estados**
 
-- [ ] Con el periodo en estatus 1, el detalle muestra "Esta nómina aún no se calcula" con un enlace a Procesar, sin tarjeta de percepciones ni navegación.
-- [ ] Después de "Recalcular" con un salario nuevo en la ficha, el detalle muestra el importe nuevo. Antes de recalcular, muestra el del snapshot.
+- [x] Con el periodo en estatus 1, el detalle muestra "Esta nómina aún no se calcula" con un enlace a Procesar, sin tarjeta de percepciones ni navegación.
+- [x] Después de "Recalcular" con un salario nuevo en la ficha, el detalle muestra el importe nuevo. Antes de recalcular, muestra el del snapshot.
 
 **Técnico**
 
-- [ ] `page.tsx` y todos los componentes de `procesar/[id_empleado]/componentes/` son Server Components: ninguno lleva `"use client"`.
-- [ ] La ficha `/dashboard/empleados/[id]` usa `EmployeeAvatar` y se ve igual que antes.
-- [ ] Ninguna query de `getPayrollEmployeeDetail` devuelve un `Date` de JS, y las fechas mostradas coinciden con la BD, sin corrimiento de un día.
-- [ ] `docs/nomina.md` tiene la sección "Detalle por empleado".
-- [ ] `npm run build` compila sin errores de TypeScript.
+- [x] `page.tsx` y todos los componentes de `procesar/[id_empleado]/componentes/` son Server Components: ninguno lleva `"use client"`.
+- [x] La ficha `/dashboard/empleados/[id]` usa `EmployeeAvatar` y se ve igual que antes.
+- [x] Ninguna query de `getPayrollEmployeeDetail` devuelve un `Date` de JS, y las fechas mostradas coinciden con la BD, sin corrimiento de un día.
+- [x] `docs/nomina.md` tiene la sección "Detalle por empleado".
+- [x] `npm run build` compila sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 

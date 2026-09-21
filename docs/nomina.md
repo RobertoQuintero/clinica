@@ -1,6 +1,6 @@
 # Nómina (payroll)
 
-- Module under `app/dashboard/nomina/`. It has **Periodos** (`nomina/periodos/`, spec 52) and **Procesar nómina** (`nomina/procesar/`, spec 53); `nomina/page.tsx` redirects to Periodos. Only the base salary is calculated. Bonuses, deductions (IMSS/ISR), attendance discounts, approval/payment, receipts, dispersion and CFDI stamping are not built.
+- Module under `app/dashboard/nomina/`. It has **Periodos** (`nomina/periodos/`, spec 52), **Procesar nómina** (`nomina/procesar/`, spec 53) and the per-employee **Detalle** (`nomina/procesar/[id_empleado]/`, spec 54); `nomina/page.tsx` redirects to Periodos. Only the base salary is calculated. Bonuses, deductions (IMSS/ISR), attendance discounts, approval/payment, receipts, dispersion and CFDI stamping are not built.
 - Lives in the `payroll` schema (separate from `RH`, like `BILLING`). Besides `payroll.periods` and `payroll.period_employees`, the schema holds catalogs not yet consumed: `cat_taxed_exempt`, `perceptions`, `tablas_retencion` (keyed by `id_payment_period` + `ejercicio`).
 
 ## Access
@@ -72,3 +72,18 @@ Screen `/dashboard/nomina/procesar`; actions in `nomina/procesar/actions.ts`.
 - `nomina/periodos/page.tsx` is a Server Component; filters live in the URL (`frecuencia`, `estatus`, `ejercicio`, `q`, `pagina`), 20 rows per page.
 - Client components are limited to `PayrollPeriodsFilterBar`, `PayrollPeriodModal`, `PayrollPeriodActions` and `DeletePayrollPeriodButton`; the active-period card and the table are server-rendered. Each row of the table also links to Procesar (`/dashboard/nomina/procesar?periodo=ID`).
 - `nomina/procesar/page.tsx` is a Server Component; state lives in the URL (`periodo`, `tipo=operativa|fiscal`, `puesto`, `q`). Server components: `PayrollProcessSummaryCards`, `PayrollEmployeesTable`, `ExcludedEmployeesNotice`. Client components: `PayrollProcessToolbar` (period select, type toggle, puesto select, debounced search) and `PayrollCalculationActions` (Calcular / Recalcular / Revertir, each behind an in-UI confirmation modal, no native `confirm()`).
+- In `PayrollEmployeesTable` the employee name and a trailing "Ver detalle" icon column link to the detail below, keeping `periodo`, `tipo`, `puesto` and `q`. The table stays a Server Component.
+
+## Detalle por empleado (spec 54)
+
+Screen `/dashboard/nomina/procesar/[id_empleado]?periodo=ID&tipo=operativa|fiscal&puesto=&q=`; action `getPayrollEmployeeDetail(filters)` in `nomina/procesar/actions.ts`. Read-only: it only reads `payroll.period_employees`, `payroll.periods`, `RH.empleados` and `RH.puestos`.
+
+- **Parameters:** `periodo` is required (no "current period" guessing). `tipo` defaults to `operativa`. `puesto` and `q` are only carried over for "Regresar" and Anterior / Siguiente. URLs are built with `buildPayrollProcessHref` / `buildPayrollEmployeeDetailHref` in `lib/payroll/processUrls.ts` (which also holds the `searchParams` readers shared with Procesar); empty or `null` params are omitted.
+- **404 (`notFound()`)**: missing or non-numeric `periodo` or `id_empleado`, a period from another branch or nonexistent, or an employee that is neither from the period's branch nor has a snapshot row in the period. The snapshot rule keeps the detail reachable for someone who changed branch after the calculation.
+- **What it shows:** breadcrumb, "Detalle de Nómina" with the period code, "Regresar", Anterior / Siguiente, the Operativa | Fiscal toggle (links, in the URL), the employee card (`EmployeeAvatar`, name, code, puesto, `EmployeeStatusBadge`, daily salary of the selected type from the snapshot, period range and payment date) and the "Percepciones totales" card (total, concept count, one row per line).
+- **Perception lines:** built by `buildPerceptionLines(snapshot, fechaIngreso, fechaInicio)` in `lib/payroll/perceptionLines.ts`. Today it returns only `sueldo_base` ("N días × $X diarios", amount = `importe_salario` as stored, never recalculated in TS) with the note "Ingresó el DD/MM/AAAA, proporcional" when `fecha_ingreso > fecha_inicio` (string comparison, no `Date`). **New concepts (bonuses, commissions, …) are added there as new lines**; the card iterates the list and needs no layout change.
+- **States:**
+  - Period at status 1: notice "Esta nómina aún no se calcula" with a link to Procesar; no perceptions card and no Anterior / Siguiente.
+  - No snapshot row for the selected type (status 2+): notice "Este empleado no está en la nómina {operativa|fiscal} de este periodo"; the toggle and employee card stay, daily salary shows "—", no Anterior / Siguiente.
+- **Anterior / Siguiente:** `LAG`/`LEAD` over the snapshot of the same period and type, with the same puesto/search conditions (`buildPayrollEmployeeConditions`, shared with `getPayrollProcessPage`) and the same `ORDER BY` (`PAYROLL_EMPLOYEE_ORDER_BY`: `apellido_paterno, apellido_materno, nombre, id_empleado`). At either end the button is a non-link `<span aria-disabled="true">`. If the employee is not in the filtered set, there is no navigation.
+- **Components** (`procesar/[id_empleado]/componentes/`, all Server Components, no `"use client"`): `PayrollEmployeeProfileCard`, `PayrollPerceptionsCard`, `PayrollTypeToggle`, `PayrollEmployeeNavigation`, `PayrollDetailNotice`. `EmployeeAvatar` lives in `empleados/componentes/` and is shared with the employee record header.

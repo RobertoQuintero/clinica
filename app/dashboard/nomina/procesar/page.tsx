@@ -140,7 +140,10 @@ export default async function ProcesarNominaPage({
           ) : (
             <PayrollEmployeesTable
               rows={result.data.rows}
+              idPeriod={result.data.period.id_period}
               payrollType={filters.payrollType}
+              idPuesto={filters.idPuesto}
+              search={filters.search}
               totals={result.data.totals}
               hasActiveFilters={filters.idPuesto !== null || filters.search !== ""}
             />
