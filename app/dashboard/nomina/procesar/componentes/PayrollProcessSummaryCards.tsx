@@ -76,7 +76,11 @@ export default function PayrollProcessSummaryCards({ period, payrollType, totals
           {formatPayrollCurrency(totals.importeSalario)}
         </span>
         <span className="text-xs text-[#44474f] dark:text-zinc-400">
-          {lastCalculatedAt ? `Calculado el ${formatCalculatedAt(lastCalculatedAt)}` : "Sin calcular"}
+          {lastCalculatedAt
+            ? `Calculado el ${formatCalculatedAt(lastCalculatedAt)}`
+            : period.status === 1
+              ? "Sin calcular"
+              : "Ningún empleado elegible"}
         </span>
       </SummaryCard>
     </div>

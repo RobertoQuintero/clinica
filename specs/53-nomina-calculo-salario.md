@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [52 — Nómina: periodos de nómina](52-nomina-periodos.md): el cálculo se hace sobre un `payroll.periods` y usa su primera transición de estatus (1 Programada → 2 En cálculo).
   - [51 — Empleados: campo periodo de pago](51-periodo-pago-empleado.md): `RH.empleados.id_periodo_pago` decide qué empleados entran a cada periodo según su frecuencia.
@@ -252,52 +252,52 @@ Cada paso deja el sistema compilando y funcional.
 
 **Base de datos**
 
-- [ ] `payroll.period_employees` existe con las columnas, FKs, `UNIQUE` y `CHECK` del Modelo de datos, y está documentada en `queries.txt`, al final del bloque `NOMINA PAYROLL`.
-- [ ] Un `INSERT` directo con `tipo_nomina = 'X'`, con `dias = 0` o con un `(id_period, id_empleado, tipo_nomina)` duplicado falla por constraint.
+- [x] `payroll.period_employees` existe con las columnas, FKs, `UNIQUE` y `CHECK` del Modelo de datos, y está documentada en `queries.txt`, al final del bloque `NOMINA PAYROLL`.
+- [x] Un `INSERT` directo con `tipo_nomina = 'X'`, con `dias = 0` o con un `(id_period, id_empleado, tipo_nomina)` duplicado falla por constraint.
 
 **Permisos y navegación**
 
-- [ ] Los roles 1 y 4 ven "Procesar nómina" dentro del grupo "Nómina" y pueden abrir `/dashboard/nomina/procesar`. Los roles 2, 3, 5 y 6 no lo ven, y si escriben la URL se les redirige a `/dashboard`.
-- [ ] Si un rol distinto de 1 o 4 llama a cualquier action de `procesar/actions.ts`, recibe `{ ok: false }` y no se lee ni escribe nada.
-- [ ] Cada fila de la tabla de Periodos tiene un enlace "Procesar" que abre `/dashboard/nomina/procesar?periodo={id}` con ese periodo seleccionado.
-- [ ] Periodos sigue creando, editando y eliminando igual que antes de extraer `assertPayrollAccess`.
+- [x] Los roles 1 y 4 ven "Procesar nómina" dentro del grupo "Nómina" y pueden abrir `/dashboard/nomina/procesar`. Los roles 2, 3, 5 y 6 no lo ven, y si escriben la URL se les redirige a `/dashboard`.
+- [x] Si un rol distinto de 1 o 4 llama a cualquier action de `procesar/actions.ts`, recibe `{ ok: false }` y no se lee ni escribe nada.
+- [x] Cada fila de la tabla de Periodos tiene un enlace "Procesar" que abre `/dashboard/nomina/procesar?periodo={id}` con ese periodo seleccionado.
+- [x] Periodos sigue creando, editando y eliminando igual que antes de extraer `assertPayrollAccess`.
 
 **Elegibilidad y cálculo**
 
-- [ ] Solo entran los empleados con `status = 1` y `activo = 1`, de la sucursal del periodo y con `id_periodo_pago` igual a la frecuencia del periodo. Uno de otra sucursal, otra frecuencia, con `id_periodo_pago` `NULL` o inactivo no aparece en ningún tipo.
-- [ ] Un empleado semanal con ingreso anterior al periodo `2026-09-14 – 2026-09-20` y `salario_diario = 315.04` aparece en la operativa con 7 días e importe `$2,205.28`.
-- [ ] Un empleado quincenal que ingresó el `2026-09-22`, en el periodo `2026-09-16 – 2026-09-30`, aparece con 9 días. Uno que ingresó el `2026-10-01` no aparece.
-- [ ] En un periodo quincenal `2026-09-16 – 2026-09-30` (15 días) con `salario_diario = 333.33`, el importe es `$4,999.95`. Los importes se guardan con 2 decimales.
-- [ ] La fiscal usa `salario_diario_fiscal`. Un empleado con `salario_diario` capturado y `salario_diario_fiscal` `NULL` o `0` aparece en la operativa, pero no en la fiscal.
-- [ ] Un empleado sin `salario_diario` (o con `0`) no aparece en la operativa.
-- [ ] Después de calcular, cambiar el `salario_diario` en la ficha del empleado no cambia la tabla. Al pulsar "Recalcular", el importe se actualiza al nuevo salario.
+- [x] Solo entran los empleados con `status = 1` y `activo = 1`, de la sucursal del periodo y con `id_periodo_pago` igual a la frecuencia del periodo. Uno de otra sucursal, otra frecuencia, con `id_periodo_pago` `NULL` o inactivo no aparece en ningún tipo.
+- [x] Un empleado semanal con ingreso anterior al periodo `2026-09-14 – 2026-09-20` y `salario_diario = 315.04` aparece en la operativa con 7 días e importe `$2,205.28`.
+- [x] Un empleado quincenal que ingresó el `2026-09-22`, en el periodo `2026-09-16 – 2026-09-30`, aparece con 9 días. Uno que ingresó el `2026-10-01` no aparece.
+- [x] En un periodo quincenal `2026-09-16 – 2026-09-30` (15 días) con `salario_diario = 333.33`, el importe es `$4,999.95`. Los importes se guardan con 2 decimales.
+- [x] La fiscal usa `salario_diario_fiscal`. Un empleado con `salario_diario` capturado y `salario_diario_fiscal` `NULL` o `0` aparece en la operativa, pero no en la fiscal.
+- [x] Un empleado sin `salario_diario` (o con `0`) no aparece en la operativa.
+- [x] Después de calcular, cambiar el `salario_diario` en la ficha del empleado no cambia la tabla. Al pulsar "Recalcular", el importe se actualiza al nuevo salario.
 
 **Transiciones**
 
-- [ ] En estatus 1 (Programada), la pantalla muestra un estado vacío con "Calcular nómina". Al confirmar, el periodo pasa a estatus 2 (En cálculo) y la tabla se llena sin recargar manualmente.
-- [ ] En estatus 2, "Recalcular" reemplaza el snapshot: no quedan filas duplicadas ni empleados que ya no son elegibles.
-- [ ] En estatus 2, "Revertir a Programada" borra el snapshot del periodo y lo regresa a estatus 1. En la tabla de Periodos vuelven a aparecer editar y eliminar.
-- [ ] En estatus 2, el periodo no se puede editar ni eliminar desde Periodos, ni siquiera llamando a la action directamente.
-- [ ] Llamar a `calculatePayrollPeriod` sobre un periodo de otra sucursal, o con estatus 3 o 4 (ajustado a mano en la BD), devuelve `{ ok: false }` y no modifica nada.
-- [ ] Las confirmaciones de Calcular, Recalcular y Revertir se hacen dentro de la UI, sin diálogos nativos del navegador.
+- [x] En estatus 1 (Programada), la pantalla muestra un estado vacío con "Calcular nómina". Al confirmar, el periodo pasa a estatus 2 (En cálculo) y la tabla se llena sin recargar manualmente.
+- [x] En estatus 2, "Recalcular" reemplaza el snapshot: no quedan filas duplicadas ni empleados que ya no son elegibles.
+- [x] En estatus 2, "Revertir a Programada" borra el snapshot del periodo y lo regresa a estatus 1. En la tabla de Periodos vuelven a aparecer editar y eliminar.
+- [x] En estatus 2, el periodo no se puede editar ni eliminar desde Periodos, ni siquiera llamando a la action directamente.
+- [x] Llamar a `calculatePayrollPeriod` sobre un periodo de otra sucursal, o con estatus 3 o 4 (ajustado a mano en la BD), devuelve `{ ok: false }` y no modifica nada.
+- [x] Las confirmaciones de Calcular, Recalcular y Revertir se hacen dentro de la UI, sin diálogos nativos del navegador.
 
 **Pantalla**
 
-- [ ] Sin `?periodo`, se abre el periodo cuyo rango incluye hoy. Si no hay, el más reciente. Si la sucursal no tiene periodos, se muestra un estado vacío con un enlace a Periodos.
-- [ ] El selector de periodo solo lista periodos de la sucursal seleccionada. Al cambiar de sucursal, la pantalla se actualiza.
-- [ ] El toggle Operativa | Fiscal cambia la tabla, las tarjetas y el total, y queda en la URL (`tipo`).
-- [ ] Las tarjetas muestran el rango y la frecuencia, la fecha de pago, el número de empleados calculados y el total de sueldos del tipo seleccionado.
-- [ ] La tabla muestra Empleado (nombre y código), Puesto, Salario D., Días y Sueldo, con fila de totales. No hay columnas de bonos, comisiones, deducciones, neto, transferencia ni efectivo.
-- [ ] El select de puesto y la búsqueda por nombre o código filtran las filas y quedan en la URL. La fila de totales y las tarjetas no cambian con los filtros.
-- [ ] El aviso de excluidos lista a los empleados elegibles por sucursal y frecuencia que no tienen el salario del tipo seleccionado. No se muestra si no hay ninguno.
-- [ ] Las fechas mostradas coinciden con la BD, sin corrimiento de un día por UTC, y los montos se muestran en formato `$1,234.56`.
+- [x] Sin `?periodo`, se abre el periodo cuyo rango incluye hoy. Si no hay, el más reciente. Si la sucursal no tiene periodos, se muestra un estado vacío con un enlace a Periodos.
+- [x] El selector de periodo solo lista periodos de la sucursal seleccionada. Al cambiar de sucursal, la pantalla se actualiza.
+- [x] El toggle Operativa | Fiscal cambia la tabla, las tarjetas y el total, y queda en la URL (`tipo`).
+- [x] Las tarjetas muestran el rango y la frecuencia, la fecha de pago, el número de empleados calculados y el total de sueldos del tipo seleccionado.
+- [x] La tabla muestra Empleado (nombre y código), Puesto, Salario D., Días y Sueldo, con fila de totales. No hay columnas de bonos, comisiones, deducciones, neto, transferencia ni efectivo.
+- [x] El select de puesto y la búsqueda por nombre o código filtran las filas y quedan en la URL. La fila de totales y las tarjetas no cambian con los filtros.
+- [x] El aviso de excluidos lista a los empleados elegibles por sucursal y frecuencia que no tienen el salario del tipo seleccionado. No se muestra si no hay ninguno.
+- [x] Las fechas mostradas coinciden con la BD, sin corrimiento de un día por UTC, y los montos se muestran en formato `$1,234.56`.
 
 **Técnico**
 
-- [ ] `page.tsx`, `PayrollProcessSummaryCards`, `PayrollEmployeesTable` y `ExcludedEmployeesNotice` son Server Components. Solo `PayrollProcessToolbar` y `PayrollCalculationActions` llevan `"use client"`.
-- [ ] Ninguna query de `procesar/actions.ts` devuelve un `Date` de JS.
-- [ ] `docs/nomina.md` y `CLAUDE.md` están actualizados.
-- [ ] `npm run build` compila sin errores de TypeScript.
+- [x] `page.tsx`, `PayrollProcessSummaryCards`, `PayrollEmployeesTable` y `ExcludedEmployeesNotice` son Server Components. Solo `PayrollProcessToolbar` y `PayrollCalculationActions` llevan `"use client"`.
+- [x] Ninguna query de `procesar/actions.ts` devuelve un `Date` de JS.
+- [x] `docs/nomina.md` y `CLAUDE.md` están actualizados.
+- [x] `npm run build` compila sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 

@@ -6,6 +6,7 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
+import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
 import PayrollProcessSummaryCards from "./componentes/PayrollProcessSummaryCards";
 import PayrollProcessToolbar from "./componentes/PayrollProcessToolbar";
@@ -63,19 +64,29 @@ export default async function ProcesarNominaPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <div className="flex items-center gap-1.5 text-sm text-[#44474f] dark:text-zinc-400">
-          <span>Nómina</span>
-          <ChevronRight size={14} />
-          <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Procesar Nómina</span>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-1.5 text-sm text-[#44474f] dark:text-zinc-400">
+            <span>Nómina</span>
+            <ChevronRight size={14} />
+            <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Procesar Nómina</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Procesar Nómina</h2>
+            {result.ok && result.data.period && <PayrollStatusBadge status={result.data.period.status} />}
+          </div>
+          <p className="text-sm text-[#44474f] dark:text-zinc-400">
+            Salario del periodo por empleado: salario diario por los días pagados.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Procesar Nómina</h2>
-          {result.ok && result.data.period && <PayrollStatusBadge status={result.data.period.status} />}
-        </div>
-        <p className="text-sm text-[#44474f] dark:text-zinc-400">
-          Salario del periodo por empleado: salario diario por los días pagados.
-        </p>
+        {/* En estatus 1 el botón "Calcular nómina" vive en el estado vacío. */}
+        {result.ok && result.data.period && result.data.period.status !== 1 && (
+          <PayrollCalculationActions
+            idPeriod={result.data.period.id_period}
+            periodCode={result.data.period.codigo}
+            status={result.data.period.status}
+          />
+        )}
       </div>
 
       {!result.ok ? (
@@ -96,7 +107,7 @@ export default async function ProcesarNominaPage({
         ) : (
           <EmptyState
             title="No encontramos ese periodo en esta sucursal"
-            description="Puede pertenecer a otra sucursal o haberse eliminado. Elige uno de la lista."
+            description="Puede pertenecer a otra sucursal o haberse eliminado."
             action={
               <Link href="/dashboard/nomina/procesar" className={LINK_BUTTON_CLASSES}>
                 Ver el periodo actual
@@ -129,6 +140,13 @@ export default async function ProcesarNominaPage({
             <EmptyState
               title="Este periodo aún no se calcula"
               description="Al calcular la nómina se guarda el salario de cada empleado del periodo, en su versión operativa y fiscal."
+              action={
+                <PayrollCalculationActions
+                  idPeriod={result.data.period.id_period}
+                  periodCode={result.data.period.codigo}
+                  status={result.data.period.status}
+                />
+              }
             />
           ) : (
             <PayrollEmployeesTable

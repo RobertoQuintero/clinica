@@ -50,13 +50,13 @@ export interface IEmployeeListItem extends IEmployee {
   nombre_departamento: string;
   nombre_puesto:       string;
   nombre_sucursal:     string;
+  nombre_periodo_pago: string | null;
 }
 
 /** Expediente del detalle: agrega el nombre del supervisor y del turno. */
 export interface IEmployeeRecord extends IEmployeeListItem {
   nombre_supervisor:   string | null;   // concatenación de las tres columnas del supervisor
   nombre_turno:        string | null;
-  nombre_periodo_pago: string | null;
 }
 
 /** Payload del modal de alta/edición. Sin campos derivados ni generados. */
