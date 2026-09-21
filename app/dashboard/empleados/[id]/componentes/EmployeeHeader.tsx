@@ -1,19 +1,13 @@
 import { IEmployeeRecord } from "@/interfaces/employee";
 import { dayFirst } from "@/utils/date_helpper";
 import { IEmployeeCatalogs } from "../../actions";
+import EmployeeAvatar from "../../componentes/EmployeeAvatar";
 import EmployeeStatusBadge from "../../componentes/EmployeeStatusBadge";
 import EmployeeActions from "./EmployeeActions";
 
 interface Props {
   employee: IEmployeeRecord;
   catalogs: IEmployeeCatalogs;
-}
-
-function getInitials(nombreCompleto: string): string {
-  const parts = nombreCompleto.trim().split(/\s+/).filter(Boolean);
-  const firstInitial = parts[0]?.[0] ?? "";
-  const lastInitial = parts.length > 1 ? parts[parts.length - 1][0] : "";
-  return `${firstInitial}${lastInitial}`.toUpperCase() || "—";
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -29,16 +23,11 @@ export default function EmployeeHeader({ employee, catalogs }: Props) {
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6 shadow-sm">
       <div className="flex flex-col lg:flex-row gap-8">
-        <div className="shrink-0 w-40 h-40 rounded-lg overflow-hidden border border-[#c4c6d0] dark:border-zinc-700 bg-[#eff4ff] dark:bg-zinc-800 flex items-center justify-center mx-auto lg:mx-0">
-          {employee.foto_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={employee.foto_url} alt={employee.nombre_completo} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-3xl font-bold text-[#44474f] dark:text-zinc-400">
-              {getInitials(employee.nombre_completo)}
-            </span>
-          )}
-        </div>
+        <EmployeeAvatar
+          fotoUrl={employee.foto_url}
+          nombreCompleto={employee.nombre_completo}
+          sizeClassName="w-40 h-40 text-3xl mx-auto lg:mx-0"
+        />
 
         <div className="flex-1 flex flex-col gap-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

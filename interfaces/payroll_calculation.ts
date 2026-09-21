@@ -40,3 +40,49 @@ export interface IPayrollProcessPage {
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
 }
+
+// Una línea de la tarjeta "Percepciones totales". Hoy solo existe "sueldo_base".
+export interface IPayrollPerceptionLine {
+  key:         string;          // identificador estable, se usa como React key: "sueldo_base"
+  label:       string;          // "Sueldo base"
+  description: string;          // "15 días × $333.33 diarios"
+  note:        string | null;   // "Ingresó el 22/09/2026, proporcional" o null
+  amount:      number;          // importe ya redondeado a 2 decimales
+}
+
+export interface IPayrollEmployeeDetailFilters {
+  idEmpleado:  number;
+  idPeriod:    number;          // obligatorio: sin periodo se llama a notFound()
+  payrollType: PayrollType;
+  idPuesto:    number | null;   // solo para Anterior / Siguiente y Regresar
+  search:      string;          // ídem
+}
+
+// Fila del snapshot `payroll.period_employees` para un empleado y tipo.
+export interface IPayrollEmployeeSnapshot {
+  salario_diario:  number;
+  dias:            number;
+  importe_salario: number;
+  calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
+}
+
+export interface IPayrollEmployeeDetail {
+  period:   IPayrollPeriodRow;
+  employee: {
+    id_empleado:     number;
+    codigo_empleado: string;
+    nombre_completo: string;
+    nombre_puesto:   string;
+    foto_url:        string | null;
+    activo:          boolean;
+    fecha_ingreso:   string;    // "YYYY-MM-DD"
+  };
+  // null si el empleado no está en la nómina del tipo pedido (o si el periodo sigue en estatus 1).
+  snapshot:         IPayrollEmployeeSnapshot | null;
+  perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
+  totalPerceptions: number;                     // suma de perceptions[].amount
+  navigation: {
+    previousEmployeeId: number | null;
+    nextEmployeeId:     number | null;
+  };
+}

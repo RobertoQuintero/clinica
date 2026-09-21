@@ -59,5 +59,13 @@ export const revertPayrollCalculationSchema = z.object({
   id_period: z.number().int().positive("Periodo inválido"),
 });
 
+export const payrollEmployeeDetailFiltersSchema = z.object({
+  idEmpleado: z.number().int().positive("Empleado inválido"),
+  idPeriod: z.number().int().positive("Periodo inválido"),
+  payrollType: z.enum(["O", "F"]),
+  idPuesto: z.number().int().positive().nullable(),
+  search: z.string(),
+});
+
 export type CreatePayrollPeriodInput = z.infer<typeof createPayrollPeriodSchema>;
 export type UpdatePayrollPeriodInput = z.infer<typeof updatePayrollPeriodSchema>;

@@ -2,14 +2,23 @@
 
 import db from "@/database/connection";
 import {
+  IPayrollEmployeeDetail,
+  IPayrollEmployeeDetailFilters,
   IPayrollEmployeeRow,
+  IPayrollEmployeeSnapshot,
   IPayrollExcludedEmployee,
   IPayrollProcessFilters,
   IPayrollProcessPage,
+  PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
-import { calculatePayrollPeriodSchema, revertPayrollCalculationSchema } from "@/lib/payroll/schemas";
+import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
+import {
+  calculatePayrollPeriodSchema,
+  payrollEmployeeDetailFiltersSchema,
+  revertPayrollCalculationSchema,
+} from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
@@ -26,6 +35,36 @@ const EMPLOYEE_FULL_NAME_SQL = `LTRIM(RTRIM(
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
 function escapeLikePattern(text: string): string {
   return text.replace(/[\[%_]/g, (character) => `[${character}]`);
+}
+
+/** Orden de la tabla de Procesar; Anterior / Siguiente del detalle lo sigue. Determinista gracias al id. */
+const PAYROLL_EMPLOYEE_ORDER_BY = "e.apellido_paterno, e.apellido_materno, e.nombre, pe.id_empleado";
+
+/**
+ * Condiciones del snapshot de un periodo y tipo, con los filtros de puesto y búsqueda de Procesar.
+ * Compartido por la tabla y por Anterior / Siguiente del detalle para que recorran el mismo conjunto.
+ */
+function buildPayrollEmployeeConditions(filters: {
+  idPeriod: number;
+  payrollType: PayrollType;
+  idPuesto: number | null;
+  search: string;
+}): { conditions: string[]; params: Record<string, unknown> } {
+  const conditions = ["pe.id_period = @id_period", "pe.tipo_nomina = @tipo_nomina"];
+  const params: Record<string, unknown> = {
+    id_period: filters.idPeriod,
+    tipo_nomina: filters.payrollType,
+  };
+  if (filters.idPuesto !== null) {
+    conditions.push("e.id_puesto = @id_puesto");
+    params.id_puesto = filters.idPuesto;
+  }
+  const search = filters.search.trim();
+  if (search) {
+    conditions.push(`(${EMPLOYEE_FULL_NAME_SQL} LIKE @search OR e.codigo_empleado LIKE @search)`);
+    params.search = `%${escapeLikePattern(search)}%`;
+  }
+  return { conditions, params };
 }
 
 async function resolvePeriod(idSucursal: number, idPeriod: number | null): Promise<IPayrollPeriodRow | null> {
@@ -84,23 +123,12 @@ export async function getPayrollProcessPage(
     };
     if (!period) return { ok: true, data: emptyPage };
 
-    const rowConditions = [
-      "pe.id_period = @id_period",
-      "pe.tipo_nomina = @tipo_nomina",
-    ];
-    const rowParams: Record<string, unknown> = {
-      id_period: period.id_period,
-      tipo_nomina: filters.payrollType,
-    };
-    if (filters.idPuesto !== null) {
-      rowConditions.push("e.id_puesto = @id_puesto");
-      rowParams.id_puesto = filters.idPuesto;
-    }
-    const search = filters.search.trim();
-    if (search) {
-      rowConditions.push(`(${EMPLOYEE_FULL_NAME_SQL} LIKE @search OR e.codigo_empleado LIKE @search)`);
-      rowParams.search = `%${escapeLikePattern(search)}%`;
-    }
+    const { conditions: rowConditions, params: rowParams } = buildPayrollEmployeeConditions({
+      idPeriod: period.id_period,
+      payrollType: filters.payrollType,
+      idPuesto: filters.idPuesto,
+      search: filters.search,
+    });
 
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
@@ -116,7 +144,7 @@ export async function getPayrollProcessPage(
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
            JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
           WHERE ${rowConditions.join(" AND ")}
-          ORDER BY e.apellido_paterno, e.apellido_materno, e.nombre, pe.id_empleado`,
+          ORDER BY ${PAYROLL_EMPLOYEE_ORDER_BY}`,
         rowParams,
       ),
       db.queryParams(
@@ -182,6 +210,127 @@ export async function getPayrollProcessPage(
   } catch (error) {
     console.error("getPayrollProcessPage", error);
     return { ok: false, message: "No se pudo cargar el cálculo de nómina" };
+  }
+}
+
+/**
+ * Detalle de nómina de un empleado en un periodo y tipo. `data: null` si el periodo no es de la
+ * sucursal o si el empleado no se encuentra (ni es de la sucursal del periodo ni tiene snapshot en él).
+ */
+export async function getPayrollEmployeeDetail(
+  filters: IPayrollEmployeeDetailFilters,
+): Promise<ActionResult<IPayrollEmployeeDetail | null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  const parsed = payrollEmployeeDetailFiltersSchema.safeParse(filters);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { idEmpleado, idPeriod, payrollType, idPuesto, search } = parsed.data;
+
+  try {
+    const period = await resolvePeriod(id_sucursal, idPeriod);
+    if (!period) return { ok: true, data: null };
+
+    const { conditions: navigationConditions, params: navigationParams } = buildPayrollEmployeeConditions({
+      idPeriod: period.id_period,
+      payrollType,
+      idPuesto,
+      search,
+    });
+
+    const [employeeRows, snapshotRows, navigationRows] = await Promise.all([
+      // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
+      // (cubre a quien cambió de sucursal después del cálculo).
+      db.queryParams(
+        `SELECT e.id_empleado, e.codigo_empleado,
+                ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
+                ISNULL(pu.name, '') AS nombre_puesto,
+                e.foto_url, e.activo,
+                CONVERT(varchar(10), e.fecha_ingreso, 120) AS fecha_ingreso
+           FROM [CentroPodologico].[RH].[empleados] e
+           LEFT JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
+          WHERE e.id_empleado = @id_empleado
+            AND (e.id_sucursal = @id_sucursal
+                 OR EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employees] pe
+                             WHERE pe.id_period = @id_period AND pe.id_empleado = e.id_empleado))`,
+        { id_empleado: idEmpleado, id_sucursal: period.id_sucursal, id_period: period.id_period },
+      ),
+      db.queryParams(
+        `SELECT pe.salario_diario, pe.dias, pe.importe_salario,
+                CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
+           FROM [CentroPodologico].[payroll].[period_employees] pe
+          WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
+        { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
+      ),
+      // Mismo conjunto y orden que la tabla de Procesar; sin fila si el empleado no está en él.
+      db.queryParams(
+        `WITH ordered_employees AS (
+           SELECT pe.id_empleado,
+                  LAG(pe.id_empleado)  OVER (ORDER BY ${PAYROLL_EMPLOYEE_ORDER_BY}) AS previous_employee_id,
+                  LEAD(pe.id_empleado) OVER (ORDER BY ${PAYROLL_EMPLOYEE_ORDER_BY}) AS next_employee_id
+             FROM [CentroPodologico].[payroll].[period_employees] pe
+             JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
+             JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
+            WHERE ${navigationConditions.join(" AND ")}
+         )
+         SELECT previous_employee_id, next_employee_id
+           FROM ordered_employees
+          WHERE id_empleado = @id_empleado`,
+        { ...navigationParams, id_empleado: idEmpleado },
+      ),
+    ]);
+
+    const employeeRow = employeeRows[0];
+    if (!employeeRow) return { ok: true, data: null };
+
+    const employee: IPayrollEmployeeDetail["employee"] = {
+      id_empleado: Number(employeeRow.id_empleado),
+      codigo_empleado: employeeRow.codigo_empleado,
+      nombre_completo: employeeRow.nombre_completo,
+      nombre_puesto: employeeRow.nombre_puesto,
+      foto_url: employeeRow.foto_url || null,
+      activo: Boolean(employeeRow.activo),
+      fecha_ingreso: employeeRow.fecha_ingreso,
+    };
+
+    const snapshotRow = snapshotRows[0];
+    const snapshot: IPayrollEmployeeSnapshot | null = snapshotRow
+      ? {
+          salario_diario: Number(snapshotRow.salario_diario),
+          dias: Number(snapshotRow.dias),
+          importe_salario: Number(snapshotRow.importe_salario),
+          calculated_at: snapshotRow.calculated_at,
+        }
+      : null;
+
+    const perceptions = snapshot
+      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio)
+      : [];
+    const totalPerceptions =
+      Math.round(perceptions.reduce((sum, line) => sum + line.amount, 0) * 100) / 100;
+
+    const navigationRow = snapshot ? navigationRows[0] : undefined;
+
+    return {
+      ok: true,
+      data: {
+        period,
+        employee,
+        snapshot,
+        perceptions,
+        totalPerceptions,
+        navigation: {
+          previousEmployeeId: navigationRow?.previous_employee_id ?? null,
+          nextEmployeeId: navigationRow?.next_employee_id ?? null,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("getPayrollEmployeeDetail", error);
+    return { ok: false, message: "No se pudo cargar el detalle de nómina del empleado" };
   }
 }
 
