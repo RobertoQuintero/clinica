@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import type { IPayrollEmployeeDetailFilters } from "@/interfaces/payroll_calculation";
+import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import {
   buildPayrollProcessHref,
   readPayrollType,
@@ -10,6 +11,7 @@ import {
   type SearchParamsInput,
 } from "@/lib/payroll/processUrls";
 import { getPayrollEmployeeDetail } from "../actions";
+import PayrollDetailNotice from "./componentes/PayrollDetailNotice";
 import PayrollEmployeeNavigation from "./componentes/PayrollEmployeeNavigation";
 import PayrollEmployeeProfileCard from "./componentes/PayrollEmployeeProfileCard";
 import PayrollTypeToggle from "./componentes/PayrollTypeToggle";
@@ -40,6 +42,10 @@ export default async function PayrollEmployeeDetailPage({
   if (result.ok && result.data === null) notFound();
 
   const processHref = buildPayrollProcessHref(filters);
+  const detail = result.ok ? result.data : null;
+  const isPeriodCalculated = detail !== null && detail.period.status !== 1;
+  // Sin cálculo (estatus 1) o sin fila en el tipo seleccionado no hay Anterior / Siguiente.
+  const showNavigation = isPeriodCalculated && detail.snapshot !== null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -58,9 +64,9 @@ export default async function PayrollEmployeeDetailPage({
           </nav>
           <div className="flex flex-wrap items-center gap-3 mt-1">
             <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Detalle de Nómina</h2>
-            {result.ok && result.data && (
+            {detail && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono whitespace-nowrap border bg-[#dbe1ff] text-[#00174b] border-transparent dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700">
-                {result.data.period.codigo}
+                {detail.period.codigo}
               </span>
             )}
           </div>
@@ -73,41 +79,58 @@ export default async function PayrollEmployeeDetailPage({
             <ArrowLeft size={16} aria-hidden />
             Regresar
           </Link>
-          {result.ok && result.data && (
+          {detail && showNavigation && (
             <PayrollEmployeeNavigation
-              previousEmployeeId={result.data.navigation.previousEmployeeId}
-              nextEmployeeId={result.data.navigation.nextEmployeeId}
+              previousEmployeeId={detail.navigation.previousEmployeeId}
+              nextEmployeeId={detail.navigation.nextEmployeeId}
               filters={filters}
             />
           )}
         </div>
       </div>
 
-      {result.ok && result.data && <PayrollTypeToggle idEmpleado={idEmpleado} filters={filters} />}
-
-      {!result.ok ? (
+      {!result.ok && (
         <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">
           {result.message}
         </p>
-      ) : (
-        result.data && (
-          <>
-            <PayrollEmployeeProfileCard
-              employee={result.data.employee}
-              period={result.data.period}
-              salarioDiario={result.data.snapshot?.salario_diario ?? null}
-              payrollType={filters.payrollType}
+      )}
+
+      {detail && (
+        <>
+          <PayrollTypeToggle idEmpleado={idEmpleado} filters={filters} />
+          <PayrollEmployeeProfileCard
+            employee={detail.employee}
+            period={detail.period}
+            salarioDiario={detail.snapshot?.salario_diario ?? null}
+            payrollType={filters.payrollType}
+          />
+          {!isPeriodCalculated ? (
+            <PayrollDetailNotice
+              title="Esta nómina aún no se calcula"
+              description="Cuando se calcule el periodo, aquí verás las percepciones del empleado."
+              action={
+                <Link
+                  href={processHref}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003ea7] transition-colors"
+                >
+                  Ir a Procesar Nómina
+                </Link>
+              }
             />
-            {result.data.snapshot && (
-              <div className="w-full max-w-3xl">
-                <PayrollPerceptionsCard
-                  perceptions={result.data.perceptions}
-                  totalPerceptions={result.data.totalPerceptions}
-                />
-              </div>
-            )}
-          </>
-        )
+          ) : detail.snapshot ? (
+            <div className="w-full max-w-3xl">
+              <PayrollPerceptionsCard
+                perceptions={detail.perceptions}
+                totalPerceptions={detail.totalPerceptions}
+              />
+            </div>
+          ) : (
+            <PayrollDetailNotice
+              title={`Este empleado no está en la nómina ${PAYROLL_TYPE[filters.payrollType].label.toLowerCase()} de este periodo`}
+              description={`Al calcular se incluyen los empleados activos de la frecuencia del periodo con salario diario ${PAYROLL_TYPE[filters.payrollType].label.toLowerCase()} capturado.`}
+            />
+          )}
+        </>
       )}
     </div>
   );
