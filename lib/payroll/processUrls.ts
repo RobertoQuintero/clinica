@@ -8,6 +8,23 @@ export interface IPayrollProcessUrlFilters {
   search:      string;
 }
 
+export type SearchParamsInput = Record<string, string | string[] | undefined>;
+
+export function readSingleParam(searchParams: SearchParamsInput, key: string): string {
+  const value = searchParams[key];
+  return (Array.isArray(value) ? value[0] : value) ?? "";
+}
+
+export function readPositiveInteger(rawValue: string): number | null {
+  const parsed = Number(rawValue);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+/** URL `tipo=operativa|fiscal`; operativa por defecto. */
+export function readPayrollType(rawValue: string): PayrollType {
+  return rawValue === PAYROLL_TYPE.F.urlValue ? "F" : "O";
+}
+
 /** `?periodo=&tipo=&puesto=&q=`; los parámetros vacíos o null no se escriben. */
 function buildPayrollQueryString({ idPeriod, payrollType, idPuesto, search }: IPayrollProcessUrlFilters): string {
   const searchParams = new URLSearchParams();

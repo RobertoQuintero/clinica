@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { CalendarX2, ChevronRight } from "lucide-react";
-import type { IPayrollProcessFilters, PayrollType } from "@/interfaces/payroll_calculation";
-import { PAYROLL_TYPE } from "@/lib/payroll/constants";
+import type { IPayrollProcessFilters } from "@/interfaces/payroll_calculation";
+import {
+  readPayrollType,
+  readPositiveInteger,
+  readSingleParam,
+  type SearchParamsInput,
+} from "@/lib/payroll/processUrls";
 import { addZeroToday } from "@/utils/date_helpper";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
@@ -10,22 +15,6 @@ import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
 import PayrollProcessSummaryCards from "./componentes/PayrollProcessSummaryCards";
 import PayrollProcessToolbar from "./componentes/PayrollProcessToolbar";
-
-type SearchParamsInput = Record<string, string | string[] | undefined>;
-
-function readSingleParam(searchParams: SearchParamsInput, key: string): string {
-  const value = searchParams[key];
-  return (Array.isArray(value) ? value[0] : value) ?? "";
-}
-
-function readPositiveInteger(rawValue: string): number | null {
-  const parsed = Number(rawValue);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function readPayrollType(rawValue: string): PayrollType {
-  return rawValue === PAYROLL_TYPE.F.urlValue ? "F" : "O";
-}
 
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
