@@ -51,5 +51,13 @@ export const updatePayrollPeriodSchema = z
   })
   .superRefine(validatePeriodDateOrder);
 
+export const calculatePayrollPeriodSchema = z.object({
+  id_period: z.number().int().positive("Periodo inválido"),
+});
+
+export const revertPayrollCalculationSchema = z.object({
+  id_period: z.number().int().positive("Periodo inválido"),
+});
+
 export type CreatePayrollPeriodInput = z.infer<typeof createPayrollPeriodSchema>;
 export type UpdatePayrollPeriodInput = z.infer<typeof updatePayrollPeriodSchema>;
