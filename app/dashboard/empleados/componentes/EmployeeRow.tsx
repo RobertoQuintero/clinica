@@ -34,6 +34,9 @@ export default function EmployeeRow({ employee, onEdit }: Props) {
       <td className={`px-6 py-4 text-[#0b1c30] dark:text-zinc-100 ${rowOpacity}`}>
         {employee.nombre_sucursal}
       </td>
+      <td className={`px-6 py-4 text-[#0b1c30] dark:text-zinc-100 ${rowOpacity}`}>
+        {employee.nombre_periodo_pago || "—"}
+      </td>
       <td className={`px-6 py-4 text-[#44474f] dark:text-zinc-400 ${rowOpacity}`}>
         {dayFirst(employee.fecha_ingreso + "T00:00:00")}
       </td>

@@ -1,12 +1,12 @@
 # Nómina (payroll)
 
-- Module under `app/dashboard/nomina/`. Today it only has **Periodos** (`nomina/periodos/`); `nomina/page.tsx` redirects to it. Calculation, receipts, dispersion and CFDI stamping are not built (specs 52+).
-- Lives in the `payroll` schema (separate from `RH`, like `BILLING`). Besides `payroll.periods`, the schema holds catalogs not yet consumed: `cat_taxed_exempt`, `perceptions`, `tablas_retencion` (keyed by `id_payment_period` + `ejercicio`).
+- Module under `app/dashboard/nomina/`. It has **Periodos** (`nomina/periodos/`, spec 52) and **Procesar nómina** (`nomina/procesar/`, spec 53); `nomina/page.tsx` redirects to Periodos. Only the base salary is calculated. Bonuses, deductions (IMSS/ISR), attendance discounts, approval/payment, receipts, dispersion and CFDI stamping are not built.
+- Lives in the `payroll` schema (separate from `RH`, like `BILLING`). Besides `payroll.periods` and `payroll.period_employees`, the schema holds catalogs not yet consumed: `cat_taxed_exempt`, `perceptions`, `tablas_retencion` (keyed by `id_payment_period` + `ejercicio`).
 
 ## Access
 
 - Only `id_role` 1 and 4 (`PAYROLL_ALLOWED_ROLE_IDS` in `lib/payroll/constants.ts`).
-- Gated in three places: `proxy.ts` (anything under `/dashboard/nomina` -> `/dashboard`), `navConfig.tsx` (`excludeRoles: [2, 3, 5, 6]`, the complement of the constant) and `assertPayrollAccess()` in `nomina/periodos/actions.ts` (every action returns `{ ok: false }` for other roles).
+- Gated in three places: `proxy.ts` (anything under `/dashboard/nomina` -> `/dashboard`), `navConfig.tsx` (`excludeRoles: [2, 3, 5, 6]`, the complement of the constant) and `assertPayrollAccess()` in `lib/payroll/access.ts` (server-only; every action in `periodos/actions.ts` and `procesar/actions.ts` returns `{ ok: false }` for other roles). `access.ts` also holds `ActionResult`, `IPayrollSession` and `PERIOD_ROW_SELECT`; it is not a `"use server"` file so none of it is exposed as a public action.
 - The active branch comes from the `sel_sucursal` cookie with JWT fallback, never from client input. Each period belongs to a single branch.
 
 ## `payroll.periods`
@@ -46,13 +46,29 @@ Only SAT keys with a code letter and a date rule are offered (`PAYROLL_FREQUENCY
 
 ## Status
 
-`status`: 1 Programada, 2 En cálculo, 3 Aprobada, 4 Pagada (`PAYROLL_PERIOD_STATUS`). Periods are only created as 1; there are no transitions yet.
+`status`: 1 Programada, 2 En cálculo, 3 Aprobada, 4 Pagada (`PAYROLL_PERIOD_STATUS`). Periods are created as 1. Today the only transitions are 1 -> 2 (calculate) and 2 <-> 2 / 2 -> 1 (recalculate / revert), see "Salary calculation". Approved (3) and Paid (4) are not reachable yet.
 
 - **Edit** changes only the four dates and `updated_at`, and only while `status = 1`.
 - **Delete** is a physical `DELETE`, only while `status = 1`.
-- Both re-check `id_sucursal` and `status = 1` inside the statement itself, so a stale UI cannot change a period that already moved on.
+- Both re-check `id_sucursal` and `status = 1` inside the statement itself, so a stale UI cannot change a period that already moved on. While a period is 2 (En cálculo) it can be neither edited nor deleted; revert it to 1 first.
+
+## Salary calculation (spec 53)
+
+Screen `/dashboard/nomina/procesar`; actions in `nomina/procesar/actions.ts`.
+
+- **Table `payroll.period_employees`** (DDL in `queries.txt`): one snapshot row per period + employee + type (`tipo_nomina`: `'O'` operativa, `'F'` fiscal), with `salario_diario` used, `dias`, `importe_salario`, `calculated_by`, `calculated_at`. `UQ_period_employees` prevents duplicates and doubles as the index by `id_period`. The FK to `payroll.periods` has no cascade: a period can only be deleted at status 1, where it has no snapshot.
+- **Who is included** (evaluated at calculation time): `RH.empleados` with `status = 1`, `activo = 1`, `id_sucursal` = the period's branch, `id_periodo_pago` = the period's `id_payment_period` and `fecha_ingreso <= fecha_fin`. **An employee without `id_periodo_pago` never enters payroll**, not even the excluded notice: capture the frequency in the employee record first.
+- **Days:** `fecha_fin - max(fecha_inicio, fecha_ingreso) + 1`, calendar days. Absences and lateness are not discounted (future spec). No `fecha_baja` exists, so inactive employees are simply not included.
+- **Amount:** `ROUND(salary * dias, 2)` per employee. Operativa uses `salario_diario`, fiscal uses `salario_diario_fiscal`; there is **no fallback** between them. An employee only enters a type when its salary is `> 0`, so they can be in one and not the other. Screen totals add the already-rounded amounts.
+- **Snapshot:** it stores the salary used, so editing the employee record afterwards does not change a saved result until the period is recalculated.
+- **Transitions** (each one is a single SQL batch with `BEGIN TRAN` and the period read `WITH (UPDLOCK, HOLDLOCK)`, checking branch and status inside the batch):
+  - `calculatePayrollPeriod`: status 1 or 2 -> deletes the period's snapshot, inserts the `'O'` and `'F'` rows and leaves the period at 2. Used for both "Calcular" (1) and "Recalcular" (2).
+  - `revertPayrollCalculation`: status 2 -> deletes the snapshot and returns the period to 1 so its dates can be edited again.
+- **The calculation lives in SQL** (`INSERT ... SELECT`); `lib/payroll/salaryCalculation.ts` (`countPaidDays`, `calculateSalaryAmount`) restates the rule as pure string-based functions. If they diverge, the SQL is the source of truth.
+- **Read side:** `getPayrollProcessPage(filters)` resolves the period (requested id in the active branch; otherwise the one whose range includes today; otherwise the most recent), returns the snapshot rows with puesto/search filters, unfiltered totals, puesto options and the "excluded" employees (eligible by branch and frequency but without the salary of the selected type, computed on the fly).
 
 ## UI
 
 - `nomina/periodos/page.tsx` is a Server Component; filters live in the URL (`frecuencia`, `estatus`, `ejercicio`, `q`, `pagina`), 20 rows per page.
-- Client components are limited to `PayrollPeriodsFilterBar`, `PayrollPeriodModal`, `PayrollPeriodActions` and `DeletePayrollPeriodButton`; the active-period card and the table are server-rendered.
+- Client components are limited to `PayrollPeriodsFilterBar`, `PayrollPeriodModal`, `PayrollPeriodActions` and `DeletePayrollPeriodButton`; the active-period card and the table are server-rendered. Each row of the table also links to Procesar (`/dashboard/nomina/procesar?periodo=ID`).
+- `nomina/procesar/page.tsx` is a Server Component; state lives in the URL (`periodo`, `tipo=operativa|fiscal`, `puesto`, `q`). Server components: `PayrollProcessSummaryCards`, `PayrollEmployeesTable`, `ExcludedEmployeesNotice`. Client components: `PayrollProcessToolbar` (period select, type toggle, puesto select, debounced search) and `PayrollCalculationActions` (Calcular / Recalcular / Revertir, each behind an in-UI confirmation modal, no native `confirm()`).

@@ -125,11 +125,13 @@ export async function getEmployees(): Promise<IEmployeeListItem[]> {
   if (ids.length === 0) return [];
 
   const data = (await db.queryParams(
-    `SELECT ${EMPLOYEE_SELECT_COLUMNS}
+    `SELECT ${EMPLOYEE_SELECT_COLUMNS},
+            pp.[description] AS nombre_periodo_pago
        FROM [CentroPodologico].[RH].[empleados] e
        JOIN [CentroPodologico].[RH].[departamentos] d ON d.[id_department] = e.[id_department]
        JOIN [CentroPodologico].[RH].[puestos] p ON p.[id_puesto] = e.[id_puesto]
        JOIN [CentroPodologico].[dbo].[sucursales] s ON s.[id_sucursal] = e.[id_sucursal]
+       LEFT JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.[id_payment_period] = e.[id_periodo_pago]
       WHERE e.[status] = 1
         AND e.[id_empresa] = @id_empresa
         AND e.[id_sucursal] IN (${placeholders})
@@ -139,6 +141,7 @@ export async function getEmployees(): Promise<IEmployeeListItem[]> {
     nombre_departamento: string;
     nombre_puesto: string;
     nombre_sucursal: string;
+    nombre_periodo_pago: string | null;
   })[];
 
   return data.map((row) => ({

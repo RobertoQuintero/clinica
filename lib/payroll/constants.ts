@@ -5,6 +5,11 @@ export const PAYROLL_PERIOD_STATUS = {
   4: { label: "Pagada",      badge: "success" },
 } as const;
 
+export const PAYROLL_TYPE = {
+  O: { label: "Operativa", urlValue: "operativa" },
+  F: { label: "Fiscal",    urlValue: "fiscal" },
+} as const;
+
 // clave_sat -> letra del código. Las frecuencias fuera de este mapa no se ofrecen.
 export const PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY: Record<string, string> = {
   "01": "D", "02": "S", "03": "C", "04": "Q", "05": "M", "06": "B", "10": "X",

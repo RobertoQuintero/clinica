@@ -1251,4 +1251,26 @@ CREATE INDEX [IX_periods_sucursal_ejercicio]
     ON [payroll].[periods] ([id_sucursal], [ejercicio], [id_payment_period], [fecha_inicio])
 GO
 
+-- Spec 53: snapshot del cálculo de salario por periodo, empleado y tipo de nómina.
+CREATE TABLE [payroll].[period_employees](
+    [id_period_employee] [int] IDENTITY(1,1) NOT NULL,
+    [id_period]          [int]           NOT NULL,
+    [id_empleado]        [int]           NOT NULL,
+    [tipo_nomina]        [char](1)       NOT NULL,   -- 'O' operativa, 'F' fiscal
+    [salario_diario]     [decimal](12,2) NOT NULL,   -- salario usado: salario_diario (O) o salario_diario_fiscal (F)
+    [dias]               [smallint]      NOT NULL,   -- días naturales pagados
+    [importe_salario]    [decimal](12,2) NOT NULL,   -- round(salario_diario * dias, 2)
+    [calculated_by]      [int]           NOT NULL,
+    [calculated_at]      [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_period_employees] PRIMARY KEY CLUSTERED ([id_period_employee] ASC),
+ CONSTRAINT [UQ_period_employees] UNIQUE ([id_period], [id_empleado], [tipo_nomina]),
+ CONSTRAINT [CK_period_employees_tipo] CHECK ([tipo_nomina] IN ('O', 'F')),
+ CONSTRAINT [CK_period_employees_montos] CHECK ([salario_diario] > 0 AND [dias] > 0 AND [importe_salario] >= 0),
+ CONSTRAINT [FK_period_employees_period] FOREIGN KEY ([id_period])
+     REFERENCES [payroll].[periods] ([id_period]),
+ CONSTRAINT [FK_period_employees_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado])
+) ON [PRIMARY]
+GO
+
 ----------------------------------------------------
