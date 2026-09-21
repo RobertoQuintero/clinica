@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Calculator, ChevronLeft, ChevronRight } from "lucide-react";
 import type { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { PAYROLL_PERIODS_PAGE_SIZE } from "@/lib/payroll/constants";
 import { formatPeriodDate, formatPeriodRange } from "@/lib/payroll/periodFormat";
@@ -76,12 +76,21 @@ export default function PayrollPeriodsTable({ rows, totalRows, page, ejercicio, 
                     <PayrollStatusBadge status={period.status} />
                   </td>
                   <td className="px-6 py-4">
-                    {period.status === 1 && (
-                      <div className="flex items-center justify-end gap-1">
-                        <EditPayrollPeriodButton period={period} />
-                        <DeletePayrollPeriodButton idPeriod={period.id_period} periodCode={period.codigo} />
-                      </div>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/dashboard/nomina/procesar?periodo=${period.id_period}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[#003d9b] dark:text-blue-300 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        <Calculator size={15} />
+                        Procesar
+                      </Link>
+                      {period.status === 1 && (
+                        <>
+                          <EditPayrollPeriodButton period={period} />
+                          <DeletePayrollPeriodButton idPeriod={period.id_period} periodCode={period.codigo} />
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
