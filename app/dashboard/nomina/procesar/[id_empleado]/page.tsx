@@ -10,6 +10,8 @@ import {
   type SearchParamsInput,
 } from "@/lib/payroll/processUrls";
 import { getPayrollEmployeeDetail } from "../actions";
+import PayrollEmployeeProfileCard from "./componentes/PayrollEmployeeProfileCard";
+import PayrollPerceptionsCard from "./componentes/PayrollPerceptionsCard";
 
 export default async function PayrollEmployeeDetailPage({
   params,
@@ -70,10 +72,29 @@ export default async function PayrollEmployeeDetailPage({
         </Link>
       </div>
 
-      {!result.ok && (
+      {!result.ok ? (
         <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">
           {result.message}
         </p>
+      ) : (
+        result.data && (
+          <>
+            <PayrollEmployeeProfileCard
+              employee={result.data.employee}
+              period={result.data.period}
+              salarioDiario={result.data.snapshot?.salario_diario ?? null}
+              payrollType={filters.payrollType}
+            />
+            {result.data.snapshot && (
+              <div className="w-full max-w-3xl">
+                <PayrollPerceptionsCard
+                  perceptions={result.data.perceptions}
+                  totalPerceptions={result.data.totalPerceptions}
+                />
+              </div>
+            )}
+          </>
+        )
       )}
     </div>
   );
