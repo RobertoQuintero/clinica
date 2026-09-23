@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
-import type { IPayrollEmployeeRow, PayrollType } from "@/interfaces/payroll_calculation";
+import type { IPayrollEmployeeRow, IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
@@ -12,7 +12,7 @@ interface Props {
   idPuesto: number | null;
   search: string;
   /** Totales de todo el tipo: no cambian con los filtros de puesto y búsqueda. */
-  totals: { employees: number; importeSalario: number };
+  totals: IPayrollProcessPage["totals"];
   hasActiveFilters: boolean;
 }
 
@@ -39,7 +39,9 @@ export default function PayrollEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold">Puesto</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Salario D.</th>
               <th scope="col" className="px-4 py-3 font-semibold text-center">Días</th>
-              <th scope="col" className="px-6 py-3 font-semibold text-right">Sueldo</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Sueldo</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Comisión</th>
+              <th scope="col" className="px-6 py-3 font-semibold text-right">Total percepciones</th>
               <th scope="col" className="w-12 pr-4 py-3">
                 <span className="sr-only">Acciones</span>
               </th>
@@ -48,7 +50,7 @@ export default function PayrollEmployeesTable({
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={8} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún empleado coincide con los filtros."
                     : "Ningún empleado tiene sueldo calculado en esta nómina."}
@@ -86,8 +88,22 @@ export default function PayrollEmployeesTable({
                         {employeeRow.dias} d
                       </span>
                     </td>
-                    <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
+                    <td className="px-4 py-3.5 text-sm text-right tabular-nums text-[#0b1c30] dark:text-zinc-200">
                       {formatPayrollCurrency(employeeRow.importe_salario)}
+                    </td>
+                    <td className="px-4 py-3.5 text-right tabular-nums">
+                      <span className="block text-sm text-[#0b1c30] dark:text-zinc-200">
+                        {formatPayrollCurrency(employeeRow.importe_comision)}
+                      </span>
+                      {employeeRow.consultas_atendidas > 0 && (
+                        <span className="block text-[11px] text-[#747780] dark:text-zinc-500">
+                          {employeeRow.consultas_atendidas}{" "}
+                          {employeeRow.consultas_atendidas === 1 ? "consulta" : "consultas"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
+                      {formatPayrollCurrency(employeeRow.total_percepciones)}
                     </td>
                     <td className="pr-4 py-3.5 text-right">
                       <Link
@@ -117,8 +133,14 @@ export default function PayrollEmployeesTable({
                   {hasActiveFilters && ` · mostrando ${rows.length}`}
                 </span>
               </th>
-              <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
+              <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeSalario)}
+              </td>
+              <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                {formatPayrollCurrency(totals.importeComision)}
+              </td>
+              <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
+                {formatPayrollCurrency(totals.totalPercepciones)}
               </td>
               <td aria-hidden />
             </tr>

@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/database/connection";
-import { IUser } from "@/interfaces/user";
+import { IUser, IUserListItem } from "@/interfaces/user";
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IAuthUser } from "@/interfaces/auth";
@@ -21,31 +21,34 @@ async function getActiveUser(): Promise<IAuthUser> {
   return payload as unknown as IAuthUser;
 }
 
-export async function getUsuarios(): Promise<IUser[]> {
+export async function getUsuarios(): Promise<IUserListItem[]> {
   const cookieStore = await cookies();
   const { id_sucursal: jwtSucursal, id_empresa } = await getActiveUser();
   const selCookie = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
   const id_sucursal = selCookie > 0 ? selCookie : jwtSucursal;
   const data = await db.queryParams(
-    `SELECT [id_user],
-            [nombre],
-            [email],
-            [telefono],
-            [password_hash],
-            [id_role],
-            [status],
-            CONVERT(varchar(19), [created_at], 120) AS created_at,
-            CONVERT(varchar(19), [updated_at], 120) AS updated_at,
-            CONVERT(varchar(19), [deleted_at], 120) AS deleted_at,
-            [id_sucursal],
-            [id_empresa],
-            ISNULL([sucursales_string], '') AS sucursales_string
-       FROM [CentroPodologico].[dbo].[users]
-      WHERE [id_sucursal] = @id_sucursal
-        AND [id_empresa]  = @id_empresa`,
+    `SELECT u.[id_user],
+            u.[nombre],
+            u.[email],
+            u.[telefono],
+            u.[password_hash],
+            u.[id_role],
+            u.[status],
+            CONVERT(varchar(19), u.[created_at], 120) AS created_at,
+            CONVERT(varchar(19), u.[updated_at], 120) AS updated_at,
+            CONVERT(varchar(19), u.[deleted_at], 120) AS deleted_at,
+            u.[id_sucursal],
+            u.[id_empresa],
+            ISNULL(u.[sucursales_string], '') AS sucursales_string,
+            u.[id_empleado],
+            NULLIF(CONCAT_WS(' ', e.[nombre], NULLIF(e.[apellido_paterno], ''), NULLIF(e.[apellido_materno], '')), '') AS nombre_empleado
+       FROM [CentroPodologico].[dbo].[users] u
+       LEFT JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = u.[id_empleado]
+      WHERE u.[id_sucursal] = @id_sucursal
+        AND u.[id_empresa]  = @id_empresa`,
     { id_sucursal, id_empresa }
   );
-  return data as IUser[];
+  return data as IUserListItem[];
 }
 
 export async function getRoles(): Promise<IRole[]> {

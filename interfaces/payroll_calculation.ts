@@ -14,6 +14,9 @@ export interface IPayrollEmployeeRow {
   salario_diario:     number;
   dias:               number;
   importe_salario:    number;
+  consultas_atendidas: number;
+  importe_comision:    number;
+  total_percepciones:  number;  // importe_salario + importe_comision, calculado en el SELECT
   calculated_at:      string;   // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -35,13 +38,13 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; totalPercepciones: number };   // de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
 }
 
-// Una línea de la tarjeta "Percepciones totales". Hoy solo existe "sueldo_base".
+// Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".
 export interface IPayrollPerceptionLine {
   key:         string;          // identificador estable, se usa como React key: "sueldo_base"
   label:       string;          // "Sueldo base"
@@ -63,6 +66,8 @@ export interface IPayrollEmployeeSnapshot {
   salario_diario:  number;
   dias:            number;
   importe_salario: number;
+  consultas_atendidas: number;
+  importe_comision:    number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 

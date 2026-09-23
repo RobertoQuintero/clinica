@@ -1274,3 +1274,60 @@ CREATE TABLE [payroll].[period_employees](
 GO
 
 ----------------------------------------------------
+
+-- Spec 55: un usuario pertenece a lo mucho a un empleado.
+ALTER TABLE [CentroPodologico].[dbo].[users]
+    ADD [id_empleado] [int] NULL
+GO
+
+ALTER TABLE [CentroPodologico].[dbo].[users] WITH CHECK
+    ADD CONSTRAINT [FK_users_empleado] FOREIGN KEY ([id_empleado])
+        REFERENCES [CentroPodologico].[RH].[empleados] ([id_empleado])
+GO
+
+-- No único: un empleado puede tener varios usuarios.
+CREATE NONCLUSTERED INDEX [IX_users_id_empleado]
+    ON [CentroPodologico].[dbo].[users] ([id_empleado])
+GO
+
+----------------------------------------------------
+
+-- Spec 56: tramos de comisión por número de consultas atendidas, por empresa.
+CREATE TABLE [payroll].[commission_tiers](
+    [id_commission_tier] [int] IDENTITY(1,1) NOT NULL,
+    [id_empresa]         [int]           NOT NULL,
+    [min_consultas]      [int]           NOT NULL,   -- inclusivo
+    [max_consultas]      [int]           NULL,       -- inclusivo; NULL = tramo abierto ("36 en adelante")
+    [importe]            [decimal](12,2) NOT NULL,   -- monto fijo del tramo, no por consulta
+    [created_by]         [int]           NOT NULL,
+    [created_at]         [datetime2](0)  NOT NULL,
+    [updated_at]         [datetime2](0)  NULL,
+ CONSTRAINT [PK_commission_tiers] PRIMARY KEY CLUSTERED ([id_commission_tier] ASC),
+ CONSTRAINT [UQ_commission_tiers_min] UNIQUE ([id_empresa], [min_consultas]),
+ CONSTRAINT [CK_commission_tiers_rango] CHECK (
+     [min_consultas] >= 1
+     AND ([max_consultas] IS NULL OR [max_consultas] >= [min_consultas])),
+ CONSTRAINT [CK_commission_tiers_importe] CHECK ([importe] >= 0)
+) ON [PRIMARY]
+GO
+
+-- Semilla: los tramos del requerimiento para la empresa 1.
+INSERT INTO [payroll].[commission_tiers]
+    ([id_empresa],[min_consultas],[max_consultas],[importe],[created_by],[created_at])
+VALUES
+    (1,  1, 10,   100.00, 1, '2026-09-23 00:00:00'),
+    (1, 11, 25,   200.00, 1, '2026-09-23 00:00:00'),
+    (1, 26, 35,   300.00, 1, '2026-09-23 00:00:00'),
+    (1, 36, NULL, 500.00, 1, '2026-09-23 00:00:00')
+GO
+
+-- Spec 56: comisión por consultas en el snapshot del periodo.
+ALTER TABLE [payroll].[period_employees]
+    ADD [consultas_atendidas] [int]           NOT NULL CONSTRAINT [DF_period_employees_consultas] DEFAULT (0),
+        [importe_comision]    [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_comision]  DEFAULT (0)
+GO
+
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_comision] CHECK (
+        [consultas_atendidas] >= 0 AND [importe_comision] >= 0)
+GO

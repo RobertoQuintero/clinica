@@ -14,6 +14,7 @@ export type ActionResult<T> =
 export interface IPayrollSession {
   id_sucursal: number;
   id_user: number;
+  id_empresa: number;
 }
 
 export const PERIOD_ROW_SELECT = `
@@ -51,5 +52,5 @@ export async function assertPayrollAccess(): Promise<ActionResult<IPayrollSessio
 
   const selectedBranchId = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
   const id_sucursal = selectedBranchId > 0 ? selectedBranchId : user.id_sucursal;
-  return { ok: true, data: { id_sucursal, id_user: user.id_user } };
+  return { ok: true, data: { id_sucursal, id_user: user.id_user, id_empresa: user.id_empresa } };
 }

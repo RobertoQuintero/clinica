@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
-import { IUser } from "@/interfaces/user";
+import { IUserListItem } from "@/interfaces/user";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsuarioFila from "./componentes/UsuarioFila";
@@ -13,7 +13,7 @@ import CambiarPasswordModal from "./componentes/CambiarPasswordModal";
 import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario, changePasswordUsuario } from "./actions";
 import { SucursalName } from "../componentes/SucursalName";
 
-const EMPTY: IUser = {
+const EMPTY: IUserListItem = {
   id_user:           0,
   nombre:            "",
   email:             "",
@@ -27,27 +27,29 @@ const EMPTY: IUser = {
   id_sucursal:       0,
   id_empresa:        0,
   sucursales_string: "",
+  id_empleado:       null,
+  nombre_empleado:   null,
 };
 
 export default function UsuariosPage() {
   const { user }                  = useAuth();
   const { selectedId }            = useSucursal();
   const router                    = useRouter();
-  const [usuarios, setUsuarios]   = useState<IUser[]>([]);
+  const [usuarios, setUsuarios]   = useState<IUserListItem[]>([]);
   const [roles, setRoles]         = useState<IRole[]>([]);
   const [sucursales, setSucursales] = useState<ISucursal[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm]           = useState<IUser>(EMPTY);
+  const [form, setForm]           = useState<IUserListItem>(EMPTY);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordUser, setPasswordUser]            = useState<IUser | null>(null);
+  const [passwordUser, setPasswordUser]            = useState<IUserListItem | null>(null);
 
   const [search, setSearch] = useState("");
 
-  type SortKey = "nombre" | "email" | "telefono" | "id_role" | "id_sucursal" | "status";
+  type SortKey = "nombre" | "email" | "telefono" | "id_role" | "id_sucursal" | "nombre_empleado" | "status";
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -96,7 +98,7 @@ export default function UsuariosPage() {
     setShowModal(true);
   };
 
-  const openEdit = (u: IUser) => {
+  const openEdit = (u: IUserListItem) => {
     setForm({ ...u, password_hash: "", sucursales_string: u.sucursales_string ?? "" });
     setError(null);
     setShowModal(true);
@@ -121,7 +123,7 @@ export default function UsuariosPage() {
     });
   };
 
-  const openChangePassword = (u: IUser) => {
+  const openChangePassword = (u: IUserListItem) => {
     setPasswordUser(u);
     setShowPasswordModal(true);
   };
@@ -169,6 +171,12 @@ export default function UsuariosPage() {
     )
     .sort((a, b) => {
       if (!sortKey) return 0;
+      if (sortKey === "nombre_empleado") {
+        // Los usuarios sin empleado (null) van siempre al final, sin importar la dirección.
+        if (a.nombre_empleado === null && b.nombre_empleado === null) return 0;
+        if (a.nombre_empleado === null) return 1;
+        if (b.nombre_empleado === null) return -1;
+      }
       const va = String(a[sortKey] ?? "").toLowerCase();
       const vb = String(b[sortKey] ?? "").toLowerCase();
       return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
@@ -210,6 +218,7 @@ export default function UsuariosPage() {
                   { label: "Teléfono",  key: "telefono"    },
                   { label: "Rol",       key: "id_role"     },
                   { label: "Sucursal",  key: "id_sucursal" },
+                  { label: "Empleado",  key: "nombre_empleado" },
                 ] as { label: string; key: SortKey }[]).map(({ label, key }) => (
                   <th
                     key={key}
@@ -240,7 +249,7 @@ export default function UsuariosPage() {
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
               {usuarios.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
+                  <td colSpan={9} className="px-4 py-6 text-center text-zinc-400">Sin registros</td>
                 </tr>
               ) : usuariosFiltrados.map((u) => (
                 <UsuarioFila key={u.id_user} usuario={u} roles={roles} sucursales={sucursales} onEdit={openEdit} onChangePassword={openChangePassword} />
