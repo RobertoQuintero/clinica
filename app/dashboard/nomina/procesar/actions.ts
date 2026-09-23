@@ -116,7 +116,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, totalPercepciones: 0 },
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
@@ -139,6 +139,8 @@ export async function getPayrollProcessPage(
                 ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
                 e.id_puesto, pu.name AS nombre_puesto, pe.tipo_nomina,
                 pe.salario_diario, pe.dias, pe.importe_salario,
+                pe.consultas_atendidas, pe.importe_comision,
+                pe.importe_salario + pe.importe_comision AS total_percepciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -148,7 +150,9 @@ export async function getPayrollProcessPage(
         rowParams,
       ),
       db.queryParams(
-        `SELECT COUNT(*) AS employees, ISNULL(SUM(importe_salario), 0) AS importe_salario
+        `SELECT COUNT(*) AS employees,
+                ISNULL(SUM(importe_salario), 0) AS importe_salario,
+                ISNULL(SUM(importe_comision), 0) AS importe_comision
            FROM [CentroPodologico].[payroll].[period_employees]
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
@@ -194,10 +198,16 @@ export async function getPayrollProcessPage(
           salario_diario: Number(row.salario_diario),
           dias: Number(row.dias),
           importe_salario: Number(row.importe_salario),
+          consultas_atendidas: Number(row.consultas_atendidas),
+          importe_comision: Number(row.importe_comision),
+          total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
           employees: Number(totals[0]?.employees ?? 0),
           importeSalario: Number(totals[0]?.importe_salario ?? 0),
+          importeComision: Number(totals[0]?.importe_comision ?? 0),
+          totalPercepciones:
+            Math.round((Number(totals[0]?.importe_salario ?? 0) + Number(totals[0]?.importe_comision ?? 0)) * 100) / 100,
         },
         puestoOptions: puestoOptions.map((row: { id_puesto: number; name: string }) => ({
           id_puesto: row.id_puesto,
@@ -260,6 +270,7 @@ export async function getPayrollEmployeeDetail(
       ),
       db.queryParams(
         `SELECT pe.salario_diario, pe.dias, pe.importe_salario,
+                pe.consultas_atendidas, pe.importe_comision,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -302,6 +313,8 @@ export async function getPayrollEmployeeDetail(
           salario_diario: Number(snapshotRow.salario_diario),
           dias: Number(snapshotRow.dias),
           importe_salario: Number(snapshotRow.importe_salario),
+          consultas_atendidas: Number(snapshotRow.consultas_atendidas),
+          importe_comision: Number(snapshotRow.importe_comision),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
@@ -361,6 +374,9 @@ function revalidatePayrollPaths() {
  * Calcular (estatus 1) y Recalcular (estatus 2): en un solo batch con bloqueo reemplaza el
  * snapshot del periodo (filas 'O' y 'F') y deja el periodo en estatus 2 (En cálculo).
  * La regla de elegibilidad y de días vive aquí; `lib/payroll/salaryCalculation.ts` la espeja.
+ * La comisión por consultas (spec 56) también se resuelve aquí; `lib/payroll/commissionTiers.ts` la espeja.
+ * Solo la nómina operativa ('O') comisiona; las filas 'F' quedan en 0. `cancelada` es nullable y
+ * NULL significa "no cancelada" (así lo lee la app), por eso `ISNULL(c.[cancelada], 0) = 0`.
  */
 export async function calculatePayrollPeriod(
   input: unknown,
@@ -391,9 +407,11 @@ export async function calculatePayrollPeriod(
        DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
 
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
-         (id_period, id_empleado, tipo_nomina, salario_diario, dias, importe_salario, calculated_by, calculated_at)
+         (id_period, id_empleado, tipo_nomina, salario_diario, dias, importe_salario,
+          consultas_atendidas, importe_comision, calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, paid.dias,
               ROUND(salary.salario_diario * paid.dias, 2),
+              ISNULL(attended.consultas, 0), ISNULL(tier.importe, 0),
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
         CROSS APPLY (VALUES ('O', e.salario_diario), ('F', e.salario_diario_fiscal))
@@ -401,6 +419,26 @@ export async function calculatePayrollPeriod(
         CROSS APPLY (SELECT DATEDIFF(day,
                               CASE WHEN e.fecha_ingreso > @fecha_inicio THEN e.fecha_ingreso ELSE @fecha_inicio END,
                               @fecha_fin) + 1 AS dias) AS paid
+        OUTER APPLY (
+          SELECT COUNT(*) AS consultas
+            FROM [CentroPodologico].[dbo].[consultas] c
+            JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = c.[id_podologo]
+           WHERE salary.tipo_nomina = 'O'
+             AND u.[id_empleado] = e.[id_empleado]
+             AND c.[deleted_at] IS NULL
+             AND ISNULL(c.[cancelada], 0) = 0
+             AND c.[fecha_fin] IS NOT NULL
+             AND c.[fecha] >= @fecha_inicio
+             AND c.[fecha] <  DATEADD(day, 1, @fecha_fin)
+        ) AS attended
+        OUTER APPLY (
+          SELECT TOP 1 t.[importe]
+            FROM [CentroPodologico].[payroll].[commission_tiers] t
+           WHERE t.[id_empresa]    = e.[id_empresa]
+             AND t.[min_consultas] <= attended.consultas
+             AND (t.[max_consultas] IS NULL OR t.[max_consultas] >= attended.consultas)
+           ORDER BY t.[min_consultas] DESC
+        ) AS tier
         WHERE e.status = 1 AND e.activo = 1
           AND e.id_sucursal = @id_sucursal
           AND e.id_periodo_pago = @id_payment_period
