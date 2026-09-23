@@ -22,6 +22,7 @@ import {
   Banknote,
   CalendarRange,
   Calculator,
+  Percent,
   type LucideIcon,
 } from "lucide-react";
 
@@ -86,6 +87,12 @@ export const NAV_LINKS: NavLink[] = [
         href: "/dashboard/nomina/procesar",
         label: "Procesar nómina",
         icon: Calculator,
+        excludeRoles: [2, 3, 5, 6],
+      },
+      {
+        href: "/dashboard/nomina/comisiones",
+        label: "Comisiones",
+        icon: Percent,
         excludeRoles: [2, 3, 5, 6],
       },
     ],
