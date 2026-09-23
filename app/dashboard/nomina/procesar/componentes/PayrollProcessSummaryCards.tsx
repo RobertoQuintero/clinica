@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Banknote, CalendarCheck2, CalendarRange, UsersRound } from "lucide-react";
 import type { IPayrollPeriodRow } from "@/interfaces/payroll_period";
-import type { PayrollType } from "@/interfaces/payroll_calculation";
+import type { IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatCalculatedAt, formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { daysFromTo, formatPeriodDate, formatPeriodRange } from "@/lib/payroll/periodFormat";
@@ -10,7 +10,7 @@ import { PayrollFrequencyBadge } from "../../periodos/componentes/PayrollBadges"
 interface Props {
   period: IPayrollPeriodRow;
   payrollType: PayrollType;
-  totals: { employees: number; importeSalario: number };
+  totals: IPayrollProcessPage["totals"];
   lastCalculatedAt: string | null;
   today: string;
 }
@@ -71,9 +71,12 @@ export default function PayrollProcessSummaryCards({ period, payrollType, totals
         </span>
       </SummaryCard>
 
-      <SummaryCard icon={<Banknote size={20} />} label="Total de sueldos">
+      <SummaryCard icon={<Banknote size={20} />} label="Total de percepciones">
         <span className="text-xl font-bold leading-tight text-[#0b1c30] dark:text-zinc-50 tabular-nums">
-          {formatPayrollCurrency(totals.importeSalario)}
+          {formatPayrollCurrency(totals.totalPercepciones)}
+        </span>
+        <span className="text-xs text-[#44474f] dark:text-zinc-400 tabular-nums">
+          Sueldos {formatPayrollCurrency(totals.importeSalario)} + comisión {formatPayrollCurrency(totals.importeComision)}
         </span>
         <span className="text-xs text-[#44474f] dark:text-zinc-400">
           {lastCalculatedAt
