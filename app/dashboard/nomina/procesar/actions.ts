@@ -11,9 +11,11 @@ import {
   IPayrollProcessPage,
   PayrollType,
 } from "@/interfaces/payroll_calculation";
+import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
+import { getCommissionTiers } from "../comisiones/actions";
 import {
   calculatePayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
@@ -319,8 +321,11 @@ export async function getPayrollEmployeeDetail(
         }
       : null;
 
+    // El catálogo solo se consulta si hay comisión que describir.
+    const commissionTiers =
+      snapshot && snapshot.importe_comision > 0 ? await getCommissionTiersOrEmpty() : [];
     const perceptions = snapshot
-      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio)
+      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers)
       : [];
     const totalPerceptions =
       Math.round(perceptions.reduce((sum, line) => sum + line.amount, 0) * 100) / 100;
@@ -345,6 +350,11 @@ export async function getPayrollEmployeeDetail(
     console.error("getPayrollEmployeeDetail", error);
     return { ok: false, message: "No se pudo cargar el detalle de nómina del empleado" };
   }
+}
+
+async function getCommissionTiersOrEmpty(): Promise<ICommissionTier[]> {
+  const result = await getCommissionTiers();
+  return result.ok ? result.data : [];
 }
 
 const PERIOD_NOT_CALCULABLE_MARKER = "PERIOD_NOT_CALCULABLE";

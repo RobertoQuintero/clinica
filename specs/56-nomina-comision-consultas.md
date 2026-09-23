@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [52 — Nómina: periodos](52-nomina-periodos.md): `payroll.periods`, el acceso por rol y el patrón de batch con `UPDLOCK, HOLDLOCK`.
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md): `payroll.period_employees`, `calculatePayrollPeriod` y la pantalla Procesar.
@@ -23,7 +23,7 @@ La 55 es dependencia dura: sin `users.id_empleado` no hay a quién atribuirle la
 - **Pantalla nueva `/dashboard/nomina/comisiones`** (Server Component), tercera entrada del menú de Nómina, después de Periodos y Procesar. Roles 1 y 4: `proxy.ts` ya cubre todo `/dashboard/nomina`, `navConfig.tsx` ya excluye los roles 2, 3, 5 y 6, y las actions llaman a `assertPayrollAccess()`.
 - **CRUD de tramos:** tabla con los tramos ordenados por `min_consultas`, botón "Nuevo tramo", modal de alta/edición y borrado físico por fila. Estado vacío: "No hay tramos de comisión configurados".
 - **Validación en servidor con `zod` + revalidación contra la BD** antes de escribir: `min_consultas >= 1`, `max_consultas >= min_consultas` o nulo, `importe >= 0`, **sin solapamiento** con los demás tramos de la empresa y **a lo mucho un tramo abierto**. Los huecos sí se permiten.
-- **Conteo de consultas atribuidas.** Una consulta cuenta para un empleado cuando `consultas.id_podologo` es uno de los `users.id_user` vinculados a ese empleado (`users.id_empleado`), con `deleted_at IS NULL`, `cancelada = 0`, `fecha_fin IS NOT NULL` y `fecha` dentro de `[fecha_inicio, fecha_fin]` del periodo. **Sin filtro de sucursal**: cuentan todas las consultas del usuario, se hayan hecho donde se hayan hecho.
+- **Conteo de consultas atribuidas.** Una consulta cuenta para un empleado cuando `consultas.id_podologo` es uno de los `users.id_user` vinculados a ese empleado (`users.id_empleado`), con `deleted_at IS NULL`, no cancelada (`cancelada` es nullable y `NULL` cuenta como no cancelada: `ISNULL(cancelada, 0) = 0`), `fecha_fin IS NOT NULL` y `fecha` dentro de `[fecha_inicio, fecha_fin]` del periodo. **Sin filtro de sucursal**: cuentan todas las consultas del usuario, se hayan hecho donde se hayan hecho.
 - **Suma por empleado:** si un empleado tiene varios usuarios vinculados, las consultas de todos se suman y se aplica **un solo** tramo al total.
 - **Importe fijo por tramo:** el tramo paga su `importe` completo, no por consulta. 0 consultas, ningún tramo aplicable o ningún tramo configurado → `importe_comision = 0`.
 - **Solo nómina operativa.** Las filas `tipo_nomina = 'F'` se insertan siempre con `consultas_atendidas = 0` e `importe_comision = 0`.
@@ -194,7 +194,7 @@ OUTER APPLY (
       INNER JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = c.[id_podologo]
      WHERE u.[id_empleado] = e.[id_empleado]
        AND c.[deleted_at] IS NULL
-       AND c.[cancelada]  = 0
+       AND ISNULL(c.[cancelada], 0) = 0   -- nullable: NULL = no cancelada
        AND c.[fecha_fin]  IS NOT NULL
        AND c.[fecha] >= @fecha_inicio
        AND c.[fecha] <  DATEADD(day, 1, @fecha_fin)
@@ -285,12 +285,12 @@ Cada paso deja el sistema compilando y funcional.
 
 **Base de datos**
 
-- [ ] Existe `payroll.commission_tiers` con `UQ_commission_tiers_min`, `CK_commission_tiers_rango` y `CK_commission_tiers_importe`.
-- [ ] La tabla nace con los cuatro tramos: 1–10 → $100, 11–25 → $200, 26–35 → $300, 36–∞ → $500.
-- [ ] `payroll.period_employees` tiene `consultas_atendidas INT NOT NULL DEFAULT 0` e `importe_comision DECIMAL(12,2) NOT NULL DEFAULT 0`.
-- [ ] Los snapshots calculados antes de esta spec quedaron en `0 / 0` y las pantallas de nómina siguen abriendo sin error.
-- [ ] Un `INSERT` con `min_consultas = 0` o con `max_consultas < min_consultas` es rechazado por el `CHECK`.
-- [ ] La DDL y la semilla de la spec están en `queries.txt`.
+- [x] Existe `payroll.commission_tiers` con `UQ_commission_tiers_min`, `CK_commission_tiers_rango` y `CK_commission_tiers_importe`.
+- [x] La tabla nace con los cuatro tramos: 1–10 → $100, 11–25 → $200, 26–35 → $300, 36–∞ → $500.
+- [x] `payroll.period_employees` tiene `consultas_atendidas INT NOT NULL DEFAULT 0` e `importe_comision DECIMAL(12,2) NOT NULL DEFAULT 0`.
+- [x] Los snapshots calculados antes de esta spec quedaron en `0 / 0` y las pantallas de nómina siguen abriendo sin error.
+- [x] Un `INSERT` con `min_consultas = 0` o con `max_consultas < min_consultas` es rechazado por el `CHECK`.
+- [x] La DDL y la semilla de la spec están en `queries.txt`.
 
 **Permisos y rutas**
 
@@ -300,60 +300,60 @@ Cada paso deja el sistema compilando y funcional.
 
 **Catálogo de tramos**
 
-- [ ] La tabla lista los tramos ordenados por `min_consultas`, con el rango legible ("1 a 10 consultas", "36 consultas en adelante").
+- [x] La tabla lista los tramos ordenados por `min_consultas`, con el rango legible ("1 a 10 consultas", "36 consultas en adelante").
 - [ ] Sin tramos, la pantalla muestra "No hay tramos de comisión configurados".
-- [ ] Crear un tramo que se traslapa con otro devuelve `{ ok: false }`, muestra el mensaje en el modal y no escribe en la BD.
-- [ ] Editar un tramo sin cambiarle el rango **no** se rechaza a sí mismo por solapamiento.
-- [ ] Crear un segundo tramo con `max_consultas` nulo devuelve `{ ok: false }`.
+- [x] Crear un tramo que se traslapa con otro devuelve `{ ok: false }`, muestra el mensaje en el modal y no escribe en la BD.
+- [x] Editar un tramo sin cambiarle el rango **no** se rechaza a sí mismo por solapamiento.
+- [x] Crear un segundo tramo con `max_consultas` nulo devuelve `{ ok: false }`.
 - [ ] Dejar un hueco (1–10 y 26–35, sin nada entre 11 y 25) **sí** se permite, y un empleado con 15 consultas comisiona $0.
-- [ ] Un tramo con `importe = 0` se puede guardar.
+- [x] Un tramo con `importe = 0` se puede guardar.
 - [ ] Borrar un tramo lo quita físicamente de la tabla y **no** cambia el `importe_comision` de ningún periodo ya calculado.
 - [ ] Editar el importe de un tramo no cambia ningún snapshot existente hasta que se recalcula el periodo.
 
 **Conteo de consultas**
 
-- [ ] Una consulta cuenta solo si `deleted_at IS NULL`, `cancelada = 0` y `fecha_fin IS NOT NULL`.
-- [ ] Una consulta con `fecha` a las 23:30 del `fecha_fin` del periodo **sí** cuenta; una del día siguiente a las 00:10 no.
+- [x] Una consulta cuenta solo si `deleted_at IS NULL`, no está cancelada (`cancelada` `NULL` o `0`) y `fecha_fin IS NOT NULL`.
+- [x] Una consulta con `fecha` a las 23:30 del `fecha_fin` del periodo **sí** cuenta; una del día siguiente a las 00:10 no.
 - [ ] Una consulta hecha en una sucursal distinta a la del periodo **sí** cuenta.
-- [ ] Un empleado con dos usuarios vinculados suma las consultas de ambos y recibe **un solo** tramo (12 + 15 = 27 consultas → $300, no $200 + $200).
-- [ ] Las consultas de un usuario que después quedó en `status = 0` siguen contando.
-- [ ] Un empleado sin usuarios vinculados queda en `consultas_atendidas = 0` e `importe_comision = 0`.
+- [x] Un empleado con dos usuarios vinculados suma las consultas de ambos y recibe **un solo** tramo (12 + 15 = 27 consultas → $300, no $200 + $200).
+- [x] Las consultas de un usuario que después quedó en `status = 0` siguen contando.
+- [x] Un empleado sin usuarios vinculados queda en `consultas_atendidas = 0` e `importe_comision = 0`.
 - [ ] Una consulta cuyo `id_podologo` apunta a un usuario sin `id_empleado` no se le atribuye a nadie.
 
 **Cálculo y snapshot**
 
-- [ ] Con los tramos sembrados: 0 consultas → $0; 1 → $100; 10 → $100; 11 → $200; 25 → $200; 26 → $300; 35 → $300; 36 → $500; 400 → $500.
-- [ ] Todas las filas con `tipo_nomina = 'F'` se insertan con `consultas_atendidas = 0` e `importe_comision = 0`, aunque el empleado tenga consultas.
+- [x] Con los tramos sembrados: 0 consultas → $0; 1 → $100; 10 → $100; 11 → $200; 25 → $200; 26 → $300; 35 → $300; 36 → $500; 400 → $500.
+- [x] Todas las filas con `tipo_nomina = 'F'` se insertan con `consultas_atendidas = 0` e `importe_comision = 0`, aunque el empleado tenga consultas.
 - [ ] Con el catálogo de tramos vacío, calcular un periodo funciona y deja todas las comisiones en $0.
-- [ ] "Recalcular" vuelve a contar las consultas y a resolver el tramo con los datos del momento; "Revertir" borra el snapshot completo, comisión incluida.
+- [x] "Recalcular" vuelve a contar las consultas y a resolver el tramo con los datos del momento; "Revertir" borra el snapshot completo, comisión incluida.
 - [ ] Cancelar una consulta después de calcular no cambia el snapshot hasta que se recalcula el periodo.
 - [ ] Un empleado con `salario_diario = 0` y consultas atendidas sigue sin entrar a la nómina operativa y aparece en "excluidos" (no se agrega una fila solo por su comisión).
 - [ ] El importe de la comisión **no** se prorratea para quien ingresó a media nómina.
-- [ ] `calculateCommissionAmount` en TS y el `OUTER APPLY` del SQL dan el mismo importe para los nueve conteos de arriba.
+- [x] `calculateCommissionAmount` en TS y el `OUTER APPLY` del SQL dan el mismo importe para los nueve conteos de arriba.
 
 **Pantalla Procesar**
 
-- [ ] La tabla muestra "Comisión" (con el número de consultas) y "Total percepciones" por empleado.
-- [ ] "Total percepciones" de cada fila es exactamente `importe_salario + importe_comision`.
-- [ ] El total de las tarjetas de resumen es la suma de "Total percepciones" de **todos** los empleados del tipo, sin importar los filtros de puesto y búsqueda.
-- [ ] En la vista fiscal la columna "Comisión" muestra $0 en todas las filas.
+- [x] La tabla muestra "Comisión" (con el número de consultas) y "Total percepciones" por empleado.
+- [x] "Total percepciones" de cada fila es exactamente `importe_salario + importe_comision`.
+- [x] El total de las tarjetas de resumen es la suma de "Total percepciones" de **todos** los empleados del tipo, sin importar los filtros de puesto y búsqueda.
+- [x] En la vista fiscal la columna "Comisión" muestra $0 en todas las filas.
 
 **Detalle del empleado**
 
-- [ ] Un empleado con comisión muestra la línea "Comisión por consultas atendidas" con el conteo y el tramo aplicado, y el total de la tarjeta suma sueldo + comisión.
-- [ ] Un empleado con `importe_comision = 0` **no** muestra la línea, y su total es igual al sueldo base.
-- [ ] Un snapshot calculado antes de esta spec muestra solo "Sueldo base".
-- [ ] En la vista fiscal nunca aparece la línea de comisión.
+- [x] Un empleado con comisión muestra la línea "Comisión por consultas atendidas" con el conteo y el tramo aplicado, y el total de la tarjeta suma sueldo + comisión.
+- [x] Un empleado con `importe_comision = 0` **no** muestra la línea, y su total es igual al sueldo base.
+- [x] Un snapshot calculado antes de esta spec muestra solo "Sueldo base".
+- [x] En la vista fiscal nunca aparece la línea de comisión.
 - [ ] Anterior / Siguiente siguen funcionando igual, sin cambios de orden.
 
 **Técnico**
 
-- [ ] `comisiones/page.tsx` y su tabla son Server Components. Solo `CommissionTierModal.tsx` y `DeleteCommissionTierButton.tsx` llevan `"use client"`.
-- [ ] Todas las queries nuevas usan `db.queryParams`, nunca concatenación de SQL.
-- [ ] Las tres actions de escritura parsean con `zod` y revalidan contra la BD dentro de la misma transacción que escribe.
-- [ ] Ninguna query nueva devuelve un `Date` de JS; las fechas del periodo viajan como strings `"YYYY-MM-DD"`.
-- [ ] `docs/nomina.md` tiene la sección de comisión por consultas y ya no dice que solo se calcula el salario base.
-- [ ] `npm run build` compila sin errores de TypeScript.
+- [x] `comisiones/page.tsx` y su tabla son Server Components. Solo `CommissionTierModal.tsx` y `DeleteCommissionTierButton.tsx` llevan `"use client"`.
+- [x] Todas las queries nuevas usan `db.queryParams`, nunca concatenación de SQL.
+- [x] Las tres actions de escritura parsean con `zod` y revalidan contra la BD dentro de la misma transacción que escribe.
+- [x] Ninguna query nueva devuelve un `Date` de JS; las fechas del periodo viajan como strings `"YYYY-MM-DD"`.
+- [x] `docs/nomina.md` tiene la sección de comisión por consultas y ya no dice que solo se calcula el salario base.
+- [x] `npm run build` compila sin errores de TypeScript.
 
 ## Decisiones tomadas y descartadas
 
@@ -375,7 +375,7 @@ Cada paso deja el sistema compilando y funcional.
 **Reglas del conteo**
 
 - **Sí: solo consultas con `fecha_fin IS NOT NULL`.** La comisión es por paciente **atendido**; una consulta abierta todavía no lo está.
-- **Sí: se excluyen `cancelada = 1` y `deleted_at IS NOT NULL`.** Una consulta cancelada no se atendió, y una borrada no existe.
+- **Sí: se excluyen las canceladas (`cancelada = 1`; `NULL` cuenta como no cancelada) y `deleted_at IS NOT NULL`.** Una consulta cancelada no se atendió, y una borrada no existe.
 - **Sí: el rango es `[fecha_inicio, fecha_fin]` del periodo,** no hasta `fecha_corte`. Es el mismo rango que ya definen los días pagados de la spec 53; usar el corte partiría el periodo en dos criterios distintos.
 - **Sí: el rango se escribe medio abierto en SQL** (`>= @fecha_inicio` y `< @fecha_fin + 1 día`). `consultas.fecha` es `datetime`; un `BETWEEN` con fechas sueltas perdería todo lo atendido después de medianoche del último día.
 - **Sí: el importe del tramo es fijo, no por consulta.** 10 consultas pagan $100, no $1,000. Es lo que dice el requerimiento.

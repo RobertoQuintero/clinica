@@ -44,7 +44,7 @@ export interface IPayrollProcessPage {
   lastCalculatedAt:  string | null;
 }
 
-// Una línea de la tarjeta "Percepciones totales". Hoy solo existe "sueldo_base".
+// Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".
 export interface IPayrollPerceptionLine {
   key:         string;          // identificador estable, se usa como React key: "sueldo_base"
   label:       string;          // "Sueldo base"
