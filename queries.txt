@@ -1274,3 +1274,18 @@ CREATE TABLE [payroll].[period_employees](
 GO
 
 ----------------------------------------------------
+
+-- Spec 55: un usuario pertenece a lo mucho a un empleado.
+ALTER TABLE [CentroPodologico].[dbo].[users]
+    ADD [id_empleado] [int] NULL
+GO
+
+ALTER TABLE [CentroPodologico].[dbo].[users] WITH CHECK
+    ADD CONSTRAINT [FK_users_empleado] FOREIGN KEY ([id_empleado])
+        REFERENCES [CentroPodologico].[RH].[empleados] ([id_empleado])
+GO
+
+-- No único: un empleado puede tener varios usuarios.
+CREATE NONCLUSTERED INDEX [IX_users_id_empleado]
+    ON [CentroPodologico].[dbo].[users] ([id_empleado])
+GO
