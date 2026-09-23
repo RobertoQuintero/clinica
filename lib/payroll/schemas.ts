@@ -69,3 +69,16 @@ export const payrollEmployeeDetailFiltersSchema = z.object({
 
 export type CreatePayrollPeriodInput = z.infer<typeof createPayrollPeriodSchema>;
 export type UpdatePayrollPeriodInput = z.infer<typeof updatePayrollPeriodSchema>;
+
+export const commissionTierSchema = z
+  .object({
+    min_consultas: z.number().int("El mínimo debe ser un entero").min(1, "El mínimo debe ser al menos 1"),
+    max_consultas: z.number().int("El máximo debe ser un entero").min(1, "El máximo debe ser al menos 1").nullable(),
+    importe: z.number("El importe es inválido").min(0, "El importe no puede ser negativo"),
+  })
+  .refine((tier) => tier.max_consultas === null || tier.max_consultas >= tier.min_consultas, {
+    path: ["max_consultas"],
+    message: "El máximo debe ser mayor o igual al mínimo",
+  });
+
+export type CommissionTierSchemaInput = z.infer<typeof commissionTierSchema>;
