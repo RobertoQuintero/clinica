@@ -2,15 +2,15 @@
 
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
-import { IUser } from "@/interfaces/user";
+import { IUserListItem } from "@/interfaces/user";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
-  usuario: IUser;
+  usuario: IUserListItem;
   roles: IRole[];
   sucursales: ISucursal[];
-  onEdit: (u: IUser) => void;
-  onChangePassword: (u: IUser) => void;
+  onEdit: (u: IUserListItem) => void;
+  onChangePassword: (u: IUserListItem) => void;
 }
 
 export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit, onChangePassword }: Props) {

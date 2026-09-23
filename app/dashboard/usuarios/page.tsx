@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
-import { IUser } from "@/interfaces/user";
+import { IUserListItem } from "@/interfaces/user";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsuarioFila from "./componentes/UsuarioFila";
@@ -13,7 +13,7 @@ import CambiarPasswordModal from "./componentes/CambiarPasswordModal";
 import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario, changePasswordUsuario } from "./actions";
 import { SucursalName } from "../componentes/SucursalName";
 
-const EMPTY: IUser = {
+const EMPTY: IUserListItem = {
   id_user:           0,
   nombre:            "",
   email:             "",
@@ -27,23 +27,25 @@ const EMPTY: IUser = {
   id_sucursal:       0,
   id_empresa:        0,
   sucursales_string: "",
+  id_empleado:       null,
+  nombre_empleado:   null,
 };
 
 export default function UsuariosPage() {
   const { user }                  = useAuth();
   const { selectedId }            = useSucursal();
   const router                    = useRouter();
-  const [usuarios, setUsuarios]   = useState<IUser[]>([]);
+  const [usuarios, setUsuarios]   = useState<IUserListItem[]>([]);
   const [roles, setRoles]         = useState<IRole[]>([]);
   const [sucursales, setSucursales] = useState<ISucursal[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm]           = useState<IUser>(EMPTY);
+  const [form, setForm]           = useState<IUserListItem>(EMPTY);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordUser, setPasswordUser]            = useState<IUser | null>(null);
+  const [passwordUser, setPasswordUser]            = useState<IUserListItem | null>(null);
 
   const [search, setSearch] = useState("");
 
@@ -96,7 +98,7 @@ export default function UsuariosPage() {
     setShowModal(true);
   };
 
-  const openEdit = (u: IUser) => {
+  const openEdit = (u: IUserListItem) => {
     setForm({ ...u, password_hash: "", sucursales_string: u.sucursales_string ?? "" });
     setError(null);
     setShowModal(true);
@@ -121,7 +123,7 @@ export default function UsuariosPage() {
     });
   };
 
-  const openChangePassword = (u: IUser) => {
+  const openChangePassword = (u: IUserListItem) => {
     setPasswordUser(u);
     setShowPasswordModal(true);
   };
