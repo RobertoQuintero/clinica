@@ -3,6 +3,7 @@
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUserListItem } from "@/interfaces/user";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
@@ -39,6 +40,15 @@ export default function UsuarioFila({ usuario: u, roles, sucursales, onEdit, onC
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{u.telefono}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{roleName(u.id_role)}</td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{sucursalName(u.id_sucursal)}</td>
+      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">
+        {u.id_empleado !== null && u.nombre_empleado ? (
+          <Link href={`/dashboard/empleados/${u.id_empleado}`} className="hover:underline">
+            {u.nombre_empleado}
+          </Link>
+        ) : (
+          "—"
+        )}
+      </td>
       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">
         {u?.id_role === 1 || u?.id_role === 4
         ?'Todas'
