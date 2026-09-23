@@ -1,6 +1,8 @@
 import type { ICommissionTier } from "@/interfaces/payroll_commission";
 import { formatTierRange } from "@/lib/payroll/commissionTiers";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
+import { EditCommissionTierButton } from "./CommissionTierModal";
+import DeleteCommissionTierButton from "./DeleteCommissionTierButton";
 
 interface Props {
   tiers: ICommissionTier[];
@@ -15,12 +17,13 @@ export default function CommissionTiersTable({ tiers }: Props) {
             <tr>
               <th className="px-6 py-4 font-semibold">Rango de consultas</th>
               <th className="px-6 py-4 font-semibold text-right">Comisión fija</th>
+              <th className="px-6 py-4 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {tiers.length === 0 ? (
               <tr>
-                <td colSpan={2} className="px-6 py-8 text-center text-[#747780] dark:text-zinc-500">
+                <td colSpan={3} className="px-6 py-8 text-center text-[#747780] dark:text-zinc-500">
                   No hay tramos de comisión configurados
                 </td>
               </tr>
@@ -32,6 +35,15 @@ export default function CommissionTiersTable({ tiers }: Props) {
                   </td>
                   <td className="px-6 py-4 text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100 whitespace-nowrap">
                     {formatPayrollCurrency(tier.importe)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-1">
+                      <EditCommissionTierButton tier={tier} tiers={tiers} />
+                      <DeleteCommissionTierButton
+                        idCommissionTier={tier.id_commission_tier}
+                        tierLabel={formatTierRange(tier)}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))
