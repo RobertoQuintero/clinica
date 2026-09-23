@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { IEmployeeUserListItem } from "@/interfaces/user";
 
+import UnlinkUserButton from "./UnlinkUserButton";
+
 interface Props {
+  id_empleado: number;
   linkedUsers: IEmployeeUserListItem[];
 }
 
-export default function LinkedUsersTable({ linkedUsers }: Props) {
+export default function LinkedUsersTable({ id_empleado, linkedUsers }: Props) {
   if (linkedUsers.length === 0) {
     return (
       <div className="p-10 text-center text-sm text-[#44474f] dark:text-zinc-400">
@@ -24,6 +27,7 @@ export default function LinkedUsersTable({ linkedUsers }: Props) {
             <th className="px-5 py-3 font-semibold">Rol</th>
             <th className="px-5 py-3 font-semibold">Sucursal</th>
             <th className="px-5 py-3 font-semibold">Estatus</th>
+            <th className="px-5 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50 text-sm">
@@ -47,6 +51,9 @@ export default function LinkedUsersTable({ linkedUsers }: Props) {
                 >
                   {linkedUser.status ? "Activo" : "Inactivo"}
                 </span>
+              </td>
+              <td className="px-5 py-3 text-right">
+                <UnlinkUserButton id_empleado={id_empleado} id_user={linkedUser.id_user} />
               </td>
             </tr>
           ))}

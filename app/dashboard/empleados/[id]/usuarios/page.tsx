@@ -36,7 +36,7 @@ export default async function EmployeeUsersPage({ params }: Props) {
             {linkedUsers.length}
           </span>
         </div>
-        <LinkedUsersTable linkedUsers={linkedUsers} />
+        <LinkedUsersTable id_empleado={id_empleado} linkedUsers={linkedUsers} />
       </div>
     </div>
   );
