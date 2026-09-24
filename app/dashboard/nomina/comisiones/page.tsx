@@ -7,6 +7,7 @@ import {
 import { NewCommissionTierButton } from "./componentes/CommissionTierModal";
 import CommissionTiersTable from "./componentes/CommissionTiersTable";
 import TreatmentCommissionSettingsCard from "./componentes/TreatmentCommissionSettingsCard";
+import { EditTreatmentCommissionSettingsButton } from "./componentes/TreatmentCommissionSettingsModal";
 import TreatmentCommissionSettingsLog from "./componentes/TreatmentCommissionSettingsLog";
 
 function ErrorAlert({ message }: { message: string }) {
@@ -47,7 +48,10 @@ export default async function ComisionesNominaPage() {
         {!treatmentSettingsResult.ok ? (
           <ErrorAlert message={treatmentSettingsResult.message} />
         ) : (
-          <TreatmentCommissionSettingsCard settings={treatmentSettingsResult.data} />
+          <TreatmentCommissionSettingsCard
+            settings={treatmentSettingsResult.data}
+            editAction={<EditTreatmentCommissionSettingsButton settings={treatmentSettingsResult.data} />}
+          />
         )}
 
         {!treatmentSettingsLogResult.ok ? (
