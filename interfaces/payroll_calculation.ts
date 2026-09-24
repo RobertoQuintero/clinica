@@ -44,7 +44,7 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos?: number; totalPercepciones: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; totalPercepciones: number };   // de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
