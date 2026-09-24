@@ -2,6 +2,7 @@ import { IPayrollEmployeeSnapshot, IPayrollPerceptionLine } from "@/interfaces/p
 import type { ICommissionTier } from "@/interfaces/payroll_commission";
 import { findCommissionTier, formatTierRange } from "@/lib/payroll/commissionTiers";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
+import { describeProductSalesCommission } from "@/lib/payroll/productSalesCommission";
 import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
 
 /** "2026-09-22" -> "22/09/2026". Opera sobre el string, sin pasar por `Date`. */
@@ -35,7 +36,8 @@ function describeCommission(
 
 /**
  * Líneas de la tarjeta "Percepciones totales" de un empleado: "Sueldo base" y, cuando el
- * snapshot trae importe, "Comisión por consultas atendidas" y "Comisión por tratamientos de onicomicosis".
+ * snapshot trae importe, "Comisión por consultas atendidas", "Comisión por tratamientos de onicomicosis"
+ * y "Comisión por venta de productos".
  * Los conceptos futuros se agregan aquí.
  * Las fechas son "YYYY-MM-DD" y se comparan como strings.
  */
@@ -50,6 +52,8 @@ export function buildPerceptionLines(
     | "tratamientos_onicomicosis"
     | "importe_por_tratamiento"
     | "importe_comision_tratamientos"
+    | "piezas_vendidas"
+    | "importe_comision_productos"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -84,6 +88,16 @@ export function buildPerceptionLines(
       description: describeTreatmentCommission(snapshot.tratamientos_onicomicosis, snapshot.importe_por_tratamiento),
       note: null,
       amount: snapshot.importe_comision_tratamientos,
+    });
+  }
+
+  if (snapshot.importe_comision_productos > 0) {
+    lines.push({
+      key: "comision_productos",
+      label: "Comisión por venta de productos",
+      description: describeProductSalesCommission(snapshot.piezas_vendidas),
+      note: null,
+      amount: snapshot.importe_comision_productos,
     });
   }
 

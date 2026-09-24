@@ -13,6 +13,7 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
+import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
@@ -271,7 +272,7 @@ export async function getPayrollEmployeeDetail(
       search,
     });
 
-    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows] = await Promise.all([
+    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows, soldProductRows] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
       db.queryParams(
@@ -292,6 +293,7 @@ export async function getPayrollEmployeeDetail(
         `SELECT pe.salario_diario, pe.dias, pe.importe_salario,
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_por_tratamiento, pe.importe_comision_tratamientos,
+                pe.piezas_vendidas, pe.importe_comision_productos,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -334,6 +336,22 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Ventas de productos pagadas en el renglón operativo, agrupadas por producto y bono congelado.
+      payrollType === "O"
+        ? db.queryParams(
+            `SELECT ps.id_producto, ISNULL(p.[name], '') AS nombre_producto, ps.bono_venta,
+                    CAST(SUM(ps.cantidad) AS float) AS piezas,
+                    CAST(SUM(ps.importe_comision) AS float) AS importe_comision
+               FROM [CentroPodologico].[payroll].[period_employee_product_sales] ps
+               JOIN [CentroPodologico].[payroll].[period_employees] pe
+                 ON pe.id_period_employee = ps.id_period_employee
+               LEFT JOIN [CentroPodologico].[inventory].[Products] p ON p.id_product = ps.id_producto
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'O'
+              GROUP BY ps.id_producto, p.[name], ps.bono_venta
+              ORDER BY SUM(ps.importe_comision) DESC, p.[name]`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -360,6 +378,8 @@ export async function getPayrollEmployeeDetail(
           tratamientos_onicomicosis: Number(snapshotRow.tratamientos_onicomicosis),
           importe_por_tratamiento: Number(snapshotRow.importe_por_tratamiento),
           importe_comision_tratamientos: Number(snapshotRow.importe_comision_tratamientos),
+          piezas_vendidas: Number(snapshotRow.piezas_vendidas),
+          importe_comision_productos: Number(snapshotRow.importe_comision_productos),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
@@ -382,6 +402,16 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const soldProducts: IPayrollSoldProduct[] = snapshot
+      ? soldProductRows.map((row: IPayrollSoldProduct) => ({
+          id_producto: Number(row.id_producto),
+          nombre_producto: row.nombre_producto,
+          piezas: Number(row.piezas),
+          bono_venta: Number(row.bono_venta),
+          importe_comision: Number(row.importe_comision),
+        }))
+      : [];
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -393,6 +423,7 @@ export async function getPayrollEmployeeDetail(
         perceptions,
         totalPerceptions,
         paidTreatments,
+        soldProducts,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,

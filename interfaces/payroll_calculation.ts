@@ -77,8 +77,8 @@ export interface IPayrollEmployeeSnapshot {
   tratamientos_onicomicosis:     number;
   importe_por_tratamiento:       number;
   importe_comision_tratamientos: number;
-  piezas_vendidas?:              number;
-  importe_comision_productos?:   number;
+  piezas_vendidas:               number;
+  importe_comision_productos:    number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -98,7 +98,7 @@ export interface IPayrollEmployeeDetail {
   perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
   totalPerceptions: number;                     // suma de perceptions[].amount
   paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
-  soldProducts?:    IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
+  soldProducts:     IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;
