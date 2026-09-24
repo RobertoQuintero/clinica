@@ -2,6 +2,7 @@ import { IPayrollEmployeeSnapshot, IPayrollPerceptionLine } from "@/interfaces/p
 import type { ICommissionTier } from "@/interfaces/payroll_commission";
 import { findCommissionTier, formatTierRange } from "@/lib/payroll/commissionTiers";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
+import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
 
 /** "2026-09-22" -> "22/09/2026". Opera sobre el string, sin pasar por `Date`. */
 function formatDayMonthYear(dateString: string): string {
@@ -34,13 +35,21 @@ function describeCommission(
 
 /**
  * Líneas de la tarjeta "Percepciones totales" de un empleado: "Sueldo base" y, cuando el
- * snapshot trae importe, "Comisión por consultas atendidas". Los conceptos futuros se agregan aquí.
+ * snapshot trae importe, "Comisión por consultas atendidas" y "Comisión por tratamientos de onicomicosis".
+ * Los conceptos futuros se agregan aquí.
  * Las fechas son "YYYY-MM-DD" y se comparan como strings.
  */
 export function buildPerceptionLines(
   snapshot: Pick<
     IPayrollEmployeeSnapshot,
-    "salario_diario" | "dias" | "importe_salario" | "consultas_atendidas" | "importe_comision"
+    | "salario_diario"
+    | "dias"
+    | "importe_salario"
+    | "consultas_atendidas"
+    | "importe_comision"
+    | "tratamientos_onicomicosis"
+    | "importe_por_tratamiento"
+    | "importe_comision_tratamientos"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -65,6 +74,16 @@ export function buildPerceptionLines(
       description: describeCommission(snapshot, commissionTiers),
       note: null,
       amount: snapshot.importe_comision,
+    });
+  }
+
+  if (snapshot.importe_comision_tratamientos > 0) {
+    lines.push({
+      key: "comision_tratamientos",
+      label: "Comisión por tratamientos de onicomicosis",
+      description: describeTreatmentCommission(snapshot.tratamientos_onicomicosis, snapshot.importe_por_tratamiento),
+      note: null,
+      amount: snapshot.importe_comision_tratamientos,
     });
   }
 

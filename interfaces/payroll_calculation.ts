@@ -92,7 +92,7 @@ export interface IPayrollEmployeeDetail {
   snapshot:         IPayrollEmployeeSnapshot | null;
   perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
   totalPerceptions: number;                     // suma de perceptions[].amount
-  paidTreatments?:  IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
+  paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;

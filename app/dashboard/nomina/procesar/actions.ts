@@ -13,6 +13,7 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
+import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
 import { getCommissionTiers } from "../comisiones/actions";
@@ -263,7 +264,7 @@ export async function getPayrollEmployeeDetail(
       search,
     });
 
-    const [employeeRows, snapshotRows, navigationRows] = await Promise.all([
+    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
       db.queryParams(
@@ -305,6 +306,27 @@ export async function getPayrollEmployeeDetail(
           WHERE id_empleado = @id_empleado`,
         { ...navigationParams, id_empleado: idEmpleado },
       ),
+      // Solo la nómina operativa comisiona por tratamientos; en fiscal no hay desglose.
+      payrollType === "O"
+        ? db.queryParams(
+            `SELECT pet.id_tratamiento,
+                    LTRIM(RTRIM(
+                      ISNULL(p.[nombre], '')
+                      + ISNULL(' ' + NULLIF(p.[apellido_paterno], ''), '')
+                      + ISNULL(' ' + NULLIF(p.[apellido_materno], ''), ''))) AS nombre_paciente,
+                    CONVERT(varchar(19), pet.fecha_liquidacion, 120) AS fecha_liquidacion,
+                    CAST(pet.total_parciales AS float) AS total_parciales
+               FROM [CentroPodologico].[payroll].[period_employee_treatments] pet
+               JOIN [CentroPodologico].[payroll].[period_employees] pe
+                 ON pe.id_period_employee = pet.id_period_employee
+               LEFT JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t ON t.id_tratamiento = pet.id_tratamiento
+               LEFT JOIN [CentroPodologico].[dbo].[consultas] c ON c.id_consulta = t.id_consulta
+               LEFT JOIN [CentroPodologico].[dbo].[pacientes] p ON p.id_paciente = c.id_paciente
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'O'
+              ORDER BY pet.fecha_liquidacion, pet.id_tratamiento`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -344,6 +366,15 @@ export async function getPayrollEmployeeDetail(
     const totalPerceptions =
       Math.round(perceptions.reduce((sum, line) => sum + line.amount, 0) * 100) / 100;
 
+    const paidTreatments: IPayrollPaidTreatment[] = snapshot
+      ? paidTreatmentRows.map((row: IPayrollPaidTreatment) => ({
+          id_tratamiento: Number(row.id_tratamiento),
+          nombre_paciente: row.nombre_paciente,
+          fecha_liquidacion: row.fecha_liquidacion,
+          total_parciales: Number(row.total_parciales),
+        }))
+      : [];
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -354,6 +385,7 @@ export async function getPayrollEmployeeDetail(
         snapshot,
         perceptions,
         totalPerceptions,
+        paidTreatments,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,
