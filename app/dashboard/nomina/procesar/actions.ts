@@ -13,6 +13,7 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
+import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
@@ -119,7 +120,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, totalPercepciones: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, totalPercepciones: 0 },
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
@@ -144,7 +145,9 @@ export async function getPayrollProcessPage(
                 pe.salario_diario, pe.dias, pe.importe_salario,
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_comision_tratamientos,
-                pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos AS total_percepciones,
+                pe.piezas_vendidas, pe.importe_comision_productos,
+                pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
+                  + pe.importe_comision_productos AS total_percepciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -157,7 +160,8 @@ export async function getPayrollProcessPage(
         `SELECT COUNT(*) AS employees,
                 ISNULL(SUM(importe_salario), 0) AS importe_salario,
                 ISNULL(SUM(importe_comision), 0) AS importe_comision,
-                ISNULL(SUM(importe_comision_tratamientos), 0) AS importe_comision_tratamientos
+                ISNULL(SUM(importe_comision_tratamientos), 0) AS importe_comision_tratamientos,
+                ISNULL(SUM(importe_comision_productos), 0) AS importe_comision_productos
            FROM [CentroPodologico].[payroll].[period_employees]
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
@@ -207,6 +211,8 @@ export async function getPayrollProcessPage(
           importe_comision: Number(row.importe_comision),
           tratamientos_onicomicosis: Number(row.tratamientos_onicomicosis),
           importe_comision_tratamientos: Number(row.importe_comision_tratamientos),
+          piezas_vendidas: Number(row.piezas_vendidas),
+          importe_comision_productos: Number(row.importe_comision_productos),
           total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
@@ -214,11 +220,13 @@ export async function getPayrollProcessPage(
           importeSalario: Number(totals[0]?.importe_salario ?? 0),
           importeComision: Number(totals[0]?.importe_comision ?? 0),
           importeComisionTratamientos: Number(totals[0]?.importe_comision_tratamientos ?? 0),
+          importeComisionProductos: Number(totals[0]?.importe_comision_productos ?? 0),
           totalPercepciones:
             Math.round(
               (Number(totals[0]?.importe_salario ?? 0) +
                 Number(totals[0]?.importe_comision ?? 0) +
-                Number(totals[0]?.importe_comision_tratamientos ?? 0)) *
+                Number(totals[0]?.importe_comision_tratamientos ?? 0) +
+                Number(totals[0]?.importe_comision_productos ?? 0)) *
                 100,
             ) / 100,
         },
@@ -264,7 +272,7 @@ export async function getPayrollEmployeeDetail(
       search,
     });
 
-    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows] = await Promise.all([
+    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows, soldProductRows] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
       db.queryParams(
@@ -285,6 +293,7 @@ export async function getPayrollEmployeeDetail(
         `SELECT pe.salario_diario, pe.dias, pe.importe_salario,
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_por_tratamiento, pe.importe_comision_tratamientos,
+                pe.piezas_vendidas, pe.importe_comision_productos,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -327,6 +336,22 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Ventas de productos pagadas en el renglón operativo, agrupadas por producto y bono congelado.
+      payrollType === "O"
+        ? db.queryParams(
+            `SELECT ps.id_producto, ISNULL(p.[name], '') AS nombre_producto, ps.bono_venta,
+                    CAST(SUM(ps.cantidad) AS float) AS piezas,
+                    CAST(SUM(ps.importe_comision) AS float) AS importe_comision
+               FROM [CentroPodologico].[payroll].[period_employee_product_sales] ps
+               JOIN [CentroPodologico].[payroll].[period_employees] pe
+                 ON pe.id_period_employee = ps.id_period_employee
+               LEFT JOIN [CentroPodologico].[inventory].[Products] p ON p.id_product = ps.id_producto
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'O'
+              GROUP BY ps.id_producto, p.[name], ps.bono_venta
+              ORDER BY SUM(ps.importe_comision) DESC, p.[name]`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -353,6 +378,8 @@ export async function getPayrollEmployeeDetail(
           tratamientos_onicomicosis: Number(snapshotRow.tratamientos_onicomicosis),
           importe_por_tratamiento: Number(snapshotRow.importe_por_tratamiento),
           importe_comision_tratamientos: Number(snapshotRow.importe_comision_tratamientos),
+          piezas_vendidas: Number(snapshotRow.piezas_vendidas),
+          importe_comision_productos: Number(snapshotRow.importe_comision_productos),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
@@ -375,6 +402,16 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const soldProducts: IPayrollSoldProduct[] = snapshot
+      ? soldProductRows.map((row: IPayrollSoldProduct) => ({
+          id_producto: Number(row.id_producto),
+          nombre_producto: row.nombre_producto,
+          piezas: Number(row.piezas),
+          bono_venta: Number(row.bono_venta),
+          importe_comision: Number(row.importe_comision),
+        }))
+      : [];
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -386,6 +423,7 @@ export async function getPayrollEmployeeDetail(
         perceptions,
         totalPerceptions,
         paidTreatments,
+        soldProducts,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,
@@ -406,6 +444,7 @@ async function getCommissionTiersOrEmpty(): Promise<ICommissionTier[]> {
 const PERIOD_NOT_CALCULABLE_MARKER = "PERIOD_NOT_CALCULABLE";
 const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
+const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
 
 /** Traduce los errores de SQL Server de calcular/revertir nómina a un mensaje en español. */
 function describePayrollCalculationError(error: unknown): string {
@@ -418,6 +457,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(TREATMENT_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó alguno de estos tratamientos al mismo tiempo. Intenta de nuevo.";
+  }
+  if (sqlError.message?.includes(PRODUCT_SALE_ALREADY_PAID_CONSTRAINT)) {
+    return "Otro cálculo tomó algunas de estas ventas al mismo tiempo. Intenta de nuevo.";
   }
   if (sqlError.number === 2627 || sqlError.number === 2601 || sqlError.number === 1205) {
     return "Otro usuario modificó la nómina al mismo tiempo. Intenta de nuevo";
@@ -436,6 +478,8 @@ function revalidatePayrollPaths() {
  * La regla de elegibilidad y de días vive aquí; `lib/payroll/salaryCalculation.ts` la espeja.
  * La comisión por consultas (spec 56) también se resuelve aquí; `lib/payroll/commissionTiers.ts` la espeja.
  * La comisión por tratamientos de onicomicosis (spec 57) también: `lib/payroll/treatmentCommission.ts` la espeja
+ * y, si divergen, manda este SQL.
+ * La comisión por venta de productos (spec 58) también: `lib/payroll/productSalesCommission.ts` la espeja
  * y, si divergen, manda este SQL.
  * Solo la nómina operativa ('O') comisiona; las filas 'F' quedan en 0. `cancelada` es nullable y
  * NULL significa "no cancelada" (así lo lee la app), por eso `ISNULL(c.[cancelada], 0) = 0`.
@@ -466,7 +510,7 @@ export async function calculatePayrollPeriod(
        IF @id_payment_period IS NULL
          THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
 
-       -- El cascade de period_employee_treatments libera los tratamientos que este periodo tenía pagados.
+       -- El cascade de period_employee_treatments y period_employee_product_sales libera lo que este periodo tenía pagado.
        DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
 
        -- Spec 57: tratamientos de onicomicosis liquidados en el rango y aún no pagados por ningún periodo.
@@ -494,10 +538,43 @@ export async function calculatePayrollPeriod(
           AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_treatments] pet
                            WHERE pet.[id_tratamiento] = t.[id_tratamiento]);
 
+       -- Spec 58: líneas vendidas en el rango con bono_venta y aún no pagadas por ningún periodo.
+       SELECT u.[id_empleado], CAST('C' AS char(1)) AS origen,
+              cp.[id_consulta_producto] AS id_linea_origen, c.[id_consulta] AS id_documento_origen,
+              cp.[id_producto], c.[fecha] AS fecha_venta,
+              CAST(cp.[cantidad] AS decimal(18,4)) AS cantidad, p.[bono_venta]
+         INTO #product_sales
+         FROM [CentroPodologico].[dbo].[consulta_productos] cp
+         JOIN [CentroPodologico].[dbo].[consultas] c       ON c.[id_consulta] = cp.[id_consulta]
+         JOIN [CentroPodologico].[dbo].[users] u           ON u.[id_user]     = c.[id_podologo]
+         JOIN [CentroPodologico].[inventory].[Products] p  ON p.[id_product]  = cp.[id_producto]
+        WHERE u.[id_empleado] IS NOT NULL
+          AND cp.[status] = 1
+          AND c.[deleted_at] IS NULL
+          AND ISNULL(c.[cancelada], 0) = 0
+          AND c.[fecha] >= @fecha_inicio AND c.[fecha] < DATEADD(day, 1, @fecha_fin)
+          AND p.[bono_venta] > 0
+          AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_product_sales] ps
+                           WHERE ps.[origen] = 'C' AND ps.[id_linea_origen] = cp.[id_consulta_producto])
+       UNION ALL
+       SELECT u.[id_empleado], 'V', vd.[id_venta_detalle], v.[id_venta],
+              vd.[id_producto], v.[created_at], vd.[cantidad], p.[bono_venta]
+         FROM [CentroPodologico].[dbo].[VentasDetalle] vd
+         JOIN [CentroPodologico].[dbo].[Ventas] v          ON v.[id_venta]   = vd.[id_venta]
+         JOIN [CentroPodologico].[dbo].[users] u           ON u.[id_user]    = v.[id_usuario]
+         JOIN [CentroPodologico].[inventory].[Products] p  ON p.[id_product] = vd.[id_producto]
+        WHERE u.[id_empleado] IS NOT NULL
+          AND v.[status] = 1
+          AND v.[created_at] >= @fecha_inicio AND v.[created_at] < DATEADD(day, 1, @fecha_fin)
+          AND p.[bono_venta] > 0
+          AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_product_sales] ps
+                           WHERE ps.[origen] = 'V' AND ps.[id_linea_origen] = vd.[id_venta_detalle]);
+
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
          (id_period, id_empleado, tipo_nomina, salario_diario, dias, importe_salario,
           consultas_atendidas, importe_comision,
           tratamientos_onicomicosis, importe_por_tratamiento, importe_comision_tratamientos,
+          piezas_vendidas, importe_comision_productos,
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, paid.dias,
               ROUND(salary.salario_diario * paid.dias, 2),
@@ -506,6 +583,7 @@ export async function calculatePayrollPeriod(
               CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(treatment_settings.[importe_por_tratamiento], 0) ELSE 0 END,
               ROUND(ISNULL(paid_treatments.tratamientos, 0)
                     * CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(treatment_settings.[importe_por_tratamiento], 0) ELSE 0 END, 2),
+              ISNULL(product_sales.piezas, 0), ISNULL(product_sales.importe, 0),
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
          LEFT JOIN [CentroPodologico].[payroll].[treatment_commission_settings] treatment_settings
@@ -540,6 +618,12 @@ export async function calculatePayrollPeriod(
             FROM #liquidated l
            WHERE salary.tipo_nomina = 'O' AND l.[id_empleado] = e.[id_empleado]
         ) AS paid_treatments
+        OUTER APPLY (
+          SELECT SUM(ps.[cantidad]) AS piezas,
+                 SUM(ROUND(ps.[cantidad] * ps.[bono_venta], 2)) AS importe
+            FROM #product_sales ps
+           WHERE salary.tipo_nomina = 'O' AND ps.[id_empleado] = e.[id_empleado]
+        ) AS product_sales
         WHERE e.status = 1 AND e.activo = 1
           AND e.id_sucursal = @id_sucursal
           AND e.id_periodo_pago = @id_payment_period
@@ -553,6 +637,16 @@ export async function calculatePayrollPeriod(
          FROM #liquidated l
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period] = @id_period AND pe.[id_empleado] = l.[id_empleado] AND pe.[tipo_nomina] = 'O';
+
+       -- Desglose y candado anti doble pago de ventas: solo las líneas de quien entró a la nómina operativa.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_product_sales]
+         (id_period_employee, origen, id_linea_origen, id_documento_origen, id_producto,
+          fecha_venta, cantidad, bono_venta, importe_comision)
+       SELECT pe.[id_period_employee], s.[origen], s.[id_linea_origen], s.[id_documento_origen], s.[id_producto],
+              s.[fecha_venta], s.[cantidad], s.[bono_venta], ROUND(s.[cantidad] * s.[bono_venta], 2)
+         FROM #product_sales s
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period] = @id_period AND pe.[id_empleado] = s.[id_empleado] AND pe.[tipo_nomina] = 'O';
 
        UPDATE [CentroPodologico].[payroll].[periods]
           SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))

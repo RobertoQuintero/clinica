@@ -1,22 +1,3 @@
-ventas x consulta
-	Son las ventas de productos que se vendieron durante las consultas
-ventas y ventas detalle
-	son las ventas de productos que se vendieron a publico general desde el modulo de ventas
-	
-
-======================================================================
-Cálculo de comisiones por empleado:
-Cada empleado puede tener asociados uno o varios usuarios. Durante el periodo de nómina, el sistema debe identificar todas las ventas de productos realizadas por esos usuarios, tanto las hechas dentro de una consulta como las realizadas mediante una venta directa.
-
-Para cada producto vendido se toma el bono de venta configurado en inventory.Products y se calcula la comisión correspondiente según la cantidad vendida.
-
-Finalmente, el sistema suma las comisiones de todos los usuarios asociados al empleado dentro del periodo seleccionado y obtiene la comisión total que corresponde pagarle al empleado.
-
-Considerando dos fuentes de venta:
-
-Consultas: consultas → consulta_productos → Products
-Ventas directas: ventas → VentasDetalle → Products
-
 ============================================COMISION X VENTA DE PRODUCTOS============================================
 =====================================================================================================================
 
@@ -92,16 +73,16 @@ Contiene los productos incluidos en cada venta directa.
 Para cada empleado:
 
 1. Obtener todos los usuarios asociados al empleado.
-2. Buscar las ventas de productos realizadas por esos usuarios dentro del periodo de nómina.
+2. Buscar las ventas de productos realizadas por esos usuarios dentro del rango de periodo de nómina.
 3. Considerar dos fuentes de venta:
-
    * Productos vendidos dentro de `consultas` mediante `consulta_productos`.
    * Productos vendidos directamente mediante `ventas` y `VentasDetalle`.
 4. Relacionar cada producto vendido con `inventory.Products` mediante `id_producto = id_product`.
 5. Obtener el `bono_venta` correspondiente al producto.
 6. Calcular la comisión de cada producto vendido tomando en cuenta su cantidad.
 7. Sumar todas las comisiones generadas por todos los usuarios asociados al empleado.
-8. El resultado será la **comisión total del empleado para ese periodo de nómina**.
+8. El resultado será la **comisión total de venta de productos del empleado para ese periodo de nómina**.
+9. Para los productos obtenidos desde una consulta, dicha consulta debe tener la columna "cancelada" diferente de 1 ( ser 0 o NULL).
 
 ### Fórmula
 
@@ -115,17 +96,9 @@ Después:
 
 ### Importante
 
-El cálculo debe evitar duplicar ventas cuando se obtengan los datos de ambas fuentes.
-
-También se debe definir claramente qué fecha determina que una venta pertenece al periodo de nómina:
+Las fechas que determinan que una venta pertenece al periodo de nómina son:
 
 * Para ventas directas: `ventas.created_at`.
-* Para productos de consultas: definir si se utilizará `consultas.fecha` o `consultas.fecha_fin`.
+* Para productos de consultas: `consultas.created_at`
 
-Antes de modificar la base de datos o crear código definitivo, revisa la estructura existente y las relaciones actuales entre empleados y usuarios para adaptar la implementación al proyecto.
 
-La solución debe integrarse con la arquitectura actual del módulo de Nómina y permitir obtener el desglose de la comisión, idealmente mostrando:
-
-Empleado → Usuario → Venta/Consulta → Producto → Cantidad → Bono de venta → Comisión.
-
-No quiero únicamente el total; el sistema debe permitir identificar de dónde proviene la comisión para poder auditar el cálculo.
