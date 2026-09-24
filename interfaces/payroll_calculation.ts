@@ -41,7 +41,7 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos?: number; totalPercepciones: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; totalPercepciones: number };   // de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
@@ -71,10 +71,9 @@ export interface IPayrollEmployeeSnapshot {
   importe_salario: number;
   consultas_atendidas: number;
   importe_comision:    number;
-  // Opcionales hasta el paso 6 de la spec 57 (el snapshot aún no los trae).
-  tratamientos_onicomicosis?:     number;
-  importe_por_tratamiento?:       number;
-  importe_comision_tratamientos?: number;
+  tratamientos_onicomicosis:     number;
+  importe_por_tratamiento:       number;
+  importe_comision_tratamientos: number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 
