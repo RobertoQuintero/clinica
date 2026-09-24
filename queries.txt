@@ -1400,3 +1400,39 @@ GO
 CREATE NONCLUSTERED INDEX [IX_period_employee_treatments_period_employee]
     ON [payroll].[period_employee_treatments] ([id_period_employee])
 GO
+
+-- Spec 58: comisión por venta de productos en el snapshot.
+ALTER TABLE [payroll].[period_employees]
+    ADD [piezas_vendidas]            [decimal](18,4) NOT NULL CONSTRAINT [DF_period_employees_piezas_vendidas]  DEFAULT (0),
+        [importe_comision_productos] [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_comision_prod]    DEFAULT (0)
+GO
+
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_comision_prod] CHECK (
+        [piezas_vendidas] >= 0 AND [importe_comision_productos] >= 0)
+GO
+
+-- Spec 58: líneas de venta pagadas por renglón de nómina; UNIQUE(origen, id_linea_origen) impide el doble pago.
+CREATE TABLE [payroll].[period_employee_product_sales](
+    [id_period_employee_product_sale] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee]  [int]           NOT NULL,
+    [origen]              [char](1)       NOT NULL,   -- 'C' consulta_productos, 'V' VentasDetalle
+    [id_linea_origen]     [int]           NOT NULL,   -- id_consulta_producto o id_venta_detalle
+    [id_documento_origen] [int]           NOT NULL,   -- id_consulta o id_venta
+    [id_producto]         [int]           NOT NULL,   -- inventory.Products.id_product
+    [fecha_venta]         [datetime2](0)  NOT NULL,   -- consultas.fecha o Ventas.created_at
+    [cantidad]            [decimal](18,4) NOT NULL,
+    [bono_venta]          [decimal](10,2) NOT NULL,   -- congelado al calcular
+    [importe_comision]    [decimal](12,2) NOT NULL,   -- ROUND(cantidad × bono_venta, 2)
+ CONSTRAINT [PK_period_employee_product_sales] PRIMARY KEY CLUSTERED ([id_period_employee_product_sale] ASC),
+ CONSTRAINT [UQ_period_employee_product_sales_linea] UNIQUE ([origen], [id_linea_origen]),
+ CONSTRAINT [FK_period_employee_product_sales_period_employee] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_product_sales_valores] CHECK (
+     [origen] IN ('C', 'V') AND [cantidad] > 0 AND [bono_venta] > 0 AND [importe_comision] >= 0)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_period_employee_product_sales_period_employee]
+    ON [payroll].[period_employee_product_sales] ([id_period_employee])
+GO
