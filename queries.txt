@@ -1331,3 +1331,72 @@ ALTER TABLE [payroll].[period_employees] WITH CHECK
     ADD CONSTRAINT [CK_period_employees_comision] CHECK (
         [consultas_atendidas] >= 0 AND [importe_comision] >= 0)
 GO
+
+----------------------------------------------------
+
+-- Spec 57: importe por tratamiento de onicomicosis y umbral de liquidación, por empresa.
+CREATE TABLE [payroll].[treatment_commission_settings](
+    [id_empresa]              [int]           NOT NULL,
+    [importe_por_tratamiento] [decimal](12,2) NOT NULL,   -- se paga por cada tratamiento liquidado
+    [umbral_liquidacion]      [decimal](12,2) NOT NULL,   -- suma de parciales (tipo 2, status 1) para considerarlo pagado
+    [updated_by]              [int]           NOT NULL,
+    [updated_at]              [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_treatment_commission_settings] PRIMARY KEY CLUSTERED ([id_empresa] ASC),
+ CONSTRAINT [CK_treatment_commission_settings_montos] CHECK (
+     [importe_por_tratamiento] >= 0 AND [umbral_liquidacion] > 0)
+) ON [PRIMARY]
+GO
+
+INSERT INTO [payroll].[treatment_commission_settings]
+    ([id_empresa],[importe_por_tratamiento],[umbral_liquidacion],[updated_by],[updated_at])
+VALUES (1, 500.00, 5000.00, 1, '2026-09-24 00:00:00')
+GO
+
+-- Spec 57: bitácora de cambios a la configuración de comisión por tratamiento.
+CREATE TABLE [payroll].[treatment_commission_settings_log](
+    [id_log]                           [int] IDENTITY(1,1) NOT NULL,
+    [id_empresa]                       [int]           NOT NULL,
+    [importe_por_tratamiento_anterior] [decimal](12,2) NULL,       -- NULL: no había configuración
+    [importe_por_tratamiento_nuevo]    [decimal](12,2) NOT NULL,
+    [umbral_liquidacion_anterior]      [decimal](12,2) NULL,
+    [umbral_liquidacion_nuevo]         [decimal](12,2) NOT NULL,
+    [updated_by]                       [int]           NOT NULL,
+    [updated_at]                       [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_treatment_commission_settings_log] PRIMARY KEY CLUSTERED ([id_log] ASC)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_treatment_commission_settings_log_empresa]
+    ON [payroll].[treatment_commission_settings_log] ([id_empresa], [updated_at] DESC)
+GO
+
+-- Spec 57: comisión por tratamientos de onicomicosis en el snapshot.
+ALTER TABLE [payroll].[period_employees]
+    ADD [tratamientos_onicomicosis]     [int]           NOT NULL CONSTRAINT [DF_period_employees_tratamientos]     DEFAULT (0),
+        [importe_por_tratamiento]       [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_importe_tto]      DEFAULT (0),
+        [importe_comision_tratamientos] [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_comision_tto]     DEFAULT (0)
+GO
+
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_comision_tto] CHECK (
+        [tratamientos_onicomicosis] >= 0 AND [importe_por_tratamiento] >= 0
+        AND [importe_comision_tratamientos] >= 0)
+GO
+
+-- Spec 57: tratamientos pagados por renglón de nómina; UNIQUE(id_tratamiento) impide el doble pago.
+CREATE TABLE [payroll].[period_employee_treatments](
+    [id_period_employee_treatment] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee]           [int]           NOT NULL,
+    [id_tratamiento]               [int]           NOT NULL,
+    [fecha_liquidacion]            [datetime2](0)  NOT NULL,   -- created_at del pago que cruzó el umbral
+    [total_parciales]              [decimal](12,2) NOT NULL,   -- suma acumulada al liquidar
+ CONSTRAINT [PK_period_employee_treatments] PRIMARY KEY CLUSTERED ([id_period_employee_treatment] ASC),
+ CONSTRAINT [UQ_period_employee_treatments_tratamiento] UNIQUE ([id_tratamiento]),
+ CONSTRAINT [FK_period_employee_treatments_period_employee] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_period_employee_treatments_period_employee]
+    ON [payroll].[period_employee_treatments] ([id_period_employee])
+GO

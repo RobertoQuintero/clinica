@@ -16,6 +16,7 @@ import PayrollEmployeeNavigation from "./componentes/PayrollEmployeeNavigation";
 import PayrollEmployeeProfileCard from "./componentes/PayrollEmployeeProfileCard";
 import PayrollTypeToggle from "./componentes/PayrollTypeToggle";
 import PayrollPerceptionsCard from "./componentes/PayrollPerceptionsCard";
+import PayrollPaidTreatmentsList from "./componentes/PayrollPaidTreatmentsList";
 
 export default async function PayrollEmployeeDetailPage({
   params,
@@ -118,11 +119,12 @@ export default async function PayrollEmployeeDetailPage({
               }
             />
           ) : detail.snapshot ? (
-            <div className="w-full max-w-3xl">
+            <div className="w-full max-w-3xl flex flex-col gap-5">
               <PayrollPerceptionsCard
                 perceptions={detail.perceptions}
                 totalPerceptions={detail.totalPerceptions}
               />
+              <PayrollPaidTreatmentsList paidTreatments={detail.paidTreatments} />
             </div>
           ) : (
             <PayrollDetailNotice

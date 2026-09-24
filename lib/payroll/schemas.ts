@@ -82,3 +82,16 @@ export const commissionTierSchema = z
   });
 
 export type CommissionTierSchemaInput = z.infer<typeof commissionTierSchema>;
+
+export const treatmentCommissionSettingsSchema = z.object({
+  importe_por_tratamiento: z
+    .number("El importe es inválido")
+    .min(0, "El importe no puede ser negativo")
+    .multipleOf(0.01, "El importe admite máximo 2 decimales"),
+  umbral_liquidacion: z
+    .number("El umbral es inválido")
+    .positive("El umbral debe ser mayor a 0")
+    .multipleOf(0.01, "El umbral admite máximo 2 decimales"),
+});
+
+export type TreatmentCommissionSettingsSchemaInput = z.infer<typeof treatmentCommissionSettingsSchema>;

@@ -1,10 +1,29 @@
 import { ChevronRight } from "lucide-react";
-import { getCommissionTiers } from "./actions";
+import {
+  getCommissionTiers,
+  getTreatmentCommissionSettings,
+  getTreatmentCommissionSettingsLog,
+} from "./actions";
 import { NewCommissionTierButton } from "./componentes/CommissionTierModal";
 import CommissionTiersTable from "./componentes/CommissionTiersTable";
+import TreatmentCommissionSettingsCard from "./componentes/TreatmentCommissionSettingsCard";
+import { EditTreatmentCommissionSettingsButton } from "./componentes/TreatmentCommissionSettingsModal";
+import TreatmentCommissionSettingsLog from "./componentes/TreatmentCommissionSettingsLog";
+
+function ErrorAlert({ message }: { message: string }) {
+  return (
+    <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">
+      {message}
+    </p>
+  );
+}
 
 export default async function ComisionesNominaPage() {
-  const result = await getCommissionTiers();
+  const [result, treatmentSettingsResult, treatmentSettingsLogResult] = await Promise.all([
+    getCommissionTiers(),
+    getTreatmentCommissionSettings(),
+    getTreatmentCommissionSettingsLog(),
+  ]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -23,13 +42,24 @@ export default async function ComisionesNominaPage() {
         {result.ok && <NewCommissionTierButton tiers={result.data} />}
       </div>
 
-      {!result.ok ? (
-        <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">
-          {result.message}
-        </p>
-      ) : (
-        <CommissionTiersTable tiers={result.data} />
-      )}
+      {!result.ok ? <ErrorAlert message={result.message} /> : <CommissionTiersTable tiers={result.data} />}
+
+      <div className="flex flex-col gap-5 mt-4">
+        {!treatmentSettingsResult.ok ? (
+          <ErrorAlert message={treatmentSettingsResult.message} />
+        ) : (
+          <TreatmentCommissionSettingsCard
+            settings={treatmentSettingsResult.data}
+            editAction={<EditTreatmentCommissionSettingsButton settings={treatmentSettingsResult.data} />}
+          />
+        )}
+
+        {!treatmentSettingsLogResult.ok ? (
+          <ErrorAlert message={treatmentSettingsLogResult.message} />
+        ) : (
+          <TreatmentCommissionSettingsLog entries={treatmentSettingsLogResult.data} />
+        )}
+      </div>
     </div>
   );
 }

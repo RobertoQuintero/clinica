@@ -11,3 +11,9 @@ export function formatPayrollCurrency(amount: number): string {
 export function formatCalculatedAt(dateTimeString: string): string {
   return `${formatPeriodDate(dateTimeString.slice(0, 10))}, ${dateTimeString.slice(11, 16)}`;
 }
+
+/** "2026-09-24 13:05:00" -> "24/09/2026 13:05". Opera sobre el string, sin pasar por `Date`. */
+export function formatDateTimeSlashed(dateTimeString: string): string {
+  const [year, month, day] = dateTimeString.slice(0, 10).split("-");
+  return `${day}/${month}/${year} ${dateTimeString.slice(11, 16)}`;
+}

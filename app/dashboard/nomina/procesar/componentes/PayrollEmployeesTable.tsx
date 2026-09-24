@@ -16,6 +16,21 @@ interface Props {
   hasActiveFilters: boolean;
 }
 
+/** Importe de una comisión con su conteo ("3 consultas") como texto secundario; sin conteo si es 0. */
+function CommissionAmountCell({ amount, countLabel }: { amount: number; countLabel: string | null }) {
+  return (
+    <td className="px-4 py-3.5 text-right tabular-nums">
+      <span className="block text-sm text-[#0b1c30] dark:text-zinc-200">{formatPayrollCurrency(amount)}</span>
+      {countLabel && <span className="block text-[11px] text-[#747780] dark:text-zinc-500">{countLabel}</span>}
+    </td>
+  );
+}
+
+function describeCount(count: number, singular: string, plural: string): string | null {
+  if (count <= 0) return null;
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export default function PayrollEmployeesTable({
   rows,
   idPeriod,
@@ -40,7 +55,8 @@ export default function PayrollEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold text-right">Salario D.</th>
               <th scope="col" className="px-4 py-3 font-semibold text-center">Días</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Sueldo</th>
-              <th scope="col" className="px-4 py-3 font-semibold text-right">Comisión</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Com. consultas</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Com. onicomicosis</th>
               <th scope="col" className="px-6 py-3 font-semibold text-right">Total percepciones</th>
               <th scope="col" className="w-12 pr-4 py-3">
                 <span className="sr-only">Acciones</span>
@@ -50,7 +66,7 @@ export default function PayrollEmployeesTable({
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={9} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún empleado coincide con los filtros."
                     : "Ningún empleado tiene sueldo calculado en esta nómina."}
@@ -91,17 +107,14 @@ export default function PayrollEmployeesTable({
                     <td className="px-4 py-3.5 text-sm text-right tabular-nums text-[#0b1c30] dark:text-zinc-200">
                       {formatPayrollCurrency(employeeRow.importe_salario)}
                     </td>
-                    <td className="px-4 py-3.5 text-right tabular-nums">
-                      <span className="block text-sm text-[#0b1c30] dark:text-zinc-200">
-                        {formatPayrollCurrency(employeeRow.importe_comision)}
-                      </span>
-                      {employeeRow.consultas_atendidas > 0 && (
-                        <span className="block text-[11px] text-[#747780] dark:text-zinc-500">
-                          {employeeRow.consultas_atendidas}{" "}
-                          {employeeRow.consultas_atendidas === 1 ? "consulta" : "consultas"}
-                        </span>
-                      )}
-                    </td>
+                    <CommissionAmountCell
+                      amount={employeeRow.importe_comision}
+                      countLabel={describeCount(employeeRow.consultas_atendidas, "consulta", "consultas")}
+                    />
+                    <CommissionAmountCell
+                      amount={employeeRow.importe_comision_tratamientos}
+                      countLabel={describeCount(employeeRow.tratamientos_onicomicosis, "tratamiento", "tratamientos")}
+                    />
                     <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
                       {formatPayrollCurrency(employeeRow.total_percepciones)}
                     </td>
@@ -138,6 +151,9 @@ export default function PayrollEmployeesTable({
               </td>
               <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeComision)}
+              </td>
+              <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                {formatPayrollCurrency(totals.importeComisionTratamientos)}
               </td>
               <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
                 {formatPayrollCurrency(totals.totalPercepciones)}
