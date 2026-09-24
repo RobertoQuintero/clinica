@@ -1,5 +1,6 @@
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
+import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 
 export type PayrollType = "O" | "F";
 
@@ -19,7 +20,9 @@ export interface IPayrollEmployeeRow {
   importe_comision:    number;
   tratamientos_onicomicosis:     number;
   importe_comision_tratamientos: number;
-  total_percepciones:  number;  // importe_salario + importe_comision + importe_comision_tratamientos, calculado en el SELECT
+  piezas_vendidas:               number;
+  importe_comision_productos:    number;
+  total_percepciones:  number;  // importe_salario + importe_comision + importe_comision_tratamientos + importe_comision_productos, calculado en el SELECT
   calculated_at:      string;   // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -41,7 +44,7 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; totalPercepciones: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos?: number; totalPercepciones: number };   // de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
@@ -74,6 +77,8 @@ export interface IPayrollEmployeeSnapshot {
   tratamientos_onicomicosis:     number;
   importe_por_tratamiento:       number;
   importe_comision_tratamientos: number;
+  piezas_vendidas?:              number;
+  importe_comision_productos?:   number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -93,6 +98,7 @@ export interface IPayrollEmployeeDetail {
   perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
   totalPerceptions: number;                     // suma de perceptions[].amount
   paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
+  soldProducts?:    IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;
