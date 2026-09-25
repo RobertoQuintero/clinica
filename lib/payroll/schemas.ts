@@ -95,3 +95,17 @@ export const treatmentCommissionSettingsSchema = z.object({
 });
 
 export type TreatmentCommissionSettingsSchemaInput = z.infer<typeof treatmentCommissionSettingsSchema>;
+
+export const overtimeSettingsSchema = z.object({
+  limite_horas_dobles_periodo: z
+    .number("El límite de horas dobles es inválido")
+    .min(0, "El límite de horas dobles no puede ser negativo")
+    .multipleOf(0.5, "El límite de horas dobles debe ir en pasos de 0.5"),
+  tope_horas_dia: z
+    .number("El tope por día es inválido")
+    .positive("El tope por día debe ser mayor a 0")
+    .max(24, "El tope por día no puede pasar de 24 horas")
+    .multipleOf(0.5, "El tope por día debe ir en pasos de 0.5"),
+});
+
+export type OvertimeSettingsSchemaInput = z.infer<typeof overtimeSettingsSchema>;
