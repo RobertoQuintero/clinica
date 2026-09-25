@@ -12,7 +12,7 @@ export const WEEKDAY_LABELS: Record<WeekdayNumber, { short: string; long: string
 };
 
 /** "HH:mm" → minutos desde medianoche. Aritmética sobre el string, sin Date. */
-function timeToMinutes(time: string): number {
+export function timeToMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 }

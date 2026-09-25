@@ -34,7 +34,13 @@ export async function getEmployeeSchedule(id_empleado: number): Promise<IEmploye
 
   return {
     id_empleado,
-    days: rows.map(({ created_at: _createdAt, ...day }) => day),
+    days: rows.map((row) => ({
+      dia_semana: row.dia_semana,
+      hora_entrada_1: row.hora_entrada_1,
+      hora_salida_1: row.hora_salida_1,
+      hora_entrada_2: row.hora_entrada_2,
+      hora_salida_2: row.hora_salida_2,
+    })),
     updated_at,
   };
 }
