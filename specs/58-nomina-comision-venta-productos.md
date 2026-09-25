@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md): `payroll.period_employees`, `calculatePayrollPeriod` y la pantalla Procesar.
   - [54 — Nómina: detalle de percepciones por empleado](54-nomina-detalle-percepciones-empleado.md): `buildPerceptionLines` y la tarjeta "Percepciones totales".
