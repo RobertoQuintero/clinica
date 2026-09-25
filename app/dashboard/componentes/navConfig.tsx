@@ -23,6 +23,7 @@ import {
   CalendarRange,
   Calculator,
   Percent,
+  AlarmClockPlus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -93,6 +94,12 @@ export const NAV_LINKS: NavLink[] = [
         href: "/dashboard/nomina/comisiones",
         label: "Comisiones",
         icon: Percent,
+        excludeRoles: [2, 3, 5, 6],
+      },
+      {
+        href: "/dashboard/nomina/horas-extra",
+        label: "Horas extra",
+        icon: AlarmClockPlus,
         excludeRoles: [2, 3, 5, 6],
       },
     ],
