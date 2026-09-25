@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Draft
+- **Estado:** Implementado
 - **Depende de:**
   - [60 — Nómina: horas extra (detección, autorización y configuración)](60-nomina-horas-extra-deteccion-autorizacion.md): `payroll.overtime_authorizations` (solo se pagan los días con `estado = 'A'`), `payroll.overtime_settings.limite_horas_dobles_periodo`, la pantalla `/dashboard/nomina/horas-extra` y el fragmento SQL compartido de empleados elegibles en `lib/payroll/`. **La spec 60 tiene que estar implementada antes.**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md): `calculatePayrollPeriod`, `revertPayrollCalculation` y el snapshot `payroll.period_employees`, con el `salario_diario` operativo congelado del que sale la tarifa por hora.
@@ -272,70 +272,70 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Base de datos**
 
-- [ ] `payroll.period_employees` tiene las cinco columnas nuevas con sus defaults y `CK_period_employees_horas_extra`, y los snapshots anteriores quedan en 0.
-- [ ] `payroll.period_employee_overtime` existe con el `UNIQUE (id_empleado, fecha)`, la FK con `ON DELETE CASCADE`, el `CHECK` y el índice, y está documentada en `queries.txt`.
-- [ ] La BD rechaza un desglose con `horas_dobles + horas_triples <> horas_autorizadas` y un segundo día con el mismo empleado y fecha.
+- [x] `payroll.period_employees` tiene las cinco columnas nuevas con sus defaults y `CK_period_employees_horas_extra`, y los snapshots anteriores quedan en 0.
+- [x] `payroll.period_employee_overtime` existe con el `UNIQUE (id_empleado, fecha)`, la FK con `ON DELETE CASCADE`, el `CHECK` y el índice, y está documentada en `queries.txt`.
+- [x] La BD rechaza un desglose con `horas_dobles + horas_triples <> horas_autorizadas` y un segundo día con el mismo empleado y fecha.
 
 **Cálculo**
 
 Empleado con `salario_diario = 400`, límite 9 y días autorizados de 3, 4, 2.5 y 1 h en el periodo:
 
-- [ ] El snapshot `'O'` guarda `horas_extra_dobles = 9.0`, `horas_extra_triples = 1.5`, `importe_horas_extra_dobles = 900.00`, `importe_horas_extra_triples = 225.00` y `limite_horas_dobles_aplicado = 9.0`.
-- [ ] El desglose tiene cuatro filas en orden de fecha: 3/0, 4/0, 2/0.5 y 0/1, con importes $300, $400, $200 + $75 y $150.
+- [x] El snapshot `'O'` guarda `horas_extra_dobles = 9.0`, `horas_extra_triples = 1.5`, `importe_horas_extra_dobles = 900.00`, `importe_horas_extra_triples = 225.00` y `limite_horas_dobles_aplicado = 9.0`.
+- [x] El desglose tiene cuatro filas en orden de fecha: 3/0, 4/0, 2/0.5 y 0/1, con importes $300, $400, $200 + $75 y $150.
 
 Casos que no entran o se pagan distinto:
 
-- [ ] Con límite 0, todas las horas se pagan triples.
-- [ ] Sin fila en `overtime_settings`, no se paga ninguna hora extra ni se crea desglose, y el límite aplicado queda en 0.
-- [ ] Quedan fuera del cálculo y del desglose:
+- [x] Con límite 0, todas las horas se pagan triples.
+- [x] Sin fila en `overtime_settings`, no se paga ninguna hora extra ni se crea desglose, y el límite aplicado queda en 0.
+- [x] Quedan fuera del cálculo y del desglose:
   - los días rechazados;
   - los días pendientes (sin fila);
   - los días fuera del rango del periodo;
   - los días anteriores a `fecha_ingreso`.
-- [ ] Un día ya pagado por otro periodo no se vuelve a pagar, y tampoco consume horas dobles del periodo actual.
-- [ ] Los días autorizados de un empleado que no entra a la nómina operativa no se pagan ni se bloquean.
-- [ ] Las filas `'F'` quedan con las cinco columnas en 0 y sin desglose.
+- [x] Un día ya pagado por otro periodo no se vuelve a pagar, y tampoco consume horas dobles del periodo actual.
+- [x] Los días autorizados de un empleado que no entra a la nómina operativa no se pagan ni se bloquean.
+- [x] Las filas `'F'` quedan con las cinco columnas en 0 y sin desglose.
 
 Consistencia:
 
-- [ ] `horas_extra_dobles + horas_extra_triples` del snapshot es igual a la suma de `horas_autorizadas` de su desglose, y los importes del snapshot son la suma exacta de los importes redondeados por día.
-- [ ] Al calcular un periodo, el sueldo y las tres comisiones de todos los empleados salen iguales que antes de esta spec.
-- [ ] Recalcular un periodo en estatus 2 libera y vuelve a tomar los mismos días. Revertir borra el desglose, y esos días se pueden pagar después.
-- [ ] Dos cálculos simultáneos que compiten por el mismo día terminan con uno correcto y otro con "Otro cálculo tomó algunas de estas horas extra al mismo tiempo. Intenta de nuevo.", nunca con un error 500.
-- [ ] `splitOvertimeHours` y `calculateOvertimeDayAmounts` dan los mismos valores que el SQL en el caso de ejemplo.
+- [x] `horas_extra_dobles + horas_extra_triples` del snapshot es igual a la suma de `horas_autorizadas` de su desglose, y los importes del snapshot son la suma exacta de los importes redondeados por día.
+- [x] Al calcular un periodo, el sueldo y las tres comisiones de todos los empleados salen iguales que antes de esta spec.
+- [x] Recalcular un periodo en estatus 2 libera y vuelve a tomar los mismos días. Revertir borra el desglose, y esos días se pueden pagar después.
+- [x] Dos cálculos simultáneos que compiten por el mismo día terminan con uno correcto y otro con "Otro cálculo tomó algunas de estas horas extra al mismo tiempo. Intenta de nuevo.", nunca con un error 500.
+- [x] `splitOvertimeHours` y `calculateOvertimeDayAmounts` dan los mismos valores que el SQL en el caso de ejemplo.
 
 **Procesar**
 
-- [ ] La columna "Horas extra" aparece después de "Com. Ventas", con el importe y "9h dobles · 1.5h triples".
-- [ ] "Total percepciones" de la fila, la tarjeta resumen y el pie incluyen las horas extra.
-- [ ] La tarjeta resumen y el pie no cambian al filtrar por puesto o búsqueda.
-- [ ] Un empleado sin horas extra muestra $0.00 en la columna, sin texto secundario.
+- [x] La columna "Horas extra" aparece después de "Com. Ventas", con el importe y "9h dobles · 1.5h triples".
+- [x] "Total percepciones" de la fila, la tarjeta resumen y el pie incluyen las horas extra.
+- [x] La tarjeta resumen y el pie no cambian al filtrar por puesto o búsqueda.
+- [x] Un empleado sin horas extra muestra $0.00 en la columna, sin texto secundario.
 
 **Detalle**
 
-- [ ] La tarjeta de percepciones muestra "Horas extra dobles — 9 h × $100.00 — $900.00" y "Horas extra triples — 1.5 h × $150.00 — $225.00". Una línea con importe 0 no aparece.
-- [ ] `PayrollOvertimeDaysList` lista los cuatro días con fecha, horas, dobles, triples e importe, más un total igual a la suma de las dos líneas.
-- [ ] La lista se oculta en fiscal o cuando no hay días pagados.
-- [ ] Los componentes nuevos no tienen `"use client"`.
+- [x] La tarjeta de percepciones muestra "Horas extra dobles — 9 h × $100.00 — $900.00" y "Horas extra triples — 1.5 h × $150.00 — $225.00". Una línea con importe 0 no aparece.
+- [x] `PayrollOvertimeDaysList` lista los cuatro días con fecha, horas, dobles, triples e importe, más un total igual a la suma de las dos líneas.
+- [x] La lista se oculta en fiscal o cuando no hay días pagados.
+- [x] Los componentes nuevos no tienen `"use client"`.
 
 **Aviso "Recalcula" y pantalla de Horas extra**
 
-- [ ] Recién calculado un periodo, no hay aviso ni en Procesar ni en Horas extra.
-- [ ] Con el periodo en estatus 2, aparece "Hay autorizaciones que no coinciden con el último cálculo. Recalcula la nómina." en ambas pantallas tras cualquiera de estas acciones, y desaparece al recalcular:
+- [x] Recién calculado un periodo, no hay aviso ni en Procesar ni en Horas extra.
+- [x] Con el periodo en estatus 2, aparece "Hay autorizaciones que no coinciden con el último cálculo. Recalcula la nómina." en ambas pantallas tras cualquiera de estas acciones, y desaparece al recalcular:
   - rechazar un día pagado;
   - volverlo a pendiente;
   - cambiar sus horas;
   - autorizar un día nuevo del rango;
   - cambiar `limite_horas_dobles_periodo`.
-- [ ] Con el periodo en estatus 1, nunca aparece el aviso.
-- [ ] En Horas extra, cada día pagado muestra "Pagada en {código del periodo}", y su decisión se puede seguir cambiando.
-- [ ] El texto fijo dice "Las horas autorizadas se pagan al calcular la nómina del periodo."
+- [x] Con el periodo en estatus 1, nunca aparece el aviso.
+- [x] En Horas extra, cada día pagado muestra "Pagada en {código del periodo}", y su decisión se puede seguir cambiando.
+- [x] El texto fijo dice "Las horas autorizadas se pagan al calcular la nómina del periodo."
 
 **Transversal**
 
-- [ ] Ninguna fecha pasa por `new Date(valorDeBD)`: `fecha` se lee con `CONVERT(varchar(10), …, 120)`.
-- [ ] `docs/nomina.md` tiene la sección "Horas extra: pago (spec 61)" y el párrafo inicial actualizado.
-- [ ] `npm run build` (o `tsc --noEmit`) termina sin errores de tipos.
+- [x] Ninguna fecha pasa por `new Date(valorDeBD)`: `fecha` se lee con `CONVERT(varchar(10), …, 120)`.
+- [x] `docs/nomina.md` tiene la sección "Horas extra: pago (spec 61)" y el párrafo inicial actualizado.
+- [x] `npm run build` (o `tsc --noEmit`) termina sin errores de tipos.
 
 ## Decisiones tomadas y descartadas
 

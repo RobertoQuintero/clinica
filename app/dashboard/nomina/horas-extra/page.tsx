@@ -5,6 +5,7 @@ import { readOvertimeStatus, OVERTIME_STATUS_URL_VALUES } from "@/lib/payroll/ov
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getOvertimePage, getOvertimeSettingsLog } from "./actions";
+import OvertimeRecalculationNotice from "../componentes/OvertimeRecalculationNotice";
 import EmployeesWithoutScheduleNotice from "./componentes/EmployeesWithoutScheduleNotice";
 import OvertimeDaysTable from "./componentes/OvertimeDaysTable";
 import OvertimeSettingsCard from "./componentes/OvertimeSettingsCard";
@@ -68,7 +69,7 @@ export default async function OvertimePage({ searchParams }: { searchParams: Pro
 
       <p className="flex items-start gap-2 rounded-xl border border-[#0051d5]/20 bg-[#0051d5]/5 dark:border-blue-800 dark:bg-blue-900/20 px-4 py-3 text-sm text-[#00174b] dark:text-blue-200">
         <Info size={18} className="shrink-0 mt-0.5 text-[#0051d5] dark:text-blue-300" aria-hidden />
-        Las horas autorizadas se pagarán cuando se integre el cálculo de horas extra en la nómina.
+        Las horas autorizadas se pagan al calcular la nómina del periodo.
       </p>
 
       {result.ok && (
@@ -116,6 +117,7 @@ export default async function OvertimePage({ searchParams }: { searchParams: Pro
             searchText={filters.search}
           />
           <OvertimeSummaryCards summary={result.data.summary} />
+          <OvertimeRecalculationNotice recalculationNeeded={result.data.recalculationNeeded} />
           <EmployeesWithoutScheduleNotice employees={result.data.employeesWithoutSchedule} />
           <OvertimeDaysTable
             rows={result.data.rows}

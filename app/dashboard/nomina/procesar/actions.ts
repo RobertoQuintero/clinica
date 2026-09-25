@@ -12,10 +12,13 @@ import {
   PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
+import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
+import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
+import { ELIGIBLE_EMPLOYEE_BASE_CONDITIONS, ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS } from "@/lib/payroll/eligibleEmployees";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
@@ -89,10 +92,11 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, totalPercepciones: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, totalPercepciones: 0 },
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
+      overtimeRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -106,7 +110,7 @@ export async function getPayrollProcessPage(
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
 
-    const [rows, totals, puestoOptions, excludedEmployees, lastCalculated] = await Promise.all([
+    const [rows, totals, puestoOptions, excludedEmployees, lastCalculated, overtimeRecalculationNeeded] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
                 ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
@@ -115,8 +119,11 @@ export async function getPayrollProcessPage(
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_comision_tratamientos,
                 pe.piezas_vendidas, pe.importe_comision_productos,
+                pe.horas_extra_dobles, pe.horas_extra_triples,
+                pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples AS importe_horas_extra,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
-                  + pe.importe_comision_productos AS total_percepciones,
+                  + pe.importe_comision_productos
+                  + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples AS total_percepciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -130,7 +137,8 @@ export async function getPayrollProcessPage(
                 ISNULL(SUM(importe_salario), 0) AS importe_salario,
                 ISNULL(SUM(importe_comision), 0) AS importe_comision,
                 ISNULL(SUM(importe_comision_tratamientos), 0) AS importe_comision_tratamientos,
-                ISNULL(SUM(importe_comision_productos), 0) AS importe_comision_productos
+                ISNULL(SUM(importe_comision_productos), 0) AS importe_comision_productos,
+                ISNULL(SUM(importe_horas_extra_dobles + importe_horas_extra_triples), 0) AS importe_horas_extra
            FROM [CentroPodologico].[payroll].[period_employees]
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
@@ -165,6 +173,7 @@ export async function getPayrollProcessPage(
           WHERE id_period = @id_period`,
         { id_period: period.id_period },
       ),
+      isOvertimeRecalculationNeeded(period.id_period),
     ]);
 
     return {
@@ -182,6 +191,9 @@ export async function getPayrollProcessPage(
           importe_comision_tratamientos: Number(row.importe_comision_tratamientos),
           piezas_vendidas: Number(row.piezas_vendidas),
           importe_comision_productos: Number(row.importe_comision_productos),
+          horas_extra_dobles: Number(row.horas_extra_dobles),
+          horas_extra_triples: Number(row.horas_extra_triples),
+          importe_horas_extra: Number(row.importe_horas_extra),
           total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
@@ -190,12 +202,14 @@ export async function getPayrollProcessPage(
           importeComision: Number(totals[0]?.importe_comision ?? 0),
           importeComisionTratamientos: Number(totals[0]?.importe_comision_tratamientos ?? 0),
           importeComisionProductos: Number(totals[0]?.importe_comision_productos ?? 0),
+          importeHorasExtra: Number(totals[0]?.importe_horas_extra ?? 0),
           totalPercepciones:
             Math.round(
               (Number(totals[0]?.importe_salario ?? 0) +
                 Number(totals[0]?.importe_comision ?? 0) +
                 Number(totals[0]?.importe_comision_tratamientos ?? 0) +
-                Number(totals[0]?.importe_comision_productos ?? 0)) *
+                Number(totals[0]?.importe_comision_productos ?? 0) +
+                Number(totals[0]?.importe_horas_extra ?? 0)) *
                 100,
             ) / 100,
         },
@@ -205,6 +219,7 @@ export async function getPayrollProcessPage(
         })),
         excludedEmployees: excludedEmployees as IPayrollExcludedEmployee[],
         lastCalculatedAt: lastCalculated[0]?.last_calculated_at ?? null,
+        overtimeRecalculationNeeded,
       },
     };
   } catch (error) {
@@ -241,7 +256,7 @@ export async function getPayrollEmployeeDetail(
       search,
     });
 
-    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows, soldProductRows] = await Promise.all([
+    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows, soldProductRows, overtimeDayRows] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
       db.queryParams(
@@ -263,6 +278,9 @@ export async function getPayrollEmployeeDetail(
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_por_tratamiento, pe.importe_comision_tratamientos,
                 pe.piezas_vendidas, pe.importe_comision_productos,
+                pe.horas_extra_dobles, pe.horas_extra_triples,
+                pe.importe_horas_extra_dobles, pe.importe_horas_extra_triples,
+                pe.limite_horas_dobles_aplicado,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -321,6 +339,20 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Días de horas extra pagados en el renglón operativo (spec 61); en fiscal no hay desglose.
+      payrollType === "O"
+        ? db.queryParams(
+            `SELECT CONVERT(varchar(10), o.fecha, 120) AS fecha,
+                    o.horas_autorizadas, o.horas_dobles, o.horas_triples,
+                    o.importe_dobles, o.importe_triples
+               FROM [CentroPodologico].[payroll].[period_employee_overtime] o
+               JOIN [CentroPodologico].[payroll].[period_employees] pe
+                 ON pe.id_period_employee = o.id_period_employee
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'O'
+              ORDER BY o.fecha`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -349,6 +381,11 @@ export async function getPayrollEmployeeDetail(
           importe_comision_tratamientos: Number(snapshotRow.importe_comision_tratamientos),
           piezas_vendidas: Number(snapshotRow.piezas_vendidas),
           importe_comision_productos: Number(snapshotRow.importe_comision_productos),
+          horas_extra_dobles: Number(snapshotRow.horas_extra_dobles),
+          horas_extra_triples: Number(snapshotRow.horas_extra_triples),
+          importe_horas_extra_dobles: Number(snapshotRow.importe_horas_extra_dobles),
+          importe_horas_extra_triples: Number(snapshotRow.importe_horas_extra_triples),
+          limite_horas_dobles_aplicado: Number(snapshotRow.limite_horas_dobles_aplicado),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
@@ -381,6 +418,17 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const overtimeDays: IPayrollOvertimeDay[] = snapshot
+      ? overtimeDayRows.map((row: IPayrollOvertimeDay) => ({
+          fecha: row.fecha,
+          horas_autorizadas: Number(row.horas_autorizadas),
+          horas_dobles: Number(row.horas_dobles),
+          horas_triples: Number(row.horas_triples),
+          importe_dobles: Number(row.importe_dobles),
+          importe_triples: Number(row.importe_triples),
+        }))
+      : [];
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -393,6 +441,7 @@ export async function getPayrollEmployeeDetail(
         totalPerceptions,
         paidTreatments,
         soldProducts,
+        overtimeDays,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,
@@ -414,6 +463,7 @@ const PERIOD_NOT_CALCULABLE_MARKER = "PERIOD_NOT_CALCULABLE";
 const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
+const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha";
 
 /** Traduce los errores de SQL Server de calcular/revertir nómina a un mensaje en español. */
 function describePayrollCalculationError(error: unknown): string {
@@ -429,6 +479,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(PRODUCT_SALE_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó algunas de estas ventas al mismo tiempo. Intenta de nuevo.";
+  }
+  if (sqlError.message?.includes(OVERTIME_DAY_ALREADY_PAID_CONSTRAINT)) {
+    return "Otro cálculo tomó algunas de estas horas extra al mismo tiempo. Intenta de nuevo.";
   }
   if (sqlError.number === 2627 || sqlError.number === 2601 || sqlError.number === 1205) {
     return "Otro usuario modificó la nómina al mismo tiempo. Intenta de nuevo";
@@ -450,7 +503,8 @@ function revalidatePayrollPaths() {
  * y, si divergen, manda este SQL.
  * La comisión por venta de productos (spec 58) también: `lib/payroll/productSalesCommission.ts` la espeja
  * y, si divergen, manda este SQL.
- * Solo la nómina operativa ('O') comisiona; las filas 'F' quedan en 0. `cancelada` es nullable y
+ * Las horas extra autorizadas (spec 61) también: `lib/payroll/overtimePay.ts` las espeja y, si divergen, manda este SQL.
+ * Solo la nómina operativa ('O') comisiona y paga horas extra; las filas 'F' quedan en 0. `cancelada` es nullable y
  * NULL significa "no cancelada" (así lo lee la app), por eso `ISNULL(c.[cancelada], 0) = 0`.
  */
 export async function calculatePayrollPeriod(
@@ -539,11 +593,44 @@ export async function calculatePayrollPeriod(
           AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_product_sales] ps
                            WHERE ps.[origen] = 'V' AND ps.[id_linea_origen] = vd.[id_venta_detalle]);
 
+       -- Spec 61: días con horas extra autorizadas en el rango y aún no pagados por ningún periodo.
+       -- Solo de empleados elegibles a la nómina operativa y de empresas con configuración. Las primeras
+       -- limite_horas_dobles_periodo horas (en orden cronológico) son dobles y el resto triples; el día que cruza se parte.
+       ;WITH authorized_days AS (
+         SELECT a.[id_empleado], a.[fecha], a.[horas_autorizadas] AS horas,
+                s.[limite_horas_dobles_periodo] AS limite, e.[salario_diario],
+                SUM(a.[horas_autorizadas]) OVER (PARTITION BY a.[id_empleado]
+                                                 ORDER BY a.[fecha]
+                                                 ROWS UNBOUNDED PRECEDING) - a.[horas_autorizadas] AS acumulado_previo
+           FROM [CentroPodologico].[payroll].[overtime_authorizations] a
+           JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = a.[id_empleado]
+           JOIN [CentroPodologico].[payroll].[overtime_settings] s ON s.[id_empresa] = e.[id_empresa]
+          WHERE a.[estado] = 'A'
+            AND a.[fecha] >= @fecha_inicio AND a.[fecha] <= @fecha_fin
+            AND a.[fecha] >= e.[fecha_ingreso]
+            AND ${ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS}
+            AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_overtime] po
+                             WHERE po.[id_empleado] = a.[id_empleado] AND po.[fecha] = a.[fecha])
+       ), split_days AS (
+         SELECT d.*, CAST(CASE WHEN d.limite - d.acumulado_previo <= 0 THEN 0
+                               WHEN d.limite - d.acumulado_previo >= d.horas THEN d.horas
+                               ELSE d.limite - d.acumulado_previo END AS decimal(4,1)) AS horas_dobles
+           FROM authorized_days d
+       )
+       SELECT sd.[id_empleado], sd.[fecha], sd.horas AS horas_autorizadas,
+              sd.horas_dobles, CAST(sd.horas - sd.horas_dobles AS decimal(4,1)) AS horas_triples,
+              ROUND(sd.horas_dobles * sd.[salario_diario] * 2 / 8, 2) AS importe_dobles,
+              ROUND((sd.horas - sd.horas_dobles) * sd.[salario_diario] * 3 / 8, 2) AS importe_triples
+         INTO #overtime_days
+         FROM split_days sd;
+
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
          (id_period, id_empleado, tipo_nomina, salario_diario, dias, importe_salario,
           consultas_atendidas, importe_comision,
           tratamientos_onicomicosis, importe_por_tratamiento, importe_comision_tratamientos,
           piezas_vendidas, importe_comision_productos,
+          horas_extra_dobles, horas_extra_triples, importe_horas_extra_dobles, importe_horas_extra_triples,
+          limite_horas_dobles_aplicado,
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, paid.dias,
               ROUND(salary.salario_diario * paid.dias, 2),
@@ -553,10 +640,15 @@ export async function calculatePayrollPeriod(
               ROUND(ISNULL(paid_treatments.tratamientos, 0)
                     * CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(treatment_settings.[importe_por_tratamiento], 0) ELSE 0 END, 2),
               ISNULL(product_sales.piezas, 0), ISNULL(product_sales.importe, 0),
+              ISNULL(overtime.dobles, 0), ISNULL(overtime.triples, 0),
+              ISNULL(overtime.importe_dobles, 0), ISNULL(overtime.importe_triples, 0),
+              CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(overtime_settings.[limite_horas_dobles_periodo], 0) ELSE 0 END,
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
          LEFT JOIN [CentroPodologico].[payroll].[treatment_commission_settings] treatment_settings
                 ON treatment_settings.[id_empresa] = e.[id_empresa]
+         LEFT JOIN [CentroPodologico].[payroll].[overtime_settings] overtime_settings
+                ON overtime_settings.[id_empresa] = e.[id_empresa]
         CROSS APPLY (VALUES ('O', e.salario_diario), ('F', e.salario_diario_fiscal))
                     AS salary (tipo_nomina, salario_diario)
         CROSS APPLY (SELECT DATEDIFF(day,
@@ -593,10 +685,13 @@ export async function calculatePayrollPeriod(
             FROM #product_sales ps
            WHERE salary.tipo_nomina = 'O' AND ps.[id_empleado] = e.[id_empleado]
         ) AS product_sales
-        WHERE e.status = 1 AND e.activo = 1
-          AND e.id_sucursal = @id_sucursal
-          AND e.id_periodo_pago = @id_payment_period
-          AND e.fecha_ingreso <= @fecha_fin
+        OUTER APPLY (
+          SELECT SUM(od.[horas_dobles]) AS dobles, SUM(od.[horas_triples]) AS triples,
+                 SUM(od.[importe_dobles]) AS importe_dobles, SUM(od.[importe_triples]) AS importe_triples
+            FROM #overtime_days od
+           WHERE salary.tipo_nomina = 'O' AND od.[id_empleado] = e.[id_empleado]
+        ) AS overtime
+        WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
 
        -- Desglose y candado anti doble pago: solo los tratamientos de quien entró a la nómina operativa.
@@ -616,6 +711,16 @@ export async function calculatePayrollPeriod(
          FROM #product_sales s
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period] = @id_period AND pe.[id_empleado] = s.[id_empleado] AND pe.[tipo_nomina] = 'O';
+
+       -- Desglose y candado anti doble pago de horas extra: solo los días de quien entró a la nómina operativa.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_overtime]
+         (id_period_employee, id_empleado, fecha, horas_autorizadas, horas_dobles, horas_triples,
+          importe_dobles, importe_triples)
+       SELECT pe.[id_period_employee], od.[id_empleado], od.[fecha], od.[horas_autorizadas],
+              od.[horas_dobles], od.[horas_triples], od.[importe_dobles], od.[importe_triples]
+         FROM #overtime_days od
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period] = @id_period AND pe.[id_empleado] = od.[id_empleado] AND pe.[tipo_nomina] = 'O';
 
        UPDATE [CentroPodologico].[payroll].[periods]
           SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))

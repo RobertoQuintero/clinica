@@ -44,6 +44,7 @@ export interface IOvertimeDayRow extends IOvertimeDetection {
   comentario:                 string | null;
   decided_by_name:            string | null;
   decided_at:                 string | null;
+  paidInPeriodCode:           string | null;   // "NOM-2026-S38" si el día está en period_employee_overtime
 }
 
 export interface IOvertimePage {
@@ -55,6 +56,17 @@ export interface IOvertimePage {
   summary: { pendingDays: number; detectedHours: number; authorizedHours: number };  // sin filtros
   employeesWithoutSchedule: { id_empleado: number; nombre_completo: string }[];
   settings:                IOvertimeSettings | null;
+  recalculationNeeded:     boolean;             // aviso "Recalcula"; solo puede ser true en estatus 2
+}
+
+/** Un día pagado de payroll.period_employee_overtime, para la lista del Detalle. */
+export interface IPayrollOvertimeDay {
+  fecha:             string;   // "YYYY-MM-DD"
+  horas_autorizadas: number;
+  horas_dobles:      number;
+  horas_triples:     number;
+  importe_dobles:    number;
+  importe_triples:   number;
 }
 
 export type OvertimeStatusFilter = "all" | OvertimeDecisionStatus;

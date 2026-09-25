@@ -79,7 +79,8 @@ export default function PayrollProcessSummaryCards({ period, payrollType, totals
           Sueldos {formatPayrollCurrency(totals.importeSalario)} + consultas{" "}
           {formatPayrollCurrency(totals.importeComision)} + onicomicosis{" "}
           {formatPayrollCurrency(totals.importeComisionTratamientos)} + ventas{" "}
-          {formatPayrollCurrency(totals.importeComisionProductos)}
+          {formatPayrollCurrency(totals.importeComisionProductos)} + horas extra{" "}
+          {formatPayrollCurrency(totals.importeHorasExtra)}
         </span>
         <span className="text-xs text-[#44474f] dark:text-zinc-400">
           {lastCalculatedAt

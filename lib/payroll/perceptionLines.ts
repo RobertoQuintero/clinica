@@ -2,6 +2,7 @@ import { IPayrollEmployeeSnapshot, IPayrollPerceptionLine } from "@/interfaces/p
 import type { ICommissionTier } from "@/interfaces/payroll_commission";
 import { findCommissionTier, formatTierRange } from "@/lib/payroll/commissionTiers";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
+import { describeOvertimeHours } from "@/lib/payroll/overtimePay";
 import { describeProductSalesCommission } from "@/lib/payroll/productSalesCommission";
 import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
 
@@ -37,7 +38,7 @@ function describeCommission(
 /**
  * Líneas de la tarjeta "Percepciones totales" de un empleado: "Sueldo base" y, cuando el
  * snapshot trae importe, "Comisión por consultas atendidas", "Comisión por tratamientos de onicomicosis"
- * y "Comisión por venta de productos".
+ * "Comisión por venta de productos", "Horas extra dobles" y "Horas extra triples".
  * Los conceptos futuros se agregan aquí.
  * Las fechas son "YYYY-MM-DD" y se comparan como strings.
  */
@@ -54,6 +55,10 @@ export function buildPerceptionLines(
     | "importe_comision_tratamientos"
     | "piezas_vendidas"
     | "importe_comision_productos"
+    | "horas_extra_dobles"
+    | "horas_extra_triples"
+    | "importe_horas_extra_dobles"
+    | "importe_horas_extra_triples"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -98,6 +103,27 @@ export function buildPerceptionLines(
       description: describeProductSalesCommission(snapshot.piezas_vendidas),
       note: null,
       amount: snapshot.importe_comision_productos,
+    });
+  }
+
+  // La tarifa mostrada sale del salario congelado; el importe es siempre el guardado (spec 61).
+  if (snapshot.importe_horas_extra_dobles > 0) {
+    lines.push({
+      key: "horas_extra_dobles",
+      label: "Horas extra dobles",
+      description: describeOvertimeHours(snapshot.horas_extra_dobles, snapshot.salario_diario, 2),
+      note: null,
+      amount: snapshot.importe_horas_extra_dobles,
+    });
+  }
+
+  if (snapshot.importe_horas_extra_triples > 0) {
+    lines.push({
+      key: "horas_extra_triples",
+      label: "Horas extra triples",
+      description: describeOvertimeHours(snapshot.horas_extra_triples, snapshot.salario_diario, 3),
+      note: null,
+      amount: snapshot.importe_horas_extra_triples,
     });
   }
 
