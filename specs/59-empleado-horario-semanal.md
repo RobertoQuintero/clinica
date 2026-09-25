@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [25 — Módulo de Empleados (RH): alta, listado y expediente](25-empleados-alta-listado-detalle.md): `RH.empleados`, `EmployeeModal.tsx`, `EmployeeGeneralInfo.tsx` y las columnas de texto libre `dias_laborales` / `horario`, que esta spec deja de capturar.
   - [39 — Empleados: historial de asistencias](39-empleado-historial-asistencias.md): dejó explícitamente pendiente estructurar el horario, que es requisito previo para calcular retardos y faltas.
@@ -213,47 +213,47 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Base de datos**
 
-- [ ] `RH.empleado_horarios` existe en la BD con las columnas, el `UNIQUE`, la FK y los tres `CHECK` del modelo de datos, y está documentada en `queries.txt`.
-- [ ] Un `INSERT` directo con `hora_salida_1 <= hora_entrada_1`, con el bloque 2 a medias o con `hora_entrada_2 <= hora_salida_1` es rechazado por la BD.
-- [ ] No se agregó, modificó ni borró ninguna columna de `RH.empleados`.
+- [x] `RH.empleado_horarios` existe en la BD con las columnas, el `UNIQUE`, la FK y los tres `CHECK` del modelo de datos, y está documentada en `queries.txt`.
+- [x] Un `INSERT` directo con `hora_salida_1 <= hora_entrada_1`, con el bloque 2 a medias o con `hora_entrada_2 <= hora_salida_1` es rechazado por la BD.
+- [x] No se agregó, modificó ni borró ninguna columna de `RH.empleados`.
 
 **Pestaña "Horario"**
 
-- [ ] El expediente muestra la pestaña "Horario" entre "Asistencia" y "Usuarios", y abre `/dashboard/empleados/[id]/horario`.
-- [ ] La pestaña lista los 7 días de lunes a domingo. Los días sin fila dicen "Descanso" y los días trabajados muestran sus bloques en formato `HH:mm–HH:mm`.
-- [ ] Con un horario L‑V 09:00–18:00 y Sáb 09:00–14:00, el total semanal muestra 50 horas.
-- [ ] Con un día partido 09:00–14:00 y 16:00–20:00, ese día aporta 9 horas al total.
-- [ ] Un empleado sin filas muestra "Sin horario definido". Si tiene texto en `dias_laborales` o `horario`, también ve ese texto bajo "Referencia anterior".
-- [ ] Un empleado con horario capturado no muestra el bloque "Referencia anterior".
-- [ ] `page.tsx` de la pestaña es un Server Component. El único archivo con `"use client"` en `[id]/horario/` es `EditScheduleModal.tsx`.
+- [x] El expediente muestra la pestaña "Horario" entre "Asistencia" y "Usuarios", y abre `/dashboard/empleados/[id]/horario`.
+- [x] La pestaña lista los 7 días de lunes a domingo. Los días sin fila dicen "Descanso" y los días trabajados muestran sus bloques en formato `HH:mm–HH:mm`.
+- [x] Con un horario L‑V 09:00–18:00 y Sáb 09:00–14:00, el total semanal muestra 50 horas.
+- [x] Con un día partido 09:00–14:00 y 16:00–20:00, ese día aporta 9 horas al total.
+- [x] Un empleado sin filas muestra "Sin horario definido". Si tiene texto en `dias_laborales` o `horario`, también ve ese texto bajo "Referencia anterior".
+- [x] Un empleado con horario capturado no muestra el bloque "Referencia anterior".
+- [x] `page.tsx` de la pestaña es un Server Component. El único archivo con `"use client"` en `[id]/horario/` es `EditScheduleModal.tsx`.
 
 **Edición**
 
-- [ ] Al desmarcar "Trabaja" en un día y guardar, ese día pasa a "Descanso" y su fila desaparece de la BD.
-- [ ] "Copiar a todos los días laborales" copia los bloques del día elegido a todos los demás días marcados y no toca los días desmarcados.
-- [ ] El modal no deja guardar, y señala el día con error, cuando:
+- [x] Al desmarcar "Trabaja" en un día y guardar, ese día pasa a "Descanso" y su fila desaparece de la BD.
+- [x] "Copiar a todos los días laborales" copia los bloques del día elegido a todos los demás días marcados y no toca los días desmarcados.
+- [x] El modal no deja guardar, y señala el día con error, cuando:
   - la salida del bloque es menor o igual que su entrada;
   - el bloque 2 tiene solo una de sus dos horas;
   - el bloque 2 empieza antes o justo cuando termina el bloque 1.
-- [ ] Si esos mismos casos se envían directo a `saveEmployeeSchedule` (sin pasar por el modal), la acción devuelve `{ ok: false, message }` y no escribe nada.
-- [ ] Guardar una semana sin días marcados deja al empleado sin filas y la pestaña muestra "Sin horario definido".
-- [ ] Guardar de nuevo reemplaza la semana completa: nunca quedan filas duplicadas ni días viejos que se desmarcaron.
-- [ ] Si el `INSERT` falla a mitad de la transacción, el horario anterior del empleado sigue intacto.
-- [ ] Después de guardar, la pestaña y "Datos Personales" muestran el horario nuevo sin recargar la página a mano.
+- [x] Si esos mismos casos se envían directo a `saveEmployeeSchedule` (sin pasar por el modal), la acción devuelve `{ ok: false, message }` y no escribe nada.
+- [x] Guardar una semana sin días marcados deja al empleado sin filas y la pestaña muestra "Sin horario definido".
+- [x] Guardar de nuevo reemplaza la semana completa: nunca quedan filas duplicadas ni días viejos que se desmarcaron.
+- [x] Si el `INSERT` falla a mitad de la transacción, el horario anterior del empleado sigue intacto.
+- [x] Después de guardar, la pestaña y "Datos Personales" muestran el horario nuevo sin recargar la página a mano.
 
 **Datos Personales y modal de empleado**
 
-- [ ] "Datos Personales" ya no muestra las filas "Días laborales" y "Horario" de texto libre. En su lugar hay una sola fila "Horario" con el resumen compacto (por ejemplo `Lun–Vie 09:00–18:00 · Sáb 09:00–14:00`) o "Sin horario definido", y un enlace a la pestaña.
-- [ ] El modal de alta y edición de empleado ya no tiene los inputs "Días laborales" ni "Horario".
-- [ ] Al editar y guardar un empleado que tenía texto en `dias_laborales` / `horario`, esas columnas conservan su valor en la BD.
-- [ ] Un empleado nuevo se crea con `dias_laborales` y `horario` en `NULL`.
+- [x] "Datos Personales" ya no muestra las filas "Días laborales" y "Horario" de texto libre. En su lugar hay una sola fila "Horario" con el resumen compacto (por ejemplo `Lun–Vie 09:00–18:00 · Sáb 09:00–14:00`) o "Sin horario definido", y un enlace a la pestaña.
+- [x] El modal de alta y edición de empleado ya no tiene los inputs "Días laborales" ni "Horario".
+- [x] Al editar y guardar un empleado que tenía texto en `dias_laborales` / `horario`, esas columnas conservan su valor en la BD.
+- [x] Un empleado nuevo se crea con `dias_laborales` y `horario` en `NULL`.
 
 **Transversal**
 
-- [ ] Ninguna hora ni fecha de esta feature pasa por un objeto `Date`: las horas se leen con `CONVERT(varchar(5), …, 108)` y se escriben como string `"HH:mm"`.
-- [ ] Los roles distintos de 1 y 4 que intentan entrar a `/dashboard/empleados/[id]/horario` son redirigidos por `proxy.ts`, sin cambios en ese archivo.
-- [ ] `docs/rh-empleados.md` tiene la sección de la pestaña "Horario".
-- [ ] `npm run build` (o `tsc --noEmit`) termina sin errores de tipos.
+- [x] Ninguna hora ni fecha de esta feature pasa por un objeto `Date`: las horas se leen con `CONVERT(varchar(5), …, 108)` y se escriben como string `"HH:mm"`.
+- [x] Los roles distintos de 1 y 4 que intentan entrar a `/dashboard/empleados/[id]/horario` son redirigidos por `proxy.ts`, sin cambios en ese archivo.
+- [x] `docs/rh-empleados.md` tiene la sección de la pestaña "Horario".
+- [x] `npm run build` (o `tsc --noEmit`) termina sin errores de tipos.
 
 ## Decisiones tomadas y descartadas
 

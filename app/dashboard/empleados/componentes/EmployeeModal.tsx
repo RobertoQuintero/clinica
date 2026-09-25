@@ -47,8 +47,6 @@ function buildEmptyForm(): EmployeeFormInput {
     id_puesto: 0,
     id_turno: null,
     id_periodo_pago: null,
-    dias_laborales: null,
-    horario: null,
     salario_diario: null,
     salario_diario_fiscal: null,
     tipo_salario: null,
@@ -82,8 +80,6 @@ function employeeToFormInput(employee: IEmployeeListItem): EmployeeFormInput {
     id_puesto: employee.id_puesto,
     id_turno: employee.id_turno,
     id_periodo_pago: employee.id_periodo_pago,
-    dias_laborales: employee.dias_laborales,
-    horario: employee.horario,
     salario_diario: employee.salario_diario,
     salario_diario_fiscal: employee.salario_diario_fiscal,
     tipo_salario: employee.tipo_salario,
@@ -423,14 +419,6 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className={labelClass}>Días laborales</span>
-                <input type="text" name="dias_laborales" placeholder="Ej. Lunes a Sábado" value={form.dias_laborales ?? ""} onChange={handleTextChange} className={inputClass} />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className={labelClass}>Horario</span>
-                <input type="text" name="horario" placeholder="Ej. 09:00 - 18:00" value={form.horario ?? ""} onChange={handleTextChange} className={inputClass} />
               </label>
               <label className="flex flex-col gap-1">
                 <span className={labelClass}>Tipo de salario</span>

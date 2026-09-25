@@ -1,7 +1,7 @@
 # HR — Employees (empleados)
 
 - `app/dashboard/empleados/` covers employee onboarding, listing, and detail (`RH.empleados` table; catalogs in `interfaces/rh_catalogs.ts` — department, puesto, turno).
-- Employee detail (`empleados/[id]/`) is a tabbed layout: **Documentos** (`[id]/documentos/`, Cloudinary uploads) and **Asistencia** (`[id]/asistencia/`, attendance records fed by the biometric checadores — see `docs/asistencias-biometricas.md`).
+- Employee detail (`empleados/[id]/`) is a tabbed layout: **Documentos** (`[id]/documentos/`, Cloudinary uploads), **Asistencia** (`[id]/asistencia/`, attendance records fed by the biometric checadores — see `docs/asistencias-biometricas.md`), **Horario** (`[id]/horario/`, weekly schedule) and **Usuarios** (`[id]/usuarios/`).
 
 ## Usuarios tab (`empleados/[id]/usuarios/`)
 
@@ -12,3 +12,14 @@
 - **Unlinking** sets `id_empleado = NULL` and keeps the user's access, role and branch. **Deactivating an employee does not unlink** their users.
 - `/dashboard/usuarios` shows a read-only, sortable "Empleado" column (`getUsuarios` does a `LEFT JOIN` on `RH.empleados`). `saveUsuario` lists its columns explicitly and never touches `id_empleado`.
 - **Not implemented yet:** `users.id_empleado` is only the foundation for attributing commissions (sales, consultations, treatments) and feeding payroll. No calculation or report uses the link today.
+
+## Horario tab (`empleados/[id]/horario/`)
+
+- Stores the employee's expected weekly schedule in `RH.empleado_horarios` (DDL in `queries.txt`, block `RECURSOS HUMANOS(EMPLEADOS)`): **one row per worked day**, ISO `dia_semana` (1 = Monday … 7 = Sunday), up to two blocks per day (`hora_entrada_1/hora_salida_1`, optional `hora_entrada_2/hora_salida_2`, for split shifts). **A day without a row is a rest day.** `UNIQUE (id_empleado, dia_semana)` prevents duplicates. Shifts cannot cross midnight.
+- **CHECK constraints** repeat the validation rules in the DB (block 1 exit > entry; block 2 is either fully NULL or fully set, starts strictly after block 1 ends, and exits after its entry). The block 2 branch carries explicit `IS NOT NULL` checks: without them a half-filled block evaluates to `UNKNOWN` and a `CHECK` lets `UNKNOWN` through.
+- **Saving replaces the whole week**: `saveEmployeeSchedule` (`horario/actions.ts`) validates with `zod` (`horario/schemas.ts`, `server-only`), then runs `DELETE` + one `INSERT` per day inside `db.transaction`, so a failure leaves the previous schedule intact. There is **no history and no effective dates**; saving an empty week is allowed and means "Sin horario definido". `EditScheduleModal.tsx` mirrors the same rules client-side through the pure `scheduleValidation.ts` (the zod schema can't be imported in the client).
+- **Times are strings, never `Date`**: `time(0)` columns are read with `CONVERT(varchar(5), [col], 108)` (`"HH:mm"`; otherwise mssql returns a `Date`) and written as `"HH:mm"` strings through `queryParams`. `created_at` uses `buildDate(new Date())`; `IEmployeeSchedule.updated_at` is `MAX(created_at)`.
+- The page is a Server Component; `EditScheduleModal.tsx` is the only Client Component. `scheduleFormatting.ts` (pure) holds the weekday labels, `calculateWeeklyHours` and `formatScheduleSummary` (e.g. `Lun–Vie 09:00–18:00 · Sáb 09:00–14:00`), also used by the "Horario" row in `EmployeeGeneralInfo.tsx`. Access is covered by `proxy.ts` for `/dashboard/empleados` (roles 1 and 4), so anyone who can open the tab can edit.
+- **Legacy free text:** `RH.empleados.dias_laborales` / `horario` are no longer captured. They stay in `IEmployee` and the SELECT, are excluded from `EmployeeFormInput`, and `createEmployee`/`updateEmployee` don't write them (editing an employee never alters the old text). The Horario tab shows them read-only as "Referencia anterior" only while the employee has no structured schedule. They are not migrated automatically.
+- **Independent of `id_turno`:** the `RH.turnos` catalog and the "Turno" select are unrelated to this schedule.
+- **Not implemented yet:** lateness, absences, tolerances and any cross-check of the schedule with `RH.asistencias` or payroll. Because the schedule has no effective dates, a future lateness/absence spec would evaluate past periods against the *current* schedule unless it adds validity ranges first.

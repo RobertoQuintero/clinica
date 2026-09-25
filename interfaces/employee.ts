@@ -59,8 +59,10 @@ export interface IEmployeeRecord extends IEmployeeListItem {
   nombre_turno:        string | null;
 }
 
-/** Payload del modal de alta/edición. Sin campos derivados ni generados. */
+/** Payload del modal de alta/edición. Sin campos derivados ni generados.
+ *  dias_laborales / horario quedan fuera: son texto heredado de solo lectura (ver spec 59). */
 export type EmployeeFormInput = Omit<
   IEmployee,
-  "id_empleado" | "codigo_empleado" | "id_empresa" | "activo" | "status" | "created_at" | "updated_at"
+  | "id_empleado" | "codigo_empleado" | "id_empresa" | "activo" | "status" | "created_at" | "updated_at"
+  | "dias_laborales" | "horario"
 >;
