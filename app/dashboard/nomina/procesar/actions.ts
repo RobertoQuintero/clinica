@@ -15,6 +15,7 @@ import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
+import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
@@ -25,12 +26,6 @@ import {
 } from "@/lib/payroll/schemas";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
-
-/** Nombre completo con un solo espacio entre partes no vacías, para mostrar y para buscar. */
-const EMPLOYEE_FULL_NAME_SQL = `LTRIM(RTRIM(
-  e.nombre
-  + ISNULL(' ' + NULLIF(e.apellido_paterno, ''), '')
-  + ISNULL(' ' + NULLIF(e.apellido_materno, ''), '')))`;
 
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
 function escapeLikePattern(text: string): string {

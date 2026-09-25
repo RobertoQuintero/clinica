@@ -29,6 +29,62 @@ export function weekdayOfDate(fecha: string): WeekdayNumber {
   return (jsWeekday === 0 ? 7 : jsWeekday) as WeekdayNumber;
 }
 
+/** Detección de un solo día a partir de sus checadas. Con horario vacío nunca detecta extra. */
+function analyzeDay(
+  scheduleByWeekday: Map<number, IScheduleDay>,
+  fecha: string,
+  unsortedDayEvents: IAttendanceEvent[]
+): IOvertimeDetection {
+  const dayEvents = [...unsortedDayEvents].sort((first, second) =>
+    first.fecha_hora.localeCompare(second.fecha_hora)
+  );
+
+  const checkIns = dayEvents.filter((event) => event.tipo === "entrada");
+  const checkOuts = dayEvents.filter((event) => event.tipo === "salida");
+  const firstCheckIn = checkIns.length > 0 ? extractTimePart(checkIns[0].fecha_hora) : null;
+  const lastCheckOut =
+    checkOuts.length > 0 ? extractTimePart(checkOuts[checkOuts.length - 1].fecha_hora) : null;
+
+  const scheduledDay = scheduleByWeekday.get(weekdayOfDate(fecha)) ?? null;
+  const isIncomplete =
+    dayEvents.length > 0 && summarizeAttendanceEvents(dayEvents).dayStatuses.get(fecha) === "incomplete";
+
+  let detectedHours = 0;
+  if (scheduleByWeekday.size > 0 && !isIncomplete && firstCheckIn !== null && lastCheckOut !== null) {
+    const firstCheckInMinutes = timeToMinutes(firstCheckIn);
+    const lastCheckOutMinutes = timeToMinutes(lastCheckOut);
+    let overtimeMinutes: number;
+    if (scheduledDay) {
+      const scheduledEnd = scheduledDay.hora_salida_2 ?? scheduledDay.hora_salida_1;
+      overtimeMinutes =
+        Math.max(0, timeToMinutes(scheduledDay.hora_entrada_1) - firstCheckInMinutes) +
+        Math.max(0, lastCheckOutMinutes - timeToMinutes(scheduledEnd));
+    } else {
+      overtimeMinutes = lastCheckOutMinutes - firstCheckInMinutes;
+    }
+    detectedHours = roundDownToHalfHour(overtimeMinutes);
+  }
+
+  return { fecha, scheduledDay, firstCheckIn, lastCheckOut, isIncomplete, detectedHours };
+}
+
+function indexScheduleByWeekday(schedule: IScheduleDay[]): Map<number, IScheduleDay> {
+  return new Map(schedule.map((scheduleDay) => [scheduleDay.dia_semana, scheduleDay]));
+}
+
+/**
+ * Describe un día concreto de un empleado aunque no tenga extra ni checada incompleta.
+ * Sirve para mostrar días con decisión guardada cuya detección hoy es 0.
+ */
+export function describeOvertimeDay(
+  schedule: IScheduleDay[],
+  events: IAttendanceEvent[],
+  fecha: string
+): IOvertimeDetection {
+  const dayEvents = events.filter((event) => event.fecha_hora.slice(0, 10) === fecha);
+  return analyzeDay(indexScheduleByWeekday(schedule), fecha, dayEvents);
+}
+
 /**
  * Detecta las horas extra de un empleado entre fromDate y toDate (inclusive) comparando
  * sus checadas contra su horario semanal. Regresa solo los días con extra detectada o con
@@ -42,9 +98,7 @@ export function detectEmployeeOvertime(
 ): IOvertimeDetection[] {
   if (schedule.length === 0) return [];
 
-  const scheduleByWeekday = new Map<number, IScheduleDay>(
-    schedule.map((scheduleDay) => [scheduleDay.dia_semana, scheduleDay])
-  );
+  const scheduleByWeekday = indexScheduleByWeekday(schedule);
 
   const eventsByDate = new Map<string, IAttendanceEvent[]>();
   for (const event of events) {
@@ -56,41 +110,9 @@ export function detectEmployeeOvertime(
   }
 
   const detections: IOvertimeDetection[] = [];
-
-  for (const [fecha, unsortedDayEvents] of eventsByDate) {
-    const dayEvents = [...unsortedDayEvents].sort((first, second) =>
-      first.fecha_hora.localeCompare(second.fecha_hora)
-    );
-
-    const checkIns = dayEvents.filter((event) => event.tipo === "entrada");
-    const checkOuts = dayEvents.filter((event) => event.tipo === "salida");
-    const firstCheckIn = checkIns.length > 0 ? extractTimePart(checkIns[0].fecha_hora) : null;
-    const lastCheckOut =
-      checkOuts.length > 0 ? extractTimePart(checkOuts[checkOuts.length - 1].fecha_hora) : null;
-
-    const scheduledDay = scheduleByWeekday.get(weekdayOfDate(fecha)) ?? null;
-    const isIncomplete =
-      summarizeAttendanceEvents(dayEvents).dayStatuses.get(fecha) === "incomplete";
-
-    let detectedHours = 0;
-    if (!isIncomplete && firstCheckIn !== null && lastCheckOut !== null) {
-      const firstCheckInMinutes = timeToMinutes(firstCheckIn);
-      const lastCheckOutMinutes = timeToMinutes(lastCheckOut);
-      let overtimeMinutes: number;
-      if (scheduledDay) {
-        const scheduledEnd = scheduledDay.hora_salida_2 ?? scheduledDay.hora_salida_1;
-        overtimeMinutes =
-          Math.max(0, timeToMinutes(scheduledDay.hora_entrada_1) - firstCheckInMinutes) +
-          Math.max(0, lastCheckOutMinutes - timeToMinutes(scheduledEnd));
-      } else {
-        overtimeMinutes = lastCheckOutMinutes - firstCheckInMinutes;
-      }
-      detectedHours = roundDownToHalfHour(overtimeMinutes);
-    }
-
-    if (detectedHours > 0 || isIncomplete) {
-      detections.push({ fecha, scheduledDay, firstCheckIn, lastCheckOut, isIncomplete, detectedHours });
-    }
+  for (const [fecha, dayEvents] of eventsByDate) {
+    const detection = analyzeDay(scheduleByWeekday, fecha, dayEvents);
+    if (detection.detectedHours > 0 || detection.isIncomplete) detections.push(detection);
   }
 
   return detections.sort((first, second) => first.fecha.localeCompare(second.fecha));

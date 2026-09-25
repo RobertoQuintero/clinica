@@ -47,11 +47,21 @@ export interface IOvertimeDayRow extends IOvertimeDetection {
 
 export interface IOvertimePage {
   period:                  IPayrollPeriod | null;
-  periodOptions:           IPayrollPeriod[];
+  periodOptions:           Pick<IPayrollPeriod, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   canDecide:               boolean;             // periodo en estatus 1 o 2
   rows:                    IOvertimeDayRow[];   // ya filtradas y paginadas
   totalRows:               number;
   summary: { pendingDays: number; detectedHours: number; authorizedHours: number };  // sin filtros
   employeesWithoutSchedule: { id_empleado: number; nombre_completo: string }[];
   settings:                IOvertimeSettings | null;
+}
+
+export type OvertimeStatusFilter = "all" | OvertimeDecisionStatus;
+
+/** Filtros de la pantalla, todos vienen de la URL. */
+export interface IOvertimeFilters {
+  idPeriod: number | null;   // null: periodo vigente, o el más reciente
+  status:   OvertimeStatusFilter;
+  search:   string;          // nombre o código, coincidencia parcial
+  page:     number;          // desde 1
 }
