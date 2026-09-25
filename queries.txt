@@ -1460,3 +1460,67 @@ GO
 CREATE NONCLUSTERED INDEX [IX_period_employee_product_sales_period_employee]
     ON [payroll].[period_employee_product_sales] ([id_period_employee])
 GO
+
+-- Spec 60: límites de horas extra por empresa.
+CREATE TABLE [payroll].[overtime_settings](
+    [id_empresa]                  [int]          NOT NULL,
+    [limite_horas_dobles_periodo] [decimal](5,1) NOT NULL,   -- horas autorizadas del periodo que se pagan dobles; el resto, triples (spec 61)
+    [tope_horas_dia]              [decimal](4,1) NOT NULL,   -- máximo de horas autorizables por empleado y día
+    [updated_by]                  [int]          NOT NULL,
+    [updated_at]                  [datetime2](0) NOT NULL,
+ CONSTRAINT [PK_overtime_settings] PRIMARY KEY CLUSTERED ([id_empresa] ASC),
+ CONSTRAINT [CK_overtime_settings_valores] CHECK (
+     [limite_horas_dobles_periodo] >= 0
+     AND [tope_horas_dia] > 0 AND [tope_horas_dia] <= 24
+     AND [limite_horas_dobles_periodo] * 2 = FLOOR([limite_horas_dobles_periodo] * 2)
+     AND [tope_horas_dia] * 2 = FLOOR([tope_horas_dia] * 2))
+) ON [PRIMARY]
+GO
+
+INSERT INTO [payroll].[overtime_settings]
+    ([id_empresa],[limite_horas_dobles_periodo],[tope_horas_dia],[updated_by],[updated_at])
+VALUES (1, 9.0, 16.0, 1, '2026-09-25 00:00:00')
+GO
+
+-- Spec 60: bitácora de cambios a la configuración de horas extra.
+CREATE TABLE [payroll].[overtime_settings_log](
+    [id_log]                               [int] IDENTITY(1,1) NOT NULL,
+    [id_empresa]                           [int]          NOT NULL,
+    [limite_horas_dobles_periodo_anterior] [decimal](5,1) NULL,     -- NULL: no había configuración
+    [limite_horas_dobles_periodo_nuevo]    [decimal](5,1) NOT NULL,
+    [tope_horas_dia_anterior]              [decimal](4,1) NULL,
+    [tope_horas_dia_nuevo]                 [decimal](4,1) NOT NULL,
+    [updated_by]                           [int]          NOT NULL,
+    [updated_at]                           [datetime2](0) NOT NULL,
+ CONSTRAINT [PK_overtime_settings_log] PRIMARY KEY CLUSTERED ([id_log] ASC)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_overtime_settings_log_empresa]
+    ON [payroll].[overtime_settings_log] ([id_empresa], [updated_at] DESC)
+GO
+
+-- Spec 60: decisión del admin sobre las horas extra de un empleado en una fecha.
+-- Sin fila = Pendiente. Se sobrescribe al volver a decidir (sin historial de decisiones).
+CREATE TABLE [payroll].[overtime_authorizations](
+    [id_overtime_authorization] [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]               [int]           NOT NULL,
+    [fecha]                     [date]          NOT NULL,
+    [estado]                    [char](1)       NOT NULL,   -- 'A' autorizada | 'R' rechazada
+    [horas_autorizadas]         [decimal](4,1)  NULL,       -- solo con 'A'; puede superar lo detectado
+    [horas_detectadas]          [decimal](4,1)  NOT NULL,   -- detección al momento de decidir (0 si checada incompleta)
+    [comentario]                [nvarchar](500) NULL,
+    [decided_by]                [int]           NOT NULL,
+    [decided_at]                [datetime2](0)  NOT NULL,   -- buildDate(new Date())
+ CONSTRAINT [PK_overtime_authorizations] PRIMARY KEY CLUSTERED ([id_overtime_authorization] ASC),
+ CONSTRAINT [UQ_overtime_authorizations_empleado_fecha] UNIQUE ([id_empleado], [fecha]),
+ CONSTRAINT [FK_overtime_authorizations_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_overtime_authorizations_estado] CHECK (
+     ([estado] = 'A' AND [horas_autorizadas] IS NOT NULL AND [horas_autorizadas] > 0 AND [horas_autorizadas] <= 24
+          AND [horas_autorizadas] * 2 = FLOOR([horas_autorizadas] * 2))
+  OR ([estado] = 'R' AND [horas_autorizadas] IS NULL)),
+ CONSTRAINT [CK_overtime_authorizations_detectadas] CHECK (
+     [horas_detectadas] >= 0 AND [horas_detectadas] * 2 = FLOOR([horas_detectadas] * 2))
+) ON [PRIMARY]
+GO
