@@ -447,7 +447,7 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
       fecha_inicio: period.fecha_inicio,
     };
 
-    const [employees, scheduleRows, eventRows, decisionRows] = await Promise.all([
+    const [employees, scheduleRows, eventRows, decisionRows, paidDayRows] = await Promise.all([
       db.queryParams(
         `SELECT e.id_empleado, e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
                 CONVERT(varchar(10), e.fecha_ingreso, 120) AS fecha_ingreso
@@ -496,6 +496,17 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
             AND oa.[fecha] BETWEEN CAST(@fecha_inicio AS date) AND CAST(@fecha_fin AS date)`,
         periodParams,
       ),
+      // Días ya pagados por algún periodo (spec 61): el UNIQUE (id_empleado, fecha) los indexa.
+      db.queryParams(
+        `SELECT po.[id_empleado], CONVERT(varchar(10), po.[fecha], 120) AS fecha, p.[codigo]
+           FROM [CentroPodologico].[payroll].[period_employee_overtime] po
+           JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.[id_period_employee] = po.[id_period_employee]
+           JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pe.[id_period]
+           JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = po.[id_empleado]
+          WHERE ${ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS}
+            AND po.[fecha] BETWEEN CAST(@fecha_inicio AS date) AND CAST(@fecha_fin AS date)`,
+        periodParams,
+      ),
     ]);
 
     const scheduleByEmployee = new Map(
@@ -505,6 +516,12 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
     );
     const eventsByEmployee = groupByEmployee(eventRows as IAttendanceEvent[]);
     const decisionsByEmployee = groupByEmployee(decisionRows as IStoredDecisionRow[]);
+    const paidPeriodCodeByDay = new Map(
+      (paidDayRows as { id_empleado: number; fecha: string; codigo: string }[]).map((paidDay) => [
+        `${paidDay.id_empleado}|${paidDay.fecha}`,
+        paidDay.codigo,
+      ]),
+    );
 
     const allRows: IOvertimeDayRow[] = [];
     const employeesWithoutSchedule: IOvertimePage["employeesWithoutSchedule"] = [];
@@ -551,6 +568,7 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
           comentario: decision?.comentario ?? null,
           decided_by_name: decision?.decided_by_name ?? null,
           decided_at: decision?.decided_at ?? null,
+          paidInPeriodCode: paidPeriodCodeByDay.get(`${employee.id_empleado}|${fecha}`) ?? null,
         });
       }
     }

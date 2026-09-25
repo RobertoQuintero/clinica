@@ -22,6 +22,9 @@ interface Props {
 
 const BADGE_BASE = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border";
 
+const PAID_BADGE_CLASSES =
+  "bg-[#dce9ff] text-[#0051d5] border-[#b8d0ff] dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
+
 const DECISION_BADGES: Record<OvertimeDecisionStatus, { label: string; classes: string }> = {
   pending: {
     label: "Pendiente",
@@ -137,7 +140,14 @@ export default function OvertimeDaysTable({
                       )}
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className={`${BADGE_BASE} ${badge.classes}`}>{badge.label}</span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={`${BADGE_BASE} ${badge.classes}`}>{badge.label}</span>
+                        {dayRow.paidInPeriodCode && (
+                          <span className={`${BADGE_BASE} ${PAID_BADGE_CLASSES}`}>
+                            Pagada en {dayRow.paidInPeriodCode}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3.5 text-sm text-right tabular-nums text-[#0b1c30] dark:text-zinc-200">
                       {dayRow.authorizedHours !== null ? formatOvertimeHours(dayRow.authorizedHours) : "—"}
