@@ -31,6 +31,15 @@ function describeCount(count: number, singular: string, plural: string): string 
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+/** "9h dobles · 1.5h triples": solo las partes con horas; null si no hay horas extra. */
+function describeOvertimeHoursSplit(doubleHours: number, tripleHours: number): string | null {
+  const parts = [
+    doubleHours > 0 ? `${doubleHours}h dobles` : null,
+    tripleHours > 0 ? `${tripleHours}h triples` : null,
+  ].filter((part) => part !== null);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 /** Piezas vendidas con hasta 4 decimales (productos split), sin ceros de más; null si no hay. */
 function describePiecesSold(piecesSold: number): string | null {
   if (piecesSold <= 0) return null;
@@ -64,6 +73,7 @@ export default function PayrollEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold text-right">Com. consultas</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Com. onicomicosis</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Com. Ventas</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Horas extra</th>
               <th scope="col" className="px-6 py-3 font-semibold text-right">Total percepciones</th>
               <th scope="col" className="w-12 pr-4 py-3">
                 <span className="sr-only">Acciones</span>
@@ -73,7 +83,7 @@ export default function PayrollEmployeesTable({
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={11} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún empleado coincide con los filtros."
                     : "Ningún empleado tiene sueldo calculado en esta nómina."}
@@ -126,6 +136,10 @@ export default function PayrollEmployeesTable({
                       amount={employeeRow.importe_comision_productos}
                       countLabel={describePiecesSold(employeeRow.piezas_vendidas)}
                     />
+                    <CommissionAmountCell
+                      amount={employeeRow.importe_horas_extra}
+                      countLabel={describeOvertimeHoursSplit(employeeRow.horas_extra_dobles, employeeRow.horas_extra_triples)}
+                    />
                     <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
                       {formatPayrollCurrency(employeeRow.total_percepciones)}
                     </td>
@@ -168,6 +182,9 @@ export default function PayrollEmployeesTable({
               </td>
               <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeComisionProductos)}
+              </td>
+              <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                {formatPayrollCurrency(totals.importeHorasExtra)}
               </td>
               <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
                 {formatPayrollCurrency(totals.totalPercepciones)}
