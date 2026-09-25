@@ -43,7 +43,7 @@ export default function OvertimeSummaryCards({ summary }: Props) {
         <span className="text-2xl font-bold leading-tight text-[#0b1c30] dark:text-zinc-50 tabular-nums">
           {formatOvertimeHours(summary.authorizedHours)}
         </span>
-        <span className="text-xs text-[#44474f] dark:text-zinc-400">Aún sin pago en nómina</span>
+        <span className="text-xs text-[#44474f] dark:text-zinc-400">Se pagan al calcular la nómina</span>
       </SummaryCard>
     </div>
   );
