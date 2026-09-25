@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [39 — Empleados: historial de asistencias](39-empleado-historial-asistencias.md): `RH.asistencias` (checadas `entrada` / `salida` con `fecha_hora` local) y el criterio de día incompleto de `attendancePairing.ts`.
   - [52 — Nómina: periodos](52-nomina-periodos.md): `payroll.periods` (rango, sucursal, frecuencia y estatus) que delimita qué días se revisan.
@@ -348,76 +348,76 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Base de datos**
 
-- [ ] `payroll.overtime_settings`, `payroll.overtime_settings_log` y `payroll.overtime_authorizations` existen con las columnas, constraints e índices del modelo de datos, y están documentadas en `queries.txt`.
-- [ ] La empresa 1 tiene la semilla: 9.0 horas dobles por periodo y 16.0 horas de tope por día.
-- [ ] La BD rechaza un `INSERT` directo en `overtime_authorizations` en cualquiera de estos casos:
+- [x] `payroll.overtime_settings`, `payroll.overtime_settings_log` y `payroll.overtime_authorizations` existen con las columnas, constraints e índices del modelo de datos, y están documentadas en `queries.txt`.
+- [x] La empresa 1 tiene la semilla: 9.0 horas dobles por periodo y 16.0 horas de tope por día.
+- [x] La BD rechaza un `INSERT` directo en `overtime_authorizations` en cualquiera de estos casos:
   - `'A'` sin horas;
   - horas que no son múltiplo de 0.5;
   - `'R'` con horas;
   - un duplicado de `(id_empleado, fecha)`.
-- [ ] No se modificó ninguna tabla existente.
+- [x] No se modificó ninguna tabla existente.
 
 **Detección**
 
 Para cada caso, la fila del día muestra las horas indicadas:
 
-- [ ] Horario 08:00–17:00 con checadas 08:00 → 19:30: **2.5 h**.
-- [ ] Horario 09:00–18:00 con checadas 10:00 → 19:00: **1.0 h**. El retardo no la reduce.
-- [ ] Horario 09:00–18:00 con checadas 07:30 → 18:00: **1.5 h**.
-- [ ] Horario 09:00–18:00 con checadas 08:40 → 18:50: **1.0 h** (20 min + 50 min = 70 min, redondeado a 1.0).
-- [ ] Día de descanso con checadas 09:00 → 13:10: **4.0 h**.
-- [ ] Turno partido 09:00–14:00 / 16:00–20:00 con checadas 09:00 → 14:00 y 16:00 → 21:00: **1.0 h**. La comida no cuenta.
-- [ ] 2 h 17 min de extra se muestran como **2.0 h**, y 25 min como **0 h**. Este último día no aparece en la lista si no tiene decisión.
+- [x] Horario 08:00–17:00 con checadas 08:00 → 19:30: **2.5 h**.
+- [x] Horario 09:00–18:00 con checadas 10:00 → 19:00: **1.0 h**. El retardo no la reduce.
+- [x] Horario 09:00–18:00 con checadas 07:30 → 18:00: **1.5 h**.
+- [x] Horario 09:00–18:00 con checadas 08:40 → 18:50: **1.0 h** (20 min + 50 min = 70 min, redondeado a 1.0).
+- [x] Día de descanso con checadas 09:00 → 13:10: **4.0 h**.
+- [x] Turno partido 09:00–14:00 / 16:00–20:00 con checadas 09:00 → 14:00 y 16:00 → 21:00: **1.0 h**. La comida no cuenta.
+- [x] 2 h 17 min de extra se muestran como **2.0 h**, y 25 min como **0 h**. Este último día no aparece en la lista si no tiene decisión.
 
 Casos sin detección:
 
-- [ ] Un día con entrada y sin salida aparece como "Checada incompleta" con 0 h detectadas.
-- [ ] Un empleado elegible sin filas en `RH.empleado_horarios` no aparece en la lista, sí aparece en el aviso "Sin horario definido", y el aviso enlaza a su pestaña Horario.
-- [ ] No se detecta extra para:
+- [x] Un día con entrada y sin salida aparece como "Checada incompleta" con 0 h detectadas.
+- [x] Un empleado elegible sin filas en `RH.empleado_horarios` no aparece en la lista, sí aparece en el aviso "Sin horario definido", y el aviso enlaza a su pestaña Horario.
+- [x] No se detecta extra para:
   - días antes de `fecha_ingreso` o fuera del rango del periodo;
   - empleados de otra sucursal u otra frecuencia;
   - empleados inactivos o con `salario_diario` operativo en 0 o `NULL`.
 
 **Autorización**
 
-- [ ] Se puede autorizar un día con horas distintas a las detectadas, incluso mayores: con 2.5 h detectadas, autorizar 4.0 h queda guardado con `horas_autorizadas = 4.0` y `horas_detectadas = 2.5`.
-- [ ] Se puede autorizar un día con "Checada incompleta" y guardarlo con `horas_detectadas = 0`.
-- [ ] Autorizar más que `tope_horas_dia`, horas que no son múltiplo de 0.5, o 0 horas no se puede ni desde el modal ni con una llamada directa a `decideOvertimeDay`. La llamada directa devuelve `{ ok: false, message }` y no escribe nada.
-- [ ] Si el cliente manda un valor de `horas_detectadas`, `decideOvertimeDay` lo ignora y guarda el que recalcula el servidor.
-- [ ] Rechazar guarda `'R'` con `horas_autorizadas = NULL`, y el comentario si se capturó.
-- [ ] "Volver a pendiente" borra la fila y el día vuelve a "Pendiente". Si su detección actual es 0 y no es incompleto, desaparece de la lista.
-- [ ] Decidir otra vez un día ya decidido sobrescribe la misma fila: nunca hay dos filas por empleado y fecha.
-- [ ] Con el periodo en estatus 3 o 4, la pantalla no muestra botones de decisión. `decideOvertimeDay` y `clearOvertimeDecision` devuelven `{ ok: false }` si:
+- [x] Se puede autorizar un día con horas distintas a las detectadas, incluso mayores: con 2.5 h detectadas, autorizar 4.0 h queda guardado con `horas_autorizadas = 4.0` y `horas_detectadas = 2.5`.
+- [x] Se puede autorizar un día con "Checada incompleta" y guardarlo con `horas_detectadas = 0`.
+- [x] Autorizar más que `tope_horas_dia`, horas que no son múltiplo de 0.5, o 0 horas no se puede ni desde el modal ni con una llamada directa a `decideOvertimeDay`. La llamada directa devuelve `{ ok: false, message }` y no escribe nada.
+- [x] Si el cliente manda un valor de `horas_detectadas`, `decideOvertimeDay` lo ignora y guarda el que recalcula el servidor.
+- [x] Rechazar guarda `'R'` con `horas_autorizadas = NULL`, y el comentario si se capturó.
+- [x] "Volver a pendiente" borra la fila y el día vuelve a "Pendiente". Si su detección actual es 0 y no es incompleto, desaparece de la lista.
+- [x] Decidir otra vez un día ya decidido sobrescribe la misma fila: nunca hay dos filas por empleado y fecha.
+- [x] Con el periodo en estatus 3 o 4, la pantalla no muestra botones de decisión. `decideOvertimeDay` y `clearOvertimeDecision` devuelven `{ ok: false }` si:
   - el periodo no está en estatus 1 o 2;
   - el periodo es de otra sucursal;
   - la fecha está fuera de su rango;
   - el empleado no es elegible.
-- [ ] Si llega una checada que cambia lo detectado después de decidir, la fila muestra "Detectado cambió: X → Y" y conserva `horas_autorizadas`.
-- [ ] Después de decidir, la lista y las tarjetas resumen se actualizan sin recargar la página a mano.
+- [x] Si llega una checada que cambia lo detectado después de decidir, la fila muestra "Detectado cambió: X → Y" y conserva `horas_autorizadas`.
+- [x] Después de decidir, la lista y las tarjetas resumen se actualizan sin recargar la página a mano.
 
 **Configuración**
 
-- [ ] La tarjeta muestra el límite de horas dobles por periodo y el tope por día vigentes. El modal permite editarlos con validación: límite ≥ 0, tope > 0 y ≤ 24, ambos múltiplos de 0.5.
-- [ ] Cada guardado que cambia algún valor agrega una fila a la bitácora con los valores anteriores y nuevos. Un guardado sin cambios no agrega nada.
-- [ ] La bitácora muestra los últimos 20 cambios, con usuario y fecha.
-- [ ] Bajar el tope por día no modifica autorizaciones ya guardadas.
+- [x] La tarjeta muestra el límite de horas dobles por periodo y el tope por día vigentes. El modal permite editarlos con validación: límite ≥ 0, tope > 0 y ≤ 24, ambos múltiplos de 0.5.
+- [x] Cada guardado que cambia algún valor agrega una fila a la bitácora con los valores anteriores y nuevos. Un guardado sin cambios no agrega nada.
+- [x] La bitácora muestra los últimos 20 cambios, con usuario y fecha.
+- [x] Bajar el tope por día no modifica autorizaciones ya guardadas.
 
 **Pantalla y navegación**
 
-- [ ] "Horas extra" aparece en el menú de Nómina solo para los roles 1 y 4, y abre `/dashboard/nomina/horas-extra`.
-- [ ] Los demás roles son redirigidos por `proxy.ts` (sin cambios en ese archivo), y las actions les devuelven `{ ok: false }`.
-- [ ] La pantalla muestra el texto fijo "Las horas autorizadas se pagarán cuando se integre el cálculo de horas extra en la nómina."
-- [ ] Sin `periodo` en la URL se abre el periodo vigente de la sucursal activa, o el más reciente si no hay vigente. Cambiar de sucursal cambia la lista de periodos.
-- [ ] El filtro de estado, la búsqueda y la paginación de 25 filas viven en la URL. Las tarjetas resumen no cambian al filtrar.
-- [ ] `page.tsx` y la tabla son Server Components. Los únicos archivos con `"use client"` en `horas-extra/` son `OvertimeToolbar`, `OvertimeSettingsModal` y `OvertimeDecisionModal`.
-- [ ] Procesar sigue resolviendo el periodo igual que antes del paso 3.
-- [ ] `calculatePayrollPeriod` no cambió: calcular un periodo con horas autorizadas da exactamente los mismos importes que antes de esta spec.
+- [x] "Horas extra" aparece en el menú de Nómina solo para los roles 1 y 4, y abre `/dashboard/nomina/horas-extra`.
+- [x] Los demás roles son redirigidos por `proxy.ts` (sin cambios en ese archivo), y las actions les devuelven `{ ok: false }`.
+- [x] La pantalla muestra el texto fijo "Las horas autorizadas se pagarán cuando se integre el cálculo de horas extra en la nómina."
+- [x] Sin `periodo` en la URL se abre el periodo vigente de la sucursal activa, o el más reciente si no hay vigente. Cambiar de sucursal cambia la lista de periodos.
+- [x] El filtro de estado, la búsqueda y la paginación de 25 filas viven en la URL. Las tarjetas resumen no cambian al filtrar.
+- [x] `page.tsx` y la tabla son Server Components. Los únicos archivos con `"use client"` en `horas-extra/` son `OvertimeToolbar`, `OvertimeSettingsModal` y `OvertimeDecisionModal`.
+- [x] Procesar sigue resolviendo el periodo igual que antes del paso 3.
+- [x] `calculatePayrollPeriod` no cambió: calcular un periodo con horas autorizadas da exactamente los mismos importes que antes de esta spec.
 
 **Transversal**
 
-- [ ] Ninguna fecha u hora pasa por `new Date(valorDeBD)`. Las fechas se leen con `CONVERT(..., 120)`, las horas con `CONVERT(varchar(5), ..., 108)`, y el día de la semana sale de las partes numéricas de `"YYYY-MM-DD"`.
-- [ ] `docs/nomina.md` tiene la sección "Horas extra (spec 60)", y `CLAUDE.md` menciona `nomina/horas-extra/`.
-- [ ] `npm run build` (o `tsc --noEmit`) termina sin errores de tipos.
+- [x] Ninguna fecha u hora pasa por `new Date(valorDeBD)`. Las fechas se leen con `CONVERT(..., 120)`, las horas con `CONVERT(varchar(5), ..., 108)`, y el día de la semana sale de las partes numéricas de `"YYYY-MM-DD"`.
+- [x] `docs/nomina.md` tiene la sección "Horas extra (spec 60)", y `CLAUDE.md` menciona `nomina/horas-extra/`.
+- [x] `npm run build` (o `tsc --noEmit`) termina sin errores de tipos.
 
 ## Decisiones tomadas y descartadas
 
