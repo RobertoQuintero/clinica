@@ -1524,3 +1524,48 @@ CREATE TABLE [payroll].[overtime_authorizations](
      [horas_detectadas] >= 0 AND [horas_detectadas] * 2 = FLOOR([horas_detectadas] * 2))
 ) ON [PRIMARY]
 GO
+
+-- Spec 61: horas extra pagadas en el snapshot (solo 'O'; 'F' queda en 0).
+ALTER TABLE [payroll].[period_employees]
+    ADD [horas_extra_dobles]           [decimal](6,1)  NOT NULL CONSTRAINT [DF_period_employees_he_dobles]        DEFAULT (0),
+        [horas_extra_triples]          [decimal](6,1)  NOT NULL CONSTRAINT [DF_period_employees_he_triples]       DEFAULT (0),
+        [importe_horas_extra_dobles]   [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_he_imp_dobles]    DEFAULT (0),
+        [importe_horas_extra_triples]  [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_he_imp_triples]   DEFAULT (0),
+        [limite_horas_dobles_aplicado] [decimal](5,1)  NOT NULL CONSTRAINT [DF_period_employees_he_limite]        DEFAULT (0)
+GO
+
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_horas_extra] CHECK (
+        [horas_extra_dobles] >= 0 AND [horas_extra_triples] >= 0
+        AND [importe_horas_extra_dobles] >= 0 AND [importe_horas_extra_triples] >= 0
+        AND [limite_horas_dobles_aplicado] >= 0
+        AND [horas_extra_dobles] <= [limite_horas_dobles_aplicado])
+GO
+
+-- Spec 61: días de horas extra pagados por renglón de nómina; UNIQUE(id_empleado, fecha) impide el doble pago.
+-- Sin FK a payroll.overtime_authorizations: "Volver a pendiente" no debe chocar con un día ya pagado.
+CREATE TABLE [payroll].[period_employee_overtime](
+    [id_period_employee_overtime] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee]  [int]           NOT NULL,
+    [id_empleado]         [int]           NOT NULL,   -- redundante con period_employees, necesario para el UNIQUE
+    [fecha]               [date]          NOT NULL,
+    [horas_autorizadas]   [decimal](4,1)  NOT NULL,   -- congeladas de overtime_authorizations al calcular
+    [horas_dobles]        [decimal](4,1)  NOT NULL,
+    [horas_triples]       [decimal](4,1)  NOT NULL,
+    [importe_dobles]      [decimal](12,2) NOT NULL,   -- ROUND(horas_dobles × salario_diario × 2 / 8, 2)
+    [importe_triples]     [decimal](12,2) NOT NULL,   -- ROUND(horas_triples × salario_diario × 3 / 8, 2)
+ CONSTRAINT [PK_period_employee_overtime] PRIMARY KEY CLUSTERED ([id_period_employee_overtime] ASC),
+ CONSTRAINT [UQ_period_employee_overtime_empleado_fecha] UNIQUE ([id_empleado], [fecha]),
+ CONSTRAINT [FK_period_employee_overtime_period_employee] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_overtime_valores] CHECK (
+     [horas_autorizadas] > 0
+     AND [horas_dobles] >= 0 AND [horas_triples] >= 0
+     AND [horas_dobles] + [horas_triples] = [horas_autorizadas]
+     AND [importe_dobles] >= 0 AND [importe_triples] >= 0)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_period_employee_overtime_period_employee]
+    ON [payroll].[period_employee_overtime] ([id_period_employee])
+GO

@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Draft
+- **Estado:** Aprobado
 - **Depende de:**
   - [60 — Nómina: horas extra (detección, autorización y configuración)](60-nomina-horas-extra-deteccion-autorizacion.md): `payroll.overtime_authorizations` (solo se pagan los días con `estado = 'A'`), `payroll.overtime_settings.limite_horas_dobles_periodo`, la pantalla `/dashboard/nomina/horas-extra` y el fragmento SQL compartido de empleados elegibles en `lib/payroll/`. **La spec 60 tiene que estar implementada antes.**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md): `calculatePayrollPeriod`, `revertPayrollCalculation` y el snapshot `payroll.period_employees`, con el `salario_diario` operativo congelado del que sale la tarifa por hora.
