@@ -4,12 +4,18 @@ import type { IOvertimeDayRow, OvertimeDecisionStatus } from "@/interfaces/payro
 import { OVERTIME_PAGE_SIZE } from "@/lib/payroll/constants";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { formatOvertimeDate, formatOvertimeHours, formatScheduledDay } from "@/lib/payroll/overtimeFormat";
+import { DecideOvertimeButton } from "./OvertimeDecisionModal";
 
 interface Props {
   rows: IOvertimeDayRow[];
   totalRows: number;
   page: number;
   hasActiveFilters: boolean;
+  /** Periodo en estatus 1 o 2: solo entonces se muestra la columna de decisión. */
+  canDecide: boolean;
+  idPeriod: number;
+  /** Tope vigente de horas por día, para validar en el modal; null si no hay configuración. */
+  dailyCap: number | null;
   /** Parámetros de URL vigentes (sin `pagina`), para conservar los filtros al paginar. */
   currentSearchParams: Record<string, string>;
 }
@@ -43,7 +49,16 @@ function buildPageHref(currentSearchParams: Record<string, string>, page: number
 const PAGER_BUTTON =
   "p-1.5 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 text-[#44474f] dark:text-zinc-300 transition-colors";
 
-export default function OvertimeDaysTable({ rows, totalRows, page, hasActiveFilters, currentSearchParams }: Props) {
+export default function OvertimeDaysTable({
+  rows,
+  totalRows,
+  page,
+  hasActiveFilters,
+  canDecide,
+  idPeriod,
+  dailyCap,
+  currentSearchParams,
+}: Props) {
   const totalPages = Math.max(1, Math.ceil(totalRows / OVERTIME_PAGE_SIZE));
   const firstShown = totalRows === 0 ? 0 : (page - 1) * OVERTIME_PAGE_SIZE + 1;
   const lastShown = (page - 1) * OVERTIME_PAGE_SIZE + rows.length;
@@ -63,12 +78,17 @@ export default function OvertimeDaysTable({ rows, totalRows, page, hasActiveFilt
               <th scope="col" className="px-4 py-3 font-semibold">Estado</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Autorizadas</th>
               <th scope="col" className="px-6 py-3 font-semibold">Comentario</th>
+              {canDecide && (
+                <th scope="col" className="px-4 py-3">
+                  <span className="sr-only">Acciones</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={canDecide ? 9 : 8} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún día coincide con los filtros."
                     : "Este periodo no tiene horas extra detectadas ni checadas incompletas."}
@@ -125,6 +145,11 @@ export default function OvertimeDaysTable({ rows, totalRows, page, hasActiveFilt
                     <td className="px-6 py-3.5 text-sm text-[#44474f] dark:text-zinc-300 max-w-64">
                       <span className="line-clamp-2">{dayRow.comentario ?? "—"}</span>
                     </td>
+                    {canDecide && (
+                      <td className="pr-4 py-3.5 text-right">
+                        <DecideOvertimeButton dayRow={dayRow} idPeriod={idPeriod} dailyCap={dailyCap} />
+                      </td>
+                    )}
                   </tr>
                 );
               })
