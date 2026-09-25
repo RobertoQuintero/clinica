@@ -918,6 +918,30 @@ CREATE INDEX [IX_empleado_identificadores_empleado]
     ON [RH].[empleado_identificadores] ([id_empleado], [status])
 GO
 
+-- Spec 59: horario semanal del empleado. Una fila por día trabajado; día sin fila = descanso.
+-- Hasta dos bloques por día (turno partido). Se reescribe completo en cada guardado (sin historial).
+CREATE TABLE [RH].[empleado_horarios](
+    [id_empleado_horario] [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]         [int]          NOT NULL,
+    [dia_semana]          [tinyint]      NOT NULL,   -- ISO: 1 = lunes … 7 = domingo
+    [hora_entrada_1]      [time](0)      NOT NULL,
+    [hora_salida_1]       [time](0)      NOT NULL,
+    [hora_entrada_2]      [time](0)      NULL,
+    [hora_salida_2]       [time](0)      NULL,
+    [created_at]          [datetime2](0) NULL,       -- momento del guardado que creó la fila (buildDate)
+ CONSTRAINT [PK_empleado_horarios] PRIMARY KEY CLUSTERED ([id_empleado_horario] ASC),
+ CONSTRAINT [UQ_empleado_horarios_empleado_dia] UNIQUE ([id_empleado], [dia_semana]),
+ CONSTRAINT [FK_empleado_horarios_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_empleado_horarios_dia]     CHECK ([dia_semana] BETWEEN 1 AND 7),
+ CONSTRAINT [CK_empleado_horarios_bloque1] CHECK ([hora_salida_1] > [hora_entrada_1]),
+ CONSTRAINT [CK_empleado_horarios_bloque2] CHECK (
+     ([hora_entrada_2] IS NULL AND [hora_salida_2] IS NULL)
+  OR ([hora_entrada_2] IS NOT NULL AND [hora_salida_2] IS NOT NULL   -- sin esto, un bloque 2 a medias daría UNKNOWN y el CHECK lo dejaría pasar
+      AND [hora_entrada_2] > [hora_salida_1] AND [hora_salida_2] > [hora_entrada_2]))
+) ON [PRIMARY]
+GO
+
 -- Un renglón por checada (entrada o salida), tal como la reporta el dispositivo.
 CREATE TABLE [RH].[asistencias](
     [id_asistencia]        [int] IDENTITY(1,1) NOT NULL,

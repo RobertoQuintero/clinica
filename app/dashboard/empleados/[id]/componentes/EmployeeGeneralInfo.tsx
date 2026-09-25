@@ -1,9 +1,14 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
 import { IEmployeeRecord } from "@/interfaces/employee";
+import { IEmployeeSchedule } from "@/interfaces/employee_schedule";
+import { formatScheduleSummary } from "../horario/scheduleFormatting";
 import { dayFirst } from "@/utils/date_helpper";
 import { calculateAge, calculateSeniority } from "@/utils/employee_helpers";
 
 interface Props {
   employee: IEmployeeRecord;
+  schedule: IEmployeeSchedule;
 }
 
 const GENERO_LABELS: Record<string, string> = {
@@ -28,7 +33,7 @@ const TIPO_SALARIO_LABELS: Record<string, string> = {
 const formatCurrency = (value: number | null) =>
   value === null ? "—" : new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(value);
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="grid grid-cols-3 gap-2">
       <span className="font-semibold text-[#44474f] dark:text-zinc-400 col-span-1">{label}:</span>
@@ -38,7 +43,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 /** Detalle de solo lectura: única pestaña "Información General" (Datos Personales + Información Laboral). */
-export default function EmployeeGeneralInfo({ employee }: Props) {
+export default function EmployeeGeneralInfo({ employee, schedule }: Props) {
+  const scheduleSummary = formatScheduleSummary(schedule.days);
   const age = calculateAge(employee.fecha_nacimiento);
   const seniority = calculateSeniority(employee.fecha_ingreso);
   const seniorityLabel =
@@ -91,8 +97,20 @@ export default function EmployeeGeneralInfo({ employee }: Props) {
             <InfoRow label="Puesto" value={employee.nombre_puesto} />
             <InfoRow label="Departamento" value={employee.nombre_departamento} />
             <InfoRow label="Turno" value={employee.nombre_turno || "—"} />
-            <InfoRow label="Días laborales" value={employee.dias_laborales || "—"} />
-            <InfoRow label="Horario" value={employee.horario || "—"} />
+            <InfoRow
+              label="Horario"
+              value={
+                <>
+                  {scheduleSummary ?? "Sin horario definido"}{" "}
+                  <Link
+                    href={`/dashboard/empleados/${employee.id_empleado}/horario`}
+                    className="font-semibold text-[#0051d5] dark:text-blue-400 hover:underline whitespace-nowrap"
+                  >
+                    Ver horario
+                  </Link>
+                </>
+              }
+            />
             <InfoRow label="Antigüedad" value={seniorityLabel} />
           </div>
           <div className="flex flex-col gap-3">

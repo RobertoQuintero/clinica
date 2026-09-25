@@ -319,8 +319,6 @@ function buildEmployeeWriteParams(input: EmployeeFormInput, fechaIngresoDb: stri
     id_puesto: input.id_puesto,
     id_turno: input.id_turno ?? null,
     id_periodo_pago: input.id_periodo_pago ?? null,
-    dias_laborales: input.dias_laborales ?? null,
-    horario: input.horario ?? null,
     salario_diario: input.salario_diario ?? null,
     salario_diario_fiscal: input.salario_diario_fiscal ?? null,
     tipo_salario: input.tipo_salario ?? null,
@@ -346,7 +344,7 @@ export async function createEmployee(input: EmployeeFormInput): Promise<ActionRe
           [foto_url],[fecha_ingreso],[id_supervisor],[whatsapp],[email],[rfc],[curp],[nss],
           [fecha_nacimiento],[genero],[estado_civil],[direccion],[contacto_emergencia],[whatsapp_emergencia],
           [contacto_emergencia_2],[whatsapp_emergencia_2],
-          [id_department],[id_puesto],[id_turno],[id_periodo_pago],[dias_laborales],[horario],
+          [id_department],[id_puesto],[id_turno],[id_periodo_pago],
           [salario_diario],[salario_diario_fiscal],[tipo_salario],[cuenta_bancaria],
           [activo],[status],[created_at])
        OUTPUT INSERTED.[id_empleado]
@@ -355,7 +353,7 @@ export async function createEmployee(input: EmployeeFormInput): Promise<ActionRe
           @foto_url,@fecha_ingreso,@id_supervisor,@whatsapp,@email,@rfc,@curp,@nss,
           @fecha_nacimiento,@genero,@estado_civil,@direccion,@contacto_emergencia,@whatsapp_emergencia,
           @contacto_emergencia_2,@whatsapp_emergencia_2,
-          @id_department,@id_puesto,@id_turno,@id_periodo_pago,@dias_laborales,@horario,
+          @id_department,@id_puesto,@id_turno,@id_periodo_pago,
           @salario_diario,@salario_diario_fiscal,@tipo_salario,@cuenta_bancaria,
           1,1,@created_at)`,
       { ...writeParams, codigo_empleado, id_empresa, created_at: buildDate(new Date()) }
@@ -409,8 +407,6 @@ export async function updateEmployee(
          [id_puesto]            = @id_puesto,
          [id_turno]             = @id_turno,
          [id_periodo_pago]      = @id_periodo_pago,
-         [dias_laborales]       = @dias_laborales,
-         [horario]              = @horario,
          [salario_diario]       = @salario_diario,
          [salario_diario_fiscal] = @salario_diario_fiscal,
          [tipo_salario]         = @tipo_salario,
