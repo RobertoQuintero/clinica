@@ -3,6 +3,7 @@ import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import { getEmployeeSchedule } from "./actions";
 import { calculateWeeklyHours } from "./scheduleFormatting";
 import ScheduleWeek from "./componentes/ScheduleWeek";
+import EditScheduleModal from "./componentes/EditScheduleModal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -34,11 +35,14 @@ export default async function EmployeeSchedulePage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">Horario</h2>
-        <p className="text-sm text-[#44474f] dark:text-zinc-400">
-          Días y horas de trabajo de la semana. Un día sin horario es día de descanso.
-        </p>
+      <div className="flex justify-between items-end gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">Horario</h2>
+          <p className="text-sm text-[#44474f] dark:text-zinc-400">
+            Días y horas de trabajo de la semana. Un día sin horario es día de descanso.
+          </p>
+        </div>
+        <EditScheduleModal id_empleado={id_empleado} currentDays={schedule.days} />
       </div>
 
       <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
