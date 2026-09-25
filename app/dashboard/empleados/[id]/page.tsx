@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getEmployeeById } from "../actions";
+import { getEmployeeSchedule } from "./horario/actions";
 import EmployeeGeneralInfo from "./componentes/EmployeeGeneralInfo";
 
 interface Props {
@@ -10,8 +11,11 @@ export default async function EmployeeDetailPage({ params }: Props) {
   const { id } = await params;
   const id_empleado = Number(id);
 
-  const employee = await getEmployeeById(id_empleado);
+  const [employee, schedule] = await Promise.all([
+    getEmployeeById(id_empleado),
+    getEmployeeSchedule(id_empleado),
+  ]);
   if (!employee) notFound();
 
-  return <EmployeeGeneralInfo employee={employee} />;
+  return <EmployeeGeneralInfo employee={employee} schedule={schedule} />;
 }
