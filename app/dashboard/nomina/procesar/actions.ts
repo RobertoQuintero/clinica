@@ -12,29 +12,20 @@ import {
   PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
-import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
-import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
+import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
+import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
+import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
 import {
   calculatePayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
   revertPayrollCalculationSchema,
 } from "@/lib/payroll/schemas";
-import { addZeroToday, buildDate } from "@/utils/date_helpper";
+import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
-
-const PERIOD_FROM = `
-  FROM [CentroPodologico].[payroll].[periods] p
-  JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = p.id_payment_period`;
-
-/** Nombre completo con un solo espacio entre partes no vacías, para mostrar y para buscar. */
-const EMPLOYEE_FULL_NAME_SQL = `LTRIM(RTRIM(
-  e.nombre
-  + ISNULL(' ' + NULLIF(e.apellido_paterno, ''), '')
-  + ISNULL(' ' + NULLIF(e.apellido_materno, ''), '')))`;
 
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
 function escapeLikePattern(text: string): string {
@@ -69,28 +60,6 @@ function buildPayrollEmployeeConditions(filters: {
     params.search = `%${escapeLikePattern(search)}%`;
   }
   return { conditions, params };
-}
-
-async function resolvePeriod(idSucursal: number, idPeriod: number | null): Promise<IPayrollPeriodRow | null> {
-  if (idPeriod !== null) {
-    // Un periodo de otra sucursal no se distingue de uno inexistente.
-    const rows = await db.queryParams(
-      `SELECT ${PERIOD_ROW_SELECT} ${PERIOD_FROM}
-        WHERE p.id_period = @id_period AND p.id_sucursal = @id_sucursal`,
-      { id_period: idPeriod, id_sucursal: idSucursal },
-    );
-    return (rows[0] as IPayrollPeriodRow | undefined) ?? null;
-  }
-
-  // Sin periodo pedido: el activo en curso; si no hay, el de inicio más reciente.
-  const rows = await db.queryParams(
-    `SELECT TOP 1 ${PERIOD_ROW_SELECT} ${PERIOD_FROM}
-      WHERE p.id_sucursal = @id_sucursal
-      ORDER BY CASE WHEN CAST(@today AS date) BETWEEN p.fecha_inicio AND p.fecha_fin THEN 0 ELSE 1 END,
-               p.fecha_inicio DESC, p.id_period DESC`,
-    { id_sucursal: idSucursal, today: addZeroToday(new Date()) },
-  );
-  return (rows[0] as IPayrollPeriodRow | undefined) ?? null;
 }
 
 export async function getPayrollProcessPage(

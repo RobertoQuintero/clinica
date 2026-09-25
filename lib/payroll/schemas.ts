@@ -95,3 +95,49 @@ export const treatmentCommissionSettingsSchema = z.object({
 });
 
 export type TreatmentCommissionSettingsSchemaInput = z.infer<typeof treatmentCommissionSettingsSchema>;
+
+export const overtimeSettingsSchema = z.object({
+  limite_horas_dobles_periodo: z
+    .number("El límite de horas dobles es inválido")
+    .min(0, "El límite de horas dobles no puede ser negativo")
+    .multipleOf(0.5, "El límite de horas dobles debe ir en pasos de 0.5"),
+  tope_horas_dia: z
+    .number("El tope por día es inválido")
+    .positive("El tope por día debe ser mayor a 0")
+    .max(24, "El tope por día no puede pasar de 24 horas")
+    .multipleOf(0.5, "El tope por día debe ir en pasos de 0.5"),
+});
+
+export type OvertimeSettingsSchemaInput = z.infer<typeof overtimeSettingsSchema>;
+
+const overtimeDayShape = {
+  id_period: z.number("El periodo es inválido").int("El periodo es inválido").positive("El periodo es inválido"),
+  id_empleado: z.number("El empleado es inválido").int("El empleado es inválido").positive("El empleado es inválido"),
+  fecha: periodDate("La fecha"),
+};
+
+export const decideOvertimeDaySchema = z
+  .object({
+    ...overtimeDayShape,
+    decision: z.enum(["authorized", "rejected"], "La decisión es inválida"),
+    horas_autorizadas: z
+      .number("Las horas autorizadas son inválidas")
+      .positive("Las horas autorizadas deben ser mayores a 0")
+      .multipleOf(0.5, "Las horas autorizadas deben ir en pasos de 0.5")
+      .optional(),
+    comentario: z
+      .string("El comentario es inválido")
+      .trim()
+      .max(500, "El comentario admite máximo 500 caracteres")
+      .optional(),
+  })
+  .refine((value) => value.decision !== "authorized" || value.horas_autorizadas !== undefined, {
+    path: ["horas_autorizadas"],
+    message: "Captura las horas a autorizar",
+  });
+
+export type DecideOvertimeDaySchemaInput = z.infer<typeof decideOvertimeDaySchema>;
+
+export const clearOvertimeDecisionSchema = z.object(overtimeDayShape);
+
+export type ClearOvertimeDecisionSchemaInput = z.infer<typeof clearOvertimeDecisionSchema>;
