@@ -12,6 +12,7 @@ import {
   PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
+import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
@@ -90,10 +91,11 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, totalPercepciones: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, totalPercepciones: 0 },
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
+      overtimeRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -116,8 +118,11 @@ export async function getPayrollProcessPage(
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_comision_tratamientos,
                 pe.piezas_vendidas, pe.importe_comision_productos,
+                pe.horas_extra_dobles, pe.horas_extra_triples,
+                pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples AS importe_horas_extra,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
-                  + pe.importe_comision_productos AS total_percepciones,
+                  + pe.importe_comision_productos
+                  + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples AS total_percepciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -131,7 +136,8 @@ export async function getPayrollProcessPage(
                 ISNULL(SUM(importe_salario), 0) AS importe_salario,
                 ISNULL(SUM(importe_comision), 0) AS importe_comision,
                 ISNULL(SUM(importe_comision_tratamientos), 0) AS importe_comision_tratamientos,
-                ISNULL(SUM(importe_comision_productos), 0) AS importe_comision_productos
+                ISNULL(SUM(importe_comision_productos), 0) AS importe_comision_productos,
+                ISNULL(SUM(importe_horas_extra_dobles + importe_horas_extra_triples), 0) AS importe_horas_extra
            FROM [CentroPodologico].[payroll].[period_employees]
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
@@ -183,6 +189,9 @@ export async function getPayrollProcessPage(
           importe_comision_tratamientos: Number(row.importe_comision_tratamientos),
           piezas_vendidas: Number(row.piezas_vendidas),
           importe_comision_productos: Number(row.importe_comision_productos),
+          horas_extra_dobles: Number(row.horas_extra_dobles),
+          horas_extra_triples: Number(row.horas_extra_triples),
+          importe_horas_extra: Number(row.importe_horas_extra),
           total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
@@ -191,12 +200,14 @@ export async function getPayrollProcessPage(
           importeComision: Number(totals[0]?.importe_comision ?? 0),
           importeComisionTratamientos: Number(totals[0]?.importe_comision_tratamientos ?? 0),
           importeComisionProductos: Number(totals[0]?.importe_comision_productos ?? 0),
+          importeHorasExtra: Number(totals[0]?.importe_horas_extra ?? 0),
           totalPercepciones:
             Math.round(
               (Number(totals[0]?.importe_salario ?? 0) +
                 Number(totals[0]?.importe_comision ?? 0) +
                 Number(totals[0]?.importe_comision_tratamientos ?? 0) +
-                Number(totals[0]?.importe_comision_productos ?? 0)) *
+                Number(totals[0]?.importe_comision_productos ?? 0) +
+                Number(totals[0]?.importe_horas_extra ?? 0)) *
                 100,
             ) / 100,
         },
@@ -242,7 +253,7 @@ export async function getPayrollEmployeeDetail(
       search,
     });
 
-    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows, soldProductRows] = await Promise.all([
+    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows, soldProductRows, overtimeDayRows] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
       db.queryParams(
@@ -264,6 +275,9 @@ export async function getPayrollEmployeeDetail(
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_por_tratamiento, pe.importe_comision_tratamientos,
                 pe.piezas_vendidas, pe.importe_comision_productos,
+                pe.horas_extra_dobles, pe.horas_extra_triples,
+                pe.importe_horas_extra_dobles, pe.importe_horas_extra_triples,
+                pe.limite_horas_dobles_aplicado,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -322,6 +336,20 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Días de horas extra pagados en el renglón operativo (spec 61); en fiscal no hay desglose.
+      payrollType === "O"
+        ? db.queryParams(
+            `SELECT CONVERT(varchar(10), o.fecha, 120) AS fecha,
+                    o.horas_autorizadas, o.horas_dobles, o.horas_triples,
+                    o.importe_dobles, o.importe_triples
+               FROM [CentroPodologico].[payroll].[period_employee_overtime] o
+               JOIN [CentroPodologico].[payroll].[period_employees] pe
+                 ON pe.id_period_employee = o.id_period_employee
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'O'
+              ORDER BY o.fecha`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -350,6 +378,11 @@ export async function getPayrollEmployeeDetail(
           importe_comision_tratamientos: Number(snapshotRow.importe_comision_tratamientos),
           piezas_vendidas: Number(snapshotRow.piezas_vendidas),
           importe_comision_productos: Number(snapshotRow.importe_comision_productos),
+          horas_extra_dobles: Number(snapshotRow.horas_extra_dobles),
+          horas_extra_triples: Number(snapshotRow.horas_extra_triples),
+          importe_horas_extra_dobles: Number(snapshotRow.importe_horas_extra_dobles),
+          importe_horas_extra_triples: Number(snapshotRow.importe_horas_extra_triples),
+          limite_horas_dobles_aplicado: Number(snapshotRow.limite_horas_dobles_aplicado),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
@@ -382,6 +415,17 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const overtimeDays: IPayrollOvertimeDay[] = snapshot
+      ? overtimeDayRows.map((row: IPayrollOvertimeDay) => ({
+          fecha: row.fecha,
+          horas_autorizadas: Number(row.horas_autorizadas),
+          horas_dobles: Number(row.horas_dobles),
+          horas_triples: Number(row.horas_triples),
+          importe_dobles: Number(row.importe_dobles),
+          importe_triples: Number(row.importe_triples),
+        }))
+      : [];
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -394,6 +438,7 @@ export async function getPayrollEmployeeDetail(
         totalPerceptions,
         paidTreatments,
         soldProducts,
+        overtimeDays,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,
