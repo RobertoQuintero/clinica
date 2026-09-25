@@ -5,6 +5,7 @@ import { readOvertimeStatus, OVERTIME_STATUS_URL_VALUES } from "@/lib/payroll/ov
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getOvertimePage, getOvertimeSettingsLog } from "./actions";
+import OvertimeRecalculationNotice from "../componentes/OvertimeRecalculationNotice";
 import EmployeesWithoutScheduleNotice from "./componentes/EmployeesWithoutScheduleNotice";
 import OvertimeDaysTable from "./componentes/OvertimeDaysTable";
 import OvertimeSettingsCard from "./componentes/OvertimeSettingsCard";
@@ -116,6 +117,7 @@ export default async function OvertimePage({ searchParams }: { searchParams: Pro
             searchText={filters.search}
           />
           <OvertimeSummaryCards summary={result.data.summary} />
+          <OvertimeRecalculationNotice recalculationNeeded={result.data.recalculationNeeded} />
           <EmployeesWithoutScheduleNotice employees={result.data.employeesWithoutSchedule} />
           <OvertimeDaysTable
             rows={result.data.rows}

@@ -17,6 +17,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
+import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
 import { ELIGIBLE_EMPLOYEE_BASE_CONDITIONS, ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS } from "@/lib/payroll/eligibleEmployees";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
 import { resolvePeriod } from "@/lib/payroll/period";
@@ -109,7 +110,7 @@ export async function getPayrollProcessPage(
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
 
-    const [rows, totals, puestoOptions, excludedEmployees, lastCalculated] = await Promise.all([
+    const [rows, totals, puestoOptions, excludedEmployees, lastCalculated, overtimeRecalculationNeeded] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
                 ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
@@ -172,6 +173,7 @@ export async function getPayrollProcessPage(
           WHERE id_period = @id_period`,
         { id_period: period.id_period },
       ),
+      isOvertimeRecalculationNeeded(period.id_period),
     ]);
 
     return {
@@ -217,6 +219,7 @@ export async function getPayrollProcessPage(
         })),
         excludedEmployees: excludedEmployees as IPayrollExcludedEmployee[],
         lastCalculatedAt: lastCalculated[0]?.last_calculated_at ?? null,
+        overtimeRecalculationNeeded,
       },
     };
   } catch (error) {

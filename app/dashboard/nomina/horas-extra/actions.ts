@@ -14,6 +14,7 @@ import {
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { OVERTIME_PAGE_SIZE } from "@/lib/payroll/constants";
 import { ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS } from "@/lib/payroll/eligibleEmployees";
+import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { describeOvertimeDay, detectEmployeeOvertime } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
@@ -435,6 +436,7 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
       summary: { pendingDays: 0, detectedHours: 0, authorizedHours: 0 },
       employeesWithoutSchedule: [],
       settings,
+      recalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -569,6 +571,8 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
           normalizeSearchText(row.codigo_empleado).includes(search)),
     );
 
+    const recalculationNeeded = await isOvertimeRecalculationNeeded(period.id_period);
+
     const pageNumber = Math.max(1, Math.floor(filters.page) || 1);
     const pageStart = (pageNumber - 1) * OVERTIME_PAGE_SIZE;
 
@@ -577,6 +581,7 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
       data: {
         ...emptyPage,
         canDecide: period.status === 1 || period.status === 2,
+        recalculationNeeded,
         rows: filteredRows.slice(pageStart, pageStart + OVERTIME_PAGE_SIZE),
         totalRows: filteredRows.length,
         summary,
