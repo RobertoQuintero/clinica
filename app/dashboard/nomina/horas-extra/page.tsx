@@ -4,9 +4,12 @@ import type { IOvertimeFilters } from "@/interfaces/payroll_overtime";
 import { readOvertimeStatus, OVERTIME_STATUS_URL_VALUES } from "@/lib/payroll/overtimeUrls";
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
-import { getOvertimePage } from "./actions";
+import { getOvertimePage, getOvertimeSettingsLog } from "./actions";
 import EmployeesWithoutScheduleNotice from "./componentes/EmployeesWithoutScheduleNotice";
 import OvertimeDaysTable from "./componentes/OvertimeDaysTable";
+import OvertimeSettingsCard from "./componentes/OvertimeSettingsCard";
+import OvertimeSettingsLog from "./componentes/OvertimeSettingsLog";
+import { EditOvertimeSettingsButton } from "./componentes/OvertimeSettingsModal";
 import OvertimeSummaryCards from "./componentes/OvertimeSummaryCards";
 import OvertimeToolbar from "./componentes/OvertimeToolbar";
 
@@ -38,7 +41,7 @@ export default async function OvertimePage({ searchParams }: { searchParams: Pro
     page: readPositiveInteger(readSingleParam(rawSearchParams, "pagina")) ?? 1,
   };
 
-  const result = await getOvertimePage(filters);
+  const [result, settingsLogResult] = await Promise.all([getOvertimePage(filters), getOvertimeSettingsLog()]);
 
   // Filtros vigentes de la URL (sin `pagina`) para que la paginación los conserve.
   const currentSearchParams: Record<string, string> = {};
@@ -67,6 +70,16 @@ export default async function OvertimePage({ searchParams }: { searchParams: Pro
         <Info size={18} className="shrink-0 mt-0.5 text-[#0051d5] dark:text-blue-300" aria-hidden />
         Las horas autorizadas se pagarán cuando se integre el cálculo de horas extra en la nómina.
       </p>
+
+      {result.ok && (
+        <section aria-label="Límites de horas extra" className="flex flex-col gap-3">
+          <OvertimeSettingsCard
+            settings={result.data.settings}
+            editAction={<EditOvertimeSettingsButton settings={result.data.settings} />}
+          />
+          {settingsLogResult.ok && <OvertimeSettingsLog entries={settingsLogResult.data} />}
+        </section>
+      )}
 
       {!result.ok ? (
         <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">

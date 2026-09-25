@@ -9,6 +9,7 @@ export interface IOvertimeSettings {
   limite_horas_dobles_periodo: number;
   tope_horas_dia:              number;
   updated_by:                  number;
+  updated_by_name:             string;
   updated_at:                  string;   // "YYYY-MM-DD HH:mm:ss"
 }
 

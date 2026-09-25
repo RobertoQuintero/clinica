@@ -35,8 +35,10 @@ export async function getOvertimeSettings(): Promise<ActionResult<IOvertimeSetti
               CAST(s.limite_horas_dobles_periodo AS float) AS limite_horas_dobles_periodo,
               CAST(s.tope_horas_dia AS float)              AS tope_horas_dia,
               s.updated_by,
+              ISNULL(u.nombre, '')                       AS updated_by_name,
               CONVERT(varchar(19), s.updated_at, 120)      AS updated_at
          FROM [CentroPodologico].[payroll].[overtime_settings] s
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.id_user = s.updated_by
         WHERE s.id_empresa = @id_empresa`,
       { id_empresa: access.data.id_empresa },
     );
@@ -410,8 +412,10 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
               CAST(s.limite_horas_dobles_periodo AS float) AS limite_horas_dobles_periodo,
               CAST(s.tope_horas_dia AS float)              AS tope_horas_dia,
               s.updated_by,
+              ISNULL(u.nombre, '')                       AS updated_by_name,
               CONVERT(varchar(19), s.updated_at, 120)      AS updated_at
          FROM [CentroPodologico].[payroll].[overtime_settings] s
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.id_user = s.updated_by
         WHERE s.id_empresa = @id_empresa`,
       { id_empresa },
     );
