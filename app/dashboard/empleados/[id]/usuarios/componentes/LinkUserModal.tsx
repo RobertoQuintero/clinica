@@ -104,7 +104,7 @@ export default function LinkUserModal({ id_empleado, linkableUsers }: Props) {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-4 overflow-y-auto p-6">
+              <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-6">
                 <p className="text-sm text-[#44474f] dark:text-zinc-400">
                   Cuentas activas de la misma empresa que todavía no pertenecen a ningún empleado.
                 </p>
@@ -133,7 +133,7 @@ export default function LinkUserModal({ id_empleado, linkableUsers }: Props) {
                     No hay usuarios disponibles para vincular
                   </div>
                 ) : (
-                  <ul className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden">
+                  <ul className="shrink-0 divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden">
                     {filteredUsers.map((linkableUser) => (
                       <li
                         key={linkableUser.id_user}
