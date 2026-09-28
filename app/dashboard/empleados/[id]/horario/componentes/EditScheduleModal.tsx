@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, WheelEvent } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { IScheduleDay, WeekdayNumber } from "@/interfaces/employee_schedule";
@@ -26,6 +26,13 @@ const TIME_INPUT_CLASS =
 
 const LINK_BUTTON_CLASS =
   "text-xs font-semibold text-[#0051d5] dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline";
+
+// Un input type="time" enfocado consume la rueda del mouse para incrementar/decrementar
+// su segmento en vez de dejar que la modal haga scroll; se le quita el foco para que el
+// scroll llegue al contenedor.
+function blurOnWheel(event: WheelEvent<HTMLInputElement>) {
+  event.currentTarget.blur();
+}
 
 /** Botón "Editar horario" + modal con los 7 días. Guardar reemplaza la semana completa. */
 export default function EditScheduleModal({ id_empleado, currentDays }: Props) {
@@ -146,7 +153,7 @@ export default function EditScheduleModal({ id_empleado, currentDays }: Props) {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-4 overflow-y-auto p-6">
+              <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-6">
                 <p className="text-sm text-[#44474f] dark:text-zinc-400">
                   Marca los días que trabaja. Al guardar se reemplaza el horario completo de la semana.
                 </p>
@@ -160,7 +167,7 @@ export default function EditScheduleModal({ id_empleado, currentDays }: Props) {
                   </div>
                 )}
 
-                <ul className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden">
+                <ul className="shrink-0 divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden">
                   {WEEKDAYS.map((weekday) => {
                     const draft = drafts[weekday];
                     const dayError = showErrors ? dayErrors[weekday] : null;
@@ -186,6 +193,7 @@ export default function EditScheduleModal({ id_empleado, currentDays }: Props) {
                                 aria-label={`${dayName}: entrada`}
                                 value={draft.entry1}
                                 onChange={(event) => updateDraft(weekday, { entry1: event.target.value })}
+                                onWheel={blurOnWheel}
                                 className={TIME_INPUT_CLASS}
                               />
                               <span aria-hidden="true" className="text-[#74777f]">–</span>
@@ -194,6 +202,7 @@ export default function EditScheduleModal({ id_empleado, currentDays }: Props) {
                                 aria-label={`${dayName}: salida`}
                                 value={draft.exit1}
                                 onChange={(event) => updateDraft(weekday, { exit1: event.target.value })}
+                                onWheel={blurOnWheel}
                                 className={TIME_INPUT_CLASS}
                               />
                               {draft.hasSecondBlock && (
@@ -204,6 +213,7 @@ export default function EditScheduleModal({ id_empleado, currentDays }: Props) {
                                     aria-label={`${dayName}: entrada del segundo bloque`}
                                     value={draft.entry2}
                                     onChange={(event) => updateDraft(weekday, { entry2: event.target.value })}
+                                    onWheel={blurOnWheel}
                                     className={TIME_INPUT_CLASS}
                                   />
                                   <span aria-hidden="true" className="text-[#74777f]">–</span>
@@ -212,6 +222,7 @@ export default function EditScheduleModal({ id_empleado, currentDays }: Props) {
                                     aria-label={`${dayName}: salida del segundo bloque`}
                                     value={draft.exit2}
                                     onChange={(event) => updateDraft(weekday, { exit2: event.target.value })}
+                                    onWheel={blurOnWheel}
                                     className={TIME_INPUT_CLASS}
                                   />
                                 </>
