@@ -115,7 +115,7 @@ export async function getPayrollProcessPage(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
                 ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
                 e.id_puesto, pu.name AS nombre_puesto, pe.tipo_nomina,
-                pe.salario_diario, pe.dias, pe.importe_salario,
+                pe.salario_diario, pe.dias, pe.dias_falta, pe.importe_salario,
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_comision_tratamientos,
                 pe.piezas_vendidas, pe.importe_comision_productos,
@@ -184,6 +184,7 @@ export async function getPayrollProcessPage(
           ...row,
           salario_diario: Number(row.salario_diario),
           dias: Number(row.dias),
+          dias_falta: Number(row.dias_falta),
           importe_salario: Number(row.importe_salario),
           consultas_atendidas: Number(row.consultas_atendidas),
           importe_comision: Number(row.importe_comision),
@@ -274,7 +275,7 @@ export async function getPayrollEmployeeDetail(
         { id_empleado: idEmpleado, id_sucursal: period.id_sucursal, id_period: period.id_period },
       ),
       db.queryParams(
-        `SELECT pe.salario_diario, pe.dias, pe.importe_salario,
+        `SELECT pe.salario_diario, pe.dias, pe.dias_falta, pe.importe_salario,
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_por_tratamiento, pe.importe_comision_tratamientos,
                 pe.piezas_vendidas, pe.importe_comision_productos,
@@ -373,6 +374,7 @@ export async function getPayrollEmployeeDetail(
       ? {
           salario_diario: Number(snapshotRow.salario_diario),
           dias: Number(snapshotRow.dias),
+          dias_falta: Number(snapshotRow.dias_falta),
           importe_salario: Number(snapshotRow.importe_salario),
           consultas_atendidas: Number(snapshotRow.consultas_atendidas),
           importe_comision: Number(snapshotRow.importe_comision),
@@ -442,6 +444,7 @@ export async function getPayrollEmployeeDetail(
         paidTreatments,
         soldProducts,
         overtimeDays,
+        discountedAbsences: [],
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,

@@ -2,6 +2,7 @@ import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
+import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 
 export type PayrollType = "O" | "F";
 
@@ -15,7 +16,8 @@ export interface IPayrollEmployeeRow {
   nombre_puesto:      string;
   tipo_nomina:        PayrollType;
   salario_diario:     number;
-  dias:               number;
+  dias:               number;   // días netos pagados (calendario − dias_falta)
+  dias_falta:         number;
   importe_salario:    number;
   consultas_atendidas: number;
   importe_comision:    number;
@@ -75,7 +77,8 @@ export interface IPayrollEmployeeDetailFilters {
 // Fila del snapshot `payroll.period_employees` para un empleado y tipo.
 export interface IPayrollEmployeeSnapshot {
   salario_diario:  number;
-  dias:            number;
+  dias:            number;   // días netos pagados (calendario − dias_falta)
+  dias_falta:      number;
   importe_salario: number;
   consultas_atendidas: number;
   importe_comision:    number;
@@ -110,6 +113,7 @@ export interface IPayrollEmployeeDetail {
   paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
   soldProducts:     IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
   overtimeDays:     IPayrollOvertimeDay[];      // [] en fiscal o sin días pagados
+  discountedAbsences: IPayrollDiscountedAbsence[];  // [] si no hay faltas descontadas
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;
