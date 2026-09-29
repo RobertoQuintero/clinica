@@ -5,8 +5,8 @@ import { readOvertimeStatus, OVERTIME_STATUS_URL_VALUES } from "@/lib/payroll/ov
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getOvertimePage, getOvertimeSettingsLog } from "./actions";
-import OvertimeRecalculationNotice from "../componentes/OvertimeRecalculationNotice";
-import EmployeesWithoutScheduleNotice from "./componentes/EmployeesWithoutScheduleNotice";
+import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
+import EmployeesWithoutScheduleNotice from "../componentes/EmployeesWithoutScheduleNotice";
 import OvertimeDaysTable from "./componentes/OvertimeDaysTable";
 import OvertimeSettingsCard from "./componentes/OvertimeSettingsCard";
 import OvertimeSettingsLog from "./componentes/OvertimeSettingsLog";
@@ -117,8 +117,14 @@ export default async function OvertimePage({ searchParams }: { searchParams: Pro
             searchText={filters.search}
           />
           <OvertimeSummaryCards summary={result.data.summary} />
-          <OvertimeRecalculationNotice recalculationNeeded={result.data.recalculationNeeded} />
-          <EmployeesWithoutScheduleNotice employees={result.data.employeesWithoutSchedule} />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.recalculationNeeded}
+            message="Hay autorizaciones que no coinciden con el último cálculo. Recalcula la nómina."
+          />
+          <EmployeesWithoutScheduleNotice
+            employees={result.data.employeesWithoutSchedule}
+            undetectableSubject="sus horas extra"
+          />
           <OvertimeDaysTable
             rows={result.data.rows}
             totalRows={result.data.totalRows}

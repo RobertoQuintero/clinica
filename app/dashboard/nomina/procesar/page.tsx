@@ -10,7 +10,7 @@ import {
 import { addZeroToday } from "@/utils/date_helpper";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
-import OvertimeRecalculationNotice from "../componentes/OvertimeRecalculationNotice";
+import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
 import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
@@ -126,7 +126,10 @@ export default async function ProcesarNominaPage({
             excludedEmployees={result.data.excludedEmployees}
             payrollType={filters.payrollType}
           />
-          <OvertimeRecalculationNotice recalculationNeeded={result.data.overtimeRecalculationNeeded} />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.overtimeRecalculationNeeded}
+            message="Hay autorizaciones que no coinciden con el último cálculo. Recalcula la nómina."
+          />
           {result.data.period.status === 1 ? (
             <EmptyState
               title="Este periodo aún no se calcula"
