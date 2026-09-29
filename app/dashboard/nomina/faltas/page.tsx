@@ -5,6 +5,7 @@ import { ABSENCE_STATUS_URL_VALUES, readAbsenceStatus } from "@/lib/payroll/abse
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import EmployeesWithoutScheduleNotice from "../componentes/EmployeesWithoutScheduleNotice";
 import PayrollEmptyState, { PAYROLL_LINK_BUTTON_CLASSES } from "../componentes/PayrollEmptyState";
+import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getAbsencePage } from "./actions";
 import AbsenceDaysTable from "./componentes/AbsenceDaysTable";
@@ -87,6 +88,10 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
             searchText={filters.search}
           />
           <AbsenceSummaryCards summary={result.data.summary} />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.recalculationNeeded}
+            message="Hay faltas que no coinciden con el último cálculo. Recalcula la nómina."
+          />
           <EmployeesWithoutScheduleNotice
             employees={result.data.employeesWithoutSchedule}
             undetectableSubject="sus faltas"

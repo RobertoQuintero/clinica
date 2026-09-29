@@ -113,6 +113,10 @@ export default async function ProcesarNominaPage({
             recalculationNeeded={result.data.overtimeRecalculationNeeded}
             message="Hay autorizaciones que no coinciden con el último cálculo. Recalcula la nómina."
           />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.absenceRecalculationNeeded}
+            message="Hay faltas que no coinciden con el último cálculo. Recalcula la nómina."
+          />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"

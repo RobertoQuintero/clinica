@@ -5,6 +5,7 @@ import { IScheduleDay } from "@/interfaces/employee_schedule";
 import { AbsenceStatus, IAbsenceDayRow, IAbsenceFilters, IAbsencePage } from "@/interfaces/payroll_absence";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { detectEmployeeAbsences, nextDate } from "@/lib/payroll/absenceDetection";
+import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { ABSENCE_PAGE_SIZE } from "@/lib/payroll/constants";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
@@ -244,6 +245,8 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
           normalizeSearchText(row.codigo_empleado).includes(search)),
     );
 
+    const recalculationNeeded = await isAbsenceRecalculationNeeded(period.id_period);
+
     const pageStart = (page - 1) * ABSENCE_PAGE_SIZE;
 
     return {
@@ -251,6 +254,7 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
       data: {
         ...emptyPage,
         canDecide: period.status === 1 || period.status === 2,
+        recalculationNeeded,
         rows: filteredRows.slice(pageStart, pageStart + ABSENCE_PAGE_SIZE),
         totalRows: filteredRows.length,
         summary,
