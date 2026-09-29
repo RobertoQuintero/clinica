@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/database/connection";
+import db, { ITransactionClient } from "@/database/connection";
 import { IScheduleDay } from "@/interfaces/employee_schedule";
 import { AbsenceStatus, IAbsenceDayRow, IAbsenceFilters, IAbsencePage } from "@/interfaces/payroll_absence";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
@@ -12,9 +12,18 @@ import {
 } from "@/lib/payroll/eligibleEmployees";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
+import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
-import { absencePageFiltersSchema } from "@/lib/payroll/schemas";
-import { addZeroToday } from "@/utils/date_helpper";
+import {
+  absencePageFiltersSchema,
+  clearAbsenceJustificationSchema,
+  justifyAbsenceSchema,
+  markAbsenceNotApplicableSchema,
+} from "@/lib/payroll/schemas";
+import { addZeroToday, buildDate } from "@/utils/date_helpper";
+import { revalidatePath } from "next/cache";
+
+const ABSENCES_PATH = "/dashboard/nomina/faltas";
 
 interface IReviewedEmployeeRow {
   id_empleado: number;
@@ -251,5 +260,252 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
   } catch (error) {
     console.error("getAbsencePage", error);
     return { ok: false, message: "No se pudieron cargar las faltas" };
+  }
+}
+
+interface IAbsenceDayTarget {
+  id_period: number;
+  id_empleado: number;
+  fecha: string;
+}
+
+type AbsenceWriteCheck = { ok: true } | { ok: false; message: string };
+
+/**
+ * Dentro de la transacción: valida que el periodo sea de la sucursal activa y admita cambios (estatus 1 o 2),
+ * que la fecha caiga en su rango y que el empleado sea elegible ese día y tenga control de faltas. El periodo
+ * se lee con UPDLOCK/HOLDLOCK para que un cambio de estatus no se cuele a mitad de la escritura.
+ */
+async function validateAbsenceEmployeeTarget(
+  transaction: ITransactionClient,
+  idSucursal: number,
+  target: IAbsenceDayTarget,
+): Promise<AbsenceWriteCheck> {
+  const periodRows = await transaction.queryParams(
+    `SELECT id_payment_period, status,
+            CONVERT(varchar(10), fecha_inicio, 120) AS fecha_inicio,
+            CONVERT(varchar(10), fecha_fin, 120)    AS fecha_fin
+       FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+      WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
+    { id_period: target.id_period, id_sucursal: idSucursal },
+  );
+  const period = periodRows[0] as
+    | { id_payment_period: number; status: number; fecha_inicio: string; fecha_fin: string }
+    | undefined;
+  if (!period) return { ok: false, message: "El periodo no existe" };
+  if (period.status !== 1 && period.status !== 2) {
+    return { ok: false, message: "El periodo ya no admite cambios" };
+  }
+  if (target.fecha < period.fecha_inicio || target.fecha > period.fecha_fin) {
+    return { ok: false, message: "La fecha está fuera del periodo" };
+  }
+
+  // Un día anterior a la fecha de ingreso tampoco es revisable.
+  const employeeRows = await transaction.queryParams(
+    `SELECT e.id_empleado
+       FROM [CentroPodologico].[RH].[empleados] e
+      WHERE e.id_empleado = @id_empleado
+        AND ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
+        AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
+        AND e.fecha_ingreso <= CAST(@fecha AS date)`,
+    {
+      id_empleado: target.id_empleado,
+      id_sucursal: idSucursal,
+      id_payment_period: period.id_payment_period,
+      fecha_fin: period.fecha_fin,
+      fecha: target.fecha,
+    },
+  );
+  if (employeeRows.length === 0) {
+    return { ok: false, message: "El empleado no tiene control de faltas en este periodo" };
+  }
+  return { ok: true };
+}
+
+/** Valida que el día sea una falta hoy: anterior a hoy, con horario ese día de la semana y sin ninguna checada. */
+async function validateDayIsAbsence(
+  transaction: ITransactionClient,
+  idEmpleado: number,
+  fecha: string,
+): Promise<AbsenceWriteCheck> {
+  if (fecha >= addZeroToday(new Date())) {
+    return { ok: false, message: "Solo se pueden justificar días anteriores a hoy" };
+  }
+
+  const scheduleRows = await transaction.queryParams(
+    `SELECT 1 AS scheduled
+       FROM [CentroPodologico].[RH].[empleado_horarios]
+      WHERE [id_empleado] = @id_empleado AND [dia_semana] = @dia_semana`,
+    { id_empleado: idEmpleado, dia_semana: weekdayOfDate(fecha) },
+  );
+  if (scheduleRows.length === 0) {
+    return { ok: false, message: "El empleado no tiene horario ese día" };
+  }
+
+  const checkInRows = await transaction.queryParams(
+    `SELECT TOP 1 1 AS has_check_in
+       FROM [CentroPodologico].[RH].[asistencias]
+      WHERE [id_empleado] = @id_empleado
+        AND [fecha_hora] >= CAST(@fecha AS date)
+        AND [fecha_hora] <  DATEADD(day, 1, CAST(@fecha AS date))`,
+    { id_empleado: idEmpleado, fecha },
+  );
+  if (checkInRows.length > 0) {
+    return { ok: false, message: "El empleado tiene checadas ese día, no es una falta" };
+  }
+  return { ok: true };
+}
+
+/** Inserta o reemplaza la justificación del día; el UNIQUE (id_empleado, fecha) garantiza una sola fila. */
+async function upsertAbsenceJustification(
+  transaction: ITransactionClient,
+  values: {
+    id_empleado: number;
+    fecha: string;
+    estado: "J" | "N";
+    url: string | null;
+    mime_type: string | null;
+    size_bytes: number | null;
+    comentario: string | null;
+    decided_by: number;
+  },
+): Promise<void> {
+  await transaction.queryParams(
+    `IF EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[absence_justifications] WITH (UPDLOCK, HOLDLOCK)
+                 WHERE id_empleado = @id_empleado AND fecha = CAST(@fecha AS date))
+       UPDATE [CentroPodologico].[payroll].[absence_justifications]
+          SET estado     = @estado,
+              url        = @url,
+              mime_type  = @mime_type,
+              size_bytes = @size_bytes,
+              comentario = @comentario,
+              decided_by = @decided_by,
+              decided_at = CAST(@decided_at AS datetime2(0))
+        WHERE id_empleado = @id_empleado AND fecha = CAST(@fecha AS date)
+     ELSE
+       INSERT INTO [CentroPodologico].[payroll].[absence_justifications]
+         (id_empleado, fecha, estado, url, mime_type, size_bytes, comentario, decided_by, decided_at)
+       VALUES (@id_empleado, CAST(@fecha AS date), @estado, @url, @mime_type, @size_bytes, @comentario,
+               @decided_by, CAST(@decided_at AS datetime2(0)))`,
+    { ...values, decided_at: buildDate(new Date()) },
+  );
+}
+
+/** Justifica una falta con un archivo (PDF, JPG o PNG); si el día ya tenía justificación, la reemplaza. */
+export async function justifyAbsence(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user } = access.data;
+
+  const parsed = justifyAbsenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_period, id_empleado, fecha, url, mime_type, size_bytes, comentario } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<AbsenceWriteCheck> => {
+      const target = await validateAbsenceEmployeeTarget(transaction, id_sucursal, { id_period, id_empleado, fecha });
+      if (!target.ok) return target;
+      const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
+      if (!day.ok) return day;
+
+      await upsertAbsenceJustification(transaction, {
+        id_empleado,
+        fecha,
+        estado: "J",
+        url,
+        mime_type,
+        size_bytes,
+        comentario: comentario ? comentario : null,
+        decided_by: id_user,
+      });
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(ABSENCES_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("justifyAbsence", error);
+    return { ok: false, message: "No se pudo guardar el justificante" };
+  }
+}
+
+/** Marca una falta como "No aplica" (festivo, vacaciones, checador sin conexión…); el comentario es obligatorio. */
+export async function markAbsenceNotApplicable(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user } = access.data;
+
+  const parsed = markAbsenceNotApplicableSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_period, id_empleado, fecha, comentario } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<AbsenceWriteCheck> => {
+      const target = await validateAbsenceEmployeeTarget(transaction, id_sucursal, { id_period, id_empleado, fecha });
+      if (!target.ok) return target;
+      const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
+      if (!day.ok) return day;
+
+      await upsertAbsenceJustification(transaction, {
+        id_empleado,
+        fecha,
+        estado: "N",
+        url: null,
+        mime_type: null,
+        size_bytes: null,
+        comentario,
+        decided_by: id_user,
+      });
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(ABSENCES_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("markAbsenceNotApplicable", error);
+    return { ok: false, message: "No se pudo marcar la falta como no aplica" };
+  }
+}
+
+/**
+ * Vuelve una falta a "Injustificada": borra su justificación. Valida periodo, rango y empleado igual que las
+ * otras dos, pero no revisa el día (horario y checadas) para poder limpiar una justificación que ya no aplica.
+ */
+export async function clearAbsenceJustification(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  const parsed = clearAbsenceJustificationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_period, id_empleado, fecha } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<AbsenceWriteCheck> => {
+      const target = await validateAbsenceEmployeeTarget(transaction, id_sucursal, { id_period, id_empleado, fecha });
+      if (!target.ok) return target;
+
+      await transaction.queryParams(
+        `DELETE FROM [CentroPodologico].[payroll].[absence_justifications]
+          WHERE id_empleado = @id_empleado AND fecha = CAST(@fecha AS date)`,
+        { id_empleado, fecha },
+      );
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(ABSENCES_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("clearAbsenceJustification", error);
+    return { ok: false, message: "No se pudo volver la falta a injustificada" };
   }
 }
