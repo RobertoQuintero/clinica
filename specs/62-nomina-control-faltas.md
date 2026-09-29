@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [59 — Empleados: horario semanal estructurado](59-empleado-horario-semanal.md): `RH.empleado_horarios`. Un día con fila es un día laboral; sin fila es descanso.
   - [39 — Empleados: historial de asistencias](39-empleado-historial-asistencias.md): `RH.asistencias`. Cualquier checada del día, aunque esté incompleta, cuenta como asistencia.
