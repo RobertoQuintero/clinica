@@ -18,7 +18,12 @@ import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
-import { ELIGIBLE_EMPLOYEE_BASE_CONDITIONS, ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS } from "@/lib/payroll/eligibleEmployees";
+import {
+  ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
+  ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
+  ELIGIBLE_EMPLOYEE_BASE_CONDITIONS,
+  ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS,
+} from "@/lib/payroll/eligibleEmployees";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
@@ -27,7 +32,7 @@ import {
   payrollEmployeeDetailFiltersSchema,
   revertPayrollCalculationSchema,
 } from "@/lib/payroll/schemas";
-import { buildDate } from "@/utils/date_helpper";
+import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
@@ -467,6 +472,7 @@ const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
 const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha";
+const ABSENCE_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_absences_empleado_fecha_tipo";
 
 /** Traduce los errores de SQL Server de calcular/revertir nómina a un mensaje en español. */
 function describePayrollCalculationError(error: unknown): string {
@@ -485,6 +491,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(OVERTIME_DAY_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó algunas de estas horas extra al mismo tiempo. Intenta de nuevo.";
+  }
+  if (sqlError.message?.includes(ABSENCE_ALREADY_DISCOUNTED_CONSTRAINT)) {
+    return "Otro cálculo tomó algunas de estas faltas al mismo tiempo. Intenta de nuevo.";
   }
   if (sqlError.number === 2627 || sqlError.number === 2601 || sqlError.number === 1205) {
     return "Otro usuario modificó la nómina al mismo tiempo. Intenta de nuevo";
@@ -507,6 +516,8 @@ function revalidatePayrollPaths() {
  * La comisión por venta de productos (spec 58) también: `lib/payroll/productSalesCommission.ts` la espeja
  * y, si divergen, manda este SQL.
  * Las horas extra autorizadas (spec 61) también: `lib/payroll/overtimePay.ts` las espeja y, si divergen, manda este SQL.
+ * Las faltas injustificadas (spec 62) también: `lib/payroll/absenceDetection.ts` las espeja y, si divergen, manda este SQL.
+ * Restan días pagados en las dos nóminas ('O' y 'F'); `dias` guarda los días netos.
  * Solo la nómina operativa ('O') comisiona y paga horas extra; las filas 'F' quedan en 0. `cancelada` es nullable y
  * NULL significa "no cancelada" (así lo lee la app), por eso `ISNULL(c.[cancelada], 0) = 0`.
  */
@@ -627,16 +638,45 @@ export async function calculatePayrollPeriod(
          INTO #overtime_days
          FROM split_days sd;
 
+       -- Spec 62: faltas injustificadas del periodo. Un día es falta si el empleado con control de faltas (usuario
+       -- podólogo activo) tiene horario ese día de la semana ISO, el día es anterior a hoy y no es anterior a su fecha de ingreso,
+       -- y no hay ninguna checada ni justificación. Hoy llega como parámetro: nunca se usa GETDATE().
+       -- lib/payroll/absenceDetection.ts lo espeja para la pantalla y, si divergen, manda este SQL.
+       DECLARE @today date = CAST(@today_text AS date);
+       ;WITH period_days AS (
+         SELECT @fecha_inicio AS fecha
+         UNION ALL
+         SELECT DATEADD(day, 1, fecha) FROM period_days WHERE fecha < @fecha_fin
+       )
+       SELECT e.[id_empleado], d.[fecha]
+         INTO #absences
+         FROM [CentroPodologico].[RH].[empleados] e
+        CROSS JOIN period_days d
+        WHERE ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
+          AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
+          AND d.[fecha] >= e.[fecha_ingreso]
+          AND d.[fecha] <  @today
+          AND EXISTS (SELECT 1 FROM [CentroPodologico].[RH].[empleado_horarios] h
+                       WHERE h.[id_empleado] = e.[id_empleado]
+                         AND h.[dia_semana] = (DATEDIFF(day, '19000101', d.[fecha]) % 7) + 1)
+          AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[RH].[asistencias] a
+                           WHERE a.[id_empleado] = e.[id_empleado]
+                             AND a.[fecha_hora] >= d.[fecha]
+                             AND a.[fecha_hora] <  DATEADD(day, 1, d.[fecha]))
+          AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[absence_justifications] aj
+                           WHERE aj.[id_empleado] = e.[id_empleado] AND aj.[fecha] = d.[fecha])
+       OPTION (MAXRECURSION 400);
+
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
-         (id_period, id_empleado, tipo_nomina, salario_diario, dias, importe_salario,
+         (id_period, id_empleado, tipo_nomina, salario_diario, dias, dias_falta, importe_salario,
           consultas_atendidas, importe_comision,
           tratamientos_onicomicosis, importe_por_tratamiento, importe_comision_tratamientos,
           piezas_vendidas, importe_comision_productos,
           horas_extra_dobles, horas_extra_triples, importe_horas_extra_dobles, importe_horas_extra_triples,
           limite_horas_dobles_aplicado,
           calculated_by, calculated_at)
-       SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, paid.dias,
-              ROUND(salary.salario_diario * paid.dias, 2),
+       SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, net.dias, absences.dias_falta,
+              ROUND(salary.salario_diario * net.dias, 2),
               ISNULL(attended.consultas, 0), ISNULL(tier.importe, 0),
               ISNULL(paid_treatments.tratamientos, 0),
               CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(treatment_settings.[importe_por_tratamiento], 0) ELSE 0 END,
@@ -657,6 +697,15 @@ export async function calculatePayrollPeriod(
         CROSS APPLY (SELECT DATEDIFF(day,
                               CASE WHEN e.fecha_ingreso > @fecha_inicio THEN e.fecha_ingreso ELSE @fecha_inicio END,
                               @fecha_fin) + 1 AS dias) AS paid
+        OUTER APPLY (
+          SELECT COUNT(*) AS dias_falta
+            FROM #absences ab
+           WHERE ab.[id_empleado] = e.[id_empleado]
+             AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_absences] pea
+                              WHERE pea.[id_empleado] = ab.[id_empleado] AND pea.[fecha] = ab.[fecha]
+                                AND pea.[tipo_nomina] = salary.tipo_nomina)
+        ) AS absences
+        CROSS APPLY (SELECT paid.dias - absences.dias_falta AS dias) AS net
         OUTER APPLY (
           SELECT COUNT(*) AS consultas
             FROM [CentroPodologico].[dbo].[consultas] c
@@ -725,6 +774,18 @@ export async function calculatePayrollPeriod(
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period] = @id_period AND pe.[id_empleado] = od.[id_empleado] AND pe.[tipo_nomina] = 'O';
 
+       -- Spec 62: desglose y candado de faltas. Cada falta se descuenta una vez por tipo de nómina ('O' y 'F'): se
+       -- omiten las que otro periodo ya descontó para ese mismo tipo (el mismo criterio que cuenta dias_falta arriba).
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_absences]
+         (id_period_employee, id_empleado, tipo_nomina, fecha)
+       SELECT pe.[id_period_employee], a.[id_empleado], pe.[tipo_nomina], a.[fecha]
+         FROM #absences a
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period] = @id_period AND pe.[id_empleado] = a.[id_empleado]
+        WHERE NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_absences] pea
+                           WHERE pea.[id_empleado] = a.[id_empleado] AND pea.[fecha] = a.[fecha]
+                             AND pea.[tipo_nomina] = pe.[tipo_nomina]);
+
        UPDATE [CentroPodologico].[payroll].[periods]
           SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))
         WHERE id_period = @id_period;
@@ -740,6 +801,7 @@ export async function calculatePayrollPeriod(
         id_sucursal,
         calculated_by: id_user,
         calculated_at: buildDate(new Date()),
+        today_text: addZeroToday(new Date()),
       },
     );
 
