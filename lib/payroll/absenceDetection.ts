@@ -12,7 +12,7 @@ export function formatIsoWeekday(fecha: string): string {
 }
 
 /** Siguiente día de un "YYYY-MM-DD", calculado en UTC para que no lo afecte la zona horaria. */
-function nextDate(fecha: string): string {
+export function nextDate(fecha: string): string {
   const [year, month, day] = fecha.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
 }

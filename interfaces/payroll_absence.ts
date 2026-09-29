@@ -24,6 +24,15 @@ export interface IAbsenceDayRow extends IAbsenceDetection {
   discountedInPeriodCodes:    string[];         // "NOM-2026-S38" por cada tipo en que ya se descontó
 }
 
+export type AbsenceStatusFilter = "all" | AbsenceStatus;
+
+export interface IAbsenceFilters {
+  idPeriod: number | null;   // null: periodo vigente, o el más reciente
+  status:   AbsenceStatusFilter;
+  search:   string;          // nombre o código, coincidencia parcial
+  page:     number;          // desde 1
+}
+
 export interface IAbsencePage {
   period:                   IPayrollPeriod | null;
   periodOptions:            Pick<IPayrollPeriod, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];

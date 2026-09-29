@@ -17,6 +17,7 @@ import { ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS } from "@/lib/payroll/eligibleEm
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { describeOvertimeDay, detectEmployeeOvertime } from "@/lib/payroll/overtimeDetection";
+import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { clearOvertimeDecisionSchema, decideOvertimeDaySchema, overtimeSettingsSchema } from "@/lib/payroll/schemas";
 import { buildDate } from "@/utils/date_helpper";
@@ -370,21 +371,6 @@ interface IStoredDecisionRow {
   comentario: string | null;
   decided_by_name: string;
   decided_at: string;
-}
-
-/** Minúsculas y sin acentos, para que la búsqueda por nombre sea tolerante como el LIKE de SQL Server. */
-function normalizeSearchText(text: string): string {
-  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-}
-
-function groupByEmployee<T extends { id_empleado: number }>(rows: T[]): Map<number, T[]> {
-  const rowsByEmployee = new Map<number, T[]>();
-  for (const row of rows) {
-    const employeeRows = rowsByEmployee.get(row.id_empleado);
-    if (employeeRows) employeeRows.push(row);
-    else rowsByEmployee.set(row.id_empleado, [row]);
-  }
-  return rowsByEmployee;
 }
 
 /**

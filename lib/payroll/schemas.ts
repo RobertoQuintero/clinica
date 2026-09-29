@@ -141,3 +141,46 @@ export type DecideOvertimeDaySchemaInput = z.infer<typeof decideOvertimeDaySchem
 export const clearOvertimeDecisionSchema = z.object(overtimeDayShape);
 
 export type ClearOvertimeDecisionSchemaInput = z.infer<typeof clearOvertimeDecisionSchema>;
+
+export const absencePageFiltersSchema = z.object({
+  idPeriod: z.number().int().positive().nullable(),
+  status: z.enum(["all", "unjustified", "justified", "not_applicable"]),
+  search: z.string(),
+  page: z.number().int().positive(),
+});
+
+const absenceDayShape = overtimeDayShape;
+
+const ABSENCE_MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+export const justifyAbsenceSchema = z.object({
+  ...absenceDayShape,
+  url: z
+    .string("El archivo es inválido")
+    .max(500, "La URL del archivo es demasiado larga")
+    .startsWith("https://res.cloudinary.com/", "El archivo es inválido"),
+  mime_type: z.enum(["application/pdf", "image/jpeg", "image/png"], "El formato del archivo no es válido"),
+  size_bytes: z
+    .number("El tamaño del archivo es inválido")
+    .int("El tamaño del archivo es inválido")
+    .positive("El tamaño del archivo es inválido")
+    .max(ABSENCE_MAX_FILE_BYTES, "El archivo supera el tamaño máximo de 5 MB"),
+  comentario: z.string("El comentario es inválido").trim().max(500, "El comentario admite máximo 500 caracteres").optional(),
+});
+
+export type JustifyAbsenceSchemaInput = z.infer<typeof justifyAbsenceSchema>;
+
+export const markAbsenceNotApplicableSchema = z.object({
+  ...absenceDayShape,
+  comentario: z
+    .string("El comentario es inválido")
+    .trim()
+    .min(1, "Escribe un comentario")
+    .max(500, "El comentario admite máximo 500 caracteres"),
+});
+
+export type MarkAbsenceNotApplicableSchemaInput = z.infer<typeof markAbsenceNotApplicableSchema>;
+
+export const clearAbsenceJustificationSchema = z.object(absenceDayShape);
+
+export type ClearAbsenceJustificationSchemaInput = z.infer<typeof clearAbsenceJustificationSchema>;
