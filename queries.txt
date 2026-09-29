@@ -1569,3 +1569,58 @@ GO
 CREATE NONCLUSTERED INDEX [IX_period_employee_overtime_period_employee]
     ON [payroll].[period_employee_overtime] ([id_period_employee])
 GO
+
+-- Spec 62: justificación de una falta por empleado y día. Sin fila = falta injustificada.
+-- Sin id_period: la justificación pertenece al día del empleado, no al periodo (igual que overtime_authorizations).
+CREATE TABLE [payroll].[absence_justifications](
+    [id_absence_justification] [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]  [int]            NOT NULL,
+    [fecha]        [date]           NOT NULL,
+    [estado]       [char](1)        NOT NULL,   -- 'J' justificada con archivo | 'N' no aplica
+    [url]          [varchar](500)   NULL,       -- Cloudinary; solo con 'J'
+    [mime_type]    [varchar](100)   NULL,       -- 'application/pdf' | 'image/jpeg' | 'image/png'; solo con 'J'
+    [size_bytes]   [int]            NULL,       -- solo con 'J'
+    [comentario]   [nvarchar](500)  NULL,       -- obligatorio con 'N', opcional con 'J'
+    [decided_by]   [int]            NOT NULL,
+    [decided_at]   [datetime2](0)   NOT NULL,   -- buildDate(new Date())
+ CONSTRAINT [PK_absence_justifications] PRIMARY KEY CLUSTERED ([id_absence_justification] ASC),
+ CONSTRAINT [UQ_absence_justifications_empleado_fecha] UNIQUE ([id_empleado], [fecha]),
+ CONSTRAINT [FK_absence_justifications_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_absence_justifications_estado] CHECK (
+     ([estado] = 'J' AND [url] IS NOT NULL AND [mime_type] IS NOT NULL
+          AND [mime_type] IN ('application/pdf', 'image/jpeg', 'image/png')
+          AND [size_bytes] IS NOT NULL AND [size_bytes] > 0 AND [size_bytes] <= 5242880)
+  OR ([estado] = 'N' AND [url] IS NULL AND [mime_type] IS NULL AND [size_bytes] IS NULL
+          AND [comentario] IS NOT NULL AND LEN([comentario]) > 0))
+) ON [PRIMARY]
+GO
+
+-- Spec 62: días netos pagados. `dias` pasa a ser días calendario − dias_falta.
+ALTER TABLE [payroll].[period_employees]
+    ADD [dias_falta] [int] NOT NULL CONSTRAINT [DF_period_employees_dias_falta] DEFAULT (0)
+GO
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_dias_falta] CHECK ([dias_falta] >= 0 AND [dias] >= 0)
+GO
+
+-- Spec 62: faltas descontadas por renglón de nómina. UNIQUE por tipo: el mismo día se descuenta
+-- una vez en la operativa y una vez en la fiscal, nunca dos veces en el mismo tipo.
+-- Sin FK a absence_justifications: justificar un día ya descontado no debe chocar.
+CREATE TABLE [payroll].[period_employee_absences](
+    [id_period_employee_absence] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee] [int]     NOT NULL,
+    [id_empleado]        [int]     NOT NULL,   -- redundante con period_employees, necesario para el UNIQUE
+    [tipo_nomina]        [char](1) NOT NULL,   -- redundante con period_employees, necesario para el UNIQUE
+    [fecha]              [date]    NOT NULL,
+ CONSTRAINT [PK_period_employee_absences] PRIMARY KEY CLUSTERED ([id_period_employee_absence] ASC),
+ CONSTRAINT [UQ_period_employee_absences_empleado_fecha_tipo] UNIQUE ([id_empleado], [fecha], [tipo_nomina]),
+ CONSTRAINT [FK_period_employee_absences_period_employee] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_absences_tipo] CHECK ([tipo_nomina] IN ('O', 'F'))
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_period_employee_absences_period_employee]
+    ON [payroll].[period_employee_absences] ([id_period_employee])
+GO
