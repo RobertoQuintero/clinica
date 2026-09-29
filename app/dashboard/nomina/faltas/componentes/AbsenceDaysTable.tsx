@@ -3,12 +3,18 @@ import { ABSENCE_PAGE_SIZE } from "@/lib/payroll/constants";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { formatOvertimeDate, formatScheduledDay } from "@/lib/payroll/overtimeFormat";
 import PayrollPagerFooter from "../../componentes/PayrollPagerFooter";
+import { JustifyAbsenceButton } from "./AbsenceJustificationModal";
+import { MarkAbsenceNotApplicableButton } from "./AbsenceNotApplicableModal";
+import { ClearAbsenceJustificationButton } from "./ClearAbsenceJustificationButton";
 
 interface Props {
   rows: IAbsenceDayRow[];
   totalRows: number;
   page: number;
   hasActiveFilters: boolean;
+  /** Periodo en estatus 1 o 2: solo entonces se muestra la columna de acciones. */
+  canDecide: boolean;
+  idPeriod: number;
   /** Parámetros de URL vigentes (sin `pagina`), para conservar los filtros al paginar. */
   currentSearchParams: Record<string, string>;
 }
@@ -34,7 +40,15 @@ const STATUS_BADGES: Record<AbsenceStatus, { label: string; classes: string }> =
   },
 };
 
-export default function AbsenceDaysTable({ rows, totalRows, page, hasActiveFilters, currentSearchParams }: Props) {
+export default function AbsenceDaysTable({
+  rows,
+  totalRows,
+  page,
+  hasActiveFilters,
+  canDecide,
+  idPeriod,
+  currentSearchParams,
+}: Props) {
   const totalPages = Math.max(1, Math.ceil(totalRows / ABSENCE_PAGE_SIZE));
   const firstShown = totalRows === 0 ? 0 : (page - 1) * ABSENCE_PAGE_SIZE + 1;
   const lastShown = (page - 1) * ABSENCE_PAGE_SIZE + rows.length;
@@ -51,12 +65,17 @@ export default function AbsenceDaysTable({ rows, totalRows, page, hasActiveFilte
               <th scope="col" className="px-4 py-3 font-semibold">Horario</th>
               <th scope="col" className="px-4 py-3 font-semibold">Estado</th>
               <th scope="col" className="px-6 py-3 font-semibold">Justificante o comentario</th>
+              {canDecide && (
+                <th scope="col" className="px-4 py-3">
+                  <span className="sr-only">Acciones</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={canDecide ? 6 : 5} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún día coincide con los filtros."
                     : "Este periodo no tiene faltas detectadas."}
@@ -108,6 +127,17 @@ export default function AbsenceDaysTable({ rows, totalRows, page, hasActiveFilte
                       {dayRow.comentario && <span className="block line-clamp-2">{dayRow.comentario}</span>}
                       {!dayRow.url && !dayRow.comentario && "—"}
                     </td>
+                    {canDecide && (
+                      <td className="pr-4 py-3.5">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <JustifyAbsenceButton dayRow={dayRow} idPeriod={idPeriod} />
+                          <MarkAbsenceNotApplicableButton dayRow={dayRow} idPeriod={idPeriod} />
+                          {dayRow.status !== "unjustified" && (
+                            <ClearAbsenceJustificationButton dayRow={dayRow} idPeriod={idPeriod} />
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })

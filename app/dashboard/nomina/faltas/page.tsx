@@ -96,6 +96,8 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
             totalRows={result.data.totalRows}
             page={filters.page}
             hasActiveFilters={filters.status !== "all" || filters.search !== ""}
+            canDecide={result.data.canDecide}
+            idPeriod={result.data.period.id_period}
             currentSearchParams={currentSearchParams}
           />
         </>
