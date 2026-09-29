@@ -11,6 +11,7 @@ import {
   IPayrollProcessPage,
   PayrollType,
 } from "@/interfaces/payroll_calculation";
+import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
@@ -262,7 +263,15 @@ export async function getPayrollEmployeeDetail(
       search,
     });
 
-    const [employeeRows, snapshotRows, navigationRows, paidTreatmentRows, soldProductRows, overtimeDayRows] = await Promise.all([
+    const [
+      employeeRows,
+      snapshotRows,
+      navigationRows,
+      paidTreatmentRows,
+      soldProductRows,
+      overtimeDayRows,
+      discountedAbsenceRows,
+    ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
       db.queryParams(
@@ -359,6 +368,16 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Faltas descontadas en el renglón del tipo seleccionado (spec 62); existen en operativa y en fiscal.
+      db.queryParams(
+        `SELECT CONVERT(varchar(10), pa.fecha, 120) AS fecha
+           FROM [CentroPodologico].[payroll].[period_employee_absences] pa
+           JOIN [CentroPodologico].[payroll].[period_employees] pe
+             ON pe.id_period_employee = pa.id_period_employee
+          WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina
+          ORDER BY pa.fecha`,
+        { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
+      ),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -436,6 +455,10 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const discountedAbsences: IPayrollDiscountedAbsence[] = snapshot
+      ? discountedAbsenceRows.map((row: IPayrollDiscountedAbsence) => ({ fecha: row.fecha }))
+      : [];
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -449,7 +472,7 @@ export async function getPayrollEmployeeDetail(
         paidTreatments,
         soldProducts,
         overtimeDays,
-        discountedAbsences: [],
+        discountedAbsences,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,

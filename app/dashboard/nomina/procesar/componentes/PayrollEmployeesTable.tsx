@@ -120,6 +120,11 @@ export default function PayrollEmployeesTable({
                       <span className="inline-block min-w-9 px-2 py-0.5 rounded bg-[#e6eeff] dark:bg-zinc-800 text-xs font-medium text-[#44474f] dark:text-zinc-300 tabular-nums">
                         {employeeRow.dias} d
                       </span>
+                      {employeeRow.dias_falta > 0 && (
+                        <span className="block mt-0.5 text-[11px] font-semibold text-[#ba1a1a] dark:text-red-400">
+                          {employeeRow.dias_falta} {employeeRow.dias_falta === 1 ? "falta" : "faltas"}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 text-sm text-right tabular-nums text-[#0b1c30] dark:text-zinc-200">
                       {formatPayrollCurrency(employeeRow.importe_salario)}
