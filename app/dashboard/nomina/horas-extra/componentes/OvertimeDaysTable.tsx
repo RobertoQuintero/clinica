@@ -1,9 +1,8 @@
-import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { IOvertimeDayRow, OvertimeDecisionStatus } from "@/interfaces/payroll_overtime";
 import { OVERTIME_PAGE_SIZE } from "@/lib/payroll/constants";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { formatOvertimeDate, formatOvertimeHours, formatScheduledDay } from "@/lib/payroll/overtimeFormat";
+import PayrollPagerFooter from "../../componentes/PayrollPagerFooter";
 import { DecideOvertimeButton } from "./OvertimeDecisionModal";
 
 interface Props {
@@ -40,17 +39,6 @@ const DECISION_BADGES: Record<OvertimeDecisionStatus, { label: string; classes: 
     classes: "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
   },
 };
-
-function buildPageHref(currentSearchParams: Record<string, string>, page: number): string {
-  const searchParams = new URLSearchParams(currentSearchParams);
-  if (page > 1) searchParams.set("pagina", String(page));
-  else searchParams.delete("pagina");
-  const query = searchParams.toString();
-  return query ? `/dashboard/nomina/horas-extra?${query}` : "/dashboard/nomina/horas-extra";
-}
-
-const PAGER_BUTTON =
-  "p-1.5 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 text-[#44474f] dark:text-zinc-300 transition-colors";
 
 export default function OvertimeDaysTable({
   rows,
@@ -168,44 +156,17 @@ export default function OvertimeDaysTable({
         </table>
       </div>
 
-      <div className="flex items-center justify-between gap-4 px-6 py-3 bg-[#eff4ff] dark:bg-zinc-800 border-t border-[#c4c6d0] dark:border-zinc-700 text-sm text-[#44474f] dark:text-zinc-400">
-        <span>
-          {totalRows === 0
+      <PayrollPagerFooter
+        basePath="/dashboard/nomina/horas-extra"
+        currentSearchParams={currentSearchParams}
+        page={page}
+        totalPages={totalPages}
+        summaryText={
+          totalRows === 0
             ? "Sin días para mostrar"
-            : `Mostrando ${firstShown}–${lastShown} de ${totalRows} ${totalRows === 1 ? "día" : "días"}`}
-        </span>
-        <nav aria-label="Paginación" className="flex items-center gap-2">
-          {page > 1 ? (
-            <Link
-              href={buildPageHref(currentSearchParams, page - 1)}
-              aria-label="Página anterior"
-              className={`${PAGER_BUTTON} hover:bg-white dark:hover:bg-zinc-700`}
-            >
-              <ChevronLeft size={16} />
-            </Link>
-          ) : (
-            <span aria-hidden className={`${PAGER_BUTTON} opacity-40`}>
-              <ChevronLeft size={16} />
-            </span>
-          )}
-          <span className="text-xs font-semibold text-[#0b1c30] dark:text-zinc-100">
-            Página {page} de {totalPages}
-          </span>
-          {page < totalPages ? (
-            <Link
-              href={buildPageHref(currentSearchParams, page + 1)}
-              aria-label="Página siguiente"
-              className={`${PAGER_BUTTON} hover:bg-white dark:hover:bg-zinc-700`}
-            >
-              <ChevronRight size={16} />
-            </Link>
-          ) : (
-            <span aria-hidden className={`${PAGER_BUTTON} opacity-40`}>
-              <ChevronRight size={16} />
-            </span>
-          )}
-        </nav>
-      </div>
+            : `Mostrando ${firstShown}–${lastShown} de ${totalRows} ${totalRows === 1 ? "día" : "días"}`
+        }
+      />
     </div>
   );
 }

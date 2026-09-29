@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarX2, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { IPayrollProcessFilters } from "@/interfaces/payroll_calculation";
 import {
   readPayrollType,
@@ -16,24 +16,7 @@ import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
 import PayrollProcessSummaryCards from "./componentes/PayrollProcessSummaryCards";
 import PayrollProcessToolbar from "./componentes/PayrollProcessToolbar";
-
-function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
-  return (
-    <section className="bg-white dark:bg-zinc-900 border border-dashed border-[#c4c6d0] dark:border-zinc-700 rounded-xl px-6 py-12 flex flex-col items-center text-center gap-3">
-      <span className="w-12 h-12 rounded-full bg-[#eff4ff] dark:bg-zinc-800 flex items-center justify-center text-[#747780] dark:text-zinc-500">
-        <CalendarX2 size={22} />
-      </span>
-      <div>
-        <h3 className="text-base font-semibold text-[#0b1c30] dark:text-zinc-100">{title}</h3>
-        <p className="text-sm text-[#44474f] dark:text-zinc-400 mt-1 max-w-md">{description}</p>
-      </div>
-      {action}
-    </section>
-  );
-}
-
-const LINK_BUTTON_CLASSES =
-  "inline-flex items-center gap-2 rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003ea7] transition-colors";
+import PayrollEmptyState, { PAYROLL_LINK_BUTTON_CLASSES } from "../componentes/PayrollEmptyState";
 
 export default async function ProcesarNominaPage({
   searchParams,
@@ -85,21 +68,21 @@ export default async function ProcesarNominaPage({
         </p>
       ) : !result.data.period ? (
         result.data.periodOptions.length === 0 ? (
-          <EmptyState
+          <PayrollEmptyState
             title="Esta sucursal aún no tiene periodos de nómina"
             description="Crea un periodo para poder calcular el salario de sus empleados."
             action={
-              <Link href="/dashboard/nomina/periodos" className={LINK_BUTTON_CLASSES}>
+              <Link href="/dashboard/nomina/periodos" className={PAYROLL_LINK_BUTTON_CLASSES}>
                 Ir a Periodos de Nómina
               </Link>
             }
           />
         ) : (
-          <EmptyState
+          <PayrollEmptyState
             title="No encontramos ese periodo en esta sucursal"
             description="Puede pertenecer a otra sucursal o haberse eliminado."
             action={
-              <Link href="/dashboard/nomina/procesar" className={LINK_BUTTON_CLASSES}>
+              <Link href="/dashboard/nomina/procesar" className={PAYROLL_LINK_BUTTON_CLASSES}>
                 Ver el periodo actual
               </Link>
             }
@@ -131,7 +114,7 @@ export default async function ProcesarNominaPage({
             message="Hay autorizaciones que no coinciden con el último cálculo. Recalcula la nómina."
           />
           {result.data.period.status === 1 ? (
-            <EmptyState
+            <PayrollEmptyState
               title="Este periodo aún no se calcula"
               description="Al calcular la nómina se guarda el salario de cada empleado del periodo, en su versión operativa y fiscal."
               action={
