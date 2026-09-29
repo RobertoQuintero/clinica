@@ -4,11 +4,9 @@ import { createContext, useContext, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, RefreshCw, UploadCloud } from "lucide-react";
 import { IDocumentType, EmployeeDocumentInput } from "@/interfaces/employee_document";
+import { DOCUMENT_FILE_ACCEPT, uploadDocumentFile, validateDocumentFile } from "@/utils/documentUpload";
 import { saveEmployeeDocument } from "../actions";
 
-const ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
-const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const OTHER_VALUE = "otro";
 
 interface UploadContextValue {
@@ -99,13 +97,9 @@ export default function EmployeeDocumentUploader({ id_empleado, documentTypes }:
   async function uploadFile(file: File) {
     setError(null);
 
-    const extension = "." + (file.name.split(".").pop() ?? "").toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(extension) || !ALLOWED_MIME_TYPES.includes(file.type)) {
-      setError("Formato no permitido. Solo se aceptan PDF, JPG y PNG.");
-      return;
-    }
-    if (file.size > MAX_SIZE_BYTES) {
-      setError("El archivo supera el tamaño máximo de 5 MB.");
+    const fileError = validateDocumentFile(file);
+    if (fileError) {
+      setError(fileError);
       return;
     }
     if (!selectedValue) {
@@ -120,18 +114,13 @@ export default function EmployeeDocumentUploader({ id_empleado, documentTypes }:
     setUploading(true);
     try {
       const fileName = `empleado_${id_empleado}_${Date.now()}_${file.name}`;
-      const uploadRes = await fetch(
-        `/api/upload?folder=clinica/empleados/documentos&name=${encodeURIComponent(fileName)}`,
-        { method: "POST", headers: { "Content-Type": file.type }, body: file }
-      );
-      const uploadData = await uploadRes.json();
-      if (!uploadData.ok) throw new Error(uploadData.data ?? "Error al subir el archivo");
+      const fileUrl = await uploadDocumentFile(file, "clinica/empleados/documentos", fileName);
 
       const input: EmployeeDocumentInput = {
         id_empleado,
         id_tipo_documento: isOtro ? null : Number(selectedValue),
         nombre_personalizado: isOtro ? nombrePersonalizado.trim() : null,
-        url: uploadData.data,
+        url: fileUrl,
         mime_type: file.type,
         size_bytes: file.size,
       };
@@ -219,7 +208,7 @@ export default function EmployeeDocumentUploader({ id_empleado, documentTypes }:
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept={DOCUMENT_FILE_ACCEPT}
           className="hidden"
           onChange={handleFileChange}
           disabled={uploading}

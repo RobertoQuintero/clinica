@@ -18,6 +18,7 @@ import PayrollTypeToggle from "./componentes/PayrollTypeToggle";
 import PayrollPerceptionsCard from "./componentes/PayrollPerceptionsCard";
 import PayrollPaidTreatmentsList from "./componentes/PayrollPaidTreatmentsList";
 import PayrollOvertimeDaysList from "./componentes/PayrollOvertimeDaysList";
+import PayrollAbsencesList from "./componentes/PayrollAbsencesList";
 import PayrollSoldProductsList from "./componentes/PayrollSoldProductsList";
 
 export default async function PayrollEmployeeDetailPage({
@@ -129,6 +130,7 @@ export default async function PayrollEmployeeDetailPage({
               <PayrollPaidTreatmentsList paidTreatments={detail.paidTreatments} />
               <PayrollSoldProductsList soldProducts={detail.soldProducts} />
               <PayrollOvertimeDaysList overtimeDays={detail.overtimeDays} />
+              <PayrollAbsencesList discountedAbsences={detail.discountedAbsences} />
             </div>
           ) : (
             <PayrollDetailNotice

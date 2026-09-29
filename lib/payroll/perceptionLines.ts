@@ -16,6 +16,16 @@ function formatDays(days: number): string {
   return days === 1 ? "1 día" : `${days} días`;
 }
 
+function formatAbsences(count: number): string {
+  return count === 1 ? "1 falta" : `${count} faltas`;
+}
+
+/** "13 días (15 − 2 faltas)" cuando hay faltas; `dias` guarda los días netos y los de calendario son dias + dias_falta. */
+function describePaidDays(netDays: number, absenceDays: number): string {
+  if (absenceDays === 0) return formatDays(netDays);
+  return `${formatDays(netDays)} (${netDays + absenceDays} − ${formatAbsences(absenceDays)})`;
+}
+
 function formatConsultations(count: number): string {
   return count === 1 ? "1 consulta" : `${count} consultas`;
 }
@@ -47,6 +57,7 @@ export function buildPerceptionLines(
     IPayrollEmployeeSnapshot,
     | "salario_diario"
     | "dias"
+    | "dias_falta"
     | "importe_salario"
     | "consultas_atendidas"
     | "importe_comision"
@@ -70,7 +81,7 @@ export function buildPerceptionLines(
     {
       key: "sueldo_base",
       label: "Sueldo base",
-      description: `${formatDays(snapshot.dias)} × ${formatPayrollCurrency(snapshot.salario_diario)} diarios`,
+      description: `${describePaidDays(snapshot.dias, snapshot.dias_falta)} × ${formatPayrollCurrency(snapshot.salario_diario)} diarios`,
       note: joinedDuringPeriod ? `Ingresó el ${formatDayMonthYear(fechaIngreso)}, proporcional` : null,
       amount: snapshot.importe_salario,
     },

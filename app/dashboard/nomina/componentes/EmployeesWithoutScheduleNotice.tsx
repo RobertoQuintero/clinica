@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
-import type { IOvertimePage } from "@/interfaces/payroll_overtime";
 
 interface Props {
-  employees: IOvertimePage["employeesWithoutSchedule"];
+  employees: { id_empleado: number; nombre_completo: string }[];
+  /** Qué no se puede detectar sin horario, p. ej. "sus horas extra". */
+  undetectableSubject: string;
 }
 
-export default function EmployeesWithoutScheduleNotice({ employees }: Props) {
+export default function EmployeesWithoutScheduleNotice({ employees, undetectableSubject }: Props) {
   if (employees.length === 0) return null;
 
   return (
@@ -22,7 +23,7 @@ export default function EmployeesWithoutScheduleNotice({ employees }: Props) {
             : `${employees.length} empleados sin horario definido`}
         </p>
         <p className="text-sm text-amber-800 dark:text-amber-300/90 mt-0.5">
-          Sin horario no se pueden detectar sus horas extra. Captúralo en la pestaña Horario de su ficha.
+          Sin horario no se pueden detectar {undetectableSubject}. Captúralo en la pestaña Horario de su ficha.
         </p>
         <ul className="mt-2 flex flex-wrap gap-2">
           {employees.map((employee) => (

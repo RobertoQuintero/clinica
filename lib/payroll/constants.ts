@@ -18,3 +18,6 @@ export const PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY: Record<string, string> = {
 export const PAYROLL_PERIODS_PAGE_SIZE = 20;
 export const OVERTIME_PAGE_SIZE = 25;
 export const PAYROLL_ALLOWED_ROLE_IDS = [1, 4];
+export const ABSENCE_PAGE_SIZE = 25;
+// Roles de usuario (dbo.users.id_role) cuyo empleado vinculado queda sujeto al control de faltas (spec 62). 2 = podólogo.
+export const ABSENCE_CONTROL_ROLE_IDS = [2];
