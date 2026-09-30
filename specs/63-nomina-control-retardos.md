@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [59 — Empleados: horario semanal estructurado](59-empleado-horario-semanal.md): `RH.empleado_horarios.hora_entrada_1` es la hora contra la que se mide el retardo. Un día sin fila es descanso y no se evalúa.
   - [39 — Empleados: historial de asistencias](39-empleado-historial-asistencias.md): `RH.asistencias`. La primera checada `entrada` del día es la hora de llegada.
@@ -395,78 +395,78 @@ export interface IPayrollDiscountedLateness {
 
 **Base de datos**
 
-- [ ] Las tablas `payroll.lateness_settings`, `lateness_tiers`, `lateness_settings_log`, `lateness_justifications` y `period_employee_lateness` existen, y `payroll.period_employees` tiene `dias_retardo` y `dias_retardo_sin_tope`. Su DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
-- [ ] Las semillas dejan la empresa 1 con tolerancia 10, grave 30, descuento grave 0.5, y los escalones semanal {1 → 0.5, 2 → 1} y quincenal {2 → 0.5, 4 → 1}.
-- [ ] Insertar a mano una fila `'J'` sin `url`, o una fila `'N'` sin `comentario`, en `lateness_justifications` falla por `CK_lateness_justifications_estado`.
-- [ ] Insertar dos veces el mismo `(id_empleado, fecha, tipo_nomina)` en `period_employee_lateness` falla por el `UNIQUE`.
+- [x] Las tablas `payroll.lateness_settings`, `lateness_tiers`, `lateness_settings_log`, `lateness_justifications` y `period_employee_lateness` existen, y `payroll.period_employees` tiene `dias_retardo` y `dias_retardo_sin_tope`. Su DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
+- [x] Las semillas dejan la empresa 1 con tolerancia 10, grave 30, descuento grave 0.5, y los escalones semanal {1 → 0.5, 2 → 1} y quincenal {2 → 0.5, 4 → 1}.
+- [x] Insertar a mano una fila `'J'` sin `url`, o una fila `'N'` sin `comentario`, en `lateness_justifications` falla por `CK_lateness_justifications_estado`.
+- [x] Insertar dos veces el mismo `(id_empleado, fecha, tipo_nomina)` en `period_employee_lateness` falla por el `UNIQUE`.
 
 **Detección (pantalla Retardos)**
 
-- [ ] Un podólogo con `hora_entrada_1 = 08:00` y primera entrada a las 08:12 aparece con 12 minutos, clasificación "Acumulable" y estado "Injustificado".
-- [ ] Una primera entrada a las 08:09:59 **no** aparece (9 minutos, por debajo de la tolerancia de 10).
-- [ ] Una primera entrada a las 08:30 aparece como "Grave". A las 08:29 aparece como "Acumulable".
-- [ ] Llegar tarde al regreso del segundo bloque (`hora_entrada_2`) **no** genera retardo.
-- [ ] Un día con checadas pero sin ninguna `entrada` **no** aparece.
-- [ ] Un día de descanso (sin fila de horario) **no** aparece, aunque la entrada sea tarde.
-- [ ] Un retardo de hoy aparece en cuanto existe la checada de entrada. Los días futuros no aparecen.
-- [ ] Los días anteriores a `fecha_ingreso` no aparecen.
-- [ ] Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` **no** aparece en la pantalla ni en el aviso "Sin horario definido".
-- [ ] Un empleado controlado sin ninguna fila de horario aparece en el aviso "Sin horario definido".
-- [ ] En un periodo mensual (sin escalones) se muestra el aviso "Sin escalones para Mensual".
-- [ ] Las tarjetas de resumen y el resumen por empleado no cambian al filtrar por estado, clasificación o búsqueda.
-- [ ] El resumen por empleado muestra 1.5 días estimados para 3 acumulables injustificados en un periodo semanal con las semillas.
-- [ ] La pantalla aparece en el menú Nómina, después de "Faltas". Un usuario con rol 2, 3, 5 o 6 que entra a `/dashboard/nomina/retardos` es redirigido a `/dashboard`.
+- [x] Un podólogo con `hora_entrada_1 = 08:00` y primera entrada a las 08:12 aparece con 12 minutos, clasificación "Acumulable" y estado "Injustificado".
+- [x] Una primera entrada a las 08:09:59 **no** aparece (9 minutos, por debajo de la tolerancia de 10).
+- [x] Una primera entrada a las 08:30 aparece como "Grave". A las 08:29 aparece como "Acumulable".
+- [x] Llegar tarde al regreso del segundo bloque (`hora_entrada_2`) **no** genera retardo.
+- [x] Un día con checadas pero sin ninguna `entrada` **no** aparece.
+- [x] Un día de descanso (sin fila de horario) **no** aparece, aunque la entrada sea tarde.
+- [x] Un retardo de hoy aparece en cuanto existe la checada de entrada. Los días futuros no aparecen.
+- [x] Los días anteriores a `fecha_ingreso` no aparecen.
+- [x] Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` **no** aparece en la pantalla ni en el aviso "Sin horario definido".
+- [x] Un empleado controlado sin ninguna fila de horario aparece en el aviso "Sin horario definido".
+- [x] En un periodo mensual (sin escalones) se muestra el aviso "Sin escalones para Mensual".
+- [x] Las tarjetas de resumen y el resumen por empleado no cambian al filtrar por estado, clasificación o búsqueda.
+- [x] El resumen por empleado muestra 1.5 días estimados para 3 acumulables injustificados en un periodo semanal con las semillas.
+- [x] La pantalla aparece en el menú Nómina, después de "Faltas". Un usuario con rol 2, 3, 5 o 6 que entra a `/dashboard/nomina/retardos` es redirigido a `/dashboard`.
 
 **Configuración**
 
-- [ ] Cambiar la tolerancia a 15 quita de la lista los retardos de 10 a 14 minutos, y agrega una fila a la bitácora con los valores anterior y nuevo.
-- [ ] Guardar sin cambios no escribe ninguna fila en la bitácora ni cambia `updated_at`.
-- [ ] Guardar `minutos_retardo_grave <= tolerancia_minutos` muestra un error en el modal y no guarda nada.
-- [ ] Guardar escalones decrecientes (por ejemplo, {1 → 1, 2 → 0.5}), `retardos` repetidos en una frecuencia o `dias_descuento` que no sea múltiplo de 0.5 muestra un error y no guarda nada.
-- [ ] Editar solo los escalones actualiza `lateness_settings.updated_at` y escribe la bitácora con los JSON anterior y nuevo.
+- [x] Cambiar la tolerancia a 15 quita de la lista los retardos de 10 a 14 minutos, y agrega una fila a la bitácora con los valores anterior y nuevo.
+- [x] Guardar sin cambios no escribe ninguna fila en la bitácora ni cambia `updated_at`.
+- [x] Guardar `minutos_retardo_grave <= tolerancia_minutos` muestra un error en el modal y no guarda nada.
+- [x] Guardar escalones decrecientes (por ejemplo, {1 → 1, 2 → 0.5}), `retardos` repetidos en una frecuencia o `dias_descuento` que no sea múltiplo de 0.5 muestra un error y no guarda nada.
+- [x] Editar solo los escalones actualiza `lateness_settings.updated_at` y escribe la bitácora con los JSON anterior y nuevo.
 
 **Justificación**
 
-- [ ] Subir un PDF, JPG o PNG de hasta 5 MB deja la fila en "Justificado", con "Ver archivo". El archivo queda en la carpeta `clinica/empleados/retardos`.
-- [ ] "Reemplazar" cambia la `url` sin crear una segunda fila.
-- [ ] "Marcar no aplica" sin comentario muestra un error. Con comentario, deja la fila en "No aplica".
-- [ ] "Volver a injustificado" borra la fila de `lateness_justifications`.
-- [ ] Justificar (llamando a la action directamente) un día cuya primera entrada fue puntual devuelve `{ ok: false }`.
-- [ ] Justificar un día de un empleado sin usuario podólogo activo devuelve `{ ok: false }`.
-- [ ] Con el periodo en estatus 3 o 4 no se muestran las acciones, y las tres actions de justificación devuelven `{ ok: false }`.
-- [ ] Justificar, marcar "no aplica" y volver a injustificada en **Faltas** siguen funcionando después de mover los modales a `nomina/componentes/`.
+- [x] Subir un PDF, JPG o PNG de hasta 5 MB deja la fila en "Justificado", con "Ver archivo". El archivo queda en la carpeta `clinica/empleados/retardos`.
+- [x] "Reemplazar" cambia la `url` sin crear una segunda fila.
+- [x] "Marcar no aplica" sin comentario muestra un error. Con comentario, deja la fila en "No aplica".
+- [x] "Volver a injustificado" borra la fila de `lateness_justifications`.
+- [x] Justificar (llamando a la action directamente) un día cuya primera entrada fue puntual devuelve `{ ok: false }`.
+- [x] Justificar un día de un empleado sin usuario podólogo activo devuelve `{ ok: false }`.
+- [x] Con el periodo en estatus 3 o 4 no se muestran las acciones, y las tres actions de justificación devuelven `{ ok: false }`.
+- [x] Justificar, marcar "no aplica" y volver a injustificada en **Faltas** siguen funcionando después de mover los modales a `nomina/componentes/`.
 
 **Cálculo**
 
-- [ ] Recalcular un periodo sin retardos ni faltas deja sus filas de `period_employees` idénticas a las anteriores, salvo `calculated_at` y `calculated_by`.
-- [ ] Un periodo semanal con 1 acumulable injustificado da `dias_retardo = 0.5` e `importe_salario = ROUND(salario × (dias − 0.5), 2)`, en `'O'` y en `'F'`.
-- [ ] Un periodo semanal con 3 acumulables da `dias_retardo = 1.5`.
-- [ ] Un periodo quincenal con 5 acumulables da `dias_retardo = 1.0`. Con 6 da `1.5`.
-- [ ] Un grave y un acumulable en un periodo semanal dan `0.5 + 0.5 = 1.0`. El grave no cuenta para el escalón.
-- [ ] Un periodo mensual (sin escalones) con 1 grave y 3 acumulables da `dias_retardo = 0.5`.
-- [ ] Un retardo justificado o "no aplica" no entra a `dias_retardo` ni a `period_employee_lateness`.
-- [ ] Un empleado con `dias = 2` y descuento de 3 días queda con `dias_retardo = 2`, `dias_retardo_sin_tope = 3` e `importe_salario = 0`.
-- [ ] Cada retardo descontado tiene una fila en `period_employee_lateness` por cada tipo en el que entra el empleado, con `hora_llegada`, `minutos_retardo` y `clasificacion` correctos.
-- [ ] "Revertir" deja el periodo sin filas en `period_employee_lateness`.
-- [ ] Si dos periodos de distinta frecuencia cubren el mismo día, el retardo se descuenta solo en el primero que se calcula, para cada tipo.
-- [ ] Con la empresa sin fila en `lateness_settings`, `dias_retardo` queda en 0 para todos.
+- [x] Recalcular un periodo sin retardos ni faltas deja sus filas de `period_employees` idénticas a las anteriores, salvo `calculated_at` y `calculated_by`.
+- [x] Un periodo semanal con 1 acumulable injustificado da `dias_retardo = 0.5` e `importe_salario = ROUND(salario × (dias − 0.5), 2)`, en `'O'` y en `'F'`.
+- [x] Un periodo semanal con 3 acumulables da `dias_retardo = 1.5`.
+- [x] Un periodo quincenal con 5 acumulables da `dias_retardo = 1.0`. Con 6 da `1.5`.
+- [x] Un grave y un acumulable en un periodo semanal dan `0.5 + 0.5 = 1.0`. El grave no cuenta para el escalón.
+- [x] Un periodo mensual (sin escalones) con 1 grave y 3 acumulables da `dias_retardo = 0.5`.
+- [x] Un retardo justificado o "no aplica" no entra a `dias_retardo` ni a `period_employee_lateness`.
+- [x] Un empleado con `dias = 2` y descuento de 3 días queda con `dias_retardo = 2`, `dias_retardo_sin_tope = 3` e `importe_salario = 0`.
+- [x] Cada retardo descontado tiene una fila en `period_employee_lateness` por cada tipo en el que entra el empleado, con `hora_llegada`, `minutos_retardo` y `clasificacion` correctos.
+- [x] "Revertir" deja el periodo sin filas en `period_employee_lateness`.
+- [x] Si dos periodos de distinta frecuencia cubren el mismo día, el retardo se descuenta solo en el primero que se calcula, para cada tipo.
+- [x] Con la empresa sin fila en `lateness_settings`, `dias_retardo` queda en 0 para todos.
 
 **Procesar y Detalle**
 
-- [ ] En Procesar, la columna "Días" muestra "1.5 retardo" debajo de los días cuando `dias_retardo > 0`, junto a "F faltas" si las hay.
-- [ ] En Detalle, la línea de sueldo dice "11.5 días (15 − 2 faltas − 1.5 por retardos) × $X diarios", y el importe es el guardado.
-- [ ] Con tope aplicado, la línea agrega "(tope aplicado)".
-- [ ] `PayrollLatenessList` lista fecha, entrada programada, llegada, minutos y clasificación de los retardos descontados del tipo seleccionado, y se oculta cuando no hay ninguno.
-- [ ] En Retardos, un retardo descontado muestra el distintivo "Descontado en {código del periodo}".
+- [x] En Procesar, la columna "Días" muestra "1.5 retardo" debajo de los días cuando `dias_retardo > 0`, junto a "F faltas" si las hay.
+- [x] En Detalle, la línea de sueldo dice "11.5 días (15 − 2 faltas − 1.5 por retardos) × $X diarios", y el importe es el guardado.
+- [x] Con tope aplicado, la línea agrega "(tope aplicado)".
+- [x] `PayrollLatenessList` lista fecha, entrada programada, llegada, minutos y clasificación de los retardos descontados del tipo seleccionado, y se oculta cuando no hay ninguno.
+- [x] En Retardos, un retardo descontado muestra el distintivo "Descontado en {código del periodo}".
 
 **Aviso "Recalcula"**
 
-- [ ] Con el periodo en estatus 2, justificar un retardo ya descontado muestra el aviso "Hay retardos que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en Retardos.
-- [ ] Con el periodo en estatus 2, cambiar la tolerancia o un escalón muestra el aviso.
-- [ ] Con el periodo en estatus 2, subir `minutos_retardo_grave` de manera que un grave descontado pase a acumulable muestra el aviso.
-- [ ] Después de "Recalcular", el aviso desaparece.
-- [ ] Con el periodo en estatus 1, el aviso nunca aparece.
-- [ ] Faltas y Horas extra siguen mostrando su propio aviso con su texto de siempre.
+- [x] Con el periodo en estatus 2, justificar un retardo ya descontado muestra el aviso "Hay retardos que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en Retardos.
+- [x] Con el periodo en estatus 2, cambiar la tolerancia o un escalón muestra el aviso.
+- [x] Con el periodo en estatus 2, subir `minutos_retardo_grave` de manera que un grave descontado pase a acumulable muestra el aviso.
+- [x] Después de "Recalcular", el aviso desaparece.
+- [x] Con el periodo en estatus 1, el aviso nunca aparece.
+- [x] Faltas y Horas extra siguen mostrando su propio aviso con su texto de siempre.
 
 **Documentación**
 
