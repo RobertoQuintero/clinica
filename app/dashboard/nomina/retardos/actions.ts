@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/database/connection";
+import db, { ITransactionClient } from "@/database/connection";
 import { IScheduleDay } from "@/interfaces/employee_schedule";
 import {
   ILatenessDayRow,
@@ -20,10 +20,26 @@ import {
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { calculateLatenessDiscountDays, detectEmployeeLateness } from "@/lib/payroll/latenessDetection";
+import {
+  JustificationWriteCheck,
+  upsertJustification,
+  validateJustificationTarget,
+} from "@/lib/payroll/justificationWrites";
+import {
+  calculateLatenessDiscountDays,
+  calculateLatenessMinutes,
+  detectEmployeeLateness,
+} from "@/lib/payroll/latenessDetection";
 import { buildDiscountedCodesByDay, groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
+import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
-import { latenessPageFiltersSchema, updateLatenessSettingsSchema } from "@/lib/payroll/schemas";
+import {
+  clearLatenessJustificationSchema,
+  justifyLatenessSchema,
+  latenessPageFiltersSchema,
+  markLatenessNotApplicableSchema,
+  updateLatenessSettingsSchema,
+} from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
@@ -410,6 +426,194 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
   } catch (error) {
     console.error("getLatenessPage", error);
     return { ok: false, message: "No se pudieron cargar los retardos" };
+  }
+}
+
+const NOT_CONTROLLED_MESSAGE = "El empleado no tiene control de retardos en este periodo";
+
+/**
+ * Valida que el día sea un retardo hoy: hoy o anterior, con horario ese día de la semana, con una entrada
+ * y con la primera entrada al menos `tolerancia_minutos` tarde. Es el mismo criterio que la detección de
+ * la pantalla (`calculateLatenessMinutes`), leído con la tolerancia vigente de la empresa.
+ */
+async function validateDayIsLateness(
+  transaction: ITransactionClient,
+  idEmpresa: number,
+  idEmpleado: number,
+  fecha: string,
+): Promise<JustificationWriteCheck> {
+  if (fecha > addZeroToday(new Date())) {
+    return { ok: false, message: "Solo se pueden justificar retardos de hoy o de días anteriores" };
+  }
+
+  const settingsRows = await transaction.queryParams(
+    `SELECT tolerancia_minutos
+       FROM [CentroPodologico].[payroll].[lateness_settings]
+      WHERE id_empresa = @id_empresa`,
+    { id_empresa: idEmpresa },
+  );
+  const settings = settingsRows[0] as { tolerancia_minutos: number } | undefined;
+  if (!settings) return { ok: false, message: "La empresa no tiene configuración de retardos" };
+
+  const scheduleRows = await transaction.queryParams(
+    `SELECT CONVERT(varchar(8), [hora_entrada_1], 108) AS hora_entrada_1
+       FROM [CentroPodologico].[RH].[empleado_horarios]
+      WHERE [id_empleado] = @id_empleado AND [dia_semana] = @dia_semana`,
+    { id_empleado: idEmpleado, dia_semana: weekdayOfDate(fecha) },
+  );
+  const schedule = scheduleRows[0] as { hora_entrada_1: string } | undefined;
+  if (!schedule) return { ok: false, message: "El empleado no tiene horario ese día" };
+
+  const firstEntryRows = await transaction.queryParams(
+    `SELECT CONVERT(varchar(8), MIN([fecha_hora]), 108) AS hora_llegada
+       FROM [CentroPodologico].[RH].[asistencias]
+      WHERE [id_empleado] = @id_empleado
+        AND [tipo] = 'entrada'
+        AND [fecha_hora] >= CAST(@fecha AS date)
+        AND [fecha_hora] <  DATEADD(day, 1, CAST(@fecha AS date))`,
+    { id_empleado: idEmpleado, fecha },
+  );
+  const arrivalTime = (firstEntryRows[0] as { hora_llegada: string | null } | undefined)?.hora_llegada;
+  if (!arrivalTime) return { ok: false, message: "El empleado no tiene una entrada registrada ese día" };
+
+  const minutesLate = calculateLatenessMinutes(schedule.hora_entrada_1, arrivalTime);
+  if (minutesLate < Number(settings.tolerancia_minutos)) {
+    return { ok: false, message: "La entrada de ese día no fue un retardo" };
+  }
+  return { ok: true };
+}
+
+/** Justifica un retardo con un archivo (PDF, JPG o PNG); si el día ya tenía justificación, la reemplaza. */
+export async function justifyLateness(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_empresa, id_user } = access.data;
+
+  const parsed = justifyLatenessSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_period, id_empleado, fecha, url, mime_type, size_bytes, comentario } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<JustificationWriteCheck> => {
+      const target = await validateJustificationTarget(
+        transaction,
+        id_sucursal,
+        { id_period, id_empleado, fecha },
+        NOT_CONTROLLED_MESSAGE,
+      );
+      if (!target.ok) return target;
+      const day = await validateDayIsLateness(transaction, id_empresa, id_empleado, fecha);
+      if (!day.ok) return day;
+
+      await upsertJustification(transaction, "lateness_justifications", {
+        id_empleado,
+        fecha,
+        estado: "J",
+        url,
+        mime_type,
+        size_bytes,
+        comentario: comentario ? comentario : null,
+        decided_by: id_user,
+      });
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(LATENESS_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("justifyLateness", error);
+    return { ok: false, message: "No se pudo guardar el justificante" };
+  }
+}
+
+/** Marca un retardo como "No aplica" (reloj desfasado, checador sin conexión…); el comentario es obligatorio. */
+export async function markLatenessNotApplicable(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_empresa, id_user } = access.data;
+
+  const parsed = markLatenessNotApplicableSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_period, id_empleado, fecha, comentario } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<JustificationWriteCheck> => {
+      const target = await validateJustificationTarget(
+        transaction,
+        id_sucursal,
+        { id_period, id_empleado, fecha },
+        NOT_CONTROLLED_MESSAGE,
+      );
+      if (!target.ok) return target;
+      const day = await validateDayIsLateness(transaction, id_empresa, id_empleado, fecha);
+      if (!day.ok) return day;
+
+      await upsertJustification(transaction, "lateness_justifications", {
+        id_empleado,
+        fecha,
+        estado: "N",
+        url: null,
+        mime_type: null,
+        size_bytes: null,
+        comentario,
+        decided_by: id_user,
+      });
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(LATENESS_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("markLatenessNotApplicable", error);
+    return { ok: false, message: "No se pudo marcar el retardo como no aplica" };
+  }
+}
+
+/**
+ * Vuelve un retardo a "Injustificado": borra su justificación. Valida periodo, rango y empleado igual que las
+ * otras dos, pero no revisa el día (horario y entrada) para poder limpiar una justificación que ya no aplica.
+ */
+export async function clearLatenessJustification(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  const parsed = clearLatenessJustificationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_period, id_empleado, fecha } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<JustificationWriteCheck> => {
+      const target = await validateJustificationTarget(
+        transaction,
+        id_sucursal,
+        { id_period, id_empleado, fecha },
+        NOT_CONTROLLED_MESSAGE,
+      );
+      if (!target.ok) return target;
+
+      await transaction.queryParams(
+        `DELETE FROM [CentroPodologico].[payroll].[lateness_justifications]
+          WHERE id_empleado = @id_empleado AND fecha = CAST(@fecha AS date)`,
+        { id_empleado, fecha },
+      );
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(LATENESS_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("clearLatenessJustification", error);
+    return { ok: false, message: "No se pudo volver el retardo a injustificado" };
   }
 }
 
