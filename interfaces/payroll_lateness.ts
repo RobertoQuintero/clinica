@@ -1,4 +1,4 @@
-import type { IPayrollPeriod } from "@/interfaces/payroll_period";
+import type { IPayrollPeriod, IPayrollPeriodRow } from "@/interfaces/payroll_period";
 
 /** Sin fila en lateness_justifications = "unjustified". */
 export type LatenessStatus = "unjustified" | "justified" | "not_applicable";
@@ -74,7 +74,7 @@ export interface ILatenessFilters {
 }
 
 export interface ILatenessPage {
-  period:                   IPayrollPeriod | null;
+  period:                   IPayrollPeriodRow | null;
   periodOptions:            Pick<IPayrollPeriod, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   canDecide:                boolean;
   settings:                 ILatenessSettings | null;   // null: la empresa no tiene configuración

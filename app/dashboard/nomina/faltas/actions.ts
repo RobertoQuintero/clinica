@@ -12,7 +12,7 @@ import {
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
+import { buildDiscountedCodesByDay, groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
 import {
@@ -42,20 +42,6 @@ interface IStoredJustificationRow {
   comentario: string | null;
   decided_by_name: string;
   decided_at: string;
-}
-
-/** Códigos de los periodos que ya descontaron cada día, indexados por "id_empleado|fecha" y sin repetir. */
-function buildDiscountedCodesByDay(
-  discountedRows: { id_empleado: number; fecha: string; codigo: string }[],
-): Map<string, string[]> {
-  const codesByDay = new Map<string, string[]>();
-  for (const discounted of discountedRows) {
-    const dayKey = `${discounted.id_empleado}|${discounted.fecha}`;
-    const codes = codesByDay.get(dayKey);
-    if (!codes) codesByDay.set(dayKey, [discounted.codigo]);
-    else if (!codes.includes(discounted.codigo)) codes.push(discounted.codigo);
-  }
-  return codesByDay;
 }
 
 /**
