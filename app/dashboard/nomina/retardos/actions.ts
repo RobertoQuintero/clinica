@@ -6,6 +6,7 @@ import {
   ILatenessDayRow,
   ILatenessEmployeeSummary,
   ILatenessFilters,
+  ILatenessFrequencyOption,
   ILatenessPage,
   ILatenessSettings,
   ILatenessSettingsLogEntry,
@@ -13,7 +14,7 @@ import {
   LatenessStatus,
 } from "@/interfaces/payroll_lateness";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
-import { LATENESS_PAGE_SIZE } from "@/lib/payroll/constants";
+import { LATENESS_PAGE_SIZE, PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY } from "@/lib/payroll/constants";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
@@ -163,7 +164,7 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
     parsedFilters.data;
 
   try {
-    const [period, periodOptions, settings] = await Promise.all([
+    const [period, periodOptions, settings, frequencyRows] = await Promise.all([
       resolvePeriod(id_sucursal, idPeriod),
       db.queryParams(
         `SELECT p.id_period, p.codigo,
@@ -176,13 +177,26 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
         { id_sucursal },
       ),
       loadLatenessSettings(id_empresa),
+      db.query(
+        `SELECT id_payment_period, clave_sat, description
+           FROM [CentroPodologico].[RH].[payment_periods]
+          WHERE status = 1
+          ORDER BY id_payment_period`,
+      ),
     ]);
+    // Solo las frecuencias que Periodos ofrece (claves SAT con letra y regla de fechas definidas).
+    const frequencyOptions: ILatenessFrequencyOption[] = (
+      frequencyRows as (ILatenessFrequencyOption & { clave_sat: string })[]
+    )
+      .filter((row) => row.clave_sat in PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY)
+      .map((row) => ({ id_payment_period: row.id_payment_period, description: row.description }));
 
     const emptyPage: ILatenessPage = {
       period,
       periodOptions: periodOptions as ILatenessPage["periodOptions"],
       canDecide: false,
       settings,
+      frequencyOptions,
       periodHasTiers: false,
       rows: [],
       totalRows: 0,

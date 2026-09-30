@@ -25,6 +25,7 @@ import {
   Percent,
   AlarmClockPlus,
   CalendarX2,
+  AlarmClock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -107,6 +108,12 @@ export const NAV_LINKS: NavLink[] = [
         href: "/dashboard/nomina/faltas",
         label: "Faltas",
         icon: CalendarX2,
+        excludeRoles: [2, 3, 5, 6],
+      },
+      {
+        href: "/dashboard/nomina/retardos",
+        label: "Retardos",
+        icon: AlarmClock,
         excludeRoles: [2, 3, 5, 6],
       },
     ],

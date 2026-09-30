@@ -73,11 +73,17 @@ export interface ILatenessFilters {
   page:           number;
 }
 
+export interface ILatenessFrequencyOption {
+  id_payment_period: number;
+  description:       string;   // "Semanal", "Quincenal"…
+}
+
 export interface ILatenessPage {
   period:                   IPayrollPeriodRow | null;
   periodOptions:            Pick<IPayrollPeriod, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   canDecide:                boolean;
   settings:                 ILatenessSettings | null;   // null: la empresa no tiene configuración
+  frequencyOptions:         ILatenessFrequencyOption[]; // frecuencias con periodos de nómina, para nombrar y editar los escalones
   periodHasTiers:           boolean;                    // false → aviso "Sin escalones para {frecuencia}"
   rows:                     ILatenessDayRow[];
   totalRows:                number;
