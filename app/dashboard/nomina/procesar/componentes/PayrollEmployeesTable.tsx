@@ -125,6 +125,11 @@ export default function PayrollEmployeesTable({
                           {employeeRow.dias_falta} {employeeRow.dias_falta === 1 ? "falta" : "faltas"}
                         </span>
                       )}
+                      {employeeRow.dias_retardo > 0 && (
+                        <span className="block mt-0.5 text-[11px] font-semibold text-[#ba1a1a] dark:text-red-400">
+                          {employeeRow.dias_retardo} retardo
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 text-sm text-right tabular-nums text-[#0b1c30] dark:text-zinc-200">
                       {formatPayrollCurrency(employeeRow.importe_salario)}

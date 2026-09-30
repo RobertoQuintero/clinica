@@ -12,3 +12,17 @@ export function groupByEmployee<T extends { id_empleado: number }>(rows: T[]): M
   }
   return rowsByEmployee;
 }
+
+/** Códigos de los periodos que ya descontaron cada día, indexados por "id_empleado|fecha" y sin repetir. */
+export function buildDiscountedCodesByDay(
+  discountedRows: { id_empleado: number; fecha: string; codigo: string }[],
+): Map<string, string[]> {
+  const codesByDay = new Map<string, string[]>();
+  for (const discounted of discountedRows) {
+    const dayKey = `${discounted.id_empleado}|${discounted.fecha}`;
+    const codes = codesByDay.get(dayKey);
+    if (!codes) codesByDay.set(dayKey, [discounted.codigo]);
+    else if (!codes.includes(discounted.codigo)) codes.push(discounted.codigo);
+  }
+  return codesByDay;
+}

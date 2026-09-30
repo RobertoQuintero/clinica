@@ -184,3 +184,101 @@ export type MarkAbsenceNotApplicableSchemaInput = z.infer<typeof markAbsenceNotA
 export const clearAbsenceJustificationSchema = z.object(absenceDayShape);
 
 export type ClearAbsenceJustificationSchemaInput = z.infer<typeof clearAbsenceJustificationSchema>;
+
+// ---- Retardos (spec 63) ----
+
+export const latenessPageFiltersSchema = z.object({
+  idPeriod: z.number().int().positive().nullable(),
+  status: z.enum(["all", "unjustified", "justified", "not_applicable"]),
+  classification: z.enum(["all", "severe", "accumulable"]),
+  search: z.string(),
+  page: z.number().int().positive(),
+});
+
+const LATENESS_MAX_SMALLINT = 32767;
+
+const latenessTierSchema = z.object({
+  id_payment_period: z
+    .number("La frecuencia es inválida")
+    .int("La frecuencia es inválida")
+    .positive("La frecuencia es inválida"),
+  retardos: z
+    .number("El número de retardos es inválido")
+    .int("El número de retardos debe ser entero")
+    .positive("El número de retardos debe ser mayor a 0")
+    .max(LATENESS_MAX_SMALLINT, "El número de retardos es demasiado grande"),
+  dias_descuento: z
+    .number("Los días de descuento son inválidos")
+    .positive("Los días de descuento deben ser mayores a 0")
+    .max(31, "Los días de descuento no pueden pasar de 31")
+    .multipleOf(0.5, "Los días de descuento deben ir en pasos de 0.5"),
+});
+
+/**
+ * Configuración de retardos de la empresa (spec 63). Los escalones de cada frecuencia no pueden repetir
+ * `retardos` y no pueden decrecer cuando `retardos` crece (un CHECK de SQL no ve otras filas).
+ */
+export const updateLatenessSettingsSchema = z
+  .object({
+    tolerancia_minutos: z
+      .number("La tolerancia es inválida")
+      .int("La tolerancia debe ser un número entero de minutos")
+      .positive("La tolerancia debe ser mayor a 0")
+      .max(LATENESS_MAX_SMALLINT, "La tolerancia es demasiado grande"),
+    minutos_retardo_grave: z
+      .number("El umbral del retardo grave es inválido")
+      .int("El umbral del retardo grave debe ser un número entero de minutos")
+      .max(LATENESS_MAX_SMALLINT, "El umbral del retardo grave es demasiado grande"),
+    dias_descuento_retardo_grave: z
+      .number("El descuento del retardo grave es inválido")
+      .min(0.5, "El descuento del retardo grave debe ser de 0.5 o 1 día")
+      .max(1, "El descuento del retardo grave debe ser de 0.5 o 1 día")
+      .multipleOf(0.5, "El descuento del retardo grave debe ser de 0.5 o 1 día"),
+    tiers: z.array(latenessTierSchema).max(60, "Hay demasiados escalones"),
+  })
+  .superRefine((value, context) => {
+    if (value.minutos_retardo_grave <= value.tolerancia_minutos) {
+      context.addIssue({
+        code: "custom",
+        path: ["minutos_retardo_grave"],
+        message: "El umbral del retardo grave debe ser mayor a la tolerancia",
+      });
+    }
+
+    const tiersByFrequency = new Map<number, typeof value.tiers>();
+    for (const tier of value.tiers) {
+      const frequencyTiers = tiersByFrequency.get(tier.id_payment_period);
+      if (frequencyTiers) frequencyTiers.push(tier);
+      else tiersByFrequency.set(tier.id_payment_period, [tier]);
+    }
+    for (const frequencyTiers of tiersByFrequency.values()) {
+      const sortedTiers = [...frequencyTiers].sort((first, second) => first.retardos - second.retardos);
+      for (let index = 1; index < sortedTiers.length; index++) {
+        const previousTier = sortedTiers[index - 1];
+        const currentTier = sortedTiers[index];
+        if (currentTier.retardos === previousTier.retardos) {
+          context.addIssue({
+            code: "custom",
+            path: ["tiers"],
+            message: "Un escalón repite el mismo número de retardos en una frecuencia",
+          });
+          return;
+        }
+        if (currentTier.dias_descuento < previousTier.dias_descuento) {
+          context.addIssue({
+            code: "custom",
+            path: ["tiers"],
+            message: "Los días de descuento no pueden bajar cuando aumentan los retardos",
+          });
+          return;
+        }
+      }
+    }
+  });
+
+export type UpdateLatenessSettingsSchemaInput = z.infer<typeof updateLatenessSettingsSchema>;
+
+// Las escrituras de justificación de retardos tienen la misma forma que las de Faltas.
+export const justifyLatenessSchema = justifyAbsenceSchema;
+export const markLatenessNotApplicableSchema = markAbsenceNotApplicableSchema;
+export const clearLatenessJustificationSchema = clearAbsenceJustificationSchema;

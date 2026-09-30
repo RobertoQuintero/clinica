@@ -4,6 +4,11 @@ import db, { ITransactionClient } from "@/database/connection";
 import { IScheduleDay } from "@/interfaces/employee_schedule";
 import { AbsenceStatus, IAbsenceDayRow, IAbsenceFilters, IAbsencePage } from "@/interfaces/payroll_absence";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
+import {
+  JustificationWriteCheck,
+  upsertJustification,
+  validateJustificationTarget,
+} from "@/lib/payroll/justificationWrites";
 import { detectEmployeeAbsences, nextDate } from "@/lib/payroll/absenceDetection";
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { ABSENCE_PAGE_SIZE } from "@/lib/payroll/constants";
@@ -12,7 +17,7 @@ import {
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
+import { buildDiscountedCodesByDay, groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
 import {
@@ -21,7 +26,7 @@ import {
   justifyAbsenceSchema,
   markAbsenceNotApplicableSchema,
 } from "@/lib/payroll/schemas";
-import { addZeroToday, buildDate } from "@/utils/date_helpper";
+import { addZeroToday } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
 const ABSENCES_PATH = "/dashboard/nomina/faltas";
@@ -42,20 +47,6 @@ interface IStoredJustificationRow {
   comentario: string | null;
   decided_by_name: string;
   decided_at: string;
-}
-
-/** Códigos de los periodos que ya descontaron cada día, indexados por "id_empleado|fecha" y sin repetir. */
-function buildDiscountedCodesByDay(
-  discountedRows: { id_empleado: number; fecha: string; codigo: string }[],
-): Map<string, string[]> {
-  const codesByDay = new Map<string, string[]>();
-  for (const discounted of discountedRows) {
-    const dayKey = `${discounted.id_empleado}|${discounted.fecha}`;
-    const codes = codesByDay.get(dayKey);
-    if (!codes) codesByDay.set(dayKey, [discounted.codigo]);
-    else if (!codes.includes(discounted.codigo)) codes.push(discounted.codigo);
-  }
-  return codesByDay;
 }
 
 /**
@@ -267,64 +258,9 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
   }
 }
 
-interface IAbsenceDayTarget {
-  id_period: number;
-  id_empleado: number;
-  fecha: string;
-}
+const NOT_CONTROLLED_MESSAGE = "El empleado no tiene control de faltas en este periodo";
 
-type AbsenceWriteCheck = { ok: true } | { ok: false; message: string };
-
-/**
- * Dentro de la transacción: valida que el periodo sea de la sucursal activa y admita cambios (estatus 1 o 2),
- * que la fecha caiga en su rango y que el empleado sea elegible ese día y tenga control de faltas. El periodo
- * se lee con UPDLOCK/HOLDLOCK para que un cambio de estatus no se cuele a mitad de la escritura.
- */
-async function validateAbsenceEmployeeTarget(
-  transaction: ITransactionClient,
-  idSucursal: number,
-  target: IAbsenceDayTarget,
-): Promise<AbsenceWriteCheck> {
-  const periodRows = await transaction.queryParams(
-    `SELECT id_payment_period, status,
-            CONVERT(varchar(10), fecha_inicio, 120) AS fecha_inicio,
-            CONVERT(varchar(10), fecha_fin, 120)    AS fecha_fin
-       FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
-      WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
-    { id_period: target.id_period, id_sucursal: idSucursal },
-  );
-  const period = periodRows[0] as
-    | { id_payment_period: number; status: number; fecha_inicio: string; fecha_fin: string }
-    | undefined;
-  if (!period) return { ok: false, message: "El periodo no existe" };
-  if (period.status !== 1 && period.status !== 2) {
-    return { ok: false, message: "El periodo ya no admite cambios" };
-  }
-  if (target.fecha < period.fecha_inicio || target.fecha > period.fecha_fin) {
-    return { ok: false, message: "La fecha está fuera del periodo" };
-  }
-
-  // Un día anterior a la fecha de ingreso tampoco es revisable.
-  const employeeRows = await transaction.queryParams(
-    `SELECT e.id_empleado
-       FROM [CentroPodologico].[RH].[empleados] e
-      WHERE e.id_empleado = @id_empleado
-        AND ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
-        AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
-        AND e.fecha_ingreso <= CAST(@fecha AS date)`,
-    {
-      id_empleado: target.id_empleado,
-      id_sucursal: idSucursal,
-      id_payment_period: period.id_payment_period,
-      fecha_fin: period.fecha_fin,
-      fecha: target.fecha,
-    },
-  );
-  if (employeeRows.length === 0) {
-    return { ok: false, message: "El empleado no tiene control de faltas en este periodo" };
-  }
-  return { ok: true };
-}
+type AbsenceWriteCheck = JustificationWriteCheck;
 
 /** Valida que el día sea una falta hoy: anterior a hoy, con horario ese día de la semana y sin ninguna checada. */
 async function validateDayIsAbsence(
@@ -360,41 +296,6 @@ async function validateDayIsAbsence(
   return { ok: true };
 }
 
-/** Inserta o reemplaza la justificación del día; el UNIQUE (id_empleado, fecha) garantiza una sola fila. */
-async function upsertAbsenceJustification(
-  transaction: ITransactionClient,
-  values: {
-    id_empleado: number;
-    fecha: string;
-    estado: "J" | "N";
-    url: string | null;
-    mime_type: string | null;
-    size_bytes: number | null;
-    comentario: string | null;
-    decided_by: number;
-  },
-): Promise<void> {
-  await transaction.queryParams(
-    `IF EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[absence_justifications] WITH (UPDLOCK, HOLDLOCK)
-                 WHERE id_empleado = @id_empleado AND fecha = CAST(@fecha AS date))
-       UPDATE [CentroPodologico].[payroll].[absence_justifications]
-          SET estado     = @estado,
-              url        = @url,
-              mime_type  = @mime_type,
-              size_bytes = @size_bytes,
-              comentario = @comentario,
-              decided_by = @decided_by,
-              decided_at = CAST(@decided_at AS datetime2(0))
-        WHERE id_empleado = @id_empleado AND fecha = CAST(@fecha AS date)
-     ELSE
-       INSERT INTO [CentroPodologico].[payroll].[absence_justifications]
-         (id_empleado, fecha, estado, url, mime_type, size_bytes, comentario, decided_by, decided_at)
-       VALUES (@id_empleado, CAST(@fecha AS date), @estado, @url, @mime_type, @size_bytes, @comentario,
-               @decided_by, CAST(@decided_at AS datetime2(0)))`,
-    { ...values, decided_at: buildDate(new Date()) },
-  );
-}
-
 /** Justifica una falta con un archivo (PDF, JPG o PNG); si el día ya tenía justificación, la reemplaza. */
 export async function justifyAbsence(input: unknown): Promise<ActionResult<null>> {
   const access = await assertPayrollAccess();
@@ -409,12 +310,17 @@ export async function justifyAbsence(input: unknown): Promise<ActionResult<null>
 
   try {
     const result = await db.transaction(async (transaction): Promise<AbsenceWriteCheck> => {
-      const target = await validateAbsenceEmployeeTarget(transaction, id_sucursal, { id_period, id_empleado, fecha });
+      const target = await validateJustificationTarget(
+        transaction,
+        id_sucursal,
+        { id_period, id_empleado, fecha },
+        NOT_CONTROLLED_MESSAGE,
+      );
       if (!target.ok) return target;
       const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
       if (!day.ok) return day;
 
-      await upsertAbsenceJustification(transaction, {
+      await upsertJustification(transaction, "absence_justifications", {
         id_empleado,
         fecha,
         estado: "J",
@@ -450,12 +356,17 @@ export async function markAbsenceNotApplicable(input: unknown): Promise<ActionRe
 
   try {
     const result = await db.transaction(async (transaction): Promise<AbsenceWriteCheck> => {
-      const target = await validateAbsenceEmployeeTarget(transaction, id_sucursal, { id_period, id_empleado, fecha });
+      const target = await validateJustificationTarget(
+        transaction,
+        id_sucursal,
+        { id_period, id_empleado, fecha },
+        NOT_CONTROLLED_MESSAGE,
+      );
       if (!target.ok) return target;
       const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
       if (!day.ok) return day;
 
-      await upsertAbsenceJustification(transaction, {
+      await upsertJustification(transaction, "absence_justifications", {
         id_empleado,
         fecha,
         estado: "N",
@@ -494,7 +405,12 @@ export async function clearAbsenceJustification(input: unknown): Promise<ActionR
 
   try {
     const result = await db.transaction(async (transaction): Promise<AbsenceWriteCheck> => {
-      const target = await validateAbsenceEmployeeTarget(transaction, id_sucursal, { id_period, id_empleado, fecha });
+      const target = await validateJustificationTarget(
+        transaction,
+        id_sucursal,
+        { id_period, id_empleado, fecha },
+        NOT_CONTROLLED_MESSAGE,
+      );
       if (!target.ok) return target;
 
       await transaction.queryParams(
