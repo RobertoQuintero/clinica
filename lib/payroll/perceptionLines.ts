@@ -20,10 +20,25 @@ function formatAbsences(count: number): string {
   return count === 1 ? "1 falta" : `${count} faltas`;
 }
 
-/** "13 días (15 − 2 faltas)" cuando hay faltas; `dias` guarda los días netos y los de calendario son dias + dias_falta. */
-function describePaidDays(netDays: number, absenceDays: number): string {
-  if (absenceDays === 0) return formatDays(netDays);
-  return `${formatDays(netDays)} (${netDays + absenceDays} − ${formatAbsences(absenceDays)})`;
+/**
+ * "11.5 días (15 − 2 faltas − 1.5 por retardos)". `dias` guarda los días netos después de faltas y los de calendario
+ * son dias + dias_falta; los días de retardo se restan aparte (spec 63), así que los pagados son dias − dias_retardo.
+ * Agrega "(tope aplicado)" cuando el descuento por retardos se recortó a los días pagados.
+ */
+function describePaidDays(
+  netDays: number,
+  absenceDays: number,
+  latenessDays: number,
+  latenessDaysWithoutCap: number,
+): string {
+  const paidDays = formatDays(netDays - latenessDays);
+  if (absenceDays === 0 && latenessDays === 0) return paidDays;
+
+  const deductions: string[] = [];
+  if (absenceDays > 0) deductions.push(formatAbsences(absenceDays));
+  if (latenessDays > 0) deductions.push(`${latenessDays} por retardos`);
+  const capNote = latenessDaysWithoutCap > latenessDays ? " (tope aplicado)" : "";
+  return `${paidDays} (${netDays + absenceDays} − ${deductions.join(" − ")})${capNote}`;
 }
 
 function formatConsultations(count: number): string {
@@ -58,6 +73,8 @@ export function buildPerceptionLines(
     | "salario_diario"
     | "dias"
     | "dias_falta"
+    | "dias_retardo"
+    | "dias_retardo_sin_tope"
     | "importe_salario"
     | "consultas_atendidas"
     | "importe_comision"
@@ -81,7 +98,7 @@ export function buildPerceptionLines(
     {
       key: "sueldo_base",
       label: "Sueldo base",
-      description: `${describePaidDays(snapshot.dias, snapshot.dias_falta)} × ${formatPayrollCurrency(snapshot.salario_diario)} diarios`,
+      description: `${describePaidDays(snapshot.dias, snapshot.dias_falta, snapshot.dias_retardo, snapshot.dias_retardo_sin_tope)} × ${formatPayrollCurrency(snapshot.salario_diario)} diarios`,
       note: joinedDuringPeriod ? `Ingresó el ${formatDayMonthYear(fechaIngreso)}, proporcional` : null,
       amount: snapshot.importe_salario,
     },

@@ -12,6 +12,7 @@ import {
   PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
+import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
@@ -286,6 +287,7 @@ export async function getPayrollEmployeeDetail(
       soldProductRows,
       overtimeDayRows,
       discountedAbsenceRows,
+      discountedLatenessRows,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -394,6 +396,19 @@ export async function getPayrollEmployeeDetail(
           ORDER BY pa.fecha`,
         { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
       ),
+      // Retardos descontados en el renglón del tipo seleccionado (spec 63); existen en operativa y en fiscal.
+      db.queryParams(
+        `SELECT CONVERT(varchar(10), pl.fecha, 120)           AS fecha,
+                CONVERT(varchar(5), pl.hora_entrada_1, 108)   AS hora_entrada_1,
+                CONVERT(varchar(8), pl.hora_llegada, 108)     AS hora_llegada,
+                pl.minutos_retardo, pl.clasificacion
+           FROM [CentroPodologico].[payroll].[period_employee_lateness] pl
+           JOIN [CentroPodologico].[payroll].[period_employees] pe
+             ON pe.id_period_employee = pl.id_period_employee
+          WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina
+          ORDER BY pl.fecha`,
+        { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
+      ),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -477,6 +492,24 @@ export async function getPayrollEmployeeDetail(
       ? discountedAbsenceRows.map((row: IPayrollDiscountedAbsence) => ({ fecha: row.fecha }))
       : [];
 
+    const discountedLateness: IPayrollDiscountedLateness[] = snapshot
+      ? (
+          discountedLatenessRows as {
+            fecha: string;
+            hora_entrada_1: string;
+            hora_llegada: string;
+            minutos_retardo: number;
+            clasificacion: "G" | "A";
+          }[]
+        ).map((row) => ({
+          fecha: row.fecha,
+          hora_entrada_1: row.hora_entrada_1,
+          hora_llegada: row.hora_llegada,
+          minutos_retardo: Number(row.minutos_retardo),
+          classification: row.clasificacion === "G" ? "severe" : "accumulable",
+        }))
+      : [];
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -491,7 +524,7 @@ export async function getPayrollEmployeeDetail(
         soldProducts,
         overtimeDays,
         discountedAbsences,
-        discountedLateness: [],   // se llena en el paso 11 (spec 63)
+        discountedLateness,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,
