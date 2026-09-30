@@ -3,16 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Undo2 } from "lucide-react";
-import type { IAbsenceDayRow } from "@/interfaces/payroll_absence";
-import { clearAbsenceJustification } from "../actions";
+import type { IJustifiableDay, JustificationAction } from "./justificationTypes";
 
 interface Props {
-  dayRow: IAbsenceDayRow;
+  day: IJustifiableDay;
   idPeriod: number;
+  /** Server action que borra la justificación (`clearAbsenceJustification`, `clearLatenessJustification`). */
+  action: JustificationAction;
+  /** Para el aria-label: "Volver a injustificada la falta de {empleado}". */
+  ariaLabel: string;
+  /** Texto del botón: "Volver a injustificada" o "Volver a injustificado". */
+  buttonLabel: string;
 }
 
-/** Vuelve la falta a "Injustificada". La confirmación es en línea: nunca usa el `confirm()` nativo. */
-export function ClearAbsenceJustificationButton({ dayRow, idPeriod }: Props) {
+/** Vuelve el día a "Injustificado". La confirmación es en línea: nunca usa el `confirm()` nativo. */
+export function ClearJustificationButton({ day, idPeriod, action, ariaLabel, buttonLabel }: Props) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -22,10 +27,10 @@ export function ClearAbsenceJustificationButton({ dayRow, idPeriod }: Props) {
     setErrorMessage(null);
     setIsSaving(true);
     try {
-      const result = await clearAbsenceJustification({
+      const result = await action({
         id_period: idPeriod,
-        id_empleado: dayRow.id_empleado,
-        fecha: dayRow.fecha,
+        id_empleado: day.id_empleado,
+        fecha: day.fecha,
       });
       if (!result.ok) {
         setErrorMessage(result.message);
@@ -45,17 +50,17 @@ export function ClearAbsenceJustificationButton({ dayRow, idPeriod }: Props) {
       <button
         type="button"
         onClick={() => setIsConfirming(true)}
-        aria-label={`Volver a injustificada la falta de ${dayRow.nombre_completo}`}
+        aria-label={ariaLabel}
         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-[#44474f] dark:text-zinc-300 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors whitespace-nowrap"
       >
         <Undo2 size={14} aria-hidden />
-        Volver a injustificada
+        {buttonLabel}
       </button>
     );
   }
 
   return (
-    <div role="group" aria-label="Confirmar volver a injustificada" className="flex flex-col items-end gap-1">
+    <div role="group" aria-label={`Confirmar: ${buttonLabel.toLowerCase()}`} className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
         <span className="text-xs text-[#44474f] dark:text-zinc-300">¿Se descontará de nuevo?</span>
         <button

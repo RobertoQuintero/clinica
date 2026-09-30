@@ -3,28 +3,46 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileUp, Paperclip } from "lucide-react";
-import type { IAbsenceDayRow } from "@/interfaces/payroll_absence";
 import { DOCUMENT_FILE_ACCEPT, uploadDocumentFile, validateDocumentFile } from "@/utils/documentUpload";
-import { justifyAbsence } from "../actions";
-import AbsenceModalFrame, { ABSENCE_FIELD_CLASSES, ABSENCE_MAX_COMMENT_LENGTH } from "./AbsenceModalFrame";
+import JustificationModalFrame, {
+  JUSTIFICATION_FIELD_CLASSES,
+  JUSTIFICATION_MAX_COMMENT_LENGTH,
+} from "./JustificationModalFrame";
+import type { IJustifiableDay, IJustificationSummaryItem, JustificationAction } from "./justificationTypes";
 
-const UPLOAD_FOLDER = "clinica/empleados/faltas";
-
-interface ModalProps {
-  dayRow: IAbsenceDayRow;
+interface ButtonProps {
+  day: IJustifiableDay;
   idPeriod: number;
+  summaryItems: IJustificationSummaryItem[];
+  /** Server action que guarda el justificante (`justifyAbsence`, `justifyLateness`). */
+  action: JustificationAction;
+  /** Carpeta de Cloudinary, por ejemplo "clinica/empleados/faltas". */
+  uploadFolder: string;
+  /** Prefijo del nombre del archivo subido: "falta" o "retardo". */
+  fileNamePrefix: string;
+}
+
+interface ModalProps extends ButtonProps {
   onClose: () => void;
 }
 
-function AbsenceJustificationModal({ dayRow, idPeriod, onClose }: ModalProps) {
+function JustificationUploadModal({
+  day,
+  idPeriod,
+  summaryItems,
+  action,
+  uploadFolder,
+  fileNamePrefix,
+  onClose,
+}: ModalProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [commentText, setCommentText] = useState(dayRow.status === "justified" ? (dayRow.comentario ?? "") : "");
+  const [commentText, setCommentText] = useState(day.status === "justified" ? (day.comentario ?? "") : "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isReplacing = dayRow.status === "justified";
+  const isReplacing = day.status === "justified";
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -48,12 +66,12 @@ function AbsenceJustificationModal({ dayRow, idPeriod, onClose }: ModalProps) {
     setErrorMessage(null);
     setIsSaving(true);
     try {
-      const fileName = `falta_${dayRow.id_empleado}_${dayRow.fecha}_${Date.now()}_${selectedFile.name}`;
-      const fileUrl = await uploadDocumentFile(selectedFile, UPLOAD_FOLDER, fileName);
-      const result = await justifyAbsence({
+      const fileName = `${fileNamePrefix}_${day.id_empleado}_${day.fecha}_${Date.now()}_${selectedFile.name}`;
+      const fileUrl = await uploadDocumentFile(selectedFile, uploadFolder, fileName);
+      const result = await action({
         id_period: idPeriod,
-        id_empleado: dayRow.id_empleado,
-        fecha: dayRow.fecha,
+        id_empleado: day.id_empleado,
+        fecha: day.fecha,
         url: fileUrl,
         mime_type: selectedFile.type,
         size_bytes: selectedFile.size,
@@ -73,11 +91,12 @@ function AbsenceJustificationModal({ dayRow, idPeriod, onClose }: ModalProps) {
   }
 
   return (
-    <AbsenceModalFrame
-      titleId="absence-justification-modal-title"
+    <JustificationModalFrame
+      titleId="justification-upload-modal-title"
       title={isReplacing ? "Reemplazar justificante" : "Subir justificante"}
       icon={<FileUp size={18} />}
-      dayRow={dayRow}
+      employeeName={day.nombre_completo}
+      summaryItems={summaryItems}
       isBusy={isSaving}
       onClose={onClose}
     >
@@ -117,11 +136,11 @@ function AbsenceJustificationModal({ dayRow, idPeriod, onClose }: ModalProps) {
         </span>
         <textarea
           rows={3}
-          maxLength={ABSENCE_MAX_COMMENT_LENGTH}
+          maxLength={JUSTIFICATION_MAX_COMMENT_LENGTH}
           value={commentText}
           onChange={(event) => setCommentText(event.target.value)}
           disabled={isSaving}
-          className={`${ABSENCE_FIELD_CLASSES} resize-none`}
+          className={`${JUSTIFICATION_FIELD_CLASSES} resize-none`}
         />
       </label>
 
@@ -143,33 +162,28 @@ function AbsenceJustificationModal({ dayRow, idPeriod, onClose }: ModalProps) {
           {isSaving ? "Guardando…" : isReplacing ? "Reemplazar" : "Guardar justificante"}
         </button>
       </div>
-    </AbsenceModalFrame>
+    </JustificationModalFrame>
   );
 }
 
-interface ButtonProps {
-  dayRow: IAbsenceDayRow;
-  idPeriod: number;
-}
-
 /** Botón por fila: abre el modal para subir el justificante, o para reemplazarlo si el día ya está justificado. */
-export function JustifyAbsenceButton({ dayRow, idPeriod }: ButtonProps) {
+export function JustifyDayButton(props: ButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const closeModal = useCallback(() => setIsOpen(false), []);
-  const isReplacing = dayRow.status === "justified";
+  const isReplacing = props.day.status === "justified";
 
   return (
     <>
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        aria-label={`${isReplacing ? "Reemplazar" : "Subir"} justificante de ${dayRow.nombre_completo}`}
+        aria-label={`${isReplacing ? "Reemplazar" : "Subir"} justificante de ${props.day.nombre_completo}`}
         className="inline-flex items-center gap-1.5 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 px-3 py-1.5 text-xs font-semibold text-[#0051d5] dark:text-blue-300 hover:bg-[#dce9ff] dark:hover:bg-zinc-800 transition-colors whitespace-nowrap"
       >
         <FileUp size={14} aria-hidden />
         {isReplacing ? "Reemplazar" : "Subir justificante"}
       </button>
-      {isOpen && <AbsenceJustificationModal dayRow={dayRow} idPeriod={idPeriod} onClose={closeModal} />}
+      {isOpen && <JustificationUploadModal {...props} onClose={closeModal} />}
     </>
   );
 }

@@ -3,30 +3,39 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import type { IAbsenceDayRow } from "@/interfaces/payroll_absence";
-import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
-import { formatOvertimeDate, formatScheduledDay } from "@/lib/payroll/overtimeFormat";
+import type { IJustificationSummaryItem } from "./justificationTypes";
 
 interface Props {
   titleId: string;
   title: string;
   icon: ReactNode;
-  dayRow: IAbsenceDayRow;
+  employeeName: string;
+  summaryItems: IJustificationSummaryItem[];
   isBusy: boolean;
   onClose: () => void;
   children: ReactNode;
 }
 
-export const ABSENCE_FIELD_CLASSES =
+export const JUSTIFICATION_FIELD_CLASSES =
   "w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] transition-all";
 
-export const ABSENCE_MAX_COMMENT_LENGTH = 500;
+export const JUSTIFICATION_MAX_COMMENT_LENGTH = 500;
 
 /**
- * Marco compartido de los modales de Faltas: portal al body, cierre con Escape o clic fuera, encabezado con el
- * empleado y un resumen del día. El portal evita heredar el `text-right` de la celda donde vive el botón.
+ * Marco compartido de los modales de justificación de Faltas y Retardos: portal al body, cierre con Escape o
+ * clic fuera, encabezado con el empleado y un resumen del día (`summaryItems`). El portal evita heredar el
+ * `text-right` de la celda donde vive el botón.
  */
-export default function AbsenceModalFrame({ titleId, title, icon, dayRow, isBusy, onClose, children }: Props) {
+export default function JustificationModalFrame({
+  titleId,
+  title,
+  icon,
+  employeeName,
+  summaryItems,
+  isBusy,
+  onClose,
+  children,
+}: Props) {
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape" && !isBusy) onClose();
@@ -57,7 +66,7 @@ export default function AbsenceModalFrame({ titleId, title, icon, dayRow, isBusy
               <h3 id={titleId} className="text-lg font-semibold text-[#0b1c30] dark:text-zinc-50">
                 {title}
               </h3>
-              <p className="text-sm text-[#44474f] dark:text-zinc-400 truncate">{dayRow.nombre_completo}</p>
+              <p className="text-sm text-[#44474f] dark:text-zinc-400 truncate">{employeeName}</p>
             </div>
           </div>
           <button
@@ -73,20 +82,16 @@ export default function AbsenceModalFrame({ titleId, title, icon, dayRow, isBusy
 
         <div className="p-6 flex flex-col gap-5">
           <dl className="grid grid-cols-2 gap-4 rounded-lg bg-[#eff4ff] dark:bg-zinc-800/60 px-4 py-3">
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <dt className="text-[11px] font-semibold uppercase tracking-wider text-[#44474f] dark:text-zinc-400">Día</dt>
-              <dd className="text-sm font-medium tabular-nums text-[#0b1c30] dark:text-zinc-100">
-                {formatOvertimeDate(dayRow.fecha, weekdayOfDate(dayRow.fecha))}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <dt className="text-[11px] font-semibold uppercase tracking-wider text-[#44474f] dark:text-zinc-400">
-                Horario
-              </dt>
-              <dd className="text-sm font-medium tabular-nums text-[#0b1c30] dark:text-zinc-100">
-                {formatScheduledDay(dayRow.scheduledDay)}
-              </dd>
-            </div>
+            {summaryItems.map((summaryItem) => (
+              <div key={summaryItem.label} className="flex flex-col gap-0.5 min-w-0">
+                <dt className="text-[11px] font-semibold uppercase tracking-wider text-[#44474f] dark:text-zinc-400">
+                  {summaryItem.label}
+                </dt>
+                <dd className="text-sm font-medium tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                  {summaryItem.value}
+                </dd>
+              </div>
+            ))}
           </dl>
           {children}
         </div>

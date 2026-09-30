@@ -3,9 +3,11 @@ import { ABSENCE_PAGE_SIZE } from "@/lib/payroll/constants";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { formatOvertimeDate, formatScheduledDay } from "@/lib/payroll/overtimeFormat";
 import PayrollPagerFooter from "../../componentes/PayrollPagerFooter";
-import { JustifyAbsenceButton } from "./AbsenceJustificationModal";
-import { MarkAbsenceNotApplicableButton } from "./AbsenceNotApplicableModal";
-import { ClearAbsenceJustificationButton } from "./ClearAbsenceJustificationButton";
+import { ClearJustificationButton } from "../../componentes/ClearJustificationButton";
+import { JustifyDayButton } from "../../componentes/JustificationUploadModal";
+import { MarkNotApplicableButton } from "../../componentes/NotApplicableModal";
+import type { IJustificationSummaryItem } from "../../componentes/justificationTypes";
+import { clearAbsenceJustification, justifyAbsence, markAbsenceNotApplicable } from "../actions";
 
 interface Props {
   rows: IAbsenceDayRow[];
@@ -39,6 +41,14 @@ const STATUS_BADGES: Record<AbsenceStatus, { label: string; classes: string }> =
     classes: "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
   },
 };
+
+/** Resumen del día para el encabezado de los modales de justificación. */
+function buildSummaryItems(dayRow: IAbsenceDayRow): IJustificationSummaryItem[] {
+  return [
+    { label: "Día", value: formatOvertimeDate(dayRow.fecha, weekdayOfDate(dayRow.fecha)) },
+    { label: "Horario", value: formatScheduledDay(dayRow.scheduledDay) },
+  ];
+}
 
 export default function AbsenceDaysTable({
   rows,
@@ -130,10 +140,31 @@ export default function AbsenceDaysTable({
                     {canDecide && (
                       <td className="pr-4 py-3.5">
                         <div className="flex flex-wrap items-center justify-end gap-2">
-                          <JustifyAbsenceButton dayRow={dayRow} idPeriod={idPeriod} />
-                          <MarkAbsenceNotApplicableButton dayRow={dayRow} idPeriod={idPeriod} />
+                          <JustifyDayButton
+                            day={dayRow}
+                            idPeriod={idPeriod}
+                            summaryItems={buildSummaryItems(dayRow)}
+                            action={justifyAbsence}
+                            uploadFolder="clinica/empleados/faltas"
+                            fileNamePrefix="falta"
+                          />
+                          <MarkNotApplicableButton
+                            day={dayRow}
+                            idPeriod={idPeriod}
+                            summaryItems={buildSummaryItems(dayRow)}
+                            action={markAbsenceNotApplicable}
+                            description="Una falta que no aplica no se descuenta de la nómina. El comentario queda como constancia."
+                            emptyCommentMessage="Escribe por qué no aplica esta falta (festivo, vacaciones, checador sin conexión…)."
+                            ariaLabel={`Marcar como no aplica la falta de ${dayRow.nombre_completo}`}
+                          />
                           {dayRow.status !== "unjustified" && (
-                            <ClearAbsenceJustificationButton dayRow={dayRow} idPeriod={idPeriod} />
+                            <ClearJustificationButton
+                              day={dayRow}
+                              idPeriod={idPeriod}
+                              action={clearAbsenceJustification}
+                              ariaLabel={`Volver a injustificada la falta de ${dayRow.nombre_completo}`}
+                              buttonLabel="Volver a injustificada"
+                            />
                           )}
                         </div>
                       </td>
