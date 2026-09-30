@@ -2,13 +2,21 @@ import type { ILatenessDayRow, LatenessClassification, LatenessStatus } from "@/
 import { LATENESS_PAGE_SIZE } from "@/lib/payroll/constants";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { formatOvertimeDate } from "@/lib/payroll/overtimeFormat";
+import { ClearJustificationButton } from "../../componentes/ClearJustificationButton";
+import { JustifyDayButton } from "../../componentes/JustificationUploadModal";
+import { MarkNotApplicableButton } from "../../componentes/NotApplicableModal";
+import type { IJustificationSummaryItem } from "../../componentes/justificationTypes";
 import PayrollPagerFooter from "../../componentes/PayrollPagerFooter";
+import { clearLatenessJustification, justifyLateness, markLatenessNotApplicable } from "../actions";
 
 interface Props {
   rows: ILatenessDayRow[];
   totalRows: number;
   page: number;
   hasActiveFilters: boolean;
+  /** Periodo en estatus 1 o 2: solo entonces se muestra la columna de acciones. */
+  canDecide: boolean;
+  idPeriod: number;
   /** Parámetros de URL vigentes (sin `pagina`), para conservar los filtros al paginar. */
   currentSearchParams: Record<string, string>;
 }
@@ -45,7 +53,26 @@ const CLASSIFICATION_BADGES: Record<LatenessClassification, { label: string; cla
   },
 };
 
-export default function LatenessDaysTable({ rows, totalRows, page, hasActiveFilters, currentSearchParams }: Props) {
+/** Resumen del día para el encabezado de los modales de justificación. */
+function buildSummaryItems(dayRow: ILatenessDayRow): IJustificationSummaryItem[] {
+  return [
+    { label: "Día", value: formatOvertimeDate(dayRow.fecha, weekdayOfDate(dayRow.fecha)) },
+    {
+      label: "Entrada",
+      value: `${dayRow.hora_entrada_1} programada · ${dayRow.hora_llegada} (${dayRow.minutos} min tarde)`,
+    },
+  ];
+}
+
+export default function LatenessDaysTable({
+  rows,
+  totalRows,
+  page,
+  hasActiveFilters,
+  canDecide,
+  idPeriod,
+  currentSearchParams,
+}: Props) {
   const totalPages = Math.max(1, Math.ceil(totalRows / LATENESS_PAGE_SIZE));
   const firstShown = totalRows === 0 ? 0 : (page - 1) * LATENESS_PAGE_SIZE + 1;
   const lastShown = (page - 1) * LATENESS_PAGE_SIZE + rows.length;
@@ -65,12 +92,17 @@ export default function LatenessDaysTable({ rows, totalRows, page, hasActiveFilt
               <th scope="col" className="px-4 py-3 font-semibold">Tipo</th>
               <th scope="col" className="px-4 py-3 font-semibold">Estado</th>
               <th scope="col" className="px-6 py-3 font-semibold">Justificante o comentario</th>
+              {canDecide && (
+                <th scope="col" className="px-4 py-3">
+                  <span className="sr-only">Acciones</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={canDecide ? 9 : 8} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún retardo coincide con los filtros."
                     : "Este periodo no tiene retardos detectados."}
@@ -132,6 +164,38 @@ export default function LatenessDaysTable({ rows, totalRows, page, hasActiveFilt
                       {dayRow.comentario && <span className="block line-clamp-2">{dayRow.comentario}</span>}
                       {!dayRow.url && !dayRow.comentario && "—"}
                     </td>
+                    {canDecide && (
+                      <td className="pr-4 py-3.5">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <JustifyDayButton
+                            day={dayRow}
+                            idPeriod={idPeriod}
+                            summaryItems={buildSummaryItems(dayRow)}
+                            action={justifyLateness}
+                            uploadFolder="clinica/empleados/retardos"
+                            fileNamePrefix="retardo"
+                          />
+                          <MarkNotApplicableButton
+                            day={dayRow}
+                            idPeriod={idPeriod}
+                            summaryItems={buildSummaryItems(dayRow)}
+                            action={markLatenessNotApplicable}
+                            description="Un retardo que no aplica no se descuenta de la nómina. El comentario queda como constancia."
+                            emptyCommentMessage="Escribe por qué no aplica este retardo (reloj del checador desfasado, entrada mal registrada…)."
+                            ariaLabel={`Marcar como no aplica el retardo de ${dayRow.nombre_completo}`}
+                          />
+                          {dayRow.status !== "unjustified" && (
+                            <ClearJustificationButton
+                              day={dayRow}
+                              idPeriod={idPeriod}
+                              action={clearLatenessJustification}
+                              ariaLabel={`Volver a injustificado el retardo de ${dayRow.nombre_completo}`}
+                              buttonLabel="Volver a injustificado"
+                            />
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })

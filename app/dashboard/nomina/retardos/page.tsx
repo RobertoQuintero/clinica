@@ -164,6 +164,8 @@ export default async function LatenessPage({ searchParams }: { searchParams: Pro
                 hasActiveFilters={
                   filters.status !== "all" || filters.classification !== "all" || filters.search !== ""
                 }
+                canDecide={result.data.canDecide}
+                idPeriod={result.data.period.id_period}
                 currentSearchParams={currentSearchParams}
               />
             </>
