@@ -25,6 +25,7 @@ import {
   upsertJustification,
   validateJustificationTarget,
 } from "@/lib/payroll/justificationWrites";
+import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import {
   calculateLatenessDiscountDays,
   calculateLatenessMinutes,
@@ -406,6 +407,8 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
           normalizeSearchText(row.codigo_empleado).includes(search)),
     );
 
+    const recalculationNeeded = await isLatenessRecalculationNeeded(period.id_period);
+
     const pageStart = (page - 1) * LATENESS_PAGE_SIZE;
 
     return {
@@ -419,8 +422,7 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
         summary,
         employeeSummaries,
         employeesWithoutSchedule,
-        // El aviso "Recalcula" se conecta en el paso 12.
-        recalculationNeeded: false,
+        recalculationNeeded,
       },
     };
   } catch (error) {

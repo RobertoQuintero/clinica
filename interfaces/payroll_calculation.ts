@@ -59,6 +59,7 @@ export interface IPayrollProcessPage {
   lastCalculatedAt:  string | null;
   overtimeRecalculationNeeded: boolean;   // aviso "Recalcula"; solo puede ser true en estatus 2
   absenceRecalculationNeeded:  boolean;   // ídem, para las faltas (spec 62)
+  latenessRecalculationNeeded: boolean;   // ídem, para los retardos (spec 63)
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".
