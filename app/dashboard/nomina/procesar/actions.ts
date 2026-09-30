@@ -515,6 +515,7 @@ const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratami
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
 const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha";
 const ABSENCE_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_absences_empleado_fecha_tipo";
+const LATENESS_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_lateness_empleado_fecha_tipo";
 
 /** Traduce los errores de SQL Server de calcular/revertir nómina a un mensaje en español. */
 function describePayrollCalculationError(error: unknown): string {
@@ -536,6 +537,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(ABSENCE_ALREADY_DISCOUNTED_CONSTRAINT)) {
     return "Otro cálculo tomó algunas de estas faltas al mismo tiempo. Intenta de nuevo.";
+  }
+  if (sqlError.message?.includes(LATENESS_ALREADY_DISCOUNTED_CONSTRAINT)) {
+    return "Otro cálculo tomó algunos de estos retardos al mismo tiempo. Intenta de nuevo.";
   }
   if (sqlError.number === 2627 || sqlError.number === 2601 || sqlError.number === 1205) {
     return "Otro usuario modificó la nómina al mismo tiempo. Intenta de nuevo";
@@ -560,6 +564,8 @@ function revalidatePayrollPaths() {
  * Las horas extra autorizadas (spec 61) también: `lib/payroll/overtimePay.ts` las espeja y, si divergen, manda este SQL.
  * Las faltas injustificadas (spec 62) también: `lib/payroll/absenceDetection.ts` las espeja y, si divergen, manda este SQL.
  * Restan días pagados en las dos nóminas ('O' y 'F'); `dias` guarda los días netos.
+ * Los retardos injustificados (spec 63) también: `lib/payroll/latenessDetection.ts` los espeja y, si divergen, manda este SQL.
+ * Descuentan sueldo base en las dos nóminas sin tocar `dias`: `importe_salario = salario × (dias − dias_retardo)`.
  * Solo la nómina operativa ('O') comisiona y paga horas extra; las filas 'F' quedan en 0. `cancelada` es nullable y
  * NULL significa "no cancelada" (así lo lee la app), por eso `ISNULL(c.[cancelada], 0) = 0`.
  */
@@ -709,16 +715,61 @@ export async function calculatePayrollPeriod(
                            WHERE aj.[id_empleado] = e.[id_empleado] AND aj.[fecha] = d.[fecha])
        OPTION (MAXRECURSION 400);
 
+       -- Spec 63: retardos injustificados del periodo. Un día es retardo si el empleado con control (el mismo universo que
+       -- las faltas) tiene horario ese día de la semana ISO, el día no es anterior a su fecha de ingreso ni posterior a hoy
+       -- (hoy sí cuenta), tiene una checada 'entrada' y la primera llegó tolerancia_minutos o más después de hora_entrada_1
+       -- (minutos completos: los segundos se truncan), y no hay justificación. Grave a partir de minutos_retardo_grave.
+       -- Una empresa sin fila en lateness_settings no genera retardos. Los acumulables solo cuentan si la empresa tiene
+       -- escalones para la frecuencia del periodo: sin escalones no se descuentan y tampoco deben bloquear el día.
+       -- lib/payroll/latenessDetection.ts lo espeja para la pantalla y, si divergen, manda este SQL.
+       ;WITH period_days AS (
+         SELECT @fecha_inicio AS fecha
+         UNION ALL
+         SELECT DATEADD(day, 1, fecha) FROM period_days WHERE fecha < @fecha_fin
+       )
+       SELECT e.[id_empleado], d.[fecha], h.[hora_entrada_1],
+              CAST(CONVERT(varchar(8), first_entry.[llegada], 108) AS time(0)) AS hora_llegada,
+              CAST(late.[minutos] AS smallint) AS minutos_retardo,
+              CAST(CASE WHEN late.[minutos] >= ls.[minutos_retardo_grave] THEN 'G' ELSE 'A' END AS char(1)) AS clasificacion
+         INTO #lateness
+         FROM [CentroPodologico].[RH].[empleados] e
+         JOIN [CentroPodologico].[payroll].[lateness_settings] ls ON ls.[id_empresa] = e.[id_empresa]
+        CROSS JOIN period_days d
+         JOIN [CentroPodologico].[RH].[empleado_horarios] h
+           ON h.[id_empleado] = e.[id_empleado]
+          AND h.[dia_semana] = (DATEDIFF(day, '19000101', d.[fecha]) % 7) + 1
+        CROSS APPLY (SELECT MIN(a.[fecha_hora]) AS llegada
+                       FROM [CentroPodologico].[RH].[asistencias] a
+                      WHERE a.[id_empleado] = e.[id_empleado]
+                        AND a.[tipo] = 'entrada'
+                        AND a.[fecha_hora] >= d.[fecha]
+                        AND a.[fecha_hora] <  DATEADD(day, 1, d.[fecha])) first_entry
+        CROSS APPLY (SELECT DATEDIFF(second, h.[hora_entrada_1],
+                                     CAST(CONVERT(varchar(8), first_entry.[llegada], 108) AS time(0))) / 60 AS minutos) late
+        WHERE ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
+          AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
+          AND d.[fecha] >= e.[fecha_ingreso]
+          AND d.[fecha] <= @today
+          AND first_entry.[llegada] IS NOT NULL
+          AND late.[minutos] >= ls.[tolerancia_minutos]
+          AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[lateness_justifications] lj
+                           WHERE lj.[id_empleado] = e.[id_empleado] AND lj.[fecha] = d.[fecha])
+          AND (late.[minutos] >= ls.[minutos_retardo_grave]
+               OR EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[lateness_tiers] lt
+                           WHERE lt.[id_empresa] = e.[id_empresa] AND lt.[id_payment_period] = @id_payment_period))
+       OPTION (MAXRECURSION 400);
+
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
-         (id_period, id_empleado, tipo_nomina, salario_diario, dias, dias_falta, importe_salario,
-          consultas_atendidas, importe_comision,
+         (id_period, id_empleado, tipo_nomina, salario_diario, dias, dias_falta, dias_retardo, dias_retardo_sin_tope,
+          importe_salario, consultas_atendidas, importe_comision,
           tratamientos_onicomicosis, importe_por_tratamiento, importe_comision_tratamientos,
           piezas_vendidas, importe_comision_productos,
           horas_extra_dobles, horas_extra_triples, importe_horas_extra_dobles, importe_horas_extra_triples,
           limite_horas_dobles_aplicado,
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, net.dias, absences.dias_falta,
-              ROUND(salary.salario_diario * net.dias, 2),
+              lateness_days.dias_retardo, lateness_days.dias_retardo_sin_tope,
+              ROUND(salary.salario_diario * (net.dias - lateness_days.dias_retardo), 2),
               ISNULL(attended.consultas, 0), ISNULL(tier.importe, 0),
               ISNULL(paid_treatments.tratamientos, 0),
               CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(treatment_settings.[importe_por_tratamiento], 0) ELSE 0 END,
@@ -734,6 +785,8 @@ export async function calculatePayrollPeriod(
                 ON treatment_settings.[id_empresa] = e.[id_empresa]
          LEFT JOIN [CentroPodologico].[payroll].[overtime_settings] overtime_settings
                 ON overtime_settings.[id_empresa] = e.[id_empresa]
+         LEFT JOIN [CentroPodologico].[payroll].[lateness_settings] lateness_settings
+                ON lateness_settings.[id_empresa] = e.[id_empresa]
         CROSS APPLY (VALUES ('O', e.salario_diario), ('F', e.salario_diario_fiscal))
                     AS salary (tipo_nomina, salario_diario)
         CROSS APPLY (SELECT DATEDIFF(day,
@@ -748,6 +801,45 @@ export async function calculatePayrollPeriod(
                                 AND pea.[tipo_nomina] = salary.tipo_nomina)
         ) AS absences
         CROSS APPLY (SELECT paid.dias - absences.dias_falta AS dias) AS net
+        -- Spec 63: retardos por contar en este tipo de nómina (los que otro periodo ya descontó para el mismo tipo se omiten).
+        OUTER APPLY (
+          SELECT ISNULL(SUM(CASE WHEN l.[clasificacion] = 'G' THEN 1 ELSE 0 END), 0) AS graves,
+                 ISNULL(SUM(CASE WHEN l.[clasificacion] = 'A' THEN 1 ELSE 0 END), 0) AS acumulables
+            FROM #lateness l
+           WHERE l.[id_empleado] = e.[id_empleado]
+             AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_lateness] ple
+                              WHERE ple.[id_empleado] = l.[id_empleado] AND ple.[fecha] = l.[fecha]
+                                AND ple.[tipo_nomina] = salary.tipo_nomina)
+        ) AS lateness_counts
+        -- Ciclo de los escalones de la frecuencia del periodo: ciclo = el mayor valor de retardos.
+        OUTER APPLY (
+          SELECT MAX(t.[retardos]) AS ciclo
+            FROM [CentroPodologico].[payroll].[lateness_tiers] t
+           WHERE t.[id_empresa] = e.[id_empresa] AND t.[id_payment_period] = @id_payment_period
+        ) AS lateness_cycle
+        OUTER APPLY (
+          SELECT t.[dias_descuento]
+            FROM [CentroPodologico].[payroll].[lateness_tiers] t
+           WHERE t.[id_empresa] = e.[id_empresa] AND t.[id_payment_period] = @id_payment_period
+             AND t.[retardos] = lateness_cycle.ciclo
+        ) AS top_tier
+        OUTER APPLY (
+          SELECT TOP 1 t.[dias_descuento]
+            FROM [CentroPodologico].[payroll].[lateness_tiers] t
+           WHERE t.[id_empresa] = e.[id_empresa] AND t.[id_payment_period] = @id_payment_period
+             AND t.[retardos] <= lateness_counts.acumulables % lateness_cycle.ciclo
+           ORDER BY t.[retardos] DESC
+        ) AS remainder_tier
+        OUTER APPLY (
+          SELECT lateness_counts.graves * ISNULL(lateness_settings.[dias_descuento_retardo_grave], 0)
+                 + CASE WHEN lateness_cycle.ciclo IS NULL THEN 0
+                        ELSE (lateness_counts.acumulables / lateness_cycle.ciclo) * top_tier.[dias_descuento]
+                             + ISNULL(remainder_tier.[dias_descuento], 0) END AS sin_tope
+        ) AS lateness_raw
+        -- El descuento nunca pasa de los días pagados: el sueldo base no queda negativo.
+        CROSS APPLY (SELECT CAST(lateness_raw.sin_tope AS decimal(5,1)) AS dias_retardo_sin_tope,
+                            CAST(CASE WHEN lateness_raw.sin_tope > net.dias THEN net.dias ELSE lateness_raw.sin_tope END
+                                 AS decimal(4,1)) AS dias_retardo) AS lateness_days
         OUTER APPLY (
           SELECT COUNT(*) AS consultas
             FROM [CentroPodologico].[dbo].[consultas] c
@@ -827,6 +919,19 @@ export async function calculatePayrollPeriod(
         WHERE NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_absences] pea
                            WHERE pea.[id_empleado] = a.[id_empleado] AND pea.[fecha] = a.[fecha]
                              AND pea.[tipo_nomina] = pe.[tipo_nomina]);
+
+       -- Spec 63: desglose y candado de retardos. Cada retardo se descuenta una vez por tipo de nómina ('O' y 'F'): se
+       -- omiten los que otro periodo ya descontó para ese mismo tipo (el mismo criterio que cuenta lateness_counts arriba).
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_lateness]
+         (id_period_employee, id_empleado, tipo_nomina, fecha, hora_entrada_1, hora_llegada, minutos_retardo, clasificacion)
+       SELECT pe.[id_period_employee], l.[id_empleado], pe.[tipo_nomina], l.[fecha],
+              l.[hora_entrada_1], l.[hora_llegada], l.[minutos_retardo], l.[clasificacion]
+         FROM #lateness l
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period] = @id_period AND pe.[id_empleado] = l.[id_empleado]
+        WHERE NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_lateness] ple
+                           WHERE ple.[id_empleado] = l.[id_empleado] AND ple.[fecha] = l.[fecha]
+                             AND ple.[tipo_nomina] = pe.[tipo_nomina]);
 
        UPDATE [CentroPodologico].[payroll].[periods]
           SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))
