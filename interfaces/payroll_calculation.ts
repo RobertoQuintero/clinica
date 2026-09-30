@@ -3,6 +3,7 @@ import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
+import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 
 export type PayrollType = "O" | "F";
 
@@ -18,6 +19,8 @@ export interface IPayrollEmployeeRow {
   salario_diario:     number;
   dias:               number;   // días netos pagados (calendario − dias_falta)
   dias_falta:         number;
+  dias_retardo:       number;   // días descontados por retardos (spec 63), ya con tope
+  dias_retardo_sin_tope: number;
   importe_salario:    number;
   consultas_atendidas: number;
   importe_comision:    number;
@@ -80,6 +83,8 @@ export interface IPayrollEmployeeSnapshot {
   salario_diario:  number;
   dias:            number;   // días netos pagados (calendario − dias_falta)
   dias_falta:      number;
+  dias_retardo:    number;   // días descontados por retardos (spec 63), ya con tope
+  dias_retardo_sin_tope: number;
   importe_salario: number;
   consultas_atendidas: number;
   importe_comision:    number;
@@ -115,6 +120,7 @@ export interface IPayrollEmployeeDetail {
   soldProducts:     IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
   overtimeDays:     IPayrollOvertimeDay[];      // [] en fiscal o sin días pagados
   discountedAbsences: IPayrollDiscountedAbsence[];  // [] si no hay faltas descontadas
+  discountedLateness: IPayrollDiscountedLateness[]; // [] si no hay retardos descontados
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;
