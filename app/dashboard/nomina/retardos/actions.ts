@@ -23,9 +23,11 @@ import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { calculateLatenessDiscountDays, detectEmployeeLateness } from "@/lib/payroll/latenessDetection";
 import { buildDiscountedCodesByDay, groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { resolvePeriod } from "@/lib/payroll/period";
-import { latenessPageFiltersSchema } from "@/lib/payroll/schemas";
-import { addZeroToday } from "@/utils/date_helpper";
+import { latenessPageFiltersSchema, updateLatenessSettingsSchema } from "@/lib/payroll/schemas";
+import { addZeroToday, buildDate } from "@/utils/date_helpper";
+import { revalidatePath } from "next/cache";
 
+const LATENESS_PATH = "/dashboard/nomina/retardos";
 const LATENESS_SETTINGS_LOG_LIMIT = 20;
 
 interface IReviewedEmployeeRow {
@@ -408,5 +410,156 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
   } catch (error) {
     console.error("getLatenessPage", error);
     return { ok: false, message: "No se pudieron cargar los retardos" };
+  }
+}
+
+/** Escalones ordenados por frecuencia y retardos: la forma canónica para comparar y para la bitácora. */
+function sortTiers(tiers: ILatenessTier[]): ILatenessTier[] {
+  return tiers
+    .map((tier) => ({
+      id_payment_period: Number(tier.id_payment_period),
+      retardos: Number(tier.retardos),
+      dias_descuento: Number(tier.dias_descuento),
+    }))
+    .sort((first, second) => first.id_payment_period - second.id_payment_period || first.retardos - second.retardos);
+}
+
+/**
+ * Guarda la configuración de retardos de la empresa y sus escalones en una sola transacción: lee la fila con
+ * UPDLOCK/HOLDLOCK, valida las frecuencias, reemplaza los escalones, actualiza `updated_at` (el aviso "Recalcula"
+ * depende de esa fecha, aunque solo cambien los escalones) y escribe la bitácora. Si nada cambió no escribe nada.
+ */
+export async function updateLatenessSettings(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_empresa, id_user } = access.data;
+
+  const parsed = updateLatenessSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { tolerancia_minutos, minutos_retardo_grave, dias_descuento_retardo_grave } = parsed.data;
+  const newTiers = sortTiers(parsed.data.tiers);
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<{ ok: true } | { ok: false; message: string }> => {
+      const settingsRows = await transaction.queryParams(
+        `SELECT tolerancia_minutos, minutos_retardo_grave,
+                CAST(dias_descuento_retardo_grave AS float) AS dias_descuento_retardo_grave
+           FROM [CentroPodologico].[payroll].[lateness_settings] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_empresa = @id_empresa`,
+        { id_empresa },
+      );
+      const previousSettings = settingsRows[0] as
+        | { tolerancia_minutos: number; minutos_retardo_grave: number; dias_descuento_retardo_grave: number }
+        | undefined;
+
+      const previousTierRows = (await transaction.queryParams(
+        `SELECT id_payment_period, retardos, CAST(dias_descuento AS float) AS dias_descuento
+           FROM [CentroPodologico].[payroll].[lateness_tiers] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_empresa = @id_empresa`,
+        { id_empresa },
+      )) as ILatenessTier[];
+      const previousTiers = sortTiers(previousTierRows);
+
+      // Solo se aceptan frecuencias que Periodos ofrece; el FK atraparía las inexistentes, pero con un error opaco.
+      const frequencyRows = (await transaction.queryParams(
+        `SELECT id_payment_period, clave_sat FROM [CentroPodologico].[RH].[payment_periods] WHERE status = 1`,
+        {},
+      )) as { id_payment_period: number; clave_sat: string }[];
+      const allowedFrequencyIds = new Set(
+        frequencyRows
+          .filter((row) => row.clave_sat in PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY)
+          .map((row) => row.id_payment_period),
+      );
+      if (newTiers.some((tier) => !allowedFrequencyIds.has(tier.id_payment_period))) {
+        return { ok: false, message: "Un escalón usa una frecuencia inválida" };
+      }
+
+      const hasChanged =
+        !previousSettings ||
+        Number(previousSettings.tolerancia_minutos) !== tolerancia_minutos ||
+        Number(previousSettings.minutos_retardo_grave) !== minutos_retardo_grave ||
+        Number(previousSettings.dias_descuento_retardo_grave) !== dias_descuento_retardo_grave ||
+        JSON.stringify(previousTiers) !== JSON.stringify(newTiers);
+      if (!hasChanged) return { ok: true };
+
+      const settingsParams = {
+        id_empresa,
+        tolerancia_minutos,
+        minutos_retardo_grave,
+        dias_descuento_retardo_grave: String(dias_descuento_retardo_grave),
+        updated_by: id_user,
+        updated_at: buildDate(new Date()),
+      };
+      if (previousSettings) {
+        await transaction.queryParams(
+          `UPDATE [CentroPodologico].[payroll].[lateness_settings]
+              SET tolerancia_minutos           = @tolerancia_minutos,
+                  minutos_retardo_grave        = @minutos_retardo_grave,
+                  dias_descuento_retardo_grave = CAST(@dias_descuento_retardo_grave AS decimal(2,1)),
+                  updated_by                   = @updated_by,
+                  updated_at                   = CAST(@updated_at AS datetime2(0))
+            WHERE id_empresa = @id_empresa`,
+          settingsParams,
+        );
+      } else {
+        await transaction.queryParams(
+          `INSERT INTO [CentroPodologico].[payroll].[lateness_settings]
+             (id_empresa, tolerancia_minutos, minutos_retardo_grave, dias_descuento_retardo_grave, updated_by, updated_at)
+           VALUES (@id_empresa, @tolerancia_minutos, @minutos_retardo_grave,
+                   CAST(@dias_descuento_retardo_grave AS decimal(2,1)), @updated_by, CAST(@updated_at AS datetime2(0)))`,
+          settingsParams,
+        );
+      }
+
+      await transaction.queryParams(
+        `DELETE FROM [CentroPodologico].[payroll].[lateness_tiers] WHERE id_empresa = @id_empresa`,
+        { id_empresa },
+      );
+      for (const tier of newTiers) {
+        await transaction.queryParams(
+          `INSERT INTO [CentroPodologico].[payroll].[lateness_tiers]
+             (id_empresa, id_payment_period, retardos, dias_descuento)
+           VALUES (@id_empresa, @id_payment_period, @retardos, CAST(@dias_descuento AS decimal(3,1)))`,
+          { id_empresa, id_payment_period: tier.id_payment_period, retardos: tier.retardos, dias_descuento: String(tier.dias_descuento) },
+        );
+      }
+
+      await transaction.queryParams(
+        `INSERT INTO [CentroPodologico].[payroll].[lateness_settings_log]
+           (id_empresa,
+            tolerancia_minutos_anterior, tolerancia_minutos_nuevo,
+            minutos_retardo_grave_anterior, minutos_retardo_grave_nuevo,
+            dias_descuento_retardo_grave_anterior, dias_descuento_retardo_grave_nuevo,
+            escalones_anteriores, escalones_nuevos, updated_by, updated_at)
+         VALUES
+           (@id_empresa,
+            @previous_tolerancia_minutos, @tolerancia_minutos,
+            @previous_minutos_retardo_grave, @minutos_retardo_grave,
+            CAST(@previous_dias_descuento_retardo_grave AS decimal(2,1)),
+            CAST(@dias_descuento_retardo_grave AS decimal(2,1)),
+            @previous_tiers_json, @new_tiers_json, @updated_by, CAST(@updated_at AS datetime2(0)))`,
+        {
+          ...settingsParams,
+          previous_tolerancia_minutos: previousSettings ? Number(previousSettings.tolerancia_minutos) : null,
+          previous_minutos_retardo_grave: previousSettings ? Number(previousSettings.minutos_retardo_grave) : null,
+          previous_dias_descuento_retardo_grave: previousSettings
+            ? String(previousSettings.dias_descuento_retardo_grave)
+            : null,
+          previous_tiers_json: previousSettings ? JSON.stringify(previousTiers) : null,
+          new_tiers_json: JSON.stringify(newTiers),
+        },
+      );
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(LATENESS_PATH);
+    revalidatePath("/dashboard/nomina/procesar");
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("updateLatenessSettings", error);
+    return { ok: false, message: "No se pudo guardar la configuración de retardos" };
   }
 }

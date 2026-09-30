@@ -17,6 +17,7 @@ import LatenessDaysTable from "./componentes/LatenessDaysTable";
 import LatenessEmployeeSummaryTable from "./componentes/LatenessEmployeeSummaryTable";
 import LatenessSettingsCard from "./componentes/LatenessSettingsCard";
 import LatenessSettingsLog from "./componentes/LatenessSettingsLog";
+import { EditLatenessSettingsButton } from "./componentes/LatenessSettingsModal";
 import LatenessSummaryCards from "./componentes/LatenessSummaryCards";
 import LatenessToolbar from "./componentes/LatenessToolbar";
 
@@ -82,7 +83,16 @@ export default async function LatenessPage({ searchParams }: { searchParams: Pro
 
       {result.ok && (
         <section aria-label="Reglas de retardos" className="flex flex-col gap-3">
-          <LatenessSettingsCard settings={result.data.settings} frequencyOptions={result.data.frequencyOptions} />
+          <LatenessSettingsCard
+            settings={result.data.settings}
+            frequencyOptions={result.data.frequencyOptions}
+            editAction={
+              <EditLatenessSettingsButton
+                settings={result.data.settings}
+                frequencyOptions={result.data.frequencyOptions}
+              />
+            }
+          />
           {settingsLogResult.ok && (
             <LatenessSettingsLog entries={settingsLogResult.data} frequencyOptions={result.data.frequencyOptions} />
           )}
