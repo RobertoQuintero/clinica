@@ -2,6 +2,7 @@ import type { IPayrollEmployeeSnapshot } from "@/interfaces/payroll_calculation"
 import type {
   IPunctualityBonusEvaluation,
   IPunctualityBonusSetting,
+  PunctualityBonusSkipReason,
 } from "@/interfaces/payroll_punctuality_bonus";
 
 export interface IPunctualityBonusEvaluationInput {
@@ -97,4 +98,16 @@ export function describePunctualityBonus(
     description: `Perdido: ${formatIncidents(incidents)} (máximo ${maximum})`,
     amount: 0,
   };
+}
+
+const SKIP_REASON_LABELS: Record<PunctualityBonusSkipReason, string> = {
+  no_lateness_settings: "Sin configuración de retardos",
+  bonus_not_configured: "Bono no configurado",
+  joined_mid_period: "Ingresó a mitad del periodo",
+  no_schedule: "Sin horario",
+};
+
+/** Motivo corto de un "No evaluado", para la columna Resultado de la pantalla Bonos. */
+export function describePunctualityBonusSkipReason(skipReason: PunctualityBonusSkipReason): string {
+  return SKIP_REASON_LABELS[skipReason];
 }
