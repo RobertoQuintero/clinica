@@ -112,7 +112,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, totalPercepciones: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, totalPercepciones: 0 },
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
@@ -162,7 +162,7 @@ export async function getPayrollProcessPage(
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
-                  + pe.importe_bono_puntualidad AS total_percepciones,
+                  + pe.importe_bono_puntualidad + pe.importe_bono_asistencia AS total_percepciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -178,7 +178,8 @@ export async function getPayrollProcessPage(
                 ISNULL(SUM(importe_comision_tratamientos), 0) AS importe_comision_tratamientos,
                 ISNULL(SUM(importe_comision_productos), 0) AS importe_comision_productos,
                 ISNULL(SUM(importe_horas_extra_dobles + importe_horas_extra_triples), 0) AS importe_horas_extra,
-                CAST(ISNULL(SUM(importe_bono_puntualidad), 0) AS float) AS importe_bono_puntualidad
+                CAST(ISNULL(SUM(importe_bono_puntualidad), 0) AS float) AS importe_bono_puntualidad,
+                CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia
            FROM [CentroPodologico].[payroll].[period_employees]
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
@@ -257,6 +258,7 @@ export async function getPayrollProcessPage(
           importeComisionProductos: Number(totals[0]?.importe_comision_productos ?? 0),
           importeHorasExtra: Number(totals[0]?.importe_horas_extra ?? 0),
           importeBonoPuntualidad: Number(totals[0]?.importe_bono_puntualidad ?? 0),
+          importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
           totalPercepciones:
             Math.round(
               (Number(totals[0]?.importe_salario ?? 0) +
@@ -264,7 +266,8 @@ export async function getPayrollProcessPage(
                 Number(totals[0]?.importe_comision_tratamientos ?? 0) +
                 Number(totals[0]?.importe_comision_productos ?? 0) +
                 Number(totals[0]?.importe_horas_extra ?? 0) +
-                Number(totals[0]?.importe_bono_puntualidad ?? 0)) *
+                Number(totals[0]?.importe_bono_puntualidad ?? 0) +
+                Number(totals[0]?.importe_bono_asistencia ?? 0)) *
                 100,
             ) / 100,
         },

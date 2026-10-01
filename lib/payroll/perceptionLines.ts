@@ -1,6 +1,7 @@
 import { IPayrollEmployeeSnapshot, IPayrollPerceptionLine } from "@/interfaces/payroll_calculation";
 import type { ICommissionTier } from "@/interfaces/payroll_commission";
 import { findCommissionTier, formatTierRange } from "@/lib/payroll/commissionTiers";
+import { describeAttendanceBonus } from "@/lib/payroll/attendanceBonus";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { describeOvertimeHours } from "@/lib/payroll/overtimePay";
 import { describeProductSalesCommission } from "@/lib/payroll/productSalesCommission";
@@ -94,6 +95,9 @@ export function buildPerceptionLines(
     | "bono_puntualidad_faltas"
     | "bono_puntualidad_maximo"
     | "importe_bono_puntualidad"
+    | "bono_asistencia_resultado"
+    | "bono_asistencia_faltas"
+    | "importe_bono_asistencia"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -170,6 +174,17 @@ export function buildPerceptionLines(
       description: punctualityBonus.description,
       note: null,
       amount: punctualityBonus.amount,
+    });
+  }
+
+  const attendanceBonus = describeAttendanceBonus(snapshot);
+  if (attendanceBonus) {
+    lines.push({
+      key: "bono_asistencia",
+      label: attendanceBonus.label,
+      description: attendanceBonus.description,
+      note: null,
+      amount: attendanceBonus.amount,
     });
   }
 
