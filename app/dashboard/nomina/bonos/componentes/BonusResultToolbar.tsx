@@ -1,15 +1,18 @@
 "use client";
 
-import type { IPunctualityBonusFilters, IPunctualityBonusPage } from "@/interfaces/payroll_punctuality_bonus";
+import type { BonusResult } from "@/interfaces/payroll_bonus";
+import type { IPayrollPeriod } from "@/interfaces/payroll_period";
 import { BONUS_RESULT_URL_VALUES } from "@/lib/payroll/bonusUrls";
 import PayrollPeriodFilterToolbar, { type IStatusFilterOption } from "../../componentes/PayrollPeriodFilterToolbar";
 
 interface Props {
-  periodOptions: IPunctualityBonusPage["periodOptions"];
+  periodOptions: PeriodOption[];
   selectedPeriodId: number;
-  selectedResult: IPunctualityBonusFilters["result"];
+  selectedResult: "all" | BonusResult;
   searchText: string;
 }
+
+type PeriodOption = Pick<IPayrollPeriod, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">;
 
 const RESULT_OPTIONS: IStatusFilterOption[] = [
   { value: "all", label: "Todos", urlValue: null },
@@ -18,7 +21,7 @@ const RESULT_OPTIONS: IStatusFilterOption[] = [
   { value: "not_evaluated", label: "No evaluados", urlValue: BONUS_RESULT_URL_VALUES.not_evaluated },
 ];
 
-export default function PunctualityBonusToolbar({ periodOptions, selectedPeriodId, selectedResult, searchText }: Props) {
+export default function BonusResultToolbar({ periodOptions, selectedPeriodId, selectedResult, searchText }: Props) {
   return (
     <PayrollPeriodFilterToolbar
       periodOptions={periodOptions}

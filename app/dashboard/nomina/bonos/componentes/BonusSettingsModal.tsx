@@ -4,13 +4,25 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Award, Info, Pencil, X } from "lucide-react";
-import type { IPunctualityBonusSetting } from "@/interfaces/payroll_punctuality_bonus";
+import type { BonusKind, IBonusSetting } from "@/interfaces/payroll_bonus";
 import { updatePunctualityBonusSettings } from "../actions";
 
 interface ModalProps {
-  settings: IPunctualityBonusSetting[];
+  bonusKind: BonusKind;
+  settings: IBonusSetting[];
   onClose: () => void;
 }
+
+const BONUS_COPY: Record<BonusKind, { title: string; help: string }> = {
+  punctuality: {
+    title: "Reglas del bono de puntualidad",
+    help: "Deja vacío el monto y el máximo de una frecuencia que aún no paga bono. Un podólogo conserva el bono si sus retardos más faltas injustificados no pasan del máximo.",
+  },
+  attendance: {
+    title: "Reglas del bono de asistencia",
+    help: "Deja vacío el monto de una frecuencia que aún no paga bono. Un podólogo conserva el bono solo si no tiene ninguna falta injustificada en el periodo.",
+  },
+};
 
 /** Un renglón del editor por frecuencia; los valores viajan como texto hasta que se guardan. */
 interface IFrequencyDraft {
@@ -39,7 +51,7 @@ function parseNonNegativeInteger(text: string): number | null {
   return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
 }
 
-function buildDrafts(settings: IPunctualityBonusSetting[]): IFrequencyDraft[] {
+function buildDrafts(settings: IBonusSetting[]): IFrequencyDraft[] {
   return settings.map((setting) => {
     const hasStoredRow = setting.updated_at !== null;
     return {
@@ -47,14 +59,16 @@ function buildDrafts(settings: IPunctualityBonusSetting[]): IFrequencyDraft[] {
       frequencyName: setting.frequencyName,
       hasStoredRow,
       amountText: hasStoredRow ? String(setting.monto) : "",
-      maximumText: hasStoredRow ? String(setting.maximo_incidencias) : "",
+      maximumText: hasStoredRow ? String(setting.maximo_incidencias ?? "") : "",
       isActive: hasStoredRow ? setting.status : true,
     };
   });
 }
 
-function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
+function BonusSettingsModal({ bonusKind, settings, onClose }: ModalProps) {
   const router = useRouter();
+  const hasMaximumField = bonusKind === "punctuality";
+  const copy = BONUS_COPY[bonusKind];
   const [drafts, setDrafts] = useState<IFrequencyDraft[]>(() => buildDrafts(settings));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -78,30 +92,34 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
 
     const settingsToSave = [];
     for (const draft of drafts) {
-      const isUntouched = draft.amountText.trim() === "" && draft.maximumText.trim() === "";
+      const isUntouched = draft.amountText.trim() === "" && (!hasMaximumField || draft.maximumText.trim() === "");
       // Una frecuencia sin configuración y sin captura se queda sin bono: no se manda.
       if (!draft.hasStoredRow && isUntouched) continue;
 
       const amount = parseAmount(draft.amountText);
-      const maximumIncidents = parseNonNegativeInteger(draft.maximumText);
+      const maximumIncidents = hasMaximumField ? parseNonNegativeInteger(draft.maximumText) : null;
       if (amount === null) {
         setErrorMessage(`${draft.frequencyName}: captura un monto mayor a 0 con máximo 2 decimales.`);
         return;
       }
-      if (maximumIncidents === null) {
+      if (hasMaximumField && maximumIncidents === null) {
         setErrorMessage(`${draft.frequencyName}: captura el máximo de incidencias como un entero de 0 o más.`);
         return;
       }
       settingsToSave.push({
         id_payment_period: draft.id_payment_period,
         monto: amount,
-        maximo_incidencias: maximumIncidents,
+        ...(hasMaximumField ? { maximo_incidencias: maximumIncidents } : {}),
         status: draft.isActive,
       });
     }
 
     if (settingsToSave.length === 0) {
-      setErrorMessage("Captura el monto y el máximo de al menos una frecuencia.");
+      setErrorMessage(
+        hasMaximumField
+          ? "Captura el monto y el máximo de al menos una frecuencia."
+          : "Captura el monto de al menos una frecuencia.",
+      );
       return;
     }
 
@@ -132,7 +150,7 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="punctuality-bonus-settings-modal-title"
+        aria-labelledby="bonus-settings-modal-title"
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl"
       >
         <div className="flex items-center justify-between border-b border-[#c4c6d0] dark:border-zinc-700 px-6 py-4">
@@ -141,10 +159,10 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
               <Award size={18} />
             </span>
             <h3
-              id="punctuality-bonus-settings-modal-title"
+              id="bonus-settings-modal-title"
               className="text-lg font-semibold text-[#0b1c30] dark:text-zinc-50"
             >
-              Reglas del bono de puntualidad
+              {copy.title}
             </h3>
           </div>
           <button
@@ -165,10 +183,7 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
             </p>
           )}
 
-          <p className="text-xs text-[#747780] dark:text-zinc-500">
-            Deja vacío el monto y el máximo de una frecuencia que aún no paga bono. Un podólogo conserva el bono si sus
-            retardos más faltas injustificados no pasan del máximo.
-          </p>
+          <p className="text-xs text-[#747780] dark:text-zinc-500">{copy.help}</p>
 
           <ul className="flex flex-col gap-3">
             {drafts.map((draft, draftIndex) => (
@@ -190,7 +205,7 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
                     {draft.isActive ? "Activo" : "Inactivo"}
                   </label>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={`grid grid-cols-1 gap-4 ${hasMaximumField ? "sm:grid-cols-2" : ""}`}>
                   <label className="flex flex-col gap-1 text-xs font-semibold text-[#44474f] dark:text-zinc-300">
                     Monto del bono
                     <input
@@ -204,18 +219,20 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
                       className={FIELD_CLASSES}
                     />
                   </label>
-                  <label className="flex flex-col gap-1 text-xs font-semibold text-[#44474f] dark:text-zinc-300">
-                    Máximo de incidencias
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={1}
-                      value={draft.maximumText}
-                      onChange={(event) => updateDraft(draft.id_payment_period, { maximumText: event.target.value })}
-                      className={FIELD_CLASSES}
-                    />
-                  </label>
+                  {hasMaximumField && (
+                    <label className="flex flex-col gap-1 text-xs font-semibold text-[#44474f] dark:text-zinc-300">
+                      Máximo de incidencias
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={1}
+                        value={draft.maximumText}
+                        onChange={(event) => updateDraft(draft.id_payment_period, { maximumText: event.target.value })}
+                        className={FIELD_CLASSES}
+                      />
+                    </label>
+                  )}
                 </div>
               </li>
             ))}
@@ -251,7 +268,7 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
   );
 }
 
-export function EditPunctualityBonusSettingsButton({ settings }: { settings: IPunctualityBonusSetting[] }) {
+export function EditBonusSettingsButton({ bonusKind, settings }: { bonusKind: BonusKind; settings: IBonusSetting[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const closeModal = useCallback(() => setIsOpen(false), []);
 
@@ -265,7 +282,7 @@ export function EditPunctualityBonusSettingsButton({ settings }: { settings: IPu
         <Pencil size={16} />
         Editar
       </button>
-      {isOpen && <PunctualityBonusSettingsModal settings={settings} onClose={closeModal} />}
+      {isOpen && <BonusSettingsModal bonusKind={bonusKind} settings={settings} onClose={closeModal} />}
     </>
   );
 }

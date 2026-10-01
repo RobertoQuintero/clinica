@@ -12,11 +12,11 @@ import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotic
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPunctualityBonusPage, getPunctualityBonusSettingsLog } from "./actions";
 import PunctualityBonusEmployeesTable from "./componentes/PunctualityBonusEmployeesTable";
-import PunctualityBonusSettingsCard from "./componentes/PunctualityBonusSettingsCard";
-import PunctualityBonusSettingsLog from "./componentes/PunctualityBonusSettingsLog";
-import { EditPunctualityBonusSettingsButton } from "./componentes/PunctualityBonusSettingsModal";
+import BonusSettingsCard from "./componentes/BonusSettingsCard";
+import BonusSettingsLog from "./componentes/BonusSettingsLog";
+import { EditBonusSettingsButton } from "./componentes/BonusSettingsModal";
 import PunctualityBonusSummaryCards from "./componentes/PunctualityBonusSummaryCards";
-import PunctualityBonusToolbar from "./componentes/PunctualityBonusToolbar";
+import BonusResultToolbar from "./componentes/BonusResultToolbar";
 
 const NOTICE_CLASSES =
   "rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 flex gap-3";
@@ -83,11 +83,12 @@ export default async function PunctualityBonusPage({ searchParams }: { searchPar
 
       {result.ok && (
         <section aria-label="Reglas del bono de puntualidad" className="flex flex-col gap-3">
-          <PunctualityBonusSettingsCard
+          <BonusSettingsCard
+            bonusKind="punctuality"
             settings={result.data.settings}
-            editAction={<EditPunctualityBonusSettingsButton settings={result.data.settings} />}
+            editAction={<EditBonusSettingsButton bonusKind="punctuality" settings={result.data.settings} />}
           />
-          {settingsLogResult.ok && <PunctualityBonusSettingsLog entries={settingsLogResult.data} />}
+          {settingsLogResult.ok && <BonusSettingsLog bonusKind="punctuality" entries={settingsLogResult.data} />}
         </section>
       )}
 
@@ -119,7 +120,7 @@ export default async function PunctualityBonusPage({ searchParams }: { searchPar
         )
       ) : (
         <>
-          <PunctualityBonusToolbar
+          <BonusResultToolbar
             periodOptions={result.data.periodOptions}
             selectedPeriodId={result.data.period.id_period}
             selectedResult={filters.result}
