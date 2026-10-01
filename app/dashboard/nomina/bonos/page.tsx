@@ -14,6 +14,7 @@ import { getPunctualityBonusPage, getPunctualityBonusSettingsLog } from "./actio
 import PunctualityBonusEmployeesTable from "./componentes/PunctualityBonusEmployeesTable";
 import PunctualityBonusSettingsCard from "./componentes/PunctualityBonusSettingsCard";
 import PunctualityBonusSettingsLog from "./componentes/PunctualityBonusSettingsLog";
+import { EditPunctualityBonusSettingsButton } from "./componentes/PunctualityBonusSettingsModal";
 import PunctualityBonusSummaryCards from "./componentes/PunctualityBonusSummaryCards";
 import PunctualityBonusToolbar from "./componentes/PunctualityBonusToolbar";
 
@@ -82,7 +83,10 @@ export default async function PunctualityBonusPage({ searchParams }: { searchPar
 
       {result.ok && (
         <section aria-label="Reglas del bono de puntualidad" className="flex flex-col gap-3">
-          <PunctualityBonusSettingsCard settings={result.data.settings} />
+          <PunctualityBonusSettingsCard
+            settings={result.data.settings}
+            editAction={<EditPunctualityBonusSettingsButton settings={result.data.settings} />}
+          />
           {settingsLogResult.ok && <PunctualityBonusSettingsLog entries={settingsLogResult.data} />}
         </section>
       )}
