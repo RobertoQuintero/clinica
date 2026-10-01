@@ -435,7 +435,7 @@ const NOT_CONTROLLED_MESSAGE = "El empleado no tiene control de retardos en este
 
 /**
  * Valida que el día sea un retardo hoy: hoy o anterior, con horario ese día de la semana, con una entrada
- * y con la primera entrada al menos `tolerancia_minutos` tarde. Es el mismo criterio que la detección de
+ * y con la primera entrada más de `tolerancia_minutos` tarde. Es el mismo criterio que la detección de
  * la pantalla (`calculateLatenessMinutes`), leído con la tolerancia vigente de la empresa.
  */
 async function validateDayIsLateness(
@@ -479,7 +479,7 @@ async function validateDayIsLateness(
   if (!arrivalTime) return { ok: false, message: "El empleado no tiene una entrada registrada ese día" };
 
   const minutesLate = calculateLatenessMinutes(schedule.hora_entrada_1, arrivalTime);
-  if (minutesLate < Number(settings.tolerancia_minutos)) {
+  if (minutesLate <= Number(settings.tolerancia_minutos)) {
     return { ok: false, message: "La entrada de ese día no fue un retardo" };
   }
   return { ok: true };

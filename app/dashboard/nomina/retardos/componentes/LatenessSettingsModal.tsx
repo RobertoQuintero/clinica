@@ -181,7 +181,7 @@ function LatenessSettingsModal({ settings, frequencyOptions, onClose }: ModalPro
                 className={FIELD_CLASSES}
               />
               <span className="text-xs font-normal text-[#747780] dark:text-zinc-500">
-                Desde aquí hay retardo.
+                Es retardo a partir del minuto tolerancia + 1.
               </span>
             </label>
 

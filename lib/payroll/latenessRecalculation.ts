@@ -64,7 +64,7 @@ export async function isLatenessRecalculationNeeded(idPeriod: number): Promise<b
           AND d.[fecha] >= e.[fecha_ingreso]
           AND d.[fecha] <= @today
           AND first_entry.[llegada] IS NOT NULL
-          AND late.[minutos] >= ls.[tolerancia_minutos]
+          AND late.[minutos] > ls.[tolerancia_minutos]
           AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[lateness_justifications] lj
                            WHERE lj.[id_empleado] = e.[id_empleado] AND lj.[fecha] = d.[fecha])
           AND (late.[minutos] >= ls.[minutos_retardo_grave]

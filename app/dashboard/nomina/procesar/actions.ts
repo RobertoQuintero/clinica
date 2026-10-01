@@ -755,7 +755,7 @@ export async function calculatePayrollPeriod(
 
        -- Spec 63: retardos injustificados del periodo. Un día es retardo si el empleado con control (el mismo universo que
        -- las faltas) tiene horario ese día de la semana ISO, el día no es anterior a su fecha de ingreso ni posterior a hoy
-       -- (hoy sí cuenta), tiene una checada 'entrada' y la primera llegó tolerancia_minutos o más después de hora_entrada_1
+       -- (hoy sí cuenta), tiene una checada 'entrada' y la primera llegó más de tolerancia_minutos después de hora_entrada_1
        -- (minutos completos: los segundos se truncan), y no hay justificación. Grave a partir de minutos_retardo_grave.
        -- Una empresa sin fila en lateness_settings no genera retardos. Los acumulables solo cuentan si la empresa tiene
        -- escalones para la frecuencia del periodo: sin escalones no se descuentan y tampoco deben bloquear el día.
@@ -789,7 +789,7 @@ export async function calculatePayrollPeriod(
           AND d.[fecha] >= e.[fecha_ingreso]
           AND d.[fecha] <= @today
           AND first_entry.[llegada] IS NOT NULL
-          AND late.[minutos] >= ls.[tolerancia_minutos]
+          AND late.[minutos] > ls.[tolerancia_minutos]
           AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[lateness_justifications] lj
                            WHERE lj.[id_empleado] = e.[id_empleado] AND lj.[fecha] = d.[fecha])
           AND (late.[minutos] >= ls.[minutos_retardo_grave]
