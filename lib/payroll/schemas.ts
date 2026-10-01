@@ -282,3 +282,50 @@ export type UpdateLatenessSettingsSchemaInput = z.infer<typeof updateLatenessSet
 export const justifyLatenessSchema = justifyAbsenceSchema;
 export const markLatenessNotApplicableSchema = markAbsenceNotApplicableSchema;
 export const clearLatenessJustificationSchema = clearAbsenceJustificationSchema;
+
+// ---- Bono de puntualidad (spec 64) ----
+
+export const punctualityBonusPageFiltersSchema = z.object({
+  idPeriod: z.number().int().positive().nullable(),
+  result: z.enum(["all", "keeps", "loses", "not_evaluated"]),
+  search: z.string(),
+  page: z.number().int().positive(),
+});
+
+const PUNCTUALITY_BONUS_MAX_AMOUNT = 9999999999.99;   // decimal(12,2)
+const PUNCTUALITY_BONUS_MAX_SMALLINT = 32767;
+
+const punctualityBonusSettingSchema = z.object({
+  id_payment_period: z
+    .number("La frecuencia es inválida")
+    .int("La frecuencia es inválida")
+    .positive("La frecuencia es inválida"),
+  monto: z
+    .number("El monto es inválido")
+    .positive("El monto debe ser mayor a 0")
+    .max(PUNCTUALITY_BONUS_MAX_AMOUNT, "El monto es demasiado grande")
+    .refine((amount) => Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-6, "El monto admite máximo 2 decimales"),
+  maximo_incidencias: z
+    .number("El máximo de incidencias es inválido")
+    .int("El máximo de incidencias debe ser un número entero")
+    .min(0, "El máximo de incidencias no puede ser negativo")
+    .max(PUNCTUALITY_BONUS_MAX_SMALLINT, "El máximo de incidencias es demasiado grande"),
+  status: z.boolean("El estatus es inválido"),
+});
+
+export const updatePunctualityBonusSettingsSchema = z
+  .object({
+    settings: z.array(punctualityBonusSettingSchema).min(1, "No hay frecuencias que guardar").max(20, "Hay demasiadas frecuencias"),
+  })
+  .superRefine((value, context) => {
+    const seenFrequencies = new Set<number>();
+    for (const setting of value.settings) {
+      if (seenFrequencies.has(setting.id_payment_period)) {
+        context.addIssue({ code: "custom", path: ["settings"], message: "Una frecuencia está repetida" });
+        return;
+      }
+      seenFrequencies.add(setting.id_payment_period);
+    }
+  });
+
+export type UpdatePunctualityBonusSettingsSchemaInput = z.infer<typeof updatePunctualityBonusSettingsSchema>;
