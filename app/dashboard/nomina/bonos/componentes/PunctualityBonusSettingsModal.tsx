@@ -158,7 +158,7 @@ function PunctualityBonusSettingsModal({ settings, onClose }: ModalProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} noValidate className="p-6 flex flex-col gap-5">
           {errorMessage && (
             <p role="alert" className="rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">
               {errorMessage}

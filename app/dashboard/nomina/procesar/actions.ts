@@ -29,6 +29,11 @@ import {
   ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
+import {
+  PUNCTUALITY_BONUS_APPLY_SQL,
+  PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL,
+  PUNCTUALITY_BONUS_SELECT_SQL,
+} from "@/lib/payroll/punctualityBonusSql";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
 import {
@@ -772,8 +777,10 @@ export async function calculatePayrollPeriod(
        -- las faltas) tiene horario ese día de la semana ISO, el día no es anterior a su fecha de ingreso ni posterior a hoy
        -- (hoy sí cuenta), tiene una checada 'entrada' y la primera llegó más de tolerancia_minutos después de hora_entrada_1
        -- (minutos completos: los segundos se truncan), y no hay justificación. Grave a partir de minutos_retardo_grave.
-       -- Una empresa sin fila en lateness_settings no genera retardos. Los acumulables solo cuentan si la empresa tiene
-       -- escalones para la frecuencia del periodo: sin escalones no se descuentan y tampoco deben bloquear el día.
+       -- Una empresa sin fila en lateness_settings no genera retardos. Spec 64: #lateness lista todos los retardos
+       -- injustificados (el bono cuenta graves y acumulables), y cuenta_para_descuento marca los que sí descuentan sueldo:
+       -- los graves, y los acumulables solo si la empresa tiene escalones para la frecuencia del periodo (sin escalones no se
+       -- descuentan y tampoco deben bloquear el día). El descuento y su candado filtran por esa columna.
        -- lib/payroll/latenessDetection.ts lo espeja para la pantalla y, si divergen, manda este SQL.
        ;WITH period_days AS (
          SELECT @fecha_inicio AS fecha
@@ -783,8 +790,12 @@ export async function calculatePayrollPeriod(
        SELECT e.[id_empleado], d.[fecha], h.[hora_entrada_1],
               CAST(CONVERT(varchar(8), first_entry.[llegada], 108) AS time(0)) AS hora_llegada,
               CAST(late.[minutos] AS smallint) AS minutos_retardo,
-              CAST(CASE WHEN late.[minutos] >= ls.[minutos_retardo_grave] THEN 'G' ELSE 'A' END AS char(1)) AS clasificacion
-         INTO #lateness
+              CAST(CASE WHEN late.[minutos] >= ls.[minutos_retardo_grave] THEN 'G' ELSE 'A' END AS char(1)) AS clasificacion,
+              CAST(CASE WHEN late.[minutos] >= ls.[minutos_retardo_grave]
+                          OR EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[lateness_tiers] lt
+                                      WHERE lt.[id_empresa] = e.[id_empresa] AND lt.[id_payment_period] = @id_payment_period)
+                        THEN 1 ELSE 0 END AS bit) AS cuenta_para_descuento
+          INTO #lateness
          FROM [CentroPodologico].[RH].[empleados] e
          JOIN [CentroPodologico].[payroll].[lateness_settings] ls ON ls.[id_empresa] = e.[id_empresa]
         CROSS JOIN period_days d
@@ -807,9 +818,6 @@ export async function calculatePayrollPeriod(
           AND late.[minutos] > ls.[tolerancia_minutos]
           AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[lateness_justifications] lj
                            WHERE lj.[id_empleado] = e.[id_empleado] AND lj.[fecha] = d.[fecha])
-          AND (late.[minutos] >= ls.[minutos_retardo_grave]
-               OR EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[lateness_tiers] lt
-                           WHERE lt.[id_empresa] = e.[id_empresa] AND lt.[id_payment_period] = @id_payment_period))
        OPTION (MAXRECURSION 400);
 
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
@@ -819,6 +827,7 @@ export async function calculatePayrollPeriod(
           piezas_vendidas, importe_comision_productos,
           horas_extra_dobles, horas_extra_triples, importe_horas_extra_dobles, importe_horas_extra_triples,
           limite_horas_dobles_aplicado,
+          ${PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL},
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, net.dias, absences.dias_falta,
               lateness_days.dias_retardo, lateness_days.dias_retardo_sin_tope,
@@ -832,6 +841,7 @@ export async function calculatePayrollPeriod(
               ISNULL(overtime.dobles, 0), ISNULL(overtime.triples, 0),
               ISNULL(overtime.importe_dobles, 0), ISNULL(overtime.importe_triples, 0),
               CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(overtime_settings.[limite_horas_dobles_periodo], 0) ELSE 0 END,
+              ${PUNCTUALITY_BONUS_SELECT_SQL},
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
          LEFT JOIN [CentroPodologico].[payroll].[treatment_commission_settings] treatment_settings
@@ -860,6 +870,7 @@ export async function calculatePayrollPeriod(
                  ISNULL(SUM(CASE WHEN l.[clasificacion] = 'A' THEN 1 ELSE 0 END), 0) AS acumulables
             FROM #lateness l
            WHERE l.[id_empleado] = e.[id_empleado]
+             AND l.[cuenta_para_descuento] = 1
              AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_lateness] ple
                               WHERE ple.[id_empleado] = l.[id_empleado] AND ple.[fecha] = l.[fecha]
                                 AND ple.[tipo_nomina] = salary.tipo_nomina)
@@ -929,7 +940,7 @@ export async function calculatePayrollPeriod(
                  SUM(od.[importe_dobles]) AS importe_dobles, SUM(od.[importe_triples]) AS importe_triples
             FROM #overtime_days od
            WHERE salary.tipo_nomina = 'O' AND od.[id_empleado] = e.[id_empleado]
-        ) AS overtime
+        ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
 
@@ -982,7 +993,8 @@ export async function calculatePayrollPeriod(
          FROM #lateness l
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period] = @id_period AND pe.[id_empleado] = l.[id_empleado]
-        WHERE NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_lateness] ple
+        WHERE l.[cuenta_para_descuento] = 1
+          AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_lateness] ple
                            WHERE ple.[id_empleado] = l.[id_empleado] AND ple.[fecha] = l.[fecha]
                              AND ple.[tipo_nomina] = pe.[tipo_nomina]);
 
