@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { Award } from "lucide-react";
-import type { IPunctualityBonusSetting } from "@/interfaces/payroll_punctuality_bonus";
+import type { BonusKind, IBonusSetting } from "@/interfaces/payroll_bonus";
 import { formatDateTimeSlashed, formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 
 interface Props {
-  settings: IPunctualityBonusSetting[];
+  bonusKind: BonusKind;
+  settings: IBonusSetting[];
   /** Botón "Editar": la tarjeta lo aloja en su encabezado. */
   editAction?: ReactNode;
 }
@@ -18,8 +19,27 @@ function formatIncidentLimit(maximumIncidents: number): string {
   return maximumIncidents === 1 ? "1 incidencia" : `${maximumIncidents} incidencias`;
 }
 
+const BONUS_COPY: Record<BonusKind, { title: string; description: string }> = {
+  punctuality: {
+    title: "Reglas del bono de puntualidad",
+    description: "Cada frecuencia de pago tiene su propio monto y su máximo de incidencias (retardos más faltas).",
+  },
+  attendance: {
+    title: "Reglas del bono de asistencia",
+    description: "Cada frecuencia de pago tiene su propio monto. Una sola falta injustificada quita el bono.",
+  },
+};
+
+/** Condición para conservar el bono; solo puntualidad tiene máximo de incidencias. */
+function describeCondition(setting: IBonusSetting): string {
+  return setting.maximo_incidencias === undefined
+    ? "si no tiene faltas"
+    : `si tiene hasta ${formatIncidentLimit(setting.maximo_incidencias)}`;
+}
+
 /** Una fila por frecuencia activa, tenga o no configuración. Sin fila no hay bono para esa frecuencia. */
-export default function PunctualityBonusSettingsCard({ settings, editAction }: Props) {
+export default function BonusSettingsCard({ bonusKind, settings, editAction }: Props) {
+  const copy = BONUS_COPY[bonusKind];
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-6 py-4 bg-[#eff4ff] dark:bg-zinc-800 border-b border-[#c4c6d0] dark:border-zinc-700">
@@ -28,10 +48,8 @@ export default function PunctualityBonusSettingsCard({ settings, editAction }: P
             <Award size={20} />
           </span>
           <div className="min-w-0">
-            <h3 className="text-base font-semibold text-[#0b1c30] dark:text-zinc-50">Reglas del bono de puntualidad</h3>
-            <p className="text-sm text-[#44474f] dark:text-zinc-400">
-              Cada frecuencia de pago tiene su propio monto y su máximo de incidencias (retardos más faltas).
-            </p>
+            <h3 className="text-base font-semibold text-[#0b1c30] dark:text-zinc-50">{copy.title}</h3>
+            <p className="text-sm text-[#44474f] dark:text-zinc-400">{copy.description}</p>
           </div>
         </div>
         {editAction}
@@ -59,7 +77,7 @@ export default function PunctualityBonusSettingsCard({ settings, editAction }: P
                       <span className="font-semibold">{formatPayrollCurrency(setting.monto)}</span>
                       <span className="text-[#44474f] dark:text-zinc-400">
                         {" "}
-                        si tiene hasta {formatIncidentLimit(setting.maximo_incidencias)}
+                        {describeCondition(setting)}
                       </span>
                     </span>
                     <span

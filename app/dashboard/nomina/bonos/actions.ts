@@ -2,6 +2,13 @@
 
 import db from "@/database/connection";
 import {
+  IAttendanceBonusEmployeeRow,
+  IAttendanceBonusFilters,
+  IAttendanceBonusPage,
+  IAttendanceBonusSetting,
+  IAttendanceBonusSettingsLogEntry,
+} from "@/interfaces/payroll_attendance_bonus";
+import {
   IPunctualityBonusEmployeeRow,
   IPunctualityBonusFilters,
   IPunctualityBonusPage,
@@ -10,7 +17,13 @@ import {
 } from "@/interfaces/payroll_punctuality_bonus";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { detectEmployeeAbsences, nextDate } from "@/lib/payroll/absenceDetection";
-import { PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY, PUNCTUALITY_BONUS_PAGE_SIZE } from "@/lib/payroll/constants";
+import { evaluateAttendanceBonus } from "@/lib/payroll/attendanceBonus";
+import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
+import {
+  ATTENDANCE_BONUS_PAGE_SIZE,
+  PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY,
+  PUNCTUALITY_BONUS_PAGE_SIZE,
+} from "@/lib/payroll/constants";
 import {
   loadCheckInDays,
   loadFirstEntries,
@@ -23,7 +36,12 @@ import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers"
 import { resolvePeriod } from "@/lib/payroll/period";
 import { evaluatePunctualityBonus } from "@/lib/payroll/punctualityBonus";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
-import { punctualityBonusPageFiltersSchema, updatePunctualityBonusSettingsSchema } from "@/lib/payroll/schemas";
+import {
+  attendanceBonusPageFiltersSchema,
+  punctualityBonusPageFiltersSchema,
+  updateAttendanceBonusSettingsSchema,
+  updatePunctualityBonusSettingsSchema,
+} from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
@@ -407,6 +425,343 @@ export async function updatePunctualityBonusSettings(input: unknown): Promise<Ac
     return { ok: true, data: null };
   } catch (error) {
     console.error("updatePunctualityBonusSettings", error);
+    return { ok: false, message: "No se pudo guardar la configuración del bono" };
+  }
+}
+
+// ---- Bono de asistencia (spec 65) ----
+
+const ATTENDANCE_BONUS_SETTINGS_LOG_LIMIT = 20;
+
+/**
+ * Una configuración por frecuencia activa que Periodos ofrece (claves SAT con letra definida), tenga o no fila.
+ * Sin fila: `updated_at` y `updated_by_name` son null, `monto` 0 y `status` false.
+ */
+async function loadAttendanceBonusSettings(idEmpresa: number): Promise<IAttendanceBonusSetting[]> {
+  const rows = await db.queryParams(
+    `SELECT pp.id_payment_period, pp.clave_sat, pp.description AS frequencyName,
+            CAST(ISNULL(s.monto, 0) AS float)            AS monto,
+            ISNULL(s.status, 0)                          AS status,
+            u.nombre                                     AS updated_by_name,
+            CONVERT(varchar(19), s.updated_at, 120)      AS updated_at
+       FROM [CentroPodologico].[RH].[payment_periods] pp
+       LEFT JOIN [CentroPodologico].[payroll].[attendance_bonus_settings] s
+         ON s.id_payment_period = pp.id_payment_period AND s.id_empresa = @id_empresa
+       LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.id_user = s.updated_by
+      WHERE pp.status = 1
+      ORDER BY pp.id_payment_period`,
+    { id_empresa: idEmpresa },
+  );
+  return (rows as IAttendanceBonusSetting[])
+    .filter((row) => row.clave_sat in PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY)
+    .map((row) => ({
+      id_payment_period: Number(row.id_payment_period),
+      clave_sat: row.clave_sat,
+      frequencyName: row.frequencyName,
+      monto: Number(row.monto),
+      status: Boolean(row.status),
+      updated_by_name: row.updated_by_name ?? null,
+      updated_at: row.updated_at ?? null,
+    }));
+}
+
+/** Las últimas 20 entradas de la bitácora de asistencia de la empresa, de la más reciente a la más antigua. */
+export async function getAttendanceBonusSettingsLog(): Promise<ActionResult<IAttendanceBonusSettingsLogEntry[]>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  try {
+    const rows = await db.queryParams(
+      `SELECT TOP (@limit)
+              l.id_log,
+              pp.description                                         AS frequencyName,
+              CAST(l.monto_anterior AS float)                        AS monto_anterior,
+              CAST(l.monto_nuevo AS float)                           AS monto_nuevo,
+              l.status_anterior, l.status_nuevo,
+              ISNULL(u.nombre, '')                                   AS updated_by_name,
+              CONVERT(varchar(19), l.updated_at, 120)                AS updated_at
+         FROM [CentroPodologico].[payroll].[attendance_bonus_settings_log] l
+         JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = l.id_payment_period
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.id_user = l.updated_by
+        WHERE l.id_empresa = @id_empresa
+        ORDER BY l.updated_at DESC, l.id_log DESC`,
+      { id_empresa: access.data.id_empresa, limit: ATTENDANCE_BONUS_SETTINGS_LOG_LIMIT },
+    );
+    return {
+      ok: true,
+      data: (rows as IAttendanceBonusSettingsLogEntry[]).map((row) => ({
+        id_log: Number(row.id_log),
+        frequencyName: row.frequencyName,
+        monto_anterior: row.monto_anterior === null ? null : Number(row.monto_anterior),
+        monto_nuevo: Number(row.monto_nuevo),
+        status_anterior: row.status_anterior === null ? null : Boolean(row.status_anterior),
+        status_nuevo: Boolean(row.status_nuevo),
+        updated_by_name: row.updated_by_name,
+        updated_at: row.updated_at,
+      })),
+    };
+  } catch (error) {
+    console.error("getAttendanceBonusSettingsLog", error);
+    return { ok: false, message: "No se pudo cargar la bitácora de cambios" };
+  }
+}
+
+/**
+ * Vista previa del bono de asistencia de un periodo (spec 65): por cada podólogo con control, cuenta sus faltas
+ * injustificadas con la detección de la spec 62 (sin quitar los días que otro periodo ya descontó) y las evalúa con el
+ * helper espejo. El resumen se calcula sin filtros y después se aplican resultado, búsqueda y paginación. En el cálculo
+ * manda el SQL; esto solo alimenta la pantalla.
+ */
+export async function getAttendanceBonusPage(
+  filters: IAttendanceBonusFilters,
+): Promise<ActionResult<IAttendanceBonusPage>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_empresa } = access.data;
+
+  const parsedFilters = attendanceBonusPageFiltersSchema.safeParse(filters);
+  if (!parsedFilters.success) {
+    return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Filtros inválidos" };
+  }
+  const { idPeriod, result: resultFilter, search: rawSearch, page } = parsedFilters.data;
+
+  try {
+    const [period, periodOptions, settings] = await Promise.all([
+      resolvePeriod(id_sucursal, idPeriod),
+      db.queryParams(
+        `SELECT p.id_period, p.codigo,
+                CONVERT(varchar(10), p.fecha_inicio, 120) AS fecha_inicio,
+                CONVERT(varchar(10), p.fecha_fin, 120)    AS fecha_fin,
+                p.status
+           FROM [CentroPodologico].[payroll].[periods] p
+          WHERE p.id_sucursal = @id_sucursal
+          ORDER BY p.fecha_inicio DESC, p.id_period DESC`,
+        { id_sucursal },
+      ),
+      loadAttendanceBonusSettings(id_empresa),
+    ]);
+
+    const emptyPage: IAttendanceBonusPage = {
+      period,
+      periodOptions: periodOptions as IAttendanceBonusPage["periodOptions"],
+      settings,
+      periodSetting: null,
+      rows: [],
+      totalRows: 0,
+      summary: { keeps: 0, loses: 0, notEvaluated: 0, estimatedAmount: 0 },
+      employeesWithoutSchedule: [],
+      recalculationNeeded: false,
+    };
+    if (!period) return { ok: true, data: emptyPage };
+
+    const periodSetting = settings.find((setting) => setting.id_payment_period === period.id_payment_period) ?? null;
+    // Una frecuencia sin fila no tiene bono, igual que una con status = 0.
+    const activeSetting = periodSetting && periodSetting.updated_at !== null && periodSetting.status ? periodSetting : null;
+
+    const [employees, scheduleByEmployee, checkInDateRows, absenceJustificationRows] = await Promise.all([
+      loadReviewedEmployees(id_sucursal, period),
+      loadScheduleByEmployee(id_sucursal, period),
+      // Sin bono nadie se evalúa: no hace falta leer checadas ni justificaciones.
+      activeSetting ? loadCheckInDays(id_sucursal, period) : Promise.resolve([]),
+      activeSetting ? loadJustifications("absence", id_sucursal, period) : Promise.resolve([]),
+    ]);
+
+    const checkInDatesByEmployee = groupByEmployee(checkInDateRows);
+    const absenceJustificationsByEmployee = groupByEmployee(absenceJustificationRows);
+
+    // Las faltas van hasta el día anterior a hoy.
+    const today = addZeroToday(new Date());
+    const dayAfterPeriodEnd = nextDate(period.fecha_fin);
+    const absenceRangeEndExclusive = today < dayAfterPeriodEnd ? today : dayAfterPeriodEnd;
+
+    const allRows: IAttendanceBonusEmployeeRow[] = [];
+    const employeesWithoutSchedule: IAttendanceBonusPage["employeesWithoutSchedule"] = [];
+
+    for (const employee of employees) {
+      const schedule = scheduleByEmployee.get(employee.id_empleado) ?? [];
+      const hasSchedule = schedule.length > 0;
+      if (!hasSchedule) {
+        employeesWithoutSchedule.push({ id_empleado: employee.id_empleado, nombre_completo: employee.nombre_completo });
+      }
+
+      let absenceCount = 0;
+      if (activeSetting && hasSchedule) {
+        const rangeStart = employee.fecha_ingreso > period.fecha_inicio ? employee.fecha_ingreso : period.fecha_inicio;
+        const justifiedAbsenceDates = new Set(
+          (absenceJustificationsByEmployee.get(employee.id_empleado) ?? []).map((row) => row.fecha),
+        );
+        const checkInDates = (checkInDatesByEmployee.get(employee.id_empleado) ?? []).map((row) => row.fecha);
+        absenceCount = detectEmployeeAbsences(schedule, checkInDates, rangeStart, absenceRangeEndExclusive).filter(
+          (absence) => !justifiedAbsenceDates.has(absence.fecha),
+        ).length;
+      }
+
+      allRows.push({
+        id_empleado: employee.id_empleado,
+        codigo_empleado: employee.codigo_empleado,
+        nombre_completo: employee.nombre_completo,
+        ...evaluateAttendanceBonus({
+          setting: activeSetting,
+          fechaIngreso: employee.fecha_ingreso,
+          fechaInicio: period.fecha_inicio,
+          hasSchedule,
+          absenceCount,
+        }),
+      });
+    }
+
+    // Tarjetas del periodo completo: no cambian con el filtro de resultado ni con la búsqueda.
+    const summary = {
+      keeps: allRows.filter((row) => row.result === "keeps").length,
+      loses: allRows.filter((row) => row.result === "loses").length,
+      notEvaluated: allRows.filter((row) => row.result === "not_evaluated").length,
+      estimatedAmount: Math.round(allRows.reduce((sum, row) => sum + row.amount, 0) * 100) / 100,
+    };
+
+    const search = normalizeSearchText(rawSearch.trim());
+    const filteredRows = allRows.filter(
+      (row) =>
+        (resultFilter === "all" || row.result === resultFilter) &&
+        (search === "" ||
+          normalizeSearchText(row.nombre_completo).includes(search) ||
+          normalizeSearchText(row.codigo_empleado).includes(search)),
+    );
+
+    const recalculationNeeded = await isAttendanceBonusRecalculationNeeded(period.id_period);
+
+    const pageStart = (page - 1) * ATTENDANCE_BONUS_PAGE_SIZE;
+
+    return {
+      ok: true,
+      data: {
+        ...emptyPage,
+        periodSetting,
+        rows: filteredRows.slice(pageStart, pageStart + ATTENDANCE_BONUS_PAGE_SIZE),
+        totalRows: filteredRows.length,
+        summary,
+        employeesWithoutSchedule,
+        recalculationNeeded,
+      },
+    };
+  } catch (error) {
+    console.error("getAttendanceBonusPage", error);
+    return { ok: false, message: "No se pudo cargar el bono de asistencia" };
+  }
+}
+
+interface IStoredAttendanceBonusSettingRow {
+  id_payment_period: number;
+  monto: number;
+  status: boolean;
+}
+
+/**
+ * Guarda el monto y el estatus del bono de asistencia por frecuencia, en una sola transacción: lee las filas de la
+ * empresa con UPDLOCK/HOLDLOCK, acepta solo frecuencias activas que Periodos ofrece, hace upsert únicamente de las que
+ * cambiaron (con `updated_at` nuevo: el aviso "Recalcula" lo compara con `calculated_at`) y escribe una fila de
+ * bitácora por cada una. Si nada cambió no escribe nada.
+ */
+export async function updateAttendanceBonusSettings(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_empresa, id_user } = access.data;
+
+  const parsed = updateAttendanceBonusSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const newSettings = parsed.data.settings;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<{ ok: true } | { ok: false; message: string }> => {
+      const previousRows = (await transaction.queryParams(
+        `SELECT id_payment_period, CAST(monto AS float) AS monto, status
+           FROM [CentroPodologico].[payroll].[attendance_bonus_settings] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_empresa = @id_empresa`,
+        { id_empresa },
+      )) as IStoredAttendanceBonusSettingRow[];
+      const previousByFrequency = new Map(previousRows.map((row) => [Number(row.id_payment_period), row]));
+
+      // Solo se aceptan frecuencias que Periodos ofrece; el FK atraparía las inexistentes, pero con un error opaco.
+      const frequencyRows = (await transaction.queryParams(
+        `SELECT id_payment_period, clave_sat FROM [CentroPodologico].[RH].[payment_periods] WHERE status = 1`,
+        {},
+      )) as { id_payment_period: number; clave_sat: string }[];
+      const allowedFrequencyIds = new Set(
+        frequencyRows
+          .filter((row) => row.clave_sat in PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY)
+          .map((row) => Number(row.id_payment_period)),
+      );
+      if (newSettings.some((setting) => !allowedFrequencyIds.has(setting.id_payment_period))) {
+        return { ok: false, message: "Una frecuencia es inválida" };
+      }
+
+      const changedSettings = newSettings.filter((setting) => {
+        const previous = previousByFrequency.get(setting.id_payment_period);
+        return (
+          !previous ||
+          Math.round(Number(previous.monto) * 100) !== Math.round(setting.monto * 100) ||
+          Boolean(previous.status) !== setting.status
+        );
+      });
+      if (changedSettings.length === 0) return { ok: true };
+
+      const updatedAt = buildDate(new Date());
+      for (const setting of changedSettings) {
+        const previous = previousByFrequency.get(setting.id_payment_period);
+        const settingParams = {
+          id_empresa,
+          id_payment_period: setting.id_payment_period,
+          monto: setting.monto,
+          status: setting.status,
+          updated_by: id_user,
+          updated_at: updatedAt,
+        };
+        if (previous) {
+          await transaction.queryParams(
+            `UPDATE [CentroPodologico].[payroll].[attendance_bonus_settings]
+                SET monto      = CAST(@monto AS decimal(12,2)),
+                    status     = @status,
+                    updated_by = @updated_by,
+                    updated_at = CAST(@updated_at AS datetime2(0))
+              WHERE id_empresa = @id_empresa AND id_payment_period = @id_payment_period`,
+            settingParams,
+          );
+        } else {
+          await transaction.queryParams(
+            `INSERT INTO [CentroPodologico].[payroll].[attendance_bonus_settings]
+               (id_empresa, id_payment_period, monto, status, updated_by, updated_at)
+             VALUES (@id_empresa, @id_payment_period, CAST(@monto AS decimal(12,2)), @status,
+                     @updated_by, CAST(@updated_at AS datetime2(0)))`,
+            settingParams,
+          );
+        }
+
+        await transaction.queryParams(
+          `INSERT INTO [CentroPodologico].[payroll].[attendance_bonus_settings_log]
+             (id_empresa, id_payment_period,
+              monto_anterior, monto_nuevo,
+              status_anterior, status_nuevo, updated_by, updated_at)
+           VALUES
+             (@id_empresa, @id_payment_period,
+              CAST(@previous_monto AS decimal(12,2)), CAST(@monto AS decimal(12,2)),
+              @previous_status, @status, @updated_by, CAST(@updated_at AS datetime2(0)))`,
+          {
+            ...settingParams,
+            previous_monto: previous ? Number(previous.monto) : null,
+            previous_status: previous ? Boolean(previous.status) : null,
+          },
+        );
+      }
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(PUNCTUALITY_BONUS_PATH);
+    revalidatePath("/dashboard/nomina/procesar");
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("updateAttendanceBonusSettings", error);
     return { ok: false, message: "No se pudo guardar la configuración del bono" };
   }
 }

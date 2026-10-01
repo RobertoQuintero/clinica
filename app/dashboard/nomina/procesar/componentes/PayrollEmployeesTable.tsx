@@ -75,6 +75,7 @@ export default function PayrollEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold text-right">Com. Ventas</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Horas extra</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono punt.</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Bono asist.</th>
               <th scope="col" className="px-6 py-3 font-semibold text-right">Total percepciones</th>
               <th scope="col" className="w-12 pr-4 py-3">
                 <span className="sr-only">Acciones</span>
@@ -84,7 +85,7 @@ export default function PayrollEmployeesTable({
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={13} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún empleado coincide con los filtros."
                     : "Ningún empleado tiene sueldo calculado en esta nómina."}
@@ -155,6 +156,10 @@ export default function PayrollEmployeesTable({
                       amount={employeeRow.importe_bono_puntualidad}
                       countLabel={employeeRow.bono_puntualidad_resultado === "P" ? "Perdido" : null}
                     />
+                    <CommissionAmountCell
+                      amount={employeeRow.importe_bono_asistencia}
+                      countLabel={employeeRow.bono_asistencia_resultado === "P" ? "Perdido" : null}
+                    />
                     <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
                       {formatPayrollCurrency(employeeRow.total_percepciones)}
                     </td>
@@ -203,6 +208,9 @@ export default function PayrollEmployeesTable({
               </td>
               <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeBonoPuntualidad)}
+              </td>
+              <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                {formatPayrollCurrency(totals.importeBonoAsistencia)}
               </td>
               <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
                 {formatPayrollCurrency(totals.totalPercepciones)}

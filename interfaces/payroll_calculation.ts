@@ -36,7 +36,10 @@ export interface IPayrollEmployeeRow {
   bono_puntualidad_faltas:    number;
   bono_puntualidad_maximo:    number | null;     // máximo aplicado; null si 'N'
   importe_bono_puntualidad:   number;
-  total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad, calculado en el SELECT
+  bono_asistencia_resultado:  "C" | "P" | "N";   // spec 65
+  bono_asistencia_faltas:     number;
+  importe_bono_asistencia:    number;
+  total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia, calculado en el SELECT
   calculated_at:      string;   // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -58,7 +61,7 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; totalPercepciones: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; totalPercepciones: number };   // de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
@@ -66,6 +69,7 @@ export interface IPayrollProcessPage {
   absenceRecalculationNeeded:  boolean;   // ídem, para las faltas (spec 62)
   latenessRecalculationNeeded: boolean;   // ídem, para los retardos (spec 63)
   punctualityBonusRecalculationNeeded: boolean;   // ídem, para el bono de puntualidad (spec 64)
+  attendanceBonusRecalculationNeeded:  boolean;   // ídem, para el bono de asistencia (spec 65)
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".
@@ -110,6 +114,9 @@ export interface IPayrollEmployeeSnapshot {
   bono_puntualidad_faltas:       number;
   bono_puntualidad_maximo:       number | null;     // máximo aplicado; null si 'N'
   importe_bono_puntualidad:      number;
+  bono_asistencia_resultado:     "C" | "P" | "N";   // spec 65
+  bono_asistencia_faltas:        number;
+  importe_bono_asistencia:       number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 

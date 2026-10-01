@@ -292,6 +292,8 @@ export const punctualityBonusPageFiltersSchema = z.object({
   page: z.number().int().positive(),
 });
 
+export const attendanceBonusPageFiltersSchema = punctualityBonusPageFiltersSchema;
+
 const PUNCTUALITY_BONUS_MAX_AMOUNT = 9999999999.99;   // decimal(12,2)
 const PUNCTUALITY_BONUS_MAX_SMALLINT = 32767;
 
@@ -329,3 +331,22 @@ export const updatePunctualityBonusSettingsSchema = z
   });
 
 export type UpdatePunctualityBonusSettingsSchemaInput = z.infer<typeof updatePunctualityBonusSettingsSchema>;
+
+// Sin máximo de incidencias: una sola falta injustificada quita el bono (spec 65).
+export const updateAttendanceBonusSettingsSchema = z
+  .object({
+    settings: z
+      .array(punctualityBonusSettingSchema.omit({ maximo_incidencias: true }))
+      .min(1, "No hay frecuencias que guardar")
+      .max(20, "Hay demasiadas frecuencias"),
+  })
+  .superRefine((value, context) => {
+    const seenFrequencies = new Set<number>();
+    for (const setting of value.settings) {
+      if (seenFrequencies.has(setting.id_payment_period)) {
+        context.addIssue({ code: "custom", path: ["settings"], message: "Una frecuencia está repetida" });
+        return;
+      }
+      seenFrequencies.add(setting.id_payment_period);
+    }
+  });

@@ -1,9 +1,10 @@
 import { ArrowRight, ChevronDown } from "lucide-react";
-import type { IPunctualityBonusSettingsLogEntry } from "@/interfaces/payroll_punctuality_bonus";
+import type { BonusKind, IBonusSettingsLogEntry } from "@/interfaces/payroll_bonus";
 import { formatDateTimeSlashed, formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 
 interface Props {
-  entries: IPunctualityBonusSettingsLogEntry[];
+  bonusKind: BonusKind;
+  entries: IBonusSettingsLogEntry[];
 }
 
 /** "$500.00 → $600.00": resalta el valor nuevo solo si cambió; si no, todo en tono secundario. */
@@ -39,7 +40,10 @@ function formatStatus(isActive: boolean): string {
 }
 
 /** Plegable para que la lista de podólogos siga siendo lo primero que se ve; sin JavaScript de cliente. */
-export default function PunctualityBonusSettingsLog({ entries }: Props) {
+export default function BonusSettingsLog({ bonusKind, entries }: Props) {
+  // Solo puntualidad tiene máximo de incidencias; asistencia no lleva esa columna.
+  const hasMaximum = bonusKind === "punctuality";
+  const columnCount = hasMaximum ? 6 : 5;
   return (
     <details className="group bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-3.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-50 hover:bg-[#f8f9ff] dark:hover:bg-zinc-800/50 transition-colors [&::-webkit-details-marker]:hidden">
@@ -59,14 +63,14 @@ export default function PunctualityBonusSettingsLog({ entries }: Props) {
               <th scope="col" className="px-6 py-3 font-semibold">Usuario</th>
               <th scope="col" className="px-6 py-3 font-semibold">Frecuencia</th>
               <th scope="col" className="px-6 py-3 font-semibold">Monto</th>
-              <th scope="col" className="px-6 py-3 font-semibold">Máximo de incidencias</th>
+              {hasMaximum && <th scope="col" className="px-6 py-3 font-semibold">Máximo de incidencias</th>}
               <th scope="col" className="px-6 py-3 font-semibold">Estatus</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {entries.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-[#747780] dark:text-zinc-500">
+                <td colSpan={columnCount} className="px-6 py-8 text-center text-[#747780] dark:text-zinc-500">
                   Sin cambios registrados
                 </td>
               </tr>
@@ -84,16 +88,18 @@ export default function PunctualityBonusSettingsLog({ entries }: Props) {
                       next={formatPayrollCurrency(entry.monto_nuevo)}
                     />
                   </td>
-                  <td className="px-6 py-3.5">
-                    <ChangeCell
-                      previous={
-                        entry.maximo_incidencias_anterior === null
-                          ? null
-                          : formatIncidents(entry.maximo_incidencias_anterior)
-                      }
-                      next={formatIncidents(entry.maximo_incidencias_nuevo)}
-                    />
-                  </td>
+                  {hasMaximum && (
+                    <td className="px-6 py-3.5">
+                      <ChangeCell
+                        previous={
+                          entry.maximo_incidencias_anterior == null
+                            ? null
+                            : formatIncidents(entry.maximo_incidencias_anterior)
+                        }
+                        next={formatIncidents(entry.maximo_incidencias_nuevo ?? 0)}
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-3.5">
                     <ChangeCell
                       previous={entry.status_anterior === null ? null : formatStatus(entry.status_anterior)}

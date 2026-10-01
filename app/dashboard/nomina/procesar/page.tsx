@@ -125,6 +125,10 @@ export default async function ProcesarNominaPage({
             recalculationNeeded={result.data.punctualityBonusRecalculationNeeded}
             message="Hay bonos de puntualidad que no coinciden con el último cálculo. Recalcula la nómina."
           />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.attendanceBonusRecalculationNeeded}
+            message="Hay bonos de asistencia que no coinciden con el último cálculo. Recalcula la nómina."
+          />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"
