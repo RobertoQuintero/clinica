@@ -292,6 +292,8 @@ export const punctualityBonusPageFiltersSchema = z.object({
   page: z.number().int().positive(),
 });
 
+export const attendanceBonusPageFiltersSchema = punctualityBonusPageFiltersSchema;
+
 const PUNCTUALITY_BONUS_MAX_AMOUNT = 9999999999.99;   // decimal(12,2)
 const PUNCTUALITY_BONUS_MAX_SMALLINT = 32767;
 
