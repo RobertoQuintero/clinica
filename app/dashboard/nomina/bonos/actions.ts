@@ -22,6 +22,7 @@ import { detectEmployeeLateness } from "@/lib/payroll/latenessDetection";
 import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { evaluatePunctualityBonus } from "@/lib/payroll/punctualityBonus";
+import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { punctualityBonusPageFiltersSchema, updatePunctualityBonusSettingsSchema } from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
@@ -264,6 +265,8 @@ export async function getPunctualityBonusPage(
           normalizeSearchText(row.codigo_empleado).includes(search)),
     );
 
+    const recalculationNeeded = await isPunctualityBonusRecalculationNeeded(period.id_period);
+
     const pageStart = (page - 1) * PUNCTUALITY_BONUS_PAGE_SIZE;
 
     return {
@@ -275,8 +278,7 @@ export async function getPunctualityBonusPage(
         totalRows: filteredRows.length,
         summary,
         employeesWithoutSchedule,
-        // El aviso "Recalcula" se conecta en el paso 11.
-        recalculationNeeded: false,
+        recalculationNeeded,
       },
     };
   } catch (error) {
