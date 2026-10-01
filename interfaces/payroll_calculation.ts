@@ -31,7 +31,12 @@ export interface IPayrollEmployeeRow {
   horas_extra_dobles:  number;
   horas_extra_triples: number;
   importe_horas_extra: number;  // dobles + triples, calculado en el SELECT
-  total_percepciones:  number;  // importe_salario + las tres comisiones + importe_horas_extra, calculado en el SELECT
+  bono_puntualidad_resultado: "C" | "P" | "N";   // spec 64
+  bono_puntualidad_retardos:  number;
+  bono_puntualidad_faltas:    number;
+  bono_puntualidad_maximo:    number | null;     // máximo aplicado; null si 'N'
+  importe_bono_puntualidad:   number;
+  total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra, calculado en el SELECT
   calculated_at:      string;   // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -99,6 +104,11 @@ export interface IPayrollEmployeeSnapshot {
   importe_horas_extra_dobles:    number;
   importe_horas_extra_triples:   number;
   limite_horas_dobles_aplicado:  number;
+  bono_puntualidad_resultado:    "C" | "P" | "N";   // spec 64
+  bono_puntualidad_retardos:     number;
+  bono_puntualidad_faltas:       number;
+  bono_puntualidad_maximo:       number | null;     // máximo aplicado; null si 'N'
+  importe_bono_puntualidad:      number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 

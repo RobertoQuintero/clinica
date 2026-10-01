@@ -142,6 +142,8 @@ export async function getPayrollProcessPage(
                 pe.piezas_vendidas, pe.importe_comision_productos,
                 pe.horas_extra_dobles, pe.horas_extra_triples,
                 pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples AS importe_horas_extra,
+                pe.bono_puntualidad_resultado, pe.bono_puntualidad_retardos, pe.bono_puntualidad_faltas,
+                pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples AS total_percepciones,
@@ -220,6 +222,11 @@ export async function getPayrollProcessPage(
           horas_extra_dobles: Number(row.horas_extra_dobles),
           horas_extra_triples: Number(row.horas_extra_triples),
           importe_horas_extra: Number(row.importe_horas_extra),
+          bono_puntualidad_retardos: Number(row.bono_puntualidad_retardos),
+          bono_puntualidad_faltas: Number(row.bono_puntualidad_faltas),
+          bono_puntualidad_maximo:
+            row.bono_puntualidad_maximo === null ? null : Number(row.bono_puntualidad_maximo),
+          importe_bono_puntualidad: Number(row.importe_bono_puntualidad),
           total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
@@ -319,6 +326,8 @@ export async function getPayrollEmployeeDetail(
                 pe.horas_extra_dobles, pe.horas_extra_triples,
                 pe.importe_horas_extra_dobles, pe.importe_horas_extra_triples,
                 pe.limite_horas_dobles_aplicado,
+                pe.bono_puntualidad_resultado, pe.bono_puntualidad_retardos, pe.bono_puntualidad_faltas,
+                pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -450,6 +459,12 @@ export async function getPayrollEmployeeDetail(
           importe_horas_extra_dobles: Number(snapshotRow.importe_horas_extra_dobles),
           importe_horas_extra_triples: Number(snapshotRow.importe_horas_extra_triples),
           limite_horas_dobles_aplicado: Number(snapshotRow.limite_horas_dobles_aplicado),
+          bono_puntualidad_resultado: snapshotRow.bono_puntualidad_resultado,
+          bono_puntualidad_retardos: Number(snapshotRow.bono_puntualidad_retardos),
+          bono_puntualidad_faltas: Number(snapshotRow.bono_puntualidad_faltas),
+          bono_puntualidad_maximo:
+            snapshotRow.bono_puntualidad_maximo === null ? null : Number(snapshotRow.bono_puntualidad_maximo),
+          importe_bono_puntualidad: Number(snapshotRow.importe_bono_puntualidad),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
