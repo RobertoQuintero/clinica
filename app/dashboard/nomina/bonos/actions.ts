@@ -18,6 +18,7 @@ import {
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { detectEmployeeAbsences, nextDate } from "@/lib/payroll/absenceDetection";
 import { evaluateAttendanceBonus } from "@/lib/payroll/attendanceBonus";
+import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
 import {
   ATTENDANCE_BONUS_PAGE_SIZE,
   PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY,
@@ -626,6 +627,8 @@ export async function getAttendanceBonusPage(
           normalizeSearchText(row.codigo_empleado).includes(search)),
     );
 
+    const recalculationNeeded = await isAttendanceBonusRecalculationNeeded(period.id_period);
+
     const pageStart = (page - 1) * ATTENDANCE_BONUS_PAGE_SIZE;
 
     return {
@@ -637,8 +640,7 @@ export async function getAttendanceBonusPage(
         totalRows: filteredRows.length,
         summary,
         employeesWithoutSchedule,
-        // El aviso "Recalcula" se conecta en el paso 11.
-        recalculationNeeded: false,
+        recalculationNeeded,
       },
     };
   } catch (error) {
