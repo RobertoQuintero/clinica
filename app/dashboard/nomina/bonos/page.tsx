@@ -1,7 +1,6 @@
-import { ChevronRight } from "lucide-react";
 import { readBonusKind } from "@/lib/payroll/bonusUrls";
 import { readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
-import PayrollEmptyState from "../componentes/PayrollEmptyState";
+import AttendanceBonusView from "./componentes/AttendanceBonusView";
 import BonusKindTabs from "./componentes/BonusKindTabs";
 import PunctualityBonusView from "./componentes/PunctualityBonusView";
 
@@ -20,25 +19,9 @@ export default async function BonusesPage({ searchParams }: { searchParams: Prom
 
   const kindTabs = <BonusKindTabs activeKind={bonusKind} preservedSearchParams={preservedSearchParams} />;
 
-  if (bonusKind === "attendance") {
-    return (
-      <div className="flex flex-col gap-5">
-        <div>
-          <div className="flex items-center gap-1.5 text-sm text-[#44474f] dark:text-zinc-400">
-            <span>Nómina</span>
-            <ChevronRight size={14} />
-            <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Bonos</span>
-          </div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mt-1 mb-1">Bonos de asistencia</h2>
-          <p className="text-sm text-[#44474f] dark:text-zinc-400">
-            Los podólogos que estuvieron el periodo completo cobran el bono si no tienen ninguna falta injustificada.
-          </p>
-        </div>
-        {kindTabs}
-        <PayrollEmptyState title="Próximamente" description="El bono de asistencia aún no está disponible." />
-      </div>
-    );
-  }
-
-  return <PunctualityBonusView rawSearchParams={rawSearchParams} kindTabs={kindTabs} />;
+  return bonusKind === "attendance" ? (
+    <AttendanceBonusView rawSearchParams={rawSearchParams} kindTabs={kindTabs} />
+  ) : (
+    <PunctualityBonusView rawSearchParams={rawSearchParams} kindTabs={kindTabs} />
+  );
 }
