@@ -43,7 +43,7 @@ El sistema debe mostrar explícitamente en la vista de nómina los siguientes ca
   * **Regla:** Llegar puntual los 12 días laborables de la quincena otorga un bono de $\$500.00\text{ MXN}$ a la quincena.
   * **Requerimiento:** El monto del bono debe ser parametrizable/ajustable desde el sistema.
 * **Bono por Asistencia (Por no faltar):**
-  * **Regla:** No tener ninguna falta durante los 15 días quincenales otorga un bono de $\$500.00\text{ MXN}$ a la quincena.
+  * **Regla:** No tener ninguna falta durante los dias habiles del periodo otorga un bono de $\$500.00\text{ MXN}$ a la quincena.
   * **Requerimiento:** El monto del bono debe ser parametrizable/ajustable desde el sistema.
 
 ### 2.3 Comisiones

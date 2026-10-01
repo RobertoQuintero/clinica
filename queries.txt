@@ -1841,3 +1841,65 @@ ALTER TABLE [payroll].[period_employees] WITH CHECK
             AND [bono_puntualidad_retardos] + [bono_puntualidad_faltas] > [bono_puntualidad_maximo]
             AND [importe_bono_puntualidad] = 0))
 GO
+
+-- Spec 65: bono de asistencia
+-- Spec 65: bono de asistencia por empresa y frecuencia. Sin fila o status = 0 = no hay bono.
+-- No hay máximo: una sola falta injustificada lo quita.
+CREATE TABLE [payroll].[attendance_bonus_settings](
+    [id_empresa]        [int]           NOT NULL,
+    [id_payment_period] [smallint]      NOT NULL,
+    [monto]             [decimal](12,2) NOT NULL,   -- importe total del bono en el periodo
+    [status]            [bit]           NOT NULL,   -- 1 aplica | 0 no aplica
+    [updated_by]        [int]           NOT NULL,
+    [updated_at]        [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_attendance_bonus_settings] PRIMARY KEY CLUSTERED ([id_empresa] ASC, [id_payment_period] ASC),
+ CONSTRAINT [FK_attendance_bonus_settings_payment_period] FOREIGN KEY ([id_payment_period])
+     REFERENCES [RH].[payment_periods] ([id_payment_period]),
+ CONSTRAINT [CK_attendance_bonus_settings_valores] CHECK ([monto] > 0)
+) ON [PRIMARY]
+GO
+
+-- Semillas: semanal (SAT 02) y quincenal (SAT 04), $500, activas.
+INSERT INTO [payroll].[attendance_bonus_settings]
+    ([id_empresa],[id_payment_period],[monto],[status],[updated_by],[updated_at])
+SELECT 1, pp.[id_payment_period], 500.00, 1, 1, '2026-10-01 00:00:00'
+FROM [RH].[payment_periods] pp
+WHERE pp.[clave_sat] IN ('02', '04')
+GO
+
+-- Spec 65: bitácora. Una fila por frecuencia que cambió en el guardado.
+CREATE TABLE [payroll].[attendance_bonus_settings_log](
+    [id_log]            [int] IDENTITY(1,1) NOT NULL,
+    [id_empresa]        [int]            NOT NULL,
+    [id_payment_period] [smallint]       NOT NULL,
+    [monto_anterior]    [decimal](12,2)  NULL,   -- NULL: no había fila para esa frecuencia
+    [monto_nuevo]       [decimal](12,2)  NOT NULL,
+    [status_anterior]   [bit]            NULL,
+    [status_nuevo]      [bit]            NOT NULL,
+    [updated_by]        [int]            NOT NULL,
+    [updated_at]        [datetime2](0)   NOT NULL,
+ CONSTRAINT [PK_attendance_bonus_settings_log] PRIMARY KEY CLUSTERED ([id_log] ASC)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_attendance_bonus_settings_log_empresa]
+    ON [payroll].[attendance_bonus_settings_log] ([id_empresa], [updated_at] DESC)
+GO
+
+-- Spec 65: resultado congelado del bono por renglón de nómina.
+-- 'C' conserva | 'P' pierde | 'N' no evaluado (fiscal, sin configuración, ingreso a mitad, sin horario).
+-- Los snapshots anteriores quedan en 'N' con importe 0.
+ALTER TABLE [payroll].[period_employees] ADD
+    [bono_asistencia_resultado] [char](1)       NOT NULL CONSTRAINT [DF_period_employees_bono_asistencia_resultado] DEFAULT ('N'),
+    [bono_asistencia_faltas]    [smallint]      NOT NULL CONSTRAINT [DF_period_employees_bono_asistencia_faltas]    DEFAULT (0),
+    [importe_bono_asistencia]   [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_importe_bono_asistencia]   DEFAULT (0)
+GO
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_bono_asistencia] CHECK (
+        ([bono_asistencia_resultado] = 'N'
+            AND [bono_asistencia_faltas] = 0 AND [importe_bono_asistencia] = 0)
+     OR ([bono_asistencia_resultado] = 'C'
+            AND [tipo_nomina] = 'O' AND [bono_asistencia_faltas] = 0 AND [importe_bono_asistencia] > 0)
+     OR ([bono_asistencia_resultado] = 'P'
+            AND [tipo_nomina] = 'O' AND [bono_asistencia_faltas] > 0 AND [importe_bono_asistencia] = 0))
+GO
