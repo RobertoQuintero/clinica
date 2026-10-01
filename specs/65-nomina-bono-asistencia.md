@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md) y [54 — Detalle de percepciones](54-nomina-detalle-percepciones-empleado.md): `calculatePayrollPeriod`, el snapshot `payroll.period_employees`, `buildPerceptionLines`, la pantalla Detalle y "Total percepciones" en Procesar.
   - [51 — Empleado: periodo de pago](51-periodo-pago-empleado.md) y [52 — Nómina: periodos](52-nomina-periodos.md): la frecuencia del periodo (`id_payment_period`) decide qué configuración del bono se usa.
@@ -352,87 +352,87 @@ importe_bono_asistencia:   number;
 
 **Base de datos**
 
-- [ ] Existen `payroll.attendance_bonus_settings` y `payroll.attendance_bonus_settings_log`.
-- [ ] `payroll.period_employees` tiene `bono_asistencia_resultado`, `bono_asistencia_faltas` e `importe_bono_asistencia`.
-- [ ] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
-- [ ] Las semillas dejan a la empresa 1 con semanal (`02`) y quincenal (`04`) en $500, activas.
-- [ ] Los snapshots calculados antes de esta spec tienen `bono_asistencia_resultado = 'N'` e `importe_bono_asistencia = 0`.
-- [ ] Insertar a mano cualquiera de estos renglones falla por `CK_period_employees_bono_asistencia`:
+- [x] Existen `payroll.attendance_bonus_settings` y `payroll.attendance_bonus_settings_log`.
+- [x] `payroll.period_employees` tiene `bono_asistencia_resultado`, `bono_asistencia_faltas` e `importe_bono_asistencia`.
+- [x] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
+- [x] Las semillas dejan a la empresa 1 con semanal (`02`) y quincenal (`04`) en $500, activas.
+- [x] Los snapshots calculados antes de esta spec tienen `bono_asistencia_resultado = 'N'` e `importe_bono_asistencia = 0`.
+- [x] Insertar a mano cualquiera de estos renglones falla por `CK_period_employees_bono_asistencia`:
   - un renglón `'F'` con resultado `'C'`;
   - un `'C'` con `bono_asistencia_faltas = 1`;
   - un `'P'` con `bono_asistencia_faltas = 0`.
-- [ ] Insertar `monto = 0` en `attendance_bonus_settings` falla por `CK_attendance_bonus_settings_valores`.
+- [x] Insertar `monto = 0` en `attendance_bonus_settings` falla por `CK_attendance_bonus_settings_valores`.
 
 **Refactor de la spec 64**
 
-- [ ] `/dashboard/nomina/bonos` sin parámetro `bono`, con `bono=puntualidad` o con un valor desconocido muestra la pestaña de puntualidad. La tarjeta de configuración, el modal (con el campo "Máximo de incidencias"), la bitácora, la tabla y los avisos se ven igual que antes de esta spec.
-- [ ] Editar la configuración de puntualidad sigue guardando y escribiendo su propia bitácora, sin tocar `attendance_bonus_settings_log`.
+- [x] `/dashboard/nomina/bonos` sin parámetro `bono`, con `bono=puntualidad` o con un valor desconocido muestra la pestaña de puntualidad. La tarjeta de configuración, el modal (con el campo "Máximo de incidencias"), la bitácora, la tabla y los avisos se ven igual que antes de esta spec.
+- [x] Editar la configuración de puntualidad sigue guardando y escribiendo su propia bitácora, sin tocar `attendance_bonus_settings_log`.
 
 **Selector de bono**
 
-- [ ] Las pestañas "Puntualidad" y "Asistencia" se ven arriba de la pantalla Bonos, y la activa está marcada.
-- [ ] Cambiar de pestaña conserva `periodo`, `resultado` y `q`, y regresa a la página 1.
-- [ ] En la pestaña de asistencia, la paginación y los filtros conservan `bono=asistencia`.
+- [x] Las pestañas "Puntualidad" y "Asistencia" se ven arriba de la pantalla Bonos, y la activa está marcada.
+- [x] Cambiar de pestaña conserva `periodo`, `resultado` y `q`, y regresa a la página 1.
+- [x] En la pestaña de asistencia, la paginación y los filtros conservan `bono=asistencia`.
 
 **Evaluación (pestaña de asistencia)**
 
-- [ ] En un periodo quincenal con las semillas, un podólogo sin faltas aparece como "Conserva" con $500.
-- [ ] Un podólogo con 1 falta injustificada aparece como "Pierde" con $0.
-- [ ] Una falta con justificante (`'J'`) o marcada "No aplica" (`'N'`) no quita el bono.
-- [ ] Un podólogo con retardos graves o acumulables y sin faltas aparece como "Conserva".
-- [ ] Una falta que otro periodo ya descontó sí quita el bono en este periodo.
-- [ ] Un día de hoy sin checada no cuenta como falta.
-- [ ] Un podólogo con `fecha_ingreso` posterior a `fecha_inicio` aparece como "No evaluado — Ingresó a mitad del periodo" con $0.
-- [ ] Un podólogo sin horario aparece como "No evaluado — Sin horario" y en el aviso "Sin horario definido".
-- [ ] Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` **no** aparece en la pestaña.
-- [ ] En un periodo mensual (sin fila) todos aparecen como "No evaluado" y se muestra "Bono no configurado para Mensual". Pasa lo mismo con una frecuencia con `status = 0`.
-- [ ] Con la empresa sin fila en `lateness_settings`, el bono de asistencia se sigue evaluando con normalidad.
-- [ ] Las tarjetas de resumen (conservan, pierden, no evaluados e importe estimado) no cambian al filtrar por resultado o búsqueda.
-- [ ] Hacer clic en el número de faltas lleva a `/dashboard/nomina/faltas` con el mismo periodo y el empleado en la búsqueda. Un 0 no es enlace.
+- [x] En un periodo quincenal con las semillas, un podólogo sin faltas aparece como "Conserva" con $500.
+- [x] Un podólogo con 1 falta injustificada aparece como "Pierde" con $0.
+- [x] Una falta con justificante (`'J'`) o marcada "No aplica" (`'N'`) no quita el bono.
+- [x] Un podólogo con retardos graves o acumulables y sin faltas aparece como "Conserva".
+- [x] Una falta que otro periodo ya descontó sí quita el bono en este periodo.
+- [x] Un día de hoy sin checada no cuenta como falta.
+- [x] Un podólogo con `fecha_ingreso` posterior a `fecha_inicio` aparece como "No evaluado — Ingresó a mitad del periodo" con $0.
+- [x] Un podólogo sin horario aparece como "No evaluado — Sin horario" y en el aviso "Sin horario definido".
+- [x] Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` **no** aparece en la pestaña.
+- [x] En un periodo mensual (sin fila) todos aparecen como "No evaluado" y se muestra "Bono no configurado para Mensual". Pasa lo mismo con una frecuencia con `status = 0`.
+- [x] Con la empresa sin fila en `lateness_settings`, el bono de asistencia se sigue evaluando con normalidad.
+- [x] Las tarjetas de resumen (conservan, pierden, no evaluados e importe estimado) no cambian al filtrar por resultado o búsqueda.
+- [x] Hacer clic en el número de faltas lleva a `/dashboard/nomina/faltas` con el mismo periodo y el empleado en la búsqueda. Un 0 no es enlace.
 
 **Configuración**
 
-- [ ] El modal de asistencia muestra una fila por frecuencia activa, tenga o no configuración, con monto y estatus y **sin** campo de máximo.
-- [ ] Cambiar el monto quincenal a $600 hace que quien conserva el bono muestre $600. La bitácora de asistencia agrega una fila para la frecuencia quincenal y ninguna para la semanal.
-- [ ] Guardar sin cambios no escribe ninguna fila en la bitácora ni cambia `updated_at`.
-- [ ] Guardar `monto = 0` o un monto con 3 decimales muestra un error en el modal y no guarda nada.
-- [ ] Configurar por primera vez una frecuencia sin fila (por ejemplo, mensual) crea la fila y escribe la bitácora con los valores anteriores en `NULL`.
-- [ ] Un usuario con rol 2, 3, 5 o 6 que llama a `updateAttendanceBonusSettings` directamente recibe `{ ok: false }`.
+- [x] El modal de asistencia muestra una fila por frecuencia activa, tenga o no configuración, con monto y estatus y **sin** campo de máximo.
+- [x] Cambiar el monto quincenal a $600 hace que quien conserva el bono muestre $600. La bitácora de asistencia agrega una fila para la frecuencia quincenal y ninguna para la semanal.
+- [x] Guardar sin cambios no escribe ninguna fila en la bitácora ni cambia `updated_at`.
+- [x] Guardar `monto = 0` o un monto con 3 decimales muestra un error en el modal y no guarda nada.
+- [x] Configurar por primera vez una frecuencia sin fila (por ejemplo, mensual) crea la fila y escribe la bitácora con los valores anteriores en `NULL`.
+- [x] Un usuario con rol 2, 3, 5 o 6 que llama a `updateAttendanceBonusSettings` directamente recibe `{ ok: false }`.
 
 **Cálculo**
 
-- [ ] Recalcular un periodo ya calculado deja idénticas las columnas `dias`, `dias_falta`, `dias_retardo`, `importe_salario`, las de comisiones, las de horas extra y las cinco del bono de puntualidad.
-- [ ] Un podólogo quincenal sin faltas queda con `'C'` e `importe_bono_asistencia = 500` en su renglón `'O'`.
-- [ ] Con 2 faltas queda con `'P'`, `bono_asistencia_faltas = 2` e importe 0.
-- [ ] El renglón `'F'` del mismo podólogo queda con `'N'` e importe 0.
-- [ ] Un empleado no controlado (sin usuario podólogo activo) queda con `'N'` en `'O'`.
-- [ ] Con `fecha_ingreso > fecha_inicio`, sin horario, o con la frecuencia sin fila o con `status = 0`, el renglón queda con `'N'` e importe 0.
-- [ ] Un periodo calculado a mitad de su rango y recalculado después de que aparece una falta nueva cambia de `'C'` a `'P'`.
-- [ ] "Revertir" deja el periodo sin snapshot. Al calcular de nuevo, el bono se evalúa desde cero.
+- [x] Recalcular un periodo ya calculado deja idénticas las columnas `dias`, `dias_falta`, `dias_retardo`, `importe_salario`, las de comisiones, las de horas extra y las cinco del bono de puntualidad.
+- [x] Un podólogo quincenal sin faltas queda con `'C'` e `importe_bono_asistencia = 500` en su renglón `'O'`.
+- [x] Con 2 faltas queda con `'P'`, `bono_asistencia_faltas = 2` e importe 0.
+- [x] El renglón `'F'` del mismo podólogo queda con `'N'` e importe 0.
+- [x] Un empleado no controlado (sin usuario podólogo activo) queda con `'N'` en `'O'`.
+- [x] Con `fecha_ingreso > fecha_inicio`, sin horario, o con la frecuencia sin fila o con `status = 0`, el renglón queda con `'N'` e importe 0.
+- [x] Un periodo calculado a mitad de su rango y recalculado después de que aparece una falta nueva cambia de `'C'` a `'P'`.
+- [x] "Revertir" deja el periodo sin snapshot. Al calcular de nuevo, el bono se evalúa desde cero.
 
 **Procesar y Detalle**
 
-- [ ] En Procesar, la columna "Bono asist." aparece después de "Bono punt.". Muestra $500 para quien conserva y $0 con "Perdido" para quien pierde.
-- [ ] "Total percepciones", la tarjeta y el pie incluyen el bono de asistencia, y no cambian con los filtros de puesto o búsqueda.
-- [ ] En el Detalle (operativa), quien conserva ve "Bono de asistencia" con "Sin faltas en el periodo" y $500.
-- [ ] Quien pierde ve la línea con $0 y "Perdido: N faltas".
-- [ ] Con resultado `'N'`, o en la vista fiscal, la línea no aparece.
-- [ ] El importe mostrado siempre es el guardado en el snapshot.
+- [x] En Procesar, la columna "Bono asist." aparece después de "Bono punt.". Muestra $500 para quien conserva y $0 con "Perdido" para quien pierde.
+- [x] "Total percepciones", la tarjeta y el pie incluyen el bono de asistencia, y no cambian con los filtros de puesto o búsqueda.
+- [x] En el Detalle (operativa), quien conserva ve "Bono de asistencia" con "Sin faltas en el periodo" y $500.
+- [x] Quien pierde ve la línea con $0 y "Perdido: N faltas".
+- [x] Con resultado `'N'`, o en la vista fiscal, la línea no aparece.
+- [x] El importe mostrado siempre es el guardado en el snapshot.
 
 **Aviso "Recalcula"**
 
-- [ ] Con el periodo en estatus 2, justificar en Faltas la única falta de un podólogo que perdió el bono muestra "Hay bonos de asistencia que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en la pestaña de asistencia.
-- [ ] Con el periodo en estatus 2, cambiar el monto o el estatus de asistencia de la frecuencia del periodo muestra el aviso. Cambiar otra frecuencia no lo muestra, ni tampoco cambiar la configuración de puntualidad.
-- [ ] Una falta nueva que cambia el resultado muestra el aviso.
-- [ ] Después de "Recalcular", el aviso desaparece.
-- [ ] Con el periodo en estatus 1, el aviso nunca aparece.
-- [ ] Faltas, Retardos, Horas extra y el bono de puntualidad siguen mostrando su propio aviso con su texto de siempre.
+- [x] Con el periodo en estatus 2, justificar en Faltas la única falta de un podólogo que perdió el bono muestra "Hay bonos de asistencia que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en la pestaña de asistencia.
+- [x] Con el periodo en estatus 2, cambiar el monto o el estatus de asistencia de la frecuencia del periodo muestra el aviso. Cambiar otra frecuencia no lo muestra, ni tampoco cambiar la configuración de puntualidad.
+- [x] Una falta nueva que cambia el resultado muestra el aviso.
+- [x] Después de "Recalcular", el aviso desaparece.
+- [x] Con el periodo en estatus 1, el aviso nunca aparece.
+- [x] Faltas, Retardos, Horas extra y el bono de puntualidad siguen mostrando su propio aviso con su texto de siempre.
 
 **Documentación**
 
-- [ ] `docs/nomina.md` tiene la sección "Bono de asistencia (spec 65)".
-- [ ] El párrafo inicial menciona el bono de asistencia como concepto calculado.
-- [ ] La sección de la spec 64 ya no lo presenta como pendiente.
+- [x] `docs/nomina.md` tiene la sección "Bono de asistencia (spec 65)".
+- [x] El párrafo inicial menciona el bono de asistencia como concepto calculado.
+- [x] La sección de la spec 64 ya no lo presenta como pendiente.
 
 ## Decisiones tomadas y descartadas
 
