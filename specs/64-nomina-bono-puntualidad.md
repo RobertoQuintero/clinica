@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md) y [54 — Detalle de percepciones](54-nomina-detalle-percepciones-empleado.md): `calculatePayrollPeriod`, el snapshot `payroll.period_employees`, `buildPerceptionLines`, la pantalla Detalle y "Total percepciones" en Procesar.
   - [51 — Empleado: periodo de pago](51-periodo-pago-empleado.md) y [52 — Nómina: periodos](52-nomina-periodos.md): la frecuencia del periodo (`id_payment_period`) decide qué configuración del bono se aplica.
@@ -302,85 +302,85 @@ importe_bono_puntualidad:   number;
 
 **Base de datos**
 
-- [ ] Las tablas `payroll.punctuality_bonus_settings` y `payroll.punctuality_bonus_settings_log` existen, y `payroll.period_employees` tiene `bono_puntualidad_resultado`, `bono_puntualidad_retardos`, `bono_puntualidad_faltas`, `bono_puntualidad_maximo` e `importe_bono_puntualidad`. Su DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
-- [ ] Las semillas dejan a la empresa 1 con semanal (`02`) y quincenal (`04`): $500, máximo 1, activas.
-- [ ] Los snapshots calculados antes de esta spec tienen `bono_puntualidad_resultado = 'N'` e `importe_bono_puntualidad = 0`.
-- [ ] Insertar a mano un renglón `'F'` con resultado `'C'`, o un `'C'` con `retardos + faltas > maximo`, falla por `CK_period_employees_bono_puntualidad`.
-- [ ] Insertar `monto = 0` o `maximo_incidencias = -1` en `punctuality_bonus_settings` falla por `CK_punctuality_bonus_settings_valores`.
+- [x] Las tablas `payroll.punctuality_bonus_settings` y `payroll.punctuality_bonus_settings_log` existen, y `payroll.period_employees` tiene `bono_puntualidad_resultado`, `bono_puntualidad_retardos`, `bono_puntualidad_faltas`, `bono_puntualidad_maximo` e `importe_bono_puntualidad`. Su DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
+- [x] Las semillas dejan a la empresa 1 con semanal (`02`) y quincenal (`04`): $500, máximo 1, activas.
+- [x] Los snapshots calculados antes de esta spec tienen `bono_puntualidad_resultado = 'N'` e `importe_bono_puntualidad = 0`.
+- [x] Insertar a mano un renglón `'F'` con resultado `'C'`, o un `'C'` con `retardos + faltas > maximo`, falla por `CK_period_employees_bono_puntualidad`.
+- [x] Insertar `monto = 0` o `maximo_incidencias = -1` en `punctuality_bonus_settings` falla por `CK_punctuality_bonus_settings_valores`.
 
 **Regla del retardo (cambio a la spec 63)**
 
-- [ ] Con entrada a las 08:00 y tolerancia 10, una primera entrada a las 08:10:59 **no** aparece en Retardos, y una a las 08:11:00 aparece con 11 minutos.
-- [ ] Justificar (llamando a la action directamente) un día con llegada a las 08:10 devuelve `{ ok: false }`.
-- [ ] Calcular un periodo con una llegada a las 08:10 no la descuenta ni la agrega a `period_employee_lateness`.
-- [ ] Una llegada a las 08:30 con umbral grave 30 sigue siendo "Grave".
-- [ ] Con el periodo en estatus 2 y un retardo de exactamente 10 minutos ya descontado, Retardos y Procesar muestran el aviso "Recalcula" de retardos.
+- [x] Con entrada a las 08:00 y tolerancia 10, una primera entrada a las 08:10:59 **no** aparece en Retardos, y una a las 08:11:00 aparece con 11 minutos.
+- [x] Justificar (llamando a la action directamente) un día con llegada a las 08:10 devuelve `{ ok: false }`.
+- [x] Calcular un periodo con una llegada a las 08:10 no la descuenta ni la agrega a `period_employee_lateness`.
+- [x] Una llegada a las 08:30 con umbral grave 30 sigue siendo "Grave".
+- [x] Con el periodo en estatus 2 y un retardo de exactamente 10 minutos ya descontado, Retardos y Procesar muestran el aviso "Recalcula" de retardos.
 
 **Fuentes compartidas**
 
-- [ ] Después de extraer `lib/payroll/incidentSources.ts`, Faltas y Retardos muestran las mismas filas, tarjetas y resúmenes que antes para el mismo periodo, salvo los retardos de exactamente la tolerancia (por la regla `>`).
+- [x] Después de extraer `lib/payroll/incidentSources.ts`, Faltas y Retardos muestran las mismas filas, tarjetas y resúmenes que antes para el mismo periodo, salvo los retardos de exactamente la tolerancia (por la regla `>`).
 
 **Evaluación (pantalla Bonos)**
 
-- [ ] En un periodo quincenal con las semillas, un podólogo con 0 incidencias aparece como "Conserva" con $500.
-- [ ] Con 1 retardo acumulable aparece "Conserva".
-- [ ] Con 1 retardo y 1 falta aparece "Pierde" con $0.
-- [ ] Con 2 faltas aparece "Pierde".
-- [ ] Un retardo grave cuenta como 1 incidencia, igual que uno acumulable.
-- [ ] Un retardo o una falta con justificante (`'J'`) o marcado "No aplica" (`'N'`) no cuenta como incidencia.
-- [ ] Un retardo acumulable en una frecuencia **sin escalones** sí cuenta como incidencia.
-- [ ] Un retardo o una falta que otro periodo ya descontó sí cuenta como incidencia en este periodo.
-- [ ] La falta de hoy no cuenta (todavía no es falta), y el retardo de hoy sí cuenta en cuanto existe la checada de entrada.
-- [ ] Un podólogo con `fecha_ingreso` posterior a `fecha_inicio` aparece como "No evaluado — Ingresó a mitad del periodo" con $0.
-- [ ] Un podólogo sin horario aparece como "No evaluado — Sin horario" y en el aviso "Sin horario definido".
-- [ ] Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` **no** aparece en la pantalla.
-- [ ] En un periodo mensual (sin fila de bono) todos aparecen como "No evaluado" y se muestra "Bono no configurado para Mensual". Pasa lo mismo con una frecuencia que tiene fila con `status = 0`.
-- [ ] Con la empresa sin fila en `lateness_settings`, todos aparecen como "No evaluado" y se muestra "Sin configuración de retardos".
-- [ ] Las tarjetas de resumen (conservan, pierden, no evaluados e importe estimado) no cambian al filtrar por resultado o búsqueda.
-- [ ] Hacer clic en el número de retardos o de faltas lleva a Retardos o a Faltas con el mismo periodo y el empleado en la búsqueda.
-- [ ] La pantalla aparece en el menú Nómina, después de "Retardos". Un usuario con rol 2, 3, 5 o 6 que entra a `/dashboard/nomina/bonos` es redirigido a `/dashboard`.
+- [x] En un periodo quincenal con las semillas, un podólogo con 0 incidencias aparece como "Conserva" con $500.
+- [x] Con 1 retardo acumulable aparece "Conserva".
+- [x] Con 1 retardo y 1 falta aparece "Pierde" con $0.
+- [x] Con 2 faltas aparece "Pierde".
+- [x] Un retardo grave cuenta como 1 incidencia, igual que uno acumulable.
+- [x] Un retardo o una falta con justificante (`'J'`) o marcado "No aplica" (`'N'`) no cuenta como incidencia.
+- [x] Un retardo acumulable en una frecuencia **sin escalones** sí cuenta como incidencia.
+- [x] Un retardo o una falta que otro periodo ya descontó sí cuenta como incidencia en este periodo.
+- [x] La falta de hoy no cuenta (todavía no es falta), y el retardo de hoy sí cuenta en cuanto existe la checada de entrada.
+- [x] Un podólogo con `fecha_ingreso` posterior a `fecha_inicio` aparece como "No evaluado — Ingresó a mitad del periodo" con $0.
+- [x] Un podólogo sin horario aparece como "No evaluado — Sin horario" y en el aviso "Sin horario definido".
+- [x] Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` **no** aparece en la pantalla.
+- [x] En un periodo mensual (sin fila de bono) todos aparecen como "No evaluado" y se muestra "Bono no configurado para Mensual". Pasa lo mismo con una frecuencia que tiene fila con `status = 0`.
+- [x] Con la empresa sin fila en `lateness_settings`, todos aparecen como "No evaluado" y se muestra "Sin configuración de retardos".
+- [x] Las tarjetas de resumen (conservan, pierden, no evaluados e importe estimado) no cambian al filtrar por resultado o búsqueda.
+- [x] Hacer clic en el número de retardos o de faltas lleva a Retardos o a Faltas con el mismo periodo y el empleado en la búsqueda.
+- [x] La pantalla aparece en el menú Nómina, después de "Retardos". Un usuario con rol 2, 3, 5 o 6 que entra a `/dashboard/nomina/bonos` es redirigido a `/dashboard`.
 
 **Configuración**
 
-- [ ] El modal muestra una fila por frecuencia activa, tenga o no configuración.
-- [ ] Cambiar el máximo quincenal de 1 a 0 hace que un podólogo con 1 incidencia pase a "Pierde", y agrega una fila a la bitácora para la frecuencia quincenal (y ninguna para la semanal).
-- [ ] Guardar sin cambios no escribe ninguna fila en la bitácora ni cambia `updated_at`.
-- [ ] Guardar `monto = 0`, un monto con 3 decimales o un máximo negativo o no entero muestra un error en el modal y no guarda nada.
-- [ ] Configurar por primera vez una frecuencia sin fila (por ejemplo, mensual) crea la fila y escribe la bitácora con los valores anteriores en `NULL`.
-- [ ] Poner `status = 0` en una frecuencia hace que sus periodos muestren "Bono no configurado para {frecuencia}".
+- [x] El modal muestra una fila por frecuencia activa, tenga o no configuración.
+- [x] Cambiar el máximo quincenal de 1 a 0 hace que un podólogo con 1 incidencia pase a "Pierde", y agrega una fila a la bitácora para la frecuencia quincenal (y ninguna para la semanal).
+- [x] Guardar sin cambios no escribe ninguna fila en la bitácora ni cambia `updated_at`.
+- [x] Guardar `monto = 0`, un monto con 3 decimales o un máximo negativo o no entero muestra un error en el modal y no guarda nada.
+- [x] Configurar por primera vez una frecuencia sin fila (por ejemplo, mensual) crea la fila y escribe la bitácora con los valores anteriores en `NULL`.
+- [x] Poner `status = 0` en una frecuencia hace que sus periodos muestren "Bono no configurado para {frecuencia}".
 
 **Cálculo**
 
-- [ ] Recalcular un periodo ya calculado deja `dias`, `dias_falta`, `dias_retardo`, `dias_retardo_sin_tope`, `importe_salario` y las columnas de comisiones y horas extra idénticas a las anteriores.
-- [ ] Un podólogo quincenal con 0 o 1 incidencia queda con `'C'` e `importe_bono_puntualidad = 500` en su renglón `'O'`.
-- [ ] Con 2 incidencias queda con `'P'`, `importe_bono_puntualidad = 0` y `bono_puntualidad_retardos` y `bono_puntualidad_faltas` correctos.
-- [ ] El renglón `'F'` del mismo podólogo queda con `'N'` e importe 0.
-- [ ] Un empleado no controlado (sin usuario podólogo activo) queda con `'N'` en `'O'`.
-- [ ] Con `fecha_ingreso > fecha_inicio`, sin horario, sin fila o con `status = 0` en la frecuencia, o sin `lateness_settings`, queda con `'N'` e importe 0.
-- [ ] Un periodo semanal sin escalones de acumulación: un acumulable no descuenta sueldo (`dias_retardo = 0`) y no entra a `period_employee_lateness`, pero sí cuenta para el bono.
-- [ ] Un periodo calculado a mitad de su rango y recalculado después de que aparece una falta nueva cambia de `'C'` a `'P'`.
-- [ ] "Revertir" deja el periodo sin snapshot, y al calcular de nuevo el bono se evalúa desde cero.
+- [x] Recalcular un periodo ya calculado deja `dias`, `dias_falta`, `dias_retardo`, `dias_retardo_sin_tope`, `importe_salario` y las columnas de comisiones y horas extra idénticas a las anteriores.
+- [x] Un podólogo quincenal con 0 o 1 incidencia queda con `'C'` e `importe_bono_puntualidad = 500` en su renglón `'O'`.
+- [x] Con 2 incidencias queda con `'P'`, `importe_bono_puntualidad = 0` y `bono_puntualidad_retardos` y `bono_puntualidad_faltas` correctos.
+- [x] El renglón `'F'` del mismo podólogo queda con `'N'` e importe 0.
+- [x] Un empleado no controlado (sin usuario podólogo activo) queda con `'N'` en `'O'`.
+- [x] Con `fecha_ingreso > fecha_inicio`, sin horario, sin fila o con `status = 0` en la frecuencia, o sin `lateness_settings`, queda con `'N'` e importe 0.
+- [x] Un periodo semanal sin escalones de acumulación: un acumulable no descuenta sueldo (`dias_retardo = 0`) y no entra a `period_employee_lateness`, pero sí cuenta para el bono.
+- [x] Un periodo calculado a mitad de su rango y recalculado después de que aparece una falta nueva cambia de `'C'` a `'P'`.
+- [x] "Revertir" deja el periodo sin snapshot, y al calcular de nuevo el bono se evalúa desde cero.
 
 **Procesar y Detalle**
 
-- [ ] En Procesar, la columna "Bono punt." muestra $500 para quien conserva, y $0 con "Perdido" para quien pierde. "Total percepciones", la tarjeta y el pie incluyen el bono y no cambian con los filtros de puesto o búsqueda.
-- [ ] En Detalle (operativa), quien conserva ve la línea "Bono de puntualidad" con "N incidencias de M permitidas" y $500.
-- [ ] Quien pierde ve la línea con $0 y "Perdido: N incidencias (máximo M)".
-- [ ] Con resultado `'N'`, o en la vista fiscal, la línea no aparece.
-- [ ] El importe mostrado siempre es el guardado en el snapshot.
+- [x] En Procesar, la columna "Bono punt." muestra $500 para quien conserva, y $0 con "Perdido" para quien pierde. "Total percepciones", la tarjeta y el pie incluyen el bono y no cambian con los filtros de puesto o búsqueda.
+- [x] En Detalle (operativa), quien conserva ve la línea "Bono de puntualidad" con "N incidencias de M permitidas" y $500.
+- [x] Quien pierde ve la línea con $0 y "Perdido: N incidencias (máximo M)".
+- [x] Con resultado `'N'`, o en la vista fiscal, la línea no aparece.
+- [x] El importe mostrado siempre es el guardado en el snapshot.
 
 **Aviso "Recalcula"**
 
-- [ ] Con el periodo en estatus 2, justificar en Retardos el único retardo de un podólogo que perdió el bono muestra el aviso "Hay bonos de puntualidad que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en Bonos.
-- [ ] Con el periodo en estatus 2, cambiar el monto, el máximo o el estatus de la frecuencia del periodo muestra el aviso. Cambiar otra frecuencia no lo muestra.
-- [ ] Una falta nueva que cambia el resultado muestra el aviso.
-- [ ] Después de "Recalcular", el aviso desaparece.
-- [ ] Con el periodo en estatus 1, el aviso nunca aparece.
-- [ ] Faltas, Retardos y Horas extra siguen mostrando su propio aviso con su texto de siempre.
+- [x] Con el periodo en estatus 2, justificar en Retardos el único retardo de un podólogo que perdió el bono muestra el aviso "Hay bonos de puntualidad que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en Bonos.
+- [x] Con el periodo en estatus 2, cambiar el monto, el máximo o el estatus de la frecuencia del periodo muestra el aviso. Cambiar otra frecuencia no lo muestra.
+- [x] Una falta nueva que cambia el resultado muestra el aviso.
+- [x] Después de "Recalcular", el aviso desaparece.
+- [x] Con el periodo en estatus 1, el aviso nunca aparece.
+- [x] Faltas, Retardos y Horas extra siguen mostrando su propio aviso con su texto de siempre.
 
 **Documentación**
 
-- [ ] `docs/nomina.md` tiene la sección "Bono de puntualidad (spec 64)". La sección "Retardos (spec 63)" dice `minutos > tolerancia`, y el párrafo inicial menciona el bono como concepto calculado.
+- [x] `docs/nomina.md` tiene la sección "Bono de puntualidad (spec 64)". La sección "Retardos (spec 63)" dice `minutos > tolerancia`, y el párrafo inicial menciona el bono como concepto calculado.
 
 ## Decisiones tomadas y descartadas
 
