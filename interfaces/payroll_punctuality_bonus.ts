@@ -1,7 +1,8 @@
+import type { BonusResult } from "@/interfaces/payroll_bonus";
 import type { IPayrollPeriod } from "@/interfaces/payroll_period";
 
-/** 'C' | 'P' | 'N' en BD. */
-export type PunctualityBonusResult = "keeps" | "loses" | "not_evaluated";
+/** 'C' | 'P' | 'N' en BD. Alias del tipo compartido por los dos bonos. */
+export type PunctualityBonusResult = BonusResult;
 
 /** Por qué un empleado no se evalúa. Las dos primeras aplican a todo el periodo. */
 export type PunctualityBonusSkipReason =

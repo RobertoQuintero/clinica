@@ -6,7 +6,7 @@ import type {
 import { PUNCTUALITY_BONUS_PAGE_SIZE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { describePunctualityBonusSkipReason } from "@/lib/payroll/punctualityBonus";
-import { buildIncidentScreenHref } from "@/lib/payroll/punctualityBonusUrls";
+import { buildIncidentScreenHref } from "@/lib/payroll/bonusUrls";
 import PayrollPagerFooter from "../../componentes/PayrollPagerFooter";
 
 interface Props {

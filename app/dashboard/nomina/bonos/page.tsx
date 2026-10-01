@@ -3,9 +3,9 @@ import { ChevronRight, Info, TriangleAlert } from "lucide-react";
 import type { IPunctualityBonusFilters } from "@/interfaces/payroll_punctuality_bonus";
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import {
-  PUNCTUALITY_BONUS_RESULT_URL_VALUES,
-  readPunctualityBonusResult,
-} from "@/lib/payroll/punctualityBonusUrls";
+  BONUS_RESULT_URL_VALUES,
+  readBonusResult,
+} from "@/lib/payroll/bonusUrls";
 import EmployeesWithoutScheduleNotice from "../componentes/EmployeesWithoutScheduleNotice";
 import PayrollEmptyState, { PAYROLL_LINK_BUTTON_CLASSES } from "../componentes/PayrollEmptyState";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
@@ -38,7 +38,7 @@ export default async function PunctualityBonusPage({ searchParams }: { searchPar
 
   const filters: IPunctualityBonusFilters = {
     idPeriod: readPositiveInteger(readSingleParam(rawSearchParams, "periodo")),
-    result: readPunctualityBonusResult(readSingleParam(rawSearchParams, "resultado")),
+    result: readBonusResult(readSingleParam(rawSearchParams, "resultado")),
     search: readSingleParam(rawSearchParams, "q").trim(),
     page: readPositiveInteger(readSingleParam(rawSearchParams, "pagina")) ?? 1,
   };
@@ -51,7 +51,7 @@ export default async function PunctualityBonusPage({ searchParams }: { searchPar
   // Filtros vigentes de la URL (sin `pagina`) para que la paginación los conserve.
   const currentSearchParams: Record<string, string> = {};
   if (filters.idPeriod !== null) currentSearchParams.periodo = String(filters.idPeriod);
-  if (filters.result !== "all") currentSearchParams.resultado = PUNCTUALITY_BONUS_RESULT_URL_VALUES[filters.result];
+  if (filters.result !== "all") currentSearchParams.resultado = BONUS_RESULT_URL_VALUES[filters.result];
   if (filters.search) currentSearchParams.q = filters.search;
 
   const periodSetting = result.ok ? result.data.periodSetting : null;

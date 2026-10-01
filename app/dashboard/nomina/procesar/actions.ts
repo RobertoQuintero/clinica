@@ -152,6 +152,8 @@ export async function getPayrollProcessPage(
                 pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples AS importe_horas_extra,
                 pe.bono_puntualidad_resultado, pe.bono_puntualidad_retardos, pe.bono_puntualidad_faltas,
                 pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
+                pe.bono_asistencia_resultado, pe.bono_asistencia_faltas,
+                CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
@@ -238,6 +240,8 @@ export async function getPayrollProcessPage(
           bono_puntualidad_maximo:
             row.bono_puntualidad_maximo === null ? null : Number(row.bono_puntualidad_maximo),
           importe_bono_puntualidad: Number(row.importe_bono_puntualidad),
+          bono_asistencia_faltas: Number(row.bono_asistencia_faltas),
+          importe_bono_asistencia: Number(row.importe_bono_asistencia),
           total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
@@ -342,6 +346,8 @@ export async function getPayrollEmployeeDetail(
                 pe.limite_horas_dobles_aplicado,
                 pe.bono_puntualidad_resultado, pe.bono_puntualidad_retardos, pe.bono_puntualidad_faltas,
                 pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
+                pe.bono_asistencia_resultado, pe.bono_asistencia_faltas,
+                CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -479,6 +485,9 @@ export async function getPayrollEmployeeDetail(
           bono_puntualidad_maximo:
             snapshotRow.bono_puntualidad_maximo === null ? null : Number(snapshotRow.bono_puntualidad_maximo),
           importe_bono_puntualidad: Number(snapshotRow.importe_bono_puntualidad),
+          bono_asistencia_resultado: snapshotRow.bono_asistencia_resultado,
+          bono_asistencia_faltas: Number(snapshotRow.bono_asistencia_faltas),
+          importe_bono_asistencia: Number(snapshotRow.importe_bono_asistencia),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
