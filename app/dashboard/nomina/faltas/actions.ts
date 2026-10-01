@@ -1,7 +1,6 @@
 "use server";
 
 import db, { ITransactionClient } from "@/database/connection";
-import { IScheduleDay } from "@/interfaces/employee_schedule";
 import { AbsenceStatus, IAbsenceDayRow, IAbsenceFilters, IAbsencePage } from "@/interfaces/payroll_absence";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import {
@@ -13,10 +12,12 @@ import { detectEmployeeAbsences, nextDate } from "@/lib/payroll/absenceDetection
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { ABSENCE_PAGE_SIZE } from "@/lib/payroll/constants";
 import {
-  ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
-  ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
-} from "@/lib/payroll/eligibleEmployees";
-import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
+  loadCheckInDays,
+  loadDiscountedDays,
+  loadJustifications,
+  loadReviewedEmployees,
+  loadScheduleByEmployee,
+} from "@/lib/payroll/incidentSources";
 import { buildDiscountedCodesByDay, groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
@@ -30,24 +31,6 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
 const ABSENCES_PATH = "/dashboard/nomina/faltas";
-
-interface IReviewedEmployeeRow {
-  id_empleado: number;
-  codigo_empleado: string;
-  nombre_completo: string;
-  fecha_ingreso: string;
-}
-
-interface IStoredJustificationRow {
-  id_empleado: number;
-  fecha: string;
-  estado: "J" | "N";
-  url: string | null;
-  mime_type: string | null;
-  comentario: string | null;
-  decided_by_name: string;
-  decided_at: string;
-}
 
 /**
  * Lista de faltas de un periodo (spec 62): detección en vivo por empleado con control de faltas, unida con
@@ -93,82 +76,17 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
     };
     if (!period) return { ok: true, data: emptyPage };
 
-    const periodParams = {
-      id_sucursal,
-      id_payment_period: period.id_payment_period,
-      fecha_fin: period.fecha_fin,
-      fecha_inicio: period.fecha_inicio,
-    };
-    const reviewedEmployeeConditions = `${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
-          AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}`;
-
-    const [employees, scheduleRows, checkInDateRows, justificationRows, discountedRows] = await Promise.all([
-      db.queryParams(
-        `SELECT e.id_empleado, e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
-                CONVERT(varchar(10), e.fecha_ingreso, 120) AS fecha_ingreso
-           FROM [CentroPodologico].[RH].[empleados] e
-          WHERE ${reviewedEmployeeConditions}
-          ORDER BY e.apellido_paterno, e.apellido_materno, e.nombre, e.id_empleado`,
-        periodParams,
-      ),
-      db.queryParams(
-        `SELECT h.[id_empleado], h.[dia_semana],
-                CONVERT(varchar(5), h.[hora_entrada_1], 108) AS hora_entrada_1,
-                CONVERT(varchar(5), h.[hora_salida_1],  108) AS hora_salida_1,
-                CONVERT(varchar(5), h.[hora_entrada_2], 108) AS hora_entrada_2,
-                CONVERT(varchar(5), h.[hora_salida_2],  108) AS hora_salida_2
-           FROM [CentroPodologico].[RH].[empleado_horarios] h
-           JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = h.id_empleado
-          WHERE ${reviewedEmployeeConditions}`,
-        periodParams,
-      ),
-      // Solo importa si el día tiene alguna checada, de cualquier tipo.
-      db.queryParams(
-        `SELECT DISTINCT a.[id_empleado], CONVERT(varchar(10), a.[fecha_hora], 120) AS fecha
-           FROM [CentroPodologico].[RH].[asistencias] a
-           JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = a.id_empleado
-          WHERE ${reviewedEmployeeConditions}
-            AND a.[fecha_hora] >= CAST(@fecha_inicio AS date)
-            AND a.[fecha_hora] <  DATEADD(day, 1, CAST(@fecha_fin AS date))`,
-        periodParams,
-      ),
-      db.queryParams(
-        `SELECT aj.[id_empleado],
-                CONVERT(varchar(10), aj.[fecha], 120) AS fecha,
-                aj.[estado], aj.[url], aj.[mime_type], aj.[comentario],
-                ISNULL(u.[nombre], '')                AS decided_by_name,
-                CONVERT(varchar(19), aj.[decided_at], 120) AS decided_at
-           FROM [CentroPodologico].[payroll].[absence_justifications] aj
-           JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = aj.id_empleado
-           LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.id_user = aj.decided_by
-          WHERE ${reviewedEmployeeConditions}
-            AND aj.[fecha] BETWEEN CAST(@fecha_inicio AS date) AND CAST(@fecha_fin AS date)`,
-        periodParams,
-      ),
-      // Días ya descontados por algún periodo: el UNIQUE (id_empleado, fecha, tipo_nomina) los indexa.
-      db.queryParams(
-        `SELECT pa.[id_empleado], CONVERT(varchar(10), pa.[fecha], 120) AS fecha, p.[codigo]
-           FROM [CentroPodologico].[payroll].[period_employee_absences] pa
-           JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.[id_period_employee] = pa.[id_period_employee]
-           JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pe.[id_period]
-           JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pa.[id_empleado]
-          WHERE ${reviewedEmployeeConditions}
-            AND pa.[fecha] BETWEEN CAST(@fecha_inicio AS date) AND CAST(@fecha_fin AS date)
-          ORDER BY p.[codigo]`,
-        periodParams,
-      ),
+    const [employees, scheduleByEmployee, checkInDateRows, justificationRows, discountedRows] = await Promise.all([
+      loadReviewedEmployees(id_sucursal, period),
+      loadScheduleByEmployee(id_sucursal, period),
+      loadCheckInDays(id_sucursal, period),
+      loadJustifications("absence", id_sucursal, period),
+      loadDiscountedDays("absence", id_sucursal, period),
     ]);
 
-    const scheduleByEmployee = new Map(
-      [...groupByEmployee(scheduleRows as (IScheduleDay & { id_empleado: number })[])].map(
-        ([idEmpleado, days]) => [idEmpleado, days as IScheduleDay[]],
-      ),
-    );
-    const checkInDatesByEmployee = groupByEmployee(checkInDateRows as { id_empleado: number; fecha: string }[]);
-    const justificationsByEmployee = groupByEmployee(justificationRows as IStoredJustificationRow[]);
-    const discountedCodesByDay = buildDiscountedCodesByDay(
-      discountedRows as { id_empleado: number; fecha: string; codigo: string }[],
-    );
+    const checkInDatesByEmployee = groupByEmployee(checkInDateRows);
+    const justificationsByEmployee = groupByEmployee(justificationRows);
+    const discountedCodesByDay = buildDiscountedCodesByDay(discountedRows);
 
     // El día de hoy y los futuros nunca son falta: el rango termina antes de hoy y del día siguiente al fin.
     const today = addZeroToday(new Date());
@@ -178,7 +96,7 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
     const allRows: IAbsenceDayRow[] = [];
     const employeesWithoutSchedule: IAbsencePage["employeesWithoutSchedule"] = [];
 
-    for (const employee of employees as IReviewedEmployeeRow[]) {
+    for (const employee of employees) {
       const schedule = scheduleByEmployee.get(employee.id_empleado) ?? [];
       if (schedule.length === 0) {
         employeesWithoutSchedule.push({

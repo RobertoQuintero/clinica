@@ -23,3 +23,4 @@ export const ABSENCE_PAGE_SIZE = 25;
 export const ABSENCE_CONTROL_ROLE_IDS = [2];
 
 export const LATENESS_PAGE_SIZE = 25;
+export const PUNCTUALITY_BONUS_PAGE_SIZE = 25;

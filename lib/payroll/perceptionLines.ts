@@ -4,6 +4,7 @@ import { findCommissionTier, formatTierRange } from "@/lib/payroll/commissionTie
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { describeOvertimeHours } from "@/lib/payroll/overtimePay";
 import { describeProductSalesCommission } from "@/lib/payroll/productSalesCommission";
+import { describePunctualityBonus } from "@/lib/payroll/punctualityBonus";
 import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
 
 /** "2026-09-22" -> "22/09/2026". Opera sobre el string, sin pasar por `Date`. */
@@ -63,7 +64,8 @@ function describeCommission(
 /**
  * Líneas de la tarjeta "Percepciones totales" de un empleado: "Sueldo base" y, cuando el
  * snapshot trae importe, "Comisión por consultas atendidas", "Comisión por tratamientos de onicomicosis"
- * "Comisión por venta de productos", "Horas extra dobles" y "Horas extra triples".
+ * "Comisión por venta de productos", "Horas extra dobles", "Horas extra triples" y "Bono de puntualidad"
+ * (spec 64: se muestra con 'C' y con 'P', este último con $0 y el motivo; con 'N' se omite).
  * Los conceptos futuros se agregan aquí.
  * Las fechas son "YYYY-MM-DD" y se comparan como strings.
  */
@@ -87,6 +89,11 @@ export function buildPerceptionLines(
     | "horas_extra_triples"
     | "importe_horas_extra_dobles"
     | "importe_horas_extra_triples"
+    | "bono_puntualidad_resultado"
+    | "bono_puntualidad_retardos"
+    | "bono_puntualidad_faltas"
+    | "bono_puntualidad_maximo"
+    | "importe_bono_puntualidad"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -152,6 +159,17 @@ export function buildPerceptionLines(
       description: describeOvertimeHours(snapshot.horas_extra_triples, snapshot.salario_diario, 3),
       note: null,
       amount: snapshot.importe_horas_extra_triples,
+    });
+  }
+
+  const punctualityBonus = describePunctualityBonus(snapshot);
+  if (punctualityBonus) {
+    lines.push({
+      key: "bono_puntualidad",
+      label: punctualityBonus.label,
+      description: punctualityBonus.description,
+      note: null,
+      amount: punctualityBonus.amount,
     });
   }
 

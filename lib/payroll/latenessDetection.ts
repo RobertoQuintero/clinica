@@ -29,7 +29,7 @@ export function classifyLateness(minutes: number, settings: LatenessThresholds):
 /**
  * Espejo puro de la detección de retardos que hace el SQL del cálculo (donde manda el SQL).
  * Un día es retardo si tiene horario, cae en [rangeStart, rangeEndInclusive], tiene una primera
- * entrada y llegó `tolerancia_minutos` o más después de `hora_entrada_1`.
+ * entrada y llegó más de `tolerancia_minutos` después de `hora_entrada_1` (spec 64: `minutos > tolerancia`).
  *
  * - `rangeStart` = max(fecha_inicio, fecha_ingreso).
  * - `rangeEndInclusive` = min(fecha_fin, hoy): el día de hoy sí se evalúa; los futuros no.
@@ -55,7 +55,7 @@ export function detectEmployeeLateness(
     if (!scheduledDay || !arrival) continue;
 
     const minutos = calculateLatenessMinutes(scheduledDay.hora_entrada_1, arrival);
-    if (minutos < settings.tolerancia_minutos) continue;
+    if (minutos <= settings.tolerancia_minutos) continue;
 
     latenessDays.push({
       fecha,

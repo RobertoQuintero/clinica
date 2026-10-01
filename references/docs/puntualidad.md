@@ -1,7 +1,5 @@
 ====BONO DE PUNTUALIDAD====
  
-******Revisar con Roberto******
-*Sera necesario configurar a cada empleado que bonos aplican y cuales no?
 	Aplica solo para podologos
 *Incidencias que afectan al bono 
 	Incidencias que afectan al bono = Retardos + Faltas injustificadas

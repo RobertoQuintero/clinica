@@ -26,6 +26,7 @@ import {
   AlarmClockPlus,
   CalendarX2,
   AlarmClock,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 
@@ -114,6 +115,12 @@ export const NAV_LINKS: NavLink[] = [
         href: "/dashboard/nomina/retardos",
         label: "Retardos",
         icon: AlarmClock,
+        excludeRoles: [2, 3, 5, 6],
+      },
+      {
+        href: "/dashboard/nomina/bonos",
+        label: "Bonos",
+        icon: Award,
         excludeRoles: [2, 3, 5, 6],
       },
     ],

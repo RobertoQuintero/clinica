@@ -24,9 +24,10 @@ export interface IExtraFilter {
 interface Props {
   periodOptions: Pick<IPayrollPeriod, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   selectedPeriodId: number;
-  statusGroupLabel: string;
-  statusOptions: IStatusFilterOption[];
-  selectedStatus: string;
+  /** Grupo principal `?estado=`; se omite en pantallas que solo filtran con `extraFilter` (Bonos). */
+  statusGroupLabel?: string;
+  statusOptions?: IStatusFilterOption[];
+  selectedStatus?: string;
   searchText: string;
   extraFilter?: IExtraFilter;
 }
@@ -125,12 +126,14 @@ export default function PayrollPeriodFilterToolbar({
           ))}
         </select>
 
-        <FilterRadioGroup
-          groupLabel={statusGroupLabel}
-          options={statusOptions}
-          selected={selectedStatus}
-          onSelect={(urlValue) => replaceFilters({ estado: urlValue })}
-        />
+        {statusOptions && statusGroupLabel !== undefined && selectedStatus !== undefined && (
+          <FilterRadioGroup
+            groupLabel={statusGroupLabel}
+            options={statusOptions}
+            selected={selectedStatus}
+            onSelect={(urlValue) => replaceFilters({ estado: urlValue })}
+          />
+        )}
         {extraFilter && (
           <FilterRadioGroup
             groupLabel={extraFilter.groupLabel}
