@@ -14,6 +14,7 @@ import AttendanceBonusSummaryCards from "./AttendanceBonusSummaryCards";
 import BonusResultToolbar from "./BonusResultToolbar";
 import BonusSettingsCard from "./BonusSettingsCard";
 import BonusSettingsLog from "./BonusSettingsLog";
+import { EditBonusSettingsButton } from "./BonusSettingsModal";
 
 const NOTICE_CLASSES =
   "rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 flex gap-3";
@@ -73,7 +74,11 @@ export default async function AttendanceBonusView({ rawSearchParams, kindTabs }:
 
       {result.ok && (
         <section aria-label="Reglas del bono de asistencia" className="flex flex-col gap-3">
-          <BonusSettingsCard bonusKind="attendance" settings={result.data.settings} />
+          <BonusSettingsCard
+            bonusKind="attendance"
+            settings={result.data.settings}
+            editAction={<EditBonusSettingsButton bonusKind="attendance" settings={result.data.settings} />}
+          />
           {settingsLogResult.ok && <BonusSettingsLog bonusKind="attendance" entries={settingsLogResult.data} />}
         </section>
       )}

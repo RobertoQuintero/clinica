@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Award, Info, Pencil, X } from "lucide-react";
 import type { BonusKind, IBonusSetting } from "@/interfaces/payroll_bonus";
-import { updatePunctualityBonusSettings } from "../actions";
+import { updateAttendanceBonusSettings, updatePunctualityBonusSettings } from "../actions";
 
 interface ModalProps {
   bonusKind: BonusKind;
@@ -126,7 +126,9 @@ function BonusSettingsModal({ bonusKind, settings, onClose }: ModalProps) {
     setIsSaving(true);
     setErrorMessage(null);
     try {
-      const result = await updatePunctualityBonusSettings({ settings: settingsToSave });
+      const saveSettings =
+        bonusKind === "attendance" ? updateAttendanceBonusSettings : updatePunctualityBonusSettings;
+      const result = await saveSettings({ settings: settingsToSave });
       if (!result.ok) {
         setErrorMessage(result.message);
         return;
