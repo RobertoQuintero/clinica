@@ -281,7 +281,9 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     : [];
 
   const totalServicios = serviciosUsados.reduce((s, sv) => s + Number(sv.precio_aplicado), 0);
-  const totalProductos = productos.reduce((s, p) => s + Number(p.precio) * Number(p.cantidad), 0);
+  const totalProductos = productos
+    .filter((p) => p.status === "activo")
+    .reduce((s, p) => s + Number(p.precio) * Number(p.cantidad), 0);
   const totalGeneral   = totalServicios + totalProductos;
 
 

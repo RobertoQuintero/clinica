@@ -104,6 +104,36 @@ async function getStockUnitMeasurement(
   return rows[0]?.id_stock_unit_measurement ?? null;
 }
 
+/**
+ * Recalcula `consultas.costo_total` desde la BD (servicios + productos activos)
+ * cuando la consulta ya está finalizada y ningún pago activo está facturado
+ * (spec 66). En cualquier otro caso no cambia nada. Se llama dentro de la
+ * transacción de la acción que modifica servicios o productos.
+ */
+async function recalculateFinalizedConsultaTotal(
+  transaction: ITransactionClient,
+  id_consulta: number
+): Promise<void> {
+  await transaction.queryParams(
+    `UPDATE [CentroPodologico].[dbo].[consultas]
+        SET [costo_total] =
+              ISNULL((SELECT SUM([precio_aplicado])
+                        FROM [CentroPodologico].[dbo].[consulta_servicios]
+                       WHERE [id_consulta] = @id_consulta), 0)
+            + ISNULL((SELECT SUM([precio] * [cantidad])
+                        FROM [CentroPodologico].[dbo].[consulta_productos]
+                       WHERE [id_consulta] = @id_consulta AND [status] = 1), 0)
+      WHERE [id_consulta] = @id_consulta
+        AND [fecha_fin] IS NOT NULL
+        AND NOT EXISTS (SELECT 1
+                          FROM [CentroPodologico].[dbo].[pagos]
+                         WHERE [id_consulta] = @id_consulta
+                           AND [status] = 1
+                           AND [facturado] = 1)`,
+    { id_consulta }
+  );
+}
+
 // ─── fetch all data ───────────────────────────────────────────────────────────
 
 export async function getConsultaData(
@@ -735,45 +765,58 @@ export async function selectServicioOpcion(
   precio_aplicado:  number,
 ): Promise<ActionResult<IConsultaServicio | null>> {
   try {
-    // Remove previous selection for this service in this consultation
-    await db.queryParams(
-      `DELETE cs
-         FROM [CentroPodologico].[dbo].[consulta_servicios] cs
-         JOIN [CentroPodologico].[dbo].[servicio_opciones] so
-           ON so.[id_servicio_opcion] = cs.[id_servicio_opcion]
-        WHERE cs.[id_consulta] = @id_consulta
-          AND so.[id_servicio] = @id_servicio`,
-      { id_consulta, id_servicio },
-    );
+    let validationMessage: string | null = null;
+    let createdServicio: IConsultaServicio | null = null;
 
-    if (id_servicio_opcion === 0) {
-      return { ok: true, data: null };
+    await db.transaction(async (tx) => {
+      // Validate before deleting so a failure keeps the previous selection
+      if (id_servicio_opcion !== 0) {
+        const matchRows = await tx.queryParams(
+          `SELECT so.[id_servicio_opcion]
+             FROM [CentroPodologico].[dbo].[servicio_opciones] so
+             JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_sucursal] = so.[id_sucursal]
+            WHERE so.[id_servicio_opcion] = @id_servicio_opcion
+              AND c.[id_consulta] = @id_consulta`,
+          { id_servicio_opcion, id_consulta },
+        );
+        if (matchRows.length === 0) {
+          validationMessage = "Esta opción no pertenece a la sucursal de la consulta";
+          return;
+        }
+      }
+
+      // Remove previous selection for this service in this consultation
+      await tx.queryParams(
+        `DELETE cs
+           FROM [CentroPodologico].[dbo].[consulta_servicios] cs
+           JOIN [CentroPodologico].[dbo].[servicio_opciones] so
+             ON so.[id_servicio_opcion] = cs.[id_servicio_opcion]
+          WHERE cs.[id_consulta] = @id_consulta
+            AND so.[id_servicio] = @id_servicio`,
+        { id_consulta, id_servicio },
+      );
+
+      if (id_servicio_opcion !== 0) {
+        const result = await tx.queryParams(
+          `INSERT INTO [CentroPodologico].[dbo].[consulta_servicios]
+             ([id_consulta_servicio],[id_consulta],[id_servicio_opcion],[precio_aplicado])
+           OUTPUT INSERTED.*
+           VALUES (
+             (SELECT ISNULL(MAX([id_consulta_servicio]),0)+1 FROM [CentroPodologico].[dbo].[consulta_servicios]),
+             @id_consulta,@id_servicio_opcion,@precio_aplicado
+           )`,
+          { id_consulta, id_servicio_opcion, precio_aplicado },
+        );
+        createdServicio = result?.[0] as IConsultaServicio;
+      }
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
+    });
+
+    if (validationMessage) {
+      return { ok: false, data: validationMessage };
     }
-
-    const matchRows = await db.queryParams(
-      `SELECT so.[id_servicio_opcion]
-         FROM [CentroPodologico].[dbo].[servicio_opciones] so
-         JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_sucursal] = so.[id_sucursal]
-        WHERE so.[id_servicio_opcion] = @id_servicio_opcion
-          AND c.[id_consulta] = @id_consulta`,
-      { id_servicio_opcion, id_consulta },
-    );
-    if (matchRows.length === 0) {
-      return { ok: false, data: "Esta opción no pertenece a la sucursal de la consulta" };
-    }
-
-    const result = await db.queryParams(
-      `INSERT INTO [CentroPodologico].[dbo].[consulta_servicios]
-         ([id_consulta_servicio],[id_consulta],[id_servicio_opcion],[precio_aplicado])
-       OUTPUT INSERTED.*
-       VALUES (
-         (SELECT ISNULL(MAX([id_consulta_servicio]),0)+1 FROM [CentroPodologico].[dbo].[consulta_servicios]),
-         @id_consulta,@id_servicio_opcion,@precio_aplicado
-       )`,
-      { id_consulta, id_servicio_opcion, precio_aplicado },
-    );
-
-    return { ok: true, data: result?.[0] as IConsultaServicio };
+    return { ok: true, data: createdServicio };
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al guardar la selección de servicio" };
@@ -875,6 +918,8 @@ export async function addConsultaProducto(
         id_consulta,
         id_user,
       });
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
     });
 
     const rows = await db.queryParams(
@@ -970,6 +1015,8 @@ export async function updateConsultaProducto(
           WHERE [id_consulta_producto] = @id_consulta_producto`,
         { id_consulta_producto, precio, cantidad, status },
       );
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
     });
 
     const rows = await db.queryParams(
@@ -1008,12 +1055,12 @@ export async function deleteConsultaProducto(
       }
       const current = currentRows[0];
       const wasActivo = Boolean(current.status);
+      const id_consulta = Number(current.id_consulta);
 
       if (wasActivo) {
         const id_producto  = Number(current.id_producto);
         const cantidad      = Number(current.cantidad);
-        const id_consulta   = Number(current.id_consulta);
-        const id_sucursal   = Number(current.id_sucursal);
+        const id_sucursal  = Number(current.id_sucursal);
         const id_empresa    = Number(current.id_empresa);
         const id_unit_measurement = await getStockUnitMeasurement(tx, id_producto);
 
@@ -1035,6 +1082,8 @@ export async function deleteConsultaProducto(
           WHERE [id_consulta_producto] = @id_consulta_producto`,
         { id_consulta_producto },
       );
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
     });
 
     return { ok: true, data: null };
