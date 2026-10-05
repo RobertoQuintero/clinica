@@ -402,9 +402,9 @@ export async function getEstadisticasMultiple(
            GROUP BY mes
          )
          SELECT
-           COALESCE(sp.mes, t.mes)                AS mes,
+           COALESCE(sp.mes, t.mes, m.mes)          AS mes,
            COALESCE(sp.total_servicios, 0)         AS total_servicios,
-           COALESCE(sp.total_productos, 0)         AS total_productos,
+           COALESCE(sp.total_productos, 0) + COALESCE(m.total_mostrador, 0) AS total_productos,
            COALESCE(t.total_tratamientos, 0)       AS total_tratamientos
          FROM sp
          FULL OUTER JOIN (
@@ -425,6 +425,17 @@ export async function getEstadisticasMultiple(
              AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
            GROUP BY CONVERT(varchar(7), top2.[created_at], 120)
          ) t ON sp.mes = t.mes
+         FULL OUTER JOIN (
+           SELECT
+             CONVERT(varchar(7), v.[created_at], 120) AS mes,
+             SUM(v.[total])                            AS total_mostrador
+           FROM [CentroPodologico].[dbo].[Ventas] v
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY CONVERT(varchar(7), v.[created_at], 120)
+         ) m ON COALESCE(sp.mes, t.mes) = m.mes
          ORDER BY mes`,
         commonParams
       ),
