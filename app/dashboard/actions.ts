@@ -182,9 +182,14 @@ export interface IServicioStat {
 }
 
 export interface IProductoStat {
+  id_producto: number;
   nombre: string;
   total_cantidad: number;
   total_ingresos: number;
+  cantidad_consulta: number;
+  cantidad_mostrador: number;
+  ingresos_consulta: number;
+  ingresos_mostrador: number;
 }
 
 export interface IMetodoPagoStat {
@@ -208,6 +213,7 @@ export interface ITratamientoStat {
 export interface IVentasCobradasStat {
   total_servicios: number;
   total_productos: number;
+  total_mostrador: number;
 }
 
 export interface IEstadisticasData {
@@ -225,274 +231,7 @@ export async function getEstadisticas(
   fecha_fin: string,
   id_sucursal: number,
 ): Promise<IEstadisticasData> {
-  try {
-    const { id_empresa } = await getActiveUser();
-
-    const [servicios, productos, metodos_pago, ventas_mensuales, tratamientosRows, ventasCobradasRows] = await Promise.all([
-      db.queryParams(
-        `SELECT
-           s.[nombre]                          AS nombre,
-           COUNT(cs.[id_consulta_servicio])    AS total_usos,
-           SUM(cs.[precio_aplicado])           AS total_ingresos
-         FROM [CentroPodologico].[dbo].[consulta_servicios] cs
-         INNER JOIN [CentroPodologico].[dbo].[servicio_opciones] so
-           ON cs.[id_servicio_opcion] = so.[id_servicio_opcion]
-         INNER JOIN [CentroPodologico].[dbo].[servicios] s
-           ON so.[id_servicio] = s.[id_servicio]
-         INNER JOIN [CentroPodologico].[dbo].[consultas] c
-           ON cs.[id_consulta] = c.[id_consulta]
-         WHERE c.[deleted_at] IS NULL
-           AND c.[id_empresa]   = @id_empresa
-           AND c.[id_sucursal]  = @id_sucursal
-           AND c.[fecha] >= @fecha_inicio
-           AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-         GROUP BY s.[nombre]
-         ORDER BY total_usos DESC`,
-        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
-      ),
-
-      db.queryParams(
-        `WITH agg AS (
-           SELECT
-             p.[nombre]                       AS nombre,
-             SUM(cp.[cantidad])               AS total_cantidad,
-             SUM(cp.[precio] * cp.[cantidad]) AS total_ingresos
-           FROM [CentroPodologico].[dbo].[consulta_productos] cp
-           INNER JOIN [CentroPodologico].[dbo].[productos] p
-             ON cp.[id_producto] = p.[id_producto]
-           INNER JOIN [CentroPodologico].[dbo].[consultas] c
-             ON cp.[id_consulta] = c.[id_consulta]
-           WHERE c.[deleted_at] IS NULL
-             AND c.[id_empresa]  = @id_empresa
-             AND c.[id_sucursal] = @id_sucursal
-             AND c.[fecha] >= @fecha_inicio
-             AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-           GROUP BY p.[nombre]
-         ),
-         ranked AS (
-           SELECT *,
-             ROW_NUMBER() OVER (ORDER BY total_cantidad DESC) AS rn_cantidad,
-             ROW_NUMBER() OVER (ORDER BY total_ingresos DESC) AS rn_ingresos
-           FROM agg
-         )
-         SELECT nombre, total_cantidad, total_ingresos
-         FROM ranked
-         WHERE rn_cantidad <= 7 OR rn_ingresos <= 7
-         ORDER BY total_cantidad DESC`,
-        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
-      ),
-
-      db.queryParams(
-        `SELECT
-           mp.[descripcion]  AS nombre,
-           COUNT(*)          AS total_pagos,
-           SUM(src.[monto])  AS total_monto
-         FROM (
-           SELECT pg.[idMetodoPago], pg.[monto]
-           FROM [CentroPodologico].[dbo].[pagos] pg
-           INNER JOIN [CentroPodologico].[dbo].[consultas] c
-             ON pg.[id_consulta] = c.[id_consulta]
-           WHERE c.[deleted_at] IS NULL
-             AND c.[id_empresa]  = @id_empresa
-             AND c.[id_sucursal] = @id_sucursal
-             AND pg.[fecha_pago] >= @fecha_inicio
-             AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date)) and pg.status=1
-           UNION ALL
-           SELECT top2.[idMetodoPago], top2.[total] AS monto
-           FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
-           INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
-             ON top2.[id_tratamiento] = tr.[id_tratamiento]
-           INNER JOIN [CentroPodologico].[dbo].[consultas] c
-             ON tr.[id_consulta] = c.[id_consulta]
-           WHERE top2.[status] = 1
-             AND top2.[id_tratamiento_pago_tipo] = 2
-             AND c.[deleted_at] IS NULL
-             AND c.[id_empresa]  = @id_empresa
-             AND c.[id_sucursal] = @id_sucursal
-             AND top2.[created_at] >= @fecha_inicio
-             AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-         ) src
-         INNER JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
-           ON src.[idMetodoPago] = mp.[idMetodoPago]
-         GROUP BY mp.[descripcion]
-         ORDER BY total_monto DESC`,
-        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
-      ),
-
-      db.queryParams(
-        `WITH pago_periodo AS (
-           SELECT pg.[id_consulta], pg.[monto], CONVERT(varchar(7), pg.[fecha_pago], 120) AS mes
-           FROM [CentroPodologico].[dbo].[pagos] pg
-           INNER JOIN [CentroPodologico].[dbo].[consultas] c
-             ON pg.[id_consulta] = c.[id_consulta]
-           WHERE c.[deleted_at] IS NULL
-             AND c.[id_empresa]  = @id_empresa
-             AND c.[id_sucursal] = @id_sucursal
-             AND pg.[fecha_pago] >= @fecha_inicio
-             AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-             AND pg.[status] = 1
-         ),
-         nominal_servicios AS (
-           SELECT cs.[id_consulta], SUM(cs.[precio_aplicado]) AS total
-           FROM [CentroPodologico].[dbo].[consulta_servicios] cs
-           GROUP BY cs.[id_consulta]
-         ),
-         nominal_productos AS (
-           SELECT cp.[id_consulta], SUM(cp.[precio] * cp.[cantidad]) AS total
-           FROM [CentroPodologico].[dbo].[consulta_productos] cp
-           GROUP BY cp.[id_consulta]
-         ),
-         prorrateo AS (
-           SELECT
-             pp.[mes],
-             pp.[monto],
-             ISNULL(ns.total, 0) AS nom_serv,
-             ISNULL(np.total, 0) AS nom_prod
-           FROM pago_periodo pp
-           LEFT JOIN nominal_servicios ns ON ns.[id_consulta] = pp.[id_consulta]
-           LEFT JOIN nominal_productos np ON np.[id_consulta] = pp.[id_consulta]
-         ),
-         sp AS (
-           SELECT
-             mes,
-             SUM(
-               CASE
-                 WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_serv / (nom_serv + nom_prod)
-                 ELSE 0
-               END
-             ) AS total_servicios,
-             SUM(
-               CASE
-                 WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_prod / (nom_serv + nom_prod)
-                 ELSE monto
-               END
-             ) AS total_productos
-           FROM prorrateo
-           GROUP BY mes
-         )
-         SELECT
-           COALESCE(sp.mes, t.mes)                AS mes,
-           COALESCE(sp.total_servicios, 0)         AS total_servicios,
-           COALESCE(sp.total_productos, 0)         AS total_productos,
-           COALESCE(t.total_tratamientos, 0)       AS total_tratamientos
-         FROM sp
-         FULL OUTER JOIN (
-           SELECT
-             CONVERT(varchar(7), top2.[created_at], 120) AS mes,
-             SUM(top2.[total])                            AS total_tratamientos
-           FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
-           INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
-             ON top2.[id_tratamiento] = tr.[id_tratamiento]
-           INNER JOIN [CentroPodologico].[dbo].[consultas] c
-             ON tr.[id_consulta] = c.[id_consulta]
-           WHERE top2.[status] = 1
-             AND top2.[id_tratamiento_pago_tipo] = 2
-             AND c.[deleted_at] IS NULL
-             AND c.[id_empresa]  = @id_empresa
-             AND c.[id_sucursal] = @id_sucursal
-             AND top2.[created_at] >= @fecha_inicio
-             AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-           GROUP BY CONVERT(varchar(7), top2.[created_at], 120)
-         ) t ON sp.mes = t.mes
-         ORDER BY mes`,
-        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
-      ),
-
-      db.queryParams(
-        `SELECT
-           ISNULL(COUNT(top2.[id_tratamiento_pago]), 0) AS total_pagos,
-           ISNULL(SUM(top2.[total]), 0)                 AS total_ingresos
-         FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos] top2
-         INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] tr
-           ON top2.[id_tratamiento] = tr.[id_tratamiento]
-         INNER JOIN [CentroPodologico].[dbo].[consultas] c
-           ON tr.[id_consulta] = c.[id_consulta]
-         WHERE top2.[status] = 1
-           AND top2.[id_tratamiento_pago_tipo] = 2
-           AND c.[deleted_at] IS NULL
-           AND c.[id_empresa]  = @id_empresa
-           AND c.[id_sucursal] = @id_sucursal
-           AND top2.[created_at] >= @fecha_inicio
-           AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))`,
-        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
-      ),
-
-      db.queryParams(
-        `WITH pago_periodo AS (
-           SELECT pg.[id_consulta], pg.[monto]
-           FROM [CentroPodologico].[dbo].[pagos] pg
-           INNER JOIN [CentroPodologico].[dbo].[consultas] c
-             ON pg.[id_consulta] = c.[id_consulta]
-           WHERE c.[deleted_at] IS NULL
-             AND c.[id_empresa]  = @id_empresa
-             AND c.[id_sucursal] = @id_sucursal
-             AND pg.[fecha_pago] >= @fecha_inicio
-             AND pg.[fecha_pago] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-             AND pg.[status] = 1
-         ),
-         nominal_servicios AS (
-           SELECT cs.[id_consulta], SUM(cs.[precio_aplicado]) AS total
-           FROM [CentroPodologico].[dbo].[consulta_servicios] cs
-           GROUP BY cs.[id_consulta]
-         ),
-         nominal_productos AS (
-           SELECT cp.[id_consulta], SUM(cp.[precio] * cp.[cantidad]) AS total
-           FROM [CentroPodologico].[dbo].[consulta_productos] cp
-           GROUP BY cp.[id_consulta]
-         ),
-         prorrateo AS (
-           SELECT
-             pp.[monto],
-             ISNULL(ns.total, 0) AS nom_serv,
-             ISNULL(np.total, 0) AS nom_prod
-           FROM pago_periodo pp
-           LEFT JOIN nominal_servicios ns ON ns.[id_consulta] = pp.[id_consulta]
-           LEFT JOIN nominal_productos np ON np.[id_consulta] = pp.[id_consulta]
-         )
-         SELECT
-           SUM(
-             CASE
-               WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_serv / (nom_serv + nom_prod)
-               ELSE 0
-             END
-           ) AS total_servicios,
-           SUM(
-             CASE
-               WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_prod / (nom_serv + nom_prod)
-               ELSE monto
-             END
-           ) AS total_productos
-         FROM prorrateo`,
-        { id_empresa, id_sucursal, fecha_inicio, fecha_fin }
-      ),
-    ]);
-
-    const tratRows = tratamientosRows as ITratamientoStat[];
-    const ventasCobradasRow = (ventasCobradasRows as IVentasCobradasStat[])[0];
-    return {
-      ok: true,
-      servicios: servicios as IServicioStat[],
-      productos: productos as IProductoStat[],
-      metodos_pago: metodos_pago as IMetodoPagoStat[],
-      ventas_mensuales: ventas_mensuales as IVentaMensualStat[],
-      tratamientos: tratRows[0] ?? { total_pagos: 0, total_ingresos: 0 },
-      ventas_cobradas: {
-        total_servicios: ventasCobradasRow?.total_servicios ?? 0,
-        total_productos: ventasCobradasRow?.total_productos ?? 0,
-      },
-    };
-  } catch (error) {
-    console.error({ error });
-    return {
-      ok: false,
-      servicios: [],
-      productos: [],
-      metodos_pago: [],
-      ventas_mensuales: [],
-      tratamientos: { total_pagos: 0, total_ingresos: 0 },
-      ventas_cobradas: { total_servicios: 0, total_productos: 0 },
-    };
-  }
+  return getEstadisticasMultiple(fecha_inicio, fecha_fin, [id_sucursal]);
 }
 
 export async function getEstadisticasMultiple(
@@ -508,7 +247,7 @@ export async function getEstadisticasMultiple(
       metodos_pago: [],
       ventas_mensuales: [],
       tratamientos: { total_pagos: 0, total_ingresos: 0 },
-      ventas_cobradas: { total_servicios: 0, total_productos: 0 },
+      ventas_cobradas: { total_servicios: 0, total_productos: 0, total_mostrador: 0 },
     };
   }
   try {
@@ -542,22 +281,59 @@ export async function getEstadisticasMultiple(
       ),
 
       db.queryParams(
-        `WITH agg AS (
+        `WITH source_rows AS (
            SELECT
-             p.[nombre]                       AS nombre,
-             SUM(cp.[cantidad])               AS total_cantidad,
-             SUM(cp.[precio] * cp.[cantidad]) AS total_ingresos
+             ip.[id_product]                  AS id_producto,
+             ip.[name]                        AS nombre,
+             SUM(cp.[cantidad])               AS cantidad_consulta,
+             SUM(cp.[precio] * cp.[cantidad]) AS ingresos_consulta,
+             CAST(0 AS int)                   AS cantidad_mostrador,
+             CAST(0 AS decimal(18, 2))        AS ingresos_mostrador
            FROM [CentroPodologico].[dbo].[consulta_productos] cp
-           INNER JOIN [CentroPodologico].[dbo].[productos] p
-             ON cp.[id_producto] = p.[id_producto]
+           INNER JOIN [CentroPodologico].[inventory].[Products] ip
+             ON cp.[id_producto] = ip.[id_product]
+            AND ip.[id_empresa] = @id_empresa
            INNER JOIN [CentroPodologico].[dbo].[consultas] c
              ON cp.[id_consulta] = c.[id_consulta]
-           WHERE c.[deleted_at] IS NULL
+           WHERE cp.[status] = 1
+             AND c.[deleted_at] IS NULL
              AND c.[id_empresa]  = @id_empresa
              AND c.[id_sucursal] IN (${placeholders})
              AND c.[fecha] >= @fecha_inicio
              AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-           GROUP BY p.[nombre]
+           GROUP BY ip.[id_product], ip.[name]
+           UNION ALL
+           SELECT
+             ip.[id_product],
+             ip.[name],
+             CAST(0 AS int),
+             CAST(0 AS decimal(18, 2)),
+             SUM(vd.[cantidad]),
+             SUM(vd.[subtotal])
+           FROM [CentroPodologico].[dbo].[VentasDetalle] vd
+           INNER JOIN [CentroPodologico].[dbo].[Ventas] v
+             ON vd.[id_venta] = v.[id_venta]
+           INNER JOIN [CentroPodologico].[inventory].[Products] ip
+             ON vd.[id_producto] = ip.[id_product]
+            AND ip.[id_empresa] = @id_empresa
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY ip.[id_product], ip.[name]
+         ),
+         agg AS (
+           SELECT
+             id_producto,
+             nombre,
+             SUM(cantidad_consulta)  AS cantidad_consulta,
+             SUM(cantidad_mostrador) AS cantidad_mostrador,
+             SUM(ingresos_consulta)  AS ingresos_consulta,
+             SUM(ingresos_mostrador) AS ingresos_mostrador,
+             SUM(cantidad_consulta + cantidad_mostrador) AS total_cantidad,
+             SUM(ingresos_consulta + ingresos_mostrador) AS total_ingresos
+           FROM source_rows
+           GROUP BY id_producto, nombre
          ),
          ranked AS (
            SELECT *,
@@ -565,7 +341,9 @@ export async function getEstadisticasMultiple(
              ROW_NUMBER() OVER (ORDER BY total_ingresos DESC) AS rn_ingresos
            FROM agg
          )
-         SELECT nombre, total_cantidad, total_ingresos
+         SELECT id_producto, nombre, total_cantidad, total_ingresos,
+                cantidad_consulta, cantidad_mostrador,
+                ingresos_consulta, ingresos_mostrador
          FROM ranked
          WHERE rn_cantidad <= 7 OR rn_ingresos <= 7
          ORDER BY total_cantidad DESC`,
@@ -601,6 +379,13 @@ export async function getEstadisticasMultiple(
              AND c.[id_sucursal] IN (${placeholders})
              AND top2.[created_at] >= @fecha_inicio
              AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           UNION ALL
+           SELECT v.[idMetodoPago], v.[total] AS monto
+           FROM [CentroPodologico].[dbo].[Ventas] v
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
          ) src
          INNER JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
            ON src.[idMetodoPago] = mp.[idMetodoPago]
@@ -661,9 +446,9 @@ export async function getEstadisticasMultiple(
            GROUP BY mes
          )
          SELECT
-           COALESCE(sp.mes, t.mes)                AS mes,
+           COALESCE(sp.mes, t.mes, m.mes)          AS mes,
            COALESCE(sp.total_servicios, 0)         AS total_servicios,
-           COALESCE(sp.total_productos, 0)         AS total_productos,
+           COALESCE(sp.total_productos, 0) + COALESCE(m.total_mostrador, 0) AS total_productos,
            COALESCE(t.total_tratamientos, 0)       AS total_tratamientos
          FROM sp
          FULL OUTER JOIN (
@@ -684,6 +469,17 @@ export async function getEstadisticasMultiple(
              AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
            GROUP BY CONVERT(varchar(7), top2.[created_at], 120)
          ) t ON sp.mes = t.mes
+         FULL OUTER JOIN (
+           SELECT
+             CONVERT(varchar(7), v.[created_at], 120) AS mes,
+             SUM(v.[total])                            AS total_mostrador
+           FROM [CentroPodologico].[dbo].[Ventas] v
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY CONVERT(varchar(7), v.[created_at], 120)
+         ) m ON COALESCE(sp.mes, t.mes) = m.mes
          ORDER BY mes`,
         commonParams
       ),
@@ -738,20 +534,29 @@ export async function getEstadisticasMultiple(
            FROM pago_periodo pp
            LEFT JOIN nominal_servicios ns ON ns.[id_consulta] = pp.[id_consulta]
            LEFT JOIN nominal_productos np ON np.[id_consulta] = pp.[id_consulta]
+         ),
+         mostrador AS (
+           SELECT ISNULL(SUM(v.[total]), 0) AS total
+           FROM [CentroPodologico].[dbo].[Ventas] v
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
          )
          SELECT
-           SUM(
+           ISNULL(SUM(
              CASE
                WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_serv / (nom_serv + nom_prod)
                ELSE 0
              END
-           ) AS total_servicios,
-           SUM(
+           ), 0) AS total_servicios,
+           ISNULL(SUM(
              CASE
                WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_prod / (nom_serv + nom_prod)
                ELSE monto
              END
-           ) AS total_productos
+           ), 0) + (SELECT total FROM mostrador) AS total_productos,
+           (SELECT total FROM mostrador) AS total_mostrador
          FROM prorrateo`,
         commonParams
       ),
@@ -769,6 +574,7 @@ export async function getEstadisticasMultiple(
       ventas_cobradas: {
         total_servicios: ventasCobradasRow?.total_servicios ?? 0,
         total_productos: ventasCobradasRow?.total_productos ?? 0,
+        total_mostrador: ventasCobradasRow?.total_mostrador ?? 0,
       },
     };
   } catch (error) {
@@ -780,7 +586,7 @@ export async function getEstadisticasMultiple(
       metodos_pago: [],
       ventas_mensuales: [],
       tratamientos: { total_pagos: 0, total_ingresos: 0 },
-      ventas_cobradas: { total_servicios: 0, total_productos: 0 },
+      ventas_cobradas: { total_servicios: 0, total_productos: 0, total_mostrador: 0 },
     };
   }
 }
