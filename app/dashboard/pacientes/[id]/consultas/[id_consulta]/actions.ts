@@ -905,6 +905,8 @@ export async function addConsultaProducto(
         id_consulta,
         id_user,
       });
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
     });
 
     const rows = await db.queryParams(
@@ -1000,6 +1002,8 @@ export async function updateConsultaProducto(
           WHERE [id_consulta_producto] = @id_consulta_producto`,
         { id_consulta_producto, precio, cantidad, status },
       );
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
     });
 
     const rows = await db.queryParams(
@@ -1038,12 +1042,12 @@ export async function deleteConsultaProducto(
       }
       const current = currentRows[0];
       const wasActivo = Boolean(current.status);
+      const id_consulta = Number(current.id_consulta);
 
       if (wasActivo) {
         const id_producto  = Number(current.id_producto);
         const cantidad      = Number(current.cantidad);
-        const id_consulta   = Number(current.id_consulta);
-        const id_sucursal   = Number(current.id_sucursal);
+        const id_sucursal  = Number(current.id_sucursal);
         const id_empresa    = Number(current.id_empresa);
         const id_unit_measurement = await getStockUnitMeasurement(tx, id_producto);
 
@@ -1065,6 +1069,8 @@ export async function deleteConsultaProducto(
           WHERE [id_consulta_producto] = @id_consulta_producto`,
         { id_consulta_producto },
       );
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
     });
 
     return { ok: true, data: null };
