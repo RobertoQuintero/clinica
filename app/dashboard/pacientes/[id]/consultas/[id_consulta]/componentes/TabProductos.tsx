@@ -44,7 +44,9 @@ export default function TabProductos({ id_consulta, locked, onContinuar, onTotal
     return () => { cancelled = true; };
   }, [id_consulta]);
 
-  const total = productos.reduce((s, p) => s + Number(p.precio) * Number(p.cantidad), 0);
+  const total = productos
+    .filter((p) => p.status === "activo")
+    .reduce((s, p) => s + Number(p.precio) * Number(p.cantidad), 0);
 
   // Report products total to parent whenever the list changes
   useEffect(() => {
