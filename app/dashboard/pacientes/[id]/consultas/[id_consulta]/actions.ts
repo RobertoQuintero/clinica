@@ -765,45 +765,58 @@ export async function selectServicioOpcion(
   precio_aplicado:  number,
 ): Promise<ActionResult<IConsultaServicio | null>> {
   try {
-    // Remove previous selection for this service in this consultation
-    await db.queryParams(
-      `DELETE cs
-         FROM [CentroPodologico].[dbo].[consulta_servicios] cs
-         JOIN [CentroPodologico].[dbo].[servicio_opciones] so
-           ON so.[id_servicio_opcion] = cs.[id_servicio_opcion]
-        WHERE cs.[id_consulta] = @id_consulta
-          AND so.[id_servicio] = @id_servicio`,
-      { id_consulta, id_servicio },
-    );
+    let validationMessage: string | null = null;
+    let createdServicio: IConsultaServicio | null = null;
 
-    if (id_servicio_opcion === 0) {
-      return { ok: true, data: null };
+    await db.transaction(async (tx) => {
+      // Validate before deleting so a failure keeps the previous selection
+      if (id_servicio_opcion !== 0) {
+        const matchRows = await tx.queryParams(
+          `SELECT so.[id_servicio_opcion]
+             FROM [CentroPodologico].[dbo].[servicio_opciones] so
+             JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_sucursal] = so.[id_sucursal]
+            WHERE so.[id_servicio_opcion] = @id_servicio_opcion
+              AND c.[id_consulta] = @id_consulta`,
+          { id_servicio_opcion, id_consulta },
+        );
+        if (matchRows.length === 0) {
+          validationMessage = "Esta opción no pertenece a la sucursal de la consulta";
+          return;
+        }
+      }
+
+      // Remove previous selection for this service in this consultation
+      await tx.queryParams(
+        `DELETE cs
+           FROM [CentroPodologico].[dbo].[consulta_servicios] cs
+           JOIN [CentroPodologico].[dbo].[servicio_opciones] so
+             ON so.[id_servicio_opcion] = cs.[id_servicio_opcion]
+          WHERE cs.[id_consulta] = @id_consulta
+            AND so.[id_servicio] = @id_servicio`,
+        { id_consulta, id_servicio },
+      );
+
+      if (id_servicio_opcion !== 0) {
+        const result = await tx.queryParams(
+          `INSERT INTO [CentroPodologico].[dbo].[consulta_servicios]
+             ([id_consulta_servicio],[id_consulta],[id_servicio_opcion],[precio_aplicado])
+           OUTPUT INSERTED.*
+           VALUES (
+             (SELECT ISNULL(MAX([id_consulta_servicio]),0)+1 FROM [CentroPodologico].[dbo].[consulta_servicios]),
+             @id_consulta,@id_servicio_opcion,@precio_aplicado
+           )`,
+          { id_consulta, id_servicio_opcion, precio_aplicado },
+        );
+        createdServicio = result?.[0] as IConsultaServicio;
+      }
+
+      await recalculateFinalizedConsultaTotal(tx, id_consulta);
+    });
+
+    if (validationMessage) {
+      return { ok: false, data: validationMessage };
     }
-
-    const matchRows = await db.queryParams(
-      `SELECT so.[id_servicio_opcion]
-         FROM [CentroPodologico].[dbo].[servicio_opciones] so
-         JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_sucursal] = so.[id_sucursal]
-        WHERE so.[id_servicio_opcion] = @id_servicio_opcion
-          AND c.[id_consulta] = @id_consulta`,
-      { id_servicio_opcion, id_consulta },
-    );
-    if (matchRows.length === 0) {
-      return { ok: false, data: "Esta opción no pertenece a la sucursal de la consulta" };
-    }
-
-    const result = await db.queryParams(
-      `INSERT INTO [CentroPodologico].[dbo].[consulta_servicios]
-         ([id_consulta_servicio],[id_consulta],[id_servicio_opcion],[precio_aplicado])
-       OUTPUT INSERTED.*
-       VALUES (
-         (SELECT ISNULL(MAX([id_consulta_servicio]),0)+1 FROM [CentroPodologico].[dbo].[consulta_servicios]),
-         @id_consulta,@id_servicio_opcion,@precio_aplicado
-       )`,
-      { id_consulta, id_servicio_opcion, precio_aplicado },
-    );
-
-    return { ok: true, data: result?.[0] as IConsultaServicio };
+    return { ok: true, data: createdServicio };
   } catch (err) {
     console.error(err);
     return { ok: false, data: "Error al guardar la selección de servicio" };
