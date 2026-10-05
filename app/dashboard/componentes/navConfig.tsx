@@ -74,57 +74,57 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/dashboard/ventas", label: "Ventas", icon: ShoppingCart, minRole: 0, excludeRoles: [5, 6] },
   { href: "/dashboard/tratamientos", label: "Tratamientos", icon: ClipboardList, minRole: 0, excludeRoles: [6] },
   { href: "/dashboard/empleados", label: "Empleados", icon: UsersRound, minRole: 0, excludeRoles: [2, 3, 5, 6] },
-  {
-    label: "Nómina",
-    icon: Banknote,
-    minRole: 0,
-    // Complemento de PAYROLL_ALLOWED_ROLE_IDS (lib/payroll/constants.ts): solo roles 1 y 4.
-    excludeRoles: [2, 3, 5, 6],
-    children: [
-      {
-        href: "/dashboard/nomina/periodos",
-        label: "Periodos",
-        icon: CalendarRange,
-        excludeRoles: [2, 3, 5, 6],
-      },
-      {
-        href: "/dashboard/nomina/procesar",
-        label: "Procesar nómina",
-        icon: Calculator,
-        excludeRoles: [2, 3, 5, 6],
-      },
-      {
-        href: "/dashboard/nomina/comisiones",
-        label: "Comisiones",
-        icon: Percent,
-        excludeRoles: [2, 3, 5, 6],
-      },
-      {
-        href: "/dashboard/nomina/horas-extra",
-        label: "Horas extra",
-        icon: AlarmClockPlus,
-        excludeRoles: [2, 3, 5, 6],
-      },
-      {
-        href: "/dashboard/nomina/faltas",
-        label: "Faltas",
-        icon: CalendarX2,
-        excludeRoles: [2, 3, 5, 6],
-      },
-      {
-        href: "/dashboard/nomina/retardos",
-        label: "Retardos",
-        icon: AlarmClock,
-        excludeRoles: [2, 3, 5, 6],
-      },
-      {
-        href: "/dashboard/nomina/bonos",
-        label: "Bonos",
-        icon: Award,
-        excludeRoles: [2, 3, 5, 6],
-      },
-    ],
-  },
-  { href: "/dashboard/facturacion", label: "Facturación", icon: Receipt, minRole: 0, excludeRoles: [2, 3, 5] },
+  // {
+  //   label: "Nómina",
+  //   icon: Banknote,
+  //   minRole: 0,
+  //   // Complemento de PAYROLL_ALLOWED_ROLE_IDS (lib/payroll/constants.ts): solo roles 1 y 4.
+  //   excludeRoles: [2, 3, 5, 6],
+  //   children: [
+  //     {
+  //       href: "/dashboard/nomina/periodos",
+  //       label: "Periodos",
+  //       icon: CalendarRange,
+  //       excludeRoles: [2, 3, 5, 6],
+  //     },
+  //     {
+  //       href: "/dashboard/nomina/procesar",
+  //       label: "Procesar nómina",
+  //       icon: Calculator,
+  //       excludeRoles: [2, 3, 5, 6],
+  //     },
+  //     {
+  //       href: "/dashboard/nomina/comisiones",
+  //       label: "Comisiones",
+  //       icon: Percent,
+  //       excludeRoles: [2, 3, 5, 6],
+  //     },
+  //     {
+  //       href: "/dashboard/nomina/horas-extra",
+  //       label: "Horas extra",
+  //       icon: AlarmClockPlus,
+  //       excludeRoles: [2, 3, 5, 6],
+  //     },
+  //     {
+  //       href: "/dashboard/nomina/faltas",
+  //       label: "Faltas",
+  //       icon: CalendarX2,
+  //       excludeRoles: [2, 3, 5, 6],
+  //     },
+  //     {
+  //       href: "/dashboard/nomina/retardos",
+  //       label: "Retardos",
+  //       icon: AlarmClock,
+  //       excludeRoles: [2, 3, 5, 6],
+  //     },
+  //     {
+  //       href: "/dashboard/nomina/bonos",
+  //       label: "Bonos",
+  //       icon: Award,
+  //       excludeRoles: [2, 3, 5, 6],
+  //     },
+  //   ],
+  // },
+  // { href: "/dashboard/facturacion", label: "Facturación", icon: Receipt, minRole: 0, excludeRoles: [2, 3, 5] },
   { href: "/dashboard/usuarios", label: "Usuarios", icon: UserCog, minRole: 0, excludeRoles: [2, 3, 5, 6] },
 ];

@@ -45,6 +45,9 @@ const PIE_COLORS = [
   "#8558D6",
 ];
 
+const PRODUCTOS_CONSULTA_COLOR = "#5C58D6";
+const PRODUCTOS_MOSTRADOR_COLOR = "#58CBD6";
+
 function getFirstDayOfMonth(): string {
   const now = new Date();
   return addZeroToday(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -102,20 +105,24 @@ const BarTooltipServicios = ({ active, payload }: { active?: boolean; payload?: 
 const BarTooltipProductos = ({ active, payload, metrica }: { active?: boolean; payload?: { payload: ProductoStat }[]; metrica: "cantidad" | "ingresos" }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
+  const formatValue = (value: number) => (metrica === "cantidad" ? value : fmtCurrency(value));
+  const consultaValue = metrica === "cantidad" ? d.cantidad_consulta : d.ingresos_consulta;
+  const mostradorValue = metrica === "cantidad" ? d.cantidad_mostrador : d.ingresos_mostrador;
+  const totalValue = metrica === "cantidad" ? d.total_cantidad : d.total_ingresos;
   return (
     <div className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs shadow-lg">
       <p className="font-semibold text-zinc-800 dark:text-zinc-100 mb-1">{d.nombre}</p>
-      {metrica === "cantidad" ? (
-        <>
-          <p className="text-zinc-600 dark:text-zinc-300">Cantidad: <span className="font-medium text-indigo-600 dark:text-indigo-400">{d.total_cantidad}</span></p>
-          <p className="text-zinc-600 dark:text-zinc-300">Ingresos: <span className="font-medium text-emerald-600 dark:text-emerald-400">{fmtCurrency(d.total_ingresos)}</span></p>
-        </>
-      ) : (
-        <>
-          <p className="text-zinc-600 dark:text-zinc-300">Ingresos: <span className="font-medium text-emerald-600 dark:text-emerald-400">{fmtCurrency(d.total_ingresos)}</span></p>
-          <p className="text-zinc-600 dark:text-zinc-300">Cantidad: <span className="font-medium text-indigo-600 dark:text-indigo-400">{d.total_cantidad}</span></p>
-        </>
-      )}
+      <p className="text-zinc-600 dark:text-zinc-300">
+        <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: PRODUCTOS_CONSULTA_COLOR }} />
+        Consulta: <span className="font-medium text-zinc-800 dark:text-zinc-100">{formatValue(consultaValue)}</span>
+      </p>
+      <p className="text-zinc-600 dark:text-zinc-300">
+        <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: PRODUCTOS_MOSTRADOR_COLOR }} />
+        Mostrador: <span className="font-medium text-zinc-800 dark:text-zinc-100">{formatValue(mostradorValue)}</span>
+      </p>
+      <p className="mt-1 pt-1 border-t border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300">
+        Total: <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatValue(totalValue)}</span>
+      </p>
     </div>
   );
 };
@@ -651,13 +658,18 @@ export default function EstadisticasCharts() {
                     <BarTooltipProductos metrica={metricaProductos} />
                   }
                 />
+                <Legend formatter={(value: string) => <span className="text-xs">{value}</span>} />
                 <Bar
-                  dataKey={
-                    metricaProductos === "cantidad"
-                      ? "total_cantidad"
-                      : "total_ingresos"
-                  }
-                  fill={metricaProductos === "cantidad" ? "#5C58D6" : "#58A4D6"}
+                  dataKey={metricaProductos === "cantidad" ? "cantidad_consulta" : "ingresos_consulta"}
+                  name="Consulta"
+                  stackId="productos"
+                  fill={PRODUCTOS_CONSULTA_COLOR}
+                />
+                <Bar
+                  dataKey={metricaProductos === "cantidad" ? "cantidad_mostrador" : "ingresos_mostrador"}
+                  name="Mostrador"
+                  stackId="productos"
+                  fill={PRODUCTOS_MOSTRADOR_COLOR}
                   radius={[0, 4, 4, 0]}
                 />
               </BarChart>
