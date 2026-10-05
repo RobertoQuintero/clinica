@@ -182,9 +182,14 @@ export interface IServicioStat {
 }
 
 export interface IProductoStat {
+  id_producto: number;
   nombre: string;
   total_cantidad: number;
   total_ingresos: number;
+  cantidad_consulta: number;
+  cantidad_mostrador: number;
+  ingresos_consulta: number;
+  ingresos_mostrador: number;
 }
 
 export interface IMetodoPagoStat {
@@ -276,22 +281,59 @@ export async function getEstadisticasMultiple(
       ),
 
       db.queryParams(
-        `WITH agg AS (
+        `WITH source_rows AS (
            SELECT
-             p.[nombre]                       AS nombre,
-             SUM(cp.[cantidad])               AS total_cantidad,
-             SUM(cp.[precio] * cp.[cantidad]) AS total_ingresos
+             ip.[id_product]                  AS id_producto,
+             ip.[name]                        AS nombre,
+             SUM(cp.[cantidad])               AS cantidad_consulta,
+             SUM(cp.[precio] * cp.[cantidad]) AS ingresos_consulta,
+             CAST(0 AS int)                   AS cantidad_mostrador,
+             CAST(0 AS decimal(18, 2))        AS ingresos_mostrador
            FROM [CentroPodologico].[dbo].[consulta_productos] cp
-           INNER JOIN [CentroPodologico].[dbo].[productos] p
-             ON cp.[id_producto] = p.[id_producto]
+           INNER JOIN [CentroPodologico].[inventory].[Products] ip
+             ON cp.[id_producto] = ip.[id_product]
+            AND ip.[id_empresa] = @id_empresa
            INNER JOIN [CentroPodologico].[dbo].[consultas] c
              ON cp.[id_consulta] = c.[id_consulta]
-           WHERE c.[deleted_at] IS NULL
+           WHERE cp.[status] = 1
+             AND c.[deleted_at] IS NULL
              AND c.[id_empresa]  = @id_empresa
              AND c.[id_sucursal] IN (${placeholders})
              AND c.[fecha] >= @fecha_inicio
              AND c.[fecha] < DATEADD(day, 1, CAST(@fecha_fin AS date))
-           GROUP BY p.[nombre]
+           GROUP BY ip.[id_product], ip.[name]
+           UNION ALL
+           SELECT
+             ip.[id_product],
+             ip.[name],
+             CAST(0 AS int),
+             CAST(0 AS decimal(18, 2)),
+             SUM(vd.[cantidad]),
+             SUM(vd.[subtotal])
+           FROM [CentroPodologico].[dbo].[VentasDetalle] vd
+           INNER JOIN [CentroPodologico].[dbo].[Ventas] v
+             ON vd.[id_venta] = v.[id_venta]
+           INNER JOIN [CentroPodologico].[inventory].[Products] ip
+             ON vd.[id_producto] = ip.[id_product]
+            AND ip.[id_empresa] = @id_empresa
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           GROUP BY ip.[id_product], ip.[name]
+         ),
+         agg AS (
+           SELECT
+             id_producto,
+             nombre,
+             SUM(cantidad_consulta)  AS cantidad_consulta,
+             SUM(cantidad_mostrador) AS cantidad_mostrador,
+             SUM(ingresos_consulta)  AS ingresos_consulta,
+             SUM(ingresos_mostrador) AS ingresos_mostrador,
+             SUM(cantidad_consulta + cantidad_mostrador) AS total_cantidad,
+             SUM(ingresos_consulta + ingresos_mostrador) AS total_ingresos
+           FROM source_rows
+           GROUP BY id_producto, nombre
          ),
          ranked AS (
            SELECT *,
@@ -299,7 +341,9 @@ export async function getEstadisticasMultiple(
              ROW_NUMBER() OVER (ORDER BY total_ingresos DESC) AS rn_ingresos
            FROM agg
          )
-         SELECT nombre, total_cantidad, total_ingresos
+         SELECT id_producto, nombre, total_cantidad, total_ingresos,
+                cantidad_consulta, cantidad_mostrador,
+                ingresos_consulta, ingresos_mostrador
          FROM ranked
          WHERE rn_cantidad <= 7 OR rn_ingresos <= 7
          ORDER BY total_cantidad DESC`,
