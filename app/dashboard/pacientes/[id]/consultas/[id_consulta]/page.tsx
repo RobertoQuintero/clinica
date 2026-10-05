@@ -375,6 +375,8 @@ id_usuario_elimino: null,
   const [totalProductos, setTotalProductos] = useState(0);
   const totalGeneral   = totalServicios + totalProductos;
   const saldo          = totalGeneral - totalPagado;
+  const hasInvoicedPaymentOnFinalizedConsulta =
+    !!consulta?.fecha_fin && pagos.some((pago) => pago.status && pago.facturado);
 
   // ── render ─────────────────────────────────────────────────────────────────
 
@@ -423,6 +425,15 @@ id_usuario_elimino: null,
           )}
         </span>
       </div>
+
+      {hasInvoicedPaymentOnFinalizedConsulta && (
+        <div
+          role="status"
+          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+        >
+          Esta consulta tiene un pago facturado. El costo total no se actualiza al modificar servicios o productos.
+        </div>
+      )}
 
       {/* tab nav */}
       <div className="border-b border-zinc-200 dark:border-zinc-700">

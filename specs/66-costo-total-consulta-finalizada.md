@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [17 — Productos de consulta descuentan stock](17-productos-consulta-descuentan-stock.md): es el flujo de agregar, editar y quitar productos de una consulta (`addConsultaProducto`, `updateConsultaProducto`, `deleteConsultaProducto`).
 - **Modifica base de datos:** No. Solo se actualiza el valor de `consultas.costo_total`, que ya existe.
@@ -71,23 +71,23 @@ Convenciones:
 
 ## Criterios de aceptación
 
-- [ ] `tsc` y el lint del proyecto pasan sin errores nuevos.
-- [ ] En una consulta finalizada, como rol 1 o 4, agregar un producto sube `consultas.costo_total` en `precio × cantidad`.
-- [ ] En una consulta finalizada, cambiar la cantidad o el precio de un producto activo deja `costo_total` igual a la fórmula.
-- [ ] En una consulta finalizada, pasar un producto a inactivo baja `costo_total` en su `precio × cantidad`, y volver a activarlo lo sube.
-- [ ] En una consulta finalizada, eliminar un producto baja `costo_total` en su `precio × cantidad`.
-- [ ] En una consulta finalizada, cambiar la opción de un servicio deja `costo_total` con el `precio_aplicado` nuevo.
-- [ ] En una consulta finalizada, quitar un servicio (opción 0) baja `costo_total` en su `precio_aplicado`.
-- [ ] Si `selectServicioOpcion` recibe una opción de otra sucursal, devuelve `ok: false` y la selección anterior del servicio se conserva.
-- [ ] Si falla el recálculo, la modificación del servicio o producto se revierte, incluido el movimiento de stock en las acciones de productos.
-- [ ] En una consulta no finalizada (`fecha_fin` nulo), modificar servicios o productos no cambia `costo_total`.
-- [ ] En una consulta finalizada con al menos un pago activo facturado, modificar servicios o productos no cambia `costo_total`.
-- [ ] Si el único pago facturado de la consulta está eliminado (`status = 0`), modificar servicios o productos sí actualiza `costo_total`.
-- [ ] El aviso de pago facturado aparece solo en consultas finalizadas con un pago activo facturado.
-- [ ] Al abrir `/dashboard/pacientes/[id]/expediente` después de una modificación, la columna "Costo total" de `ConsultaFila` muestra el valor de `costo_total` en la BD.
-- [ ] El "Total" del encabezado de la consulta no incluye productos inactivos, y coincide con `costo_total` tras recargar (salvo en consultas con pago facturado).
-- [ ] Los pagos de la consulta no cambian (misma cantidad de filas y mismos montos) después de modificar servicios o productos.
-- [ ] Un usuario con rol distinto de 1 o 4 sigue sin poder editar servicios ni productos de una consulta finalizada desde la interfaz.
+- [x] `tsc` y el lint del proyecto pasan sin errores nuevos.
+- [x] En una consulta finalizada, como rol 1 o 4, agregar un producto sube `consultas.costo_total` en `precio × cantidad`.
+- [x] En una consulta finalizada, cambiar la cantidad o el precio de un producto activo deja `costo_total` igual a la fórmula.
+- [x] En una consulta finalizada, pasar un producto a inactivo baja `costo_total` en su `precio × cantidad`, y volver a activarlo lo sube.
+- [x] En una consulta finalizada, eliminar un producto baja `costo_total` en su `precio × cantidad`.
+- [x] En una consulta finalizada, cambiar la opción de un servicio deja `costo_total` con el `precio_aplicado` nuevo.
+- [x] En una consulta finalizada, quitar un servicio (opción 0) baja `costo_total` en su `precio_aplicado`.
+- [x] Si `selectServicioOpcion` recibe una opción de otra sucursal, devuelve `ok: false` y la selección anterior del servicio se conserva.
+- [x] Si falla el recálculo, la modificación del servicio o producto se revierte, incluido el movimiento de stock en las acciones de productos.
+- [x] En una consulta no finalizada (`fecha_fin` nulo), modificar servicios o productos no cambia `costo_total`.
+- [x] En una consulta finalizada con al menos un pago activo facturado, modificar servicios o productos no cambia `costo_total`.
+- [x] Si el único pago facturado de la consulta está eliminado (`status = 0`), modificar servicios o productos sí actualiza `costo_total`.
+- [x] El aviso de pago facturado aparece solo en consultas finalizadas con un pago activo facturado.
+- [x] Al abrir `/dashboard/pacientes/[id]/expediente` después de una modificación, la columna "Costo total" de `ConsultaFila` muestra el valor de `costo_total` en la BD.
+- [x] El "Total" del encabezado de la consulta no incluye productos inactivos, y coincide con `costo_total` tras recargar (salvo en consultas con pago facturado).
+- [x] Los pagos de la consulta no cambian (misma cantidad de filas y mismos montos) después de modificar servicios o productos.
+- [x] Un usuario con rol distinto de 1 o 4 sigue sin poder editar servicios ni productos de una consulta finalizada desde la interfaz.
 
 ## Decisiones
 
