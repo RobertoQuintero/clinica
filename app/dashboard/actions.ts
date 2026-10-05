@@ -208,6 +208,7 @@ export interface ITratamientoStat {
 export interface IVentasCobradasStat {
   total_servicios: number;
   total_productos: number;
+  total_mostrador: number;
 }
 
 export interface IEstadisticasData {
@@ -241,7 +242,7 @@ export async function getEstadisticasMultiple(
       metodos_pago: [],
       ventas_mensuales: [],
       tratamientos: { total_pagos: 0, total_ingresos: 0 },
-      ventas_cobradas: { total_servicios: 0, total_productos: 0 },
+      ventas_cobradas: { total_servicios: 0, total_productos: 0, total_mostrador: 0 },
     };
   }
   try {
@@ -334,6 +335,13 @@ export async function getEstadisticasMultiple(
              AND c.[id_sucursal] IN (${placeholders})
              AND top2.[created_at] >= @fecha_inicio
              AND top2.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
+           UNION ALL
+           SELECT v.[idMetodoPago], v.[total] AS monto
+           FROM [CentroPodologico].[dbo].[Ventas] v
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
          ) src
          INNER JOIN [CentroPodologico].[dbo].[MetodosPagos] mp
            ON src.[idMetodoPago] = mp.[idMetodoPago]
@@ -471,20 +479,29 @@ export async function getEstadisticasMultiple(
            FROM pago_periodo pp
            LEFT JOIN nominal_servicios ns ON ns.[id_consulta] = pp.[id_consulta]
            LEFT JOIN nominal_productos np ON np.[id_consulta] = pp.[id_consulta]
+         ),
+         mostrador AS (
+           SELECT ISNULL(SUM(v.[total]), 0) AS total
+           FROM [CentroPodologico].[dbo].[Ventas] v
+           WHERE v.[status] = 1
+             AND v.[id_sucursal] IN (${placeholders})
+             AND v.[created_at] >= @fecha_inicio
+             AND v.[created_at] < DATEADD(day, 1, CAST(@fecha_fin AS date))
          )
          SELECT
-           SUM(
+           ISNULL(SUM(
              CASE
                WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_serv / (nom_serv + nom_prod)
                ELSE 0
              END
-           ) AS total_servicios,
-           SUM(
+           ), 0) AS total_servicios,
+           ISNULL(SUM(
              CASE
                WHEN (nom_serv + nom_prod) > 0 THEN monto * nom_prod / (nom_serv + nom_prod)
                ELSE monto
              END
-           ) AS total_productos
+           ), 0) + (SELECT total FROM mostrador) AS total_productos,
+           (SELECT total FROM mostrador) AS total_mostrador
          FROM prorrateo`,
         commonParams
       ),
@@ -502,6 +519,7 @@ export async function getEstadisticasMultiple(
       ventas_cobradas: {
         total_servicios: ventasCobradasRow?.total_servicios ?? 0,
         total_productos: ventasCobradasRow?.total_productos ?? 0,
+        total_mostrador: ventasCobradasRow?.total_mostrador ?? 0,
       },
     };
   } catch (error) {
@@ -513,7 +531,7 @@ export async function getEstadisticasMultiple(
       metodos_pago: [],
       ventas_mensuales: [],
       tratamientos: { total_pagos: 0, total_ingresos: 0 },
-      ventas_cobradas: { total_servicios: 0, total_productos: 0 },
+      ventas_cobradas: { total_servicios: 0, total_productos: 0, total_mostrador: 0 },
     };
   }
 }

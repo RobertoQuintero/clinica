@@ -331,6 +331,7 @@ export default function EstadisticasCharts() {
 
   const totalServicios = data?.ventas_cobradas.total_servicios ?? 0;
   const totalProductos = data?.ventas_cobradas.total_productos ?? 0;
+  const totalMostrador = data?.ventas_cobradas.total_mostrador ?? 0;
   const totalTratamientos = data?.tratamientos.total_ingresos ?? 0;
   const ventasTotalesData = [
     { nombre: "Servicios", total: totalServicios, fill: "#587CD6" },
@@ -541,6 +542,11 @@ export default function EstadisticasCharts() {
                     <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
                       {fmtCurrency(totalProductos)}
                     </p>
+                    {totalMostrador > 0 && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Mostrador: {fmtCurrency(totalMostrador)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-xl px-4 py-3 min-w-40">
