@@ -104,6 +104,36 @@ async function getStockUnitMeasurement(
   return rows[0]?.id_stock_unit_measurement ?? null;
 }
 
+/**
+ * Recalcula `consultas.costo_total` desde la BD (servicios + productos activos)
+ * cuando la consulta ya está finalizada y ningún pago activo está facturado
+ * (spec 66). En cualquier otro caso no cambia nada. Se llama dentro de la
+ * transacción de la acción que modifica servicios o productos.
+ */
+async function recalculateFinalizedConsultaTotal(
+  transaction: ITransactionClient,
+  id_consulta: number
+): Promise<void> {
+  await transaction.queryParams(
+    `UPDATE [CentroPodologico].[dbo].[consultas]
+        SET [costo_total] =
+              ISNULL((SELECT SUM([precio_aplicado])
+                        FROM [CentroPodologico].[dbo].[consulta_servicios]
+                       WHERE [id_consulta] = @id_consulta), 0)
+            + ISNULL((SELECT SUM([precio] * [cantidad])
+                        FROM [CentroPodologico].[dbo].[consulta_productos]
+                       WHERE [id_consulta] = @id_consulta AND [status] = 1), 0)
+      WHERE [id_consulta] = @id_consulta
+        AND [fecha_fin] IS NOT NULL
+        AND NOT EXISTS (SELECT 1
+                          FROM [CentroPodologico].[dbo].[pagos]
+                         WHERE [id_consulta] = @id_consulta
+                           AND [status] = 1
+                           AND [facturado] = 1)`,
+    { id_consulta }
+  );
+}
+
 // ─── fetch all data ───────────────────────────────────────────────────────────
 
 export async function getConsultaData(
