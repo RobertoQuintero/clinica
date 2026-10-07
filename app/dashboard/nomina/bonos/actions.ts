@@ -46,6 +46,7 @@ import {
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { resolvePeriod } from "@/lib/payroll/period";
+import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
 import {
   calculateShiftExtensionAmount,
   calculateShiftExtensionDailyRate,
@@ -944,6 +945,8 @@ export async function getShiftExtensionBonusPage(
           normalizeSearchText(row.codigo_empleado).includes(search)),
     );
 
+    const recalculationNeeded = await isShiftExtensionBonusRecalculationNeeded(period.id_period);
+
     const pageStart = (page - 1) * SHIFT_EXTENSION_BONUS_PAGE_SIZE;
 
     return {
@@ -954,8 +957,7 @@ export async function getShiftExtensionBonusPage(
         totalRows: filteredRows.length,
         summary,
         employeesWithoutSchedule,
-        // El aviso "Recalcula" se conecta en el paso 10.
-        recalculationNeeded: false,
+        recalculationNeeded,
       },
     };
   } catch (error) {

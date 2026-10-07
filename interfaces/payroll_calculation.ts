@@ -73,6 +73,7 @@ export interface IPayrollProcessPage {
   latenessRecalculationNeeded: boolean;   // ídem, para los retardos (spec 63)
   punctualityBonusRecalculationNeeded: boolean;   // ídem, para el bono de puntualidad (spec 64)
   attendanceBonusRecalculationNeeded:  boolean;   // ídem, para el bono de asistencia (spec 65)
+  shiftExtensionBonusRecalculationNeeded: boolean;   // ídem, para el bono por extensión de jornada (spec 68)
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".

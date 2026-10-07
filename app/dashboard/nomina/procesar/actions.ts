@@ -21,6 +21,7 @@ import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
+import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -128,6 +129,7 @@ export async function getPayrollProcessPage(
       latenessRecalculationNeeded: false,
       punctualityBonusRecalculationNeeded: false,
       attendanceBonusRecalculationNeeded: false,
+      shiftExtensionBonusRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -152,6 +154,7 @@ export async function getPayrollProcessPage(
       latenessRecalculationNeeded,
       punctualityBonusRecalculationNeeded,
       attendanceBonusRecalculationNeeded,
+      shiftExtensionBonusRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -232,6 +235,7 @@ export async function getPayrollProcessPage(
       isLatenessRecalculationNeeded(period.id_period),
       isPunctualityBonusRecalculationNeeded(period.id_period),
       isAttendanceBonusRecalculationNeeded(period.id_period),
+      isShiftExtensionBonusRecalculationNeeded(period.id_period),
     ]);
 
     return {
@@ -301,6 +305,7 @@ export async function getPayrollProcessPage(
         latenessRecalculationNeeded,
         punctualityBonusRecalculationNeeded,
         attendanceBonusRecalculationNeeded,
+        shiftExtensionBonusRecalculationNeeded,
       },
     };
   } catch (error) {
