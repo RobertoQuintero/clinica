@@ -39,6 +39,9 @@ export interface IPayrollEmployeeRow {
   bono_asistencia_resultado:  "C" | "P" | "N";   // spec 65
   bono_asistencia_faltas:     number;
   importe_bono_asistencia:    number;
+  bono_extension_asignado:    boolean;           // spec 68
+  bono_extension_dias:        number;
+  importe_bono_extension:     number;
   total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia, calculado en el SELECT
   calculated_at:      string;   // "YYYY-MM-DD HH:mm:ss"
 }
@@ -117,6 +120,9 @@ export interface IPayrollEmployeeSnapshot {
   bono_asistencia_resultado:     "C" | "P" | "N";   // spec 65
   bono_asistencia_faltas:        number;
   importe_bono_asistencia:       number;
+  bono_extension_asignado:       boolean;           // spec 68
+  bono_extension_dias:           number;
+  importe_bono_extension:        number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 

@@ -162,6 +162,8 @@ export async function getPayrollProcessPage(
                 pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
                 pe.bono_asistencia_resultado, pe.bono_asistencia_faltas,
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
+                pe.bono_extension_asignado, pe.bono_extension_dias,
+                CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
@@ -252,6 +254,9 @@ export async function getPayrollProcessPage(
           importe_bono_puntualidad: Number(row.importe_bono_puntualidad),
           bono_asistencia_faltas: Number(row.bono_asistencia_faltas),
           importe_bono_asistencia: Number(row.importe_bono_asistencia),
+          bono_extension_asignado: Boolean(row.bono_extension_asignado),
+          bono_extension_dias: Number(row.bono_extension_dias),
+          importe_bono_extension: Number(row.importe_bono_extension),
           total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
@@ -361,6 +366,8 @@ export async function getPayrollEmployeeDetail(
                 pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
                 pe.bono_asistencia_resultado, pe.bono_asistencia_faltas,
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
+                pe.bono_extension_asignado, pe.bono_extension_dias,
+                CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -501,6 +508,9 @@ export async function getPayrollEmployeeDetail(
           bono_asistencia_resultado: snapshotRow.bono_asistencia_resultado,
           bono_asistencia_faltas: Number(snapshotRow.bono_asistencia_faltas),
           importe_bono_asistencia: Number(snapshotRow.importe_bono_asistencia),
+          bono_extension_asignado: Boolean(snapshotRow.bono_extension_asignado),
+          bono_extension_dias: Number(snapshotRow.bono_extension_dias),
+          importe_bono_extension: Number(snapshotRow.importe_bono_extension),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;

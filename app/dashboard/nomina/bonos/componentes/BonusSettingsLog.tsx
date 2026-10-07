@@ -1,9 +1,9 @@
 import { ArrowRight, ChevronDown } from "lucide-react";
-import type { BonusKind, IBonusSettingsLogEntry } from "@/interfaces/payroll_bonus";
+import type { ConfigurableBonusKind, IBonusSettingsLogEntry } from "@/interfaces/payroll_bonus";
 import { formatDateTimeSlashed, formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 
 interface Props {
-  bonusKind: BonusKind;
+  bonusKind: ConfigurableBonusKind;
   entries: IBonusSettingsLogEntry[];
 }
 

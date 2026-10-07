@@ -4,16 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Award, Info, Pencil, X } from "lucide-react";
-import type { BonusKind, IBonusSetting } from "@/interfaces/payroll_bonus";
+import type { ConfigurableBonusKind, IBonusSetting } from "@/interfaces/payroll_bonus";
 import { updateAttendanceBonusSettings, updatePunctualityBonusSettings } from "../actions";
 
 interface ModalProps {
-  bonusKind: BonusKind;
+  bonusKind: ConfigurableBonusKind;
   settings: IBonusSetting[];
   onClose: () => void;
 }
 
-const BONUS_COPY: Record<BonusKind, { title: string; help: string }> = {
+const BONUS_COPY: Record<ConfigurableBonusKind, { title: string; help: string }> = {
   punctuality: {
     title: "Reglas del bono de puntualidad",
     help: "Deja vacío el monto y el máximo de una frecuencia que aún no paga bono. Un podólogo conserva el bono si sus retardos más faltas injustificados no pasan del máximo.",
@@ -270,7 +270,7 @@ function BonusSettingsModal({ bonusKind, settings, onClose }: ModalProps) {
   );
 }
 
-export function EditBonusSettingsButton({ bonusKind, settings }: { bonusKind: BonusKind; settings: IBonusSetting[] }) {
+export function EditBonusSettingsButton({ bonusKind, settings }: { bonusKind: ConfigurableBonusKind; settings: IBonusSetting[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const closeModal = useCallback(() => setIsOpen(false), []);
 

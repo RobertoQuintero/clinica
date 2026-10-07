@@ -25,3 +25,8 @@ export const ABSENCE_CONTROL_ROLE_IDS = [2];
 export const LATENESS_PAGE_SIZE = 25;
 export const PUNCTUALITY_BONUS_PAGE_SIZE = 25;
 export const ATTENDANCE_BONUS_PAGE_SIZE = 25;
+
+// Bono por extensión de jornada (spec 68): (salario_diario / 8) × 2 por día con horario y checada.
+export const SHIFT_EXTENSION_HOURS_PER_DAY = 1;
+export const SHIFT_EXTENSION_PAY_MULTIPLIER = 2;
+export const SHIFT_EXTENSION_BONUS_PAGE_SIZE = 25;
