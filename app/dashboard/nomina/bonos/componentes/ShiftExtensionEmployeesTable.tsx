@@ -2,6 +2,7 @@ import type { IShiftExtensionEmployeeRow } from "@/interfaces/payroll_shift_exte
 import { SHIFT_EXTENSION_BONUS_PAGE_SIZE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import PayrollPagerFooter from "../../componentes/PayrollPagerFooter";
+import ShiftExtensionAssignmentButton from "./ShiftExtensionAssignmentButton";
 
 interface Props {
   rows: IShiftExtensionEmployeeRow[];
@@ -41,12 +42,13 @@ export default function ShiftExtensionEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold text-right">Días trabajados</th>
               <th scope="col" className="px-4 py-3 font-semibold">Bono</th>
               <th scope="col" className="px-6 py-3 font-semibold text-right">Importe estimado</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún podólogo coincide con los filtros."
                     : "Este periodo no tiene podólogos con control de faltas."}
@@ -87,6 +89,15 @@ export default function ShiftExtensionEmployeesTable({
                     }`}
                   >
                     {formatPayrollCurrency(employeeRow.estimatedAmount)}
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <div className="flex justify-end">
+                      <ShiftExtensionAssignmentButton
+                        employeeId={employeeRow.id_empleado}
+                        employeeName={employeeRow.nombre_completo}
+                        isAssigned={employeeRow.isAssigned}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))

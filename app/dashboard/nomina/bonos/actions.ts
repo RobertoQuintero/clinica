@@ -56,6 +56,7 @@ import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctuality
 import {
   attendanceBonusPageFiltersSchema,
   punctualityBonusPageFiltersSchema,
+  setShiftExtensionAssignmentSchema,
   shiftExtensionBonusPageFiltersSchema,
   updateAttendanceBonusSettingsSchema,
   updatePunctualityBonusSettingsSchema,
@@ -960,5 +961,89 @@ export async function getShiftExtensionBonusPage(
   } catch (error) {
     console.error("getShiftExtensionBonusPage", error);
     return { ok: false, message: "No se pudo cargar el bono por extensión de jornada" };
+  }
+}
+
+interface IStoredShiftExtensionAssignmentRow {
+  activo: boolean;
+}
+
+/**
+ * Asigna o quita el bono por extensión de jornada a un podólogo (spec 68), en una sola transacción: revisa que el
+ * empleado sea activo, de la sucursal activa y podólogo controlado (el mismo `ABSENCE_CONTROLLED_EMPLOYEE_CONDITION`
+ * del cálculo), lee su asignación con UPDLOCK/HOLDLOCK y, solo si el valor cambia, hace upsert con `updated_at` nuevo y
+ * escribe una fila de bitácora. Si no cambia no escribe nada. La asignación se puede cambiar siempre: el aviso
+ * "Recalcula" ve el cambio al comparar el resultado con el snapshot.
+ */
+export async function setShiftExtensionAssignment(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user } = access.data;
+
+  const parsed = setShiftExtensionAssignmentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { id_empleado, activo } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (transaction): Promise<{ ok: true } | { ok: false; message: string }> => {
+      const controlledEmployeeRows = await transaction.queryParams(
+        `SELECT e.id_empleado
+           FROM [CentroPodologico].[RH].[empleados] e
+          WHERE e.id_empleado = @id_empleado
+            AND e.status = 1 AND e.activo = 1
+            AND e.id_sucursal = @id_sucursal
+            AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}`,
+        { id_empleado, id_sucursal },
+      );
+      if (controlledEmployeeRows.length === 0) {
+        return { ok: false, message: "El empleado no es un podólogo activo de esta sucursal" };
+      }
+
+      const previousRows = (await transaction.queryParams(
+        `SELECT activo
+           FROM [CentroPodologico].[payroll].[shift_extension_assignments] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_empleado = @id_empleado`,
+        { id_empleado },
+      )) as IStoredShiftExtensionAssignmentRow[];
+      const previous = previousRows[0];
+      if (previous && Boolean(previous.activo) === activo) return { ok: true };
+
+      const assignmentParams = { id_empleado, activo, updated_by: id_user, updated_at: buildDate(new Date()) };
+      if (previous) {
+        await transaction.queryParams(
+          `UPDATE [CentroPodologico].[payroll].[shift_extension_assignments]
+              SET activo     = @activo,
+                  updated_by = @updated_by,
+                  updated_at = CAST(@updated_at AS datetime2(0))
+            WHERE id_empleado = @id_empleado`,
+          assignmentParams,
+        );
+      } else {
+        await transaction.queryParams(
+          `INSERT INTO [CentroPodologico].[payroll].[shift_extension_assignments]
+             (id_empleado, activo, updated_by, updated_at)
+           VALUES (@id_empleado, @activo, @updated_by, CAST(@updated_at AS datetime2(0)))`,
+          assignmentParams,
+        );
+      }
+
+      await transaction.queryParams(
+        `INSERT INTO [CentroPodologico].[payroll].[shift_extension_assignments_log]
+           (id_empleado, activo_anterior, activo_nuevo, updated_by, updated_at)
+         VALUES (@id_empleado, @previous_activo, @activo, @updated_by, CAST(@updated_at AS datetime2(0)))`,
+        { ...assignmentParams, previous_activo: previous ? Boolean(previous.activo) : null },
+      );
+      return { ok: true };
+    });
+
+    if (!result.ok) return result;
+    revalidatePath(PUNCTUALITY_BONUS_PATH);
+    revalidatePath("/dashboard/nomina/procesar");
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("setShiftExtensionAssignment", error);
+    return { ok: false, message: "No se pudo guardar la asignación del bono" };
   }
 }
