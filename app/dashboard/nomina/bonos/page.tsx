@@ -20,7 +20,7 @@ export default async function BonusesPage({ searchParams }: { searchParams: Prom
 
   const kindTabs = <BonusKindTabs activeKind={bonusKind} preservedSearchParams={preservedSearchParams} />;
 
-  if (bonusKind === "shift_extension") return <ShiftExtensionBonusView kindTabs={kindTabs} />;
+  if (bonusKind === "shift_extension") return <ShiftExtensionBonusView rawSearchParams={rawSearchParams} kindTabs={kindTabs} />;
 
   return bonusKind === "attendance" ? (
     <AttendanceBonusView rawSearchParams={rawSearchParams} kindTabs={kindTabs} />
