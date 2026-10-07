@@ -21,6 +21,7 @@ import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
+import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -36,6 +37,12 @@ import {
   ATTENDANCE_BONUS_INSERT_COLUMNS_SQL,
   ATTENDANCE_BONUS_SELECT_SQL,
 } from "@/lib/payroll/attendanceBonusSql";
+import {
+  SHIFT_EXTENSION_BONUS_APPLY_SQL,
+  SHIFT_EXTENSION_BONUS_INSERT_COLUMNS_SQL,
+  SHIFT_EXTENSION_BONUS_SELECT_SQL,
+  SHIFT_EXTENSION_WORKED_DAYS_SQL,
+} from "@/lib/payroll/shiftExtensionBonusSql";
 import {
   PUNCTUALITY_BONUS_APPLY_SQL,
   PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL,
@@ -113,7 +120,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, totalPercepciones: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, totalPercepciones: 0 },
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
@@ -122,6 +129,7 @@ export async function getPayrollProcessPage(
       latenessRecalculationNeeded: false,
       punctualityBonusRecalculationNeeded: false,
       attendanceBonusRecalculationNeeded: false,
+      shiftExtensionBonusRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -146,6 +154,7 @@ export async function getPayrollProcessPage(
       latenessRecalculationNeeded,
       punctualityBonusRecalculationNeeded,
       attendanceBonusRecalculationNeeded,
+      shiftExtensionBonusRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -162,10 +171,13 @@ export async function getPayrollProcessPage(
                 pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
                 pe.bono_asistencia_resultado, pe.bono_asistencia_faltas,
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
+                pe.bono_extension_asignado, pe.bono_extension_dias,
+                CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
-                  + pe.importe_bono_puntualidad + pe.importe_bono_asistencia AS total_percepciones,
+                  + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
+                  + pe.importe_bono_extension AS total_percepciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -182,7 +194,8 @@ export async function getPayrollProcessPage(
                 ISNULL(SUM(importe_comision_productos), 0) AS importe_comision_productos,
                 ISNULL(SUM(importe_horas_extra_dobles + importe_horas_extra_triples), 0) AS importe_horas_extra,
                 CAST(ISNULL(SUM(importe_bono_puntualidad), 0) AS float) AS importe_bono_puntualidad,
-                CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia
+                CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia,
+                CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension
            FROM [CentroPodologico].[payroll].[period_employees]
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
@@ -222,6 +235,7 @@ export async function getPayrollProcessPage(
       isLatenessRecalculationNeeded(period.id_period),
       isPunctualityBonusRecalculationNeeded(period.id_period),
       isAttendanceBonusRecalculationNeeded(period.id_period),
+      isShiftExtensionBonusRecalculationNeeded(period.id_period),
     ]);
 
     return {
@@ -252,6 +266,9 @@ export async function getPayrollProcessPage(
           importe_bono_puntualidad: Number(row.importe_bono_puntualidad),
           bono_asistencia_faltas: Number(row.bono_asistencia_faltas),
           importe_bono_asistencia: Number(row.importe_bono_asistencia),
+          bono_extension_asignado: Boolean(row.bono_extension_asignado),
+          bono_extension_dias: Number(row.bono_extension_dias),
+          importe_bono_extension: Number(row.importe_bono_extension),
           total_percepciones: Number(row.total_percepciones),
         })),
         totals: {
@@ -263,6 +280,7 @@ export async function getPayrollProcessPage(
           importeHorasExtra: Number(totals[0]?.importe_horas_extra ?? 0),
           importeBonoPuntualidad: Number(totals[0]?.importe_bono_puntualidad ?? 0),
           importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
+          importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
           totalPercepciones:
             Math.round(
               (Number(totals[0]?.importe_salario ?? 0) +
@@ -271,7 +289,8 @@ export async function getPayrollProcessPage(
                 Number(totals[0]?.importe_comision_productos ?? 0) +
                 Number(totals[0]?.importe_horas_extra ?? 0) +
                 Number(totals[0]?.importe_bono_puntualidad ?? 0) +
-                Number(totals[0]?.importe_bono_asistencia ?? 0)) *
+                Number(totals[0]?.importe_bono_asistencia ?? 0) +
+                Number(totals[0]?.importe_bono_extension ?? 0)) *
                 100,
             ) / 100,
         },
@@ -286,6 +305,7 @@ export async function getPayrollProcessPage(
         latenessRecalculationNeeded,
         punctualityBonusRecalculationNeeded,
         attendanceBonusRecalculationNeeded,
+        shiftExtensionBonusRecalculationNeeded,
       },
     };
   } catch (error) {
@@ -361,6 +381,8 @@ export async function getPayrollEmployeeDetail(
                 pe.bono_puntualidad_maximo, CAST(pe.importe_bono_puntualidad AS float) AS importe_bono_puntualidad,
                 pe.bono_asistencia_resultado, pe.bono_asistencia_faltas,
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
+                pe.bono_extension_asignado, pe.bono_extension_dias,
+                CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -501,6 +523,9 @@ export async function getPayrollEmployeeDetail(
           bono_asistencia_resultado: snapshotRow.bono_asistencia_resultado,
           bono_asistencia_faltas: Number(snapshotRow.bono_asistencia_faltas),
           importe_bono_asistencia: Number(snapshotRow.importe_bono_asistencia),
+          bono_extension_asignado: Boolean(snapshotRow.bono_extension_asignado),
+          bono_extension_dias: Number(snapshotRow.bono_extension_dias),
+          importe_bono_extension: Number(snapshotRow.importe_bono_extension),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
@@ -851,6 +876,8 @@ export async function calculatePayrollPeriod(
                            WHERE lj.[id_empleado] = e.[id_empleado] AND lj.[fecha] = d.[fecha])
        OPTION (MAXRECURSION 400);
 
+       ${SHIFT_EXTENSION_WORKED_DAYS_SQL}
+
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
          (id_period, id_empleado, tipo_nomina, salario_diario, dias, dias_falta, dias_retardo, dias_retardo_sin_tope,
           importe_salario, consultas_atendidas, importe_comision,
@@ -860,6 +887,7 @@ export async function calculatePayrollPeriod(
           limite_horas_dobles_aplicado,
           ${PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL},
           ${ATTENDANCE_BONUS_INSERT_COLUMNS_SQL},
+          ${SHIFT_EXTENSION_BONUS_INSERT_COLUMNS_SQL},
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, net.dias, absences.dias_falta,
               lateness_days.dias_retardo, lateness_days.dias_retardo_sin_tope,
@@ -875,6 +903,7 @@ export async function calculatePayrollPeriod(
               CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(overtime_settings.[limite_horas_dobles_periodo], 0) ELSE 0 END,
               ${PUNCTUALITY_BONUS_SELECT_SQL},
               ${ATTENDANCE_BONUS_SELECT_SQL},
+              ${SHIFT_EXTENSION_BONUS_SELECT_SQL},
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
          LEFT JOIN [CentroPodologico].[payroll].[treatment_commission_settings] treatment_settings
@@ -973,7 +1002,7 @@ export async function calculatePayrollPeriod(
                  SUM(od.[importe_dobles]) AS importe_dobles, SUM(od.[importe_triples]) AS importe_triples
             FROM #overtime_days od
            WHERE salary.tipo_nomina = 'O' AND od.[id_empleado] = e.[id_empleado]
-        ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}
+        ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
 

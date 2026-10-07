@@ -5,6 +5,7 @@ import { describeAttendanceBonus } from "@/lib/payroll/attendanceBonus";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { describeOvertimeHours } from "@/lib/payroll/overtimePay";
 import { describeProductSalesCommission } from "@/lib/payroll/productSalesCommission";
+import { describeShiftExtensionBonus } from "@/lib/payroll/shiftExtensionBonus";
 import { describePunctualityBonus } from "@/lib/payroll/punctualityBonus";
 import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
 
@@ -66,7 +67,9 @@ function describeCommission(
  * Líneas de la tarjeta "Percepciones totales" de un empleado: "Sueldo base" y, cuando el
  * snapshot trae importe, "Comisión por consultas atendidas", "Comisión por tratamientos de onicomicosis"
  * "Comisión por venta de productos", "Horas extra dobles", "Horas extra triples" y "Bono de puntualidad"
- * (spec 64: se muestra con 'C' y con 'P', este último con $0 y el motivo; con 'N' se omite).
+ * (spec 64: se muestra con 'C' y con 'P', este último con $0 y el motivo; con 'N' se omite) y
+ * "Bono por extensión de jornada" (spec 68: solo si está asignado y el importe es mayor que 0; la vista fiscal
+ * nunca lo trae asignado).
  * Los conceptos futuros se agregan aquí.
  * Las fechas son "YYYY-MM-DD" y se comparan como strings.
  */
@@ -98,6 +101,9 @@ export function buildPerceptionLines(
     | "bono_asistencia_resultado"
     | "bono_asistencia_faltas"
     | "importe_bono_asistencia"
+    | "bono_extension_asignado"
+    | "bono_extension_dias"
+    | "importe_bono_extension"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -185,6 +191,17 @@ export function buildPerceptionLines(
       description: attendanceBonus.description,
       note: null,
       amount: attendanceBonus.amount,
+    });
+  }
+
+  const shiftExtensionBonus = describeShiftExtensionBonus(snapshot);
+  if (shiftExtensionBonus) {
+    lines.push({
+      key: "bono_extension_jornada",
+      label: shiftExtensionBonus.label,
+      description: shiftExtensionBonus.description,
+      note: null,
+      amount: shiftExtensionBonus.amount,
     });
   }
 

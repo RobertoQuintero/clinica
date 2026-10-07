@@ -294,6 +294,20 @@ export const punctualityBonusPageFiltersSchema = z.object({
 
 export const attendanceBonusPageFiltersSchema = punctualityBonusPageFiltersSchema;
 
+// ---- Bono por extensión de jornada (spec 68) ----
+
+export const shiftExtensionBonusPageFiltersSchema = z.object({
+  idPeriod: z.number().int().positive().nullable(),
+  assignment: z.enum(["all", "assigned", "unassigned"]),
+  search: z.string(),
+  page: z.number().int().positive(),
+});
+
+export const setShiftExtensionAssignmentSchema = z.object({
+  id_empleado: z.number().int().positive("Empleado inválido"),
+  activo: z.boolean(),
+});
+
 const PUNCTUALITY_BONUS_MAX_AMOUNT = 9999999999.99;   // decimal(12,2)
 const PUNCTUALITY_BONUS_MAX_SMALLINT = 32767;
 

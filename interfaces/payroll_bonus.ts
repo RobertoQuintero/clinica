@@ -1,4 +1,7 @@
-export type BonusKind = "punctuality" | "attendance";
+export type BonusKind = "punctuality" | "attendance" | "shift_extension";
+
+/** Bonos con configuración por frecuencia (tarjeta, modal y bitácora genéricos); el de extensión no tiene. */
+export type ConfigurableBonusKind = Exclude<BonusKind, "shift_extension">;
 
 /** 'C' | 'P' | 'N' en BD. `PunctualityBonusResult` es un alias de este tipo. */
 export type BonusResult = "keeps" | "loses" | "not_evaluated";

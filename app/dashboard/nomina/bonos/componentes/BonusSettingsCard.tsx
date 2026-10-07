@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { Award } from "lucide-react";
-import type { BonusKind, IBonusSetting } from "@/interfaces/payroll_bonus";
+import type { ConfigurableBonusKind, IBonusSetting } from "@/interfaces/payroll_bonus";
 import { formatDateTimeSlashed, formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 
 interface Props {
-  bonusKind: BonusKind;
+  bonusKind: ConfigurableBonusKind;
   settings: IBonusSetting[];
   /** Botón "Editar": la tarjeta lo aloja en su encabezado. */
   editAction?: ReactNode;
@@ -19,7 +19,7 @@ function formatIncidentLimit(maximumIncidents: number): string {
   return maximumIncidents === 1 ? "1 incidencia" : `${maximumIncidents} incidencias`;
 }
 
-const BONUS_COPY: Record<BonusKind, { title: string; description: string }> = {
+const BONUS_COPY: Record<ConfigurableBonusKind, { title: string; description: string }> = {
   punctuality: {
     title: "Reglas del bono de puntualidad",
     description: "Cada frecuencia de pago tiene su propio monto y su máximo de incidencias (retardos más faltas).",
