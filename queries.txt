@@ -1903,3 +1903,48 @@ ALTER TABLE [payroll].[period_employees] WITH CHECK
      OR ([bono_asistencia_resultado] = 'P'
             AND [tipo_nomina] = 'O' AND [bono_asistencia_faltas] > 0 AND [importe_bono_asistencia] = 0))
 GO
+
+-- Spec 68: bono por extensión de jornada
+-- Spec 68: bono por extensión de jornada asignado por empleado. Sin fila o activo = 0 = sin bono.
+-- No tiene id_period: la asignación vale para cualquier periodo que se calcule mientras esté activa.
+CREATE TABLE [payroll].[shift_extension_assignments](
+    [id_empleado] [int]          NOT NULL,
+    [activo]      [bit]          NOT NULL,
+    [updated_by]  [int]          NOT NULL,
+    [updated_at]  [datetime2](0) NOT NULL,
+ CONSTRAINT [PK_shift_extension_assignments] PRIMARY KEY CLUSTERED ([id_empleado] ASC),
+ CONSTRAINT [FK_shift_extension_assignments_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado])
+) ON [PRIMARY]
+GO
+
+-- Spec 68: bitácora. Una fila por cada vez que el valor cambia.
+CREATE TABLE [payroll].[shift_extension_assignments_log](
+    [id_log]          [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]     [int]          NOT NULL,
+    [activo_anterior] [bit]          NULL,   -- NULL: el empleado no tenía fila
+    [activo_nuevo]    [bit]          NOT NULL,
+    [updated_by]      [int]          NOT NULL,
+    [updated_at]      [datetime2](0) NOT NULL,
+ CONSTRAINT [PK_shift_extension_assignments_log] PRIMARY KEY CLUSTERED ([id_log] ASC)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_shift_extension_assignments_log_fecha]
+    ON [payroll].[shift_extension_assignments_log] ([updated_at] DESC)
+GO
+
+-- Spec 68: resultado congelado del bono por renglón de nómina.
+-- Los snapshots anteriores quedan sin asignar (0), con 0 días y 0 de importe.
+ALTER TABLE [payroll].[period_employees] ADD
+    [bono_extension_asignado] [bit]           NOT NULL CONSTRAINT [DF_period_employees_bono_extension_asignado] DEFAULT (0),
+    [bono_extension_dias]     [smallint]      NOT NULL CONSTRAINT [DF_period_employees_bono_extension_dias]     DEFAULT (0),
+    [importe_bono_extension]  [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_importe_bono_extension]  DEFAULT (0)
+GO
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_bono_extension] CHECK (
+        ([bono_extension_asignado] = 0
+            AND [bono_extension_dias] = 0 AND [importe_bono_extension] = 0)
+     OR ([bono_extension_asignado] = 1
+            AND [tipo_nomina] = 'O' AND [bono_extension_dias] >= 0 AND [importe_bono_extension] >= 0))
+GO

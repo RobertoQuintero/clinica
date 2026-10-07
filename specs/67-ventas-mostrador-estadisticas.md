@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [05 — Coincidir totales de ventas y métodos de pago](05-coincidir-totales-ventas-metodos-pago.md): define que el total de "Ventas totales" debe ser igual al de "Métodos de pago", y que los pagos de consulta se reparten entre servicios y productos.
   - [17 — Productos de consulta descuentan stock](17-productos-consulta-descuentan-stock.md): desde esa spec, `consulta_productos.id_producto` apunta a `inventory.Products`.
@@ -155,30 +155,30 @@ export interface IVentasCobradasStat {
 
 ## Criterios de aceptación
 
-- [ ] `npm run build` termina sin errores de TypeScript ni de lint nuevos.
-- [ ] `getEstadisticas` ya no tiene SQL propio y devuelve lo mismo que `getEstadisticasMultiple(fecha_inicio, fecha_fin, [id_sucursal])`.
-- [ ] Sin ventas de mostrador en el rango, las cuatro secciones muestran las mismas cifras que antes. La única excepción es "Productos", si había productos de consulta inactivos o con ids legacy.
-- [ ] Un ticket de mostrador con `status = 1` y `created_at` dentro del rango sube el total de "Ventas totales" exactamente en `Ventas.total`.
-- [ ] En la vista de un periodo, la tarjeta "Productos" de "Ventas totales" muestra "Mostrador: $X". `X` es la suma de `Ventas.total` del rango.
-- [ ] La línea "Mostrador: $X" no aparece cuando `total_mostrador` es 0.
-- [ ] En la vista por mes, cada ticket de mostrador suma a `total_productos` del mes de su `created_at`.
-- [ ] Un mes con solo ventas de mostrador aparece como una columna en la gráfica mensual.
-- [ ] En "Métodos de pago", cada ticket de mostrador suma 1 a la columna "Pagos" de su método y `Ventas.total` a su "Total".
-- [ ] El total de "Ventas totales" es igual al `tfoot` de "Métodos de pago" en la vista de un periodo, para cualquier rango y cualquier selección de sucursales.
-- [ ] En la vista por mes, la suma de `total_servicios + total_productos + total_tratamientos` de todos los meses es igual al `tfoot` de "Métodos de pago".
-- [ ] Un ticket con `status = 0` no aparece en ninguna de las tres secciones.
-- [ ] Un ticket de otra sucursal, o fuera del rango de fechas, no aparece en ninguna de las tres secciones.
-- [ ] En la gráfica "Productos", un producto vendido en consulta y en mostrador aparece en una sola barra, con un segmento Consulta y un segmento Mostrador.
-- [ ] En la gráfica "Productos", la suma de los dos segmentos es igual a `total_cantidad` (o a `total_ingresos`, según la métrica activa).
-- [ ] El segmento Mostrador usa `VentasDetalle.cantidad` en Cantidad y `VentasDetalle.subtotal` en Ingresos.
-- [ ] Un `consulta_productos` con `status ≠ 1` no suma en la gráfica "Productos".
-- [ ] Un `consulta_productos` cuyo `id_producto` no existe en `inventory.Products` de la empresa no aparece en la gráfica "Productos".
-- [ ] El nombre de cada barra de "Productos" viene de `inventory.Products.name`. `app/dashboard/actions.ts` ya no tiene ninguna referencia a `dbo.productos`.
-- [ ] La gráfica "Productos" muestra como máximo 7 barras, ordenadas por el total combinado de la métrica activa.
-- [ ] El tooltip de "Productos" muestra Consulta, Mostrador y Total de la métrica activa.
-- [ ] Como rol 4 con varias sucursales, cada cifra es igual a la suma de las cifras de cada sucursal por separado.
-- [ ] La gráfica "Servicios utilizados" no cambia.
-- [ ] La barra apilada, la leyenda, el tooltip y la línea "Mostrador" se ven bien en modo claro y en modo oscuro.
+- [x] `npm run build` termina sin errores de TypeScript ni de lint nuevos.
+- [x] `getEstadisticas` ya no tiene SQL propio y devuelve lo mismo que `getEstadisticasMultiple(fecha_inicio, fecha_fin, [id_sucursal])`.
+- [x] Sin ventas de mostrador en el rango, las cuatro secciones muestran las mismas cifras que antes. La única excepción es "Productos", si había productos de consulta inactivos o con ids legacy.
+- [x] Un ticket de mostrador con `status = 1` y `created_at` dentro del rango sube el total de "Ventas totales" exactamente en `Ventas.total`.
+- [x] En la vista de un periodo, la tarjeta "Productos" de "Ventas totales" muestra "Mostrador: $X". `X` es la suma de `Ventas.total` del rango.
+- [x] La línea "Mostrador: $X" no aparece cuando `total_mostrador` es 0.
+- [x] En la vista por mes, cada ticket de mostrador suma a `total_productos` del mes de su `created_at`.
+- [x] Un mes con solo ventas de mostrador aparece como una columna en la gráfica mensual.
+- [x] En "Métodos de pago", cada ticket de mostrador suma 1 a la columna "Pagos" de su método y `Ventas.total` a su "Total".
+- [x] El total de "Ventas totales" es igual al `tfoot` de "Métodos de pago" en la vista de un periodo, para cualquier rango y cualquier selección de sucursales.
+- [x] En la vista por mes, la suma de `total_servicios + total_productos + total_tratamientos` de todos los meses es igual al `tfoot` de "Métodos de pago".
+- [x] Un ticket con `status = 0` no aparece en ninguna de las tres secciones.
+- [x] Un ticket de otra sucursal, o fuera del rango de fechas, no aparece en ninguna de las tres secciones.
+- [x] En la gráfica "Productos", un producto vendido en consulta y en mostrador aparece en una sola barra, con un segmento Consulta y un segmento Mostrador.
+- [x] En la gráfica "Productos", la suma de los dos segmentos es igual a `total_cantidad` (o a `total_ingresos`, según la métrica activa).
+- [x] El segmento Mostrador usa `VentasDetalle.cantidad` en Cantidad y `VentasDetalle.subtotal` en Ingresos.
+- [x] Un `consulta_productos` con `status ≠ 1` no suma en la gráfica "Productos".
+- [x] Un `consulta_productos` cuyo `id_producto` no existe en `inventory.Products` de la empresa no aparece en la gráfica "Productos".
+- [x] El nombre de cada barra de "Productos" viene de `inventory.Products.name`. `app/dashboard/actions.ts` ya no tiene ninguna referencia a `dbo.productos`.
+- [x] La gráfica "Productos" muestra como máximo 7 barras, ordenadas por el total combinado de la métrica activa.
+- [x] El tooltip de "Productos" muestra Consulta, Mostrador y Total de la métrica activa.
+- [x] Como rol 4 con varias sucursales, cada cifra es igual a la suma de las cifras de cada sucursal por separado.
+- [x] La gráfica "Servicios utilizados" no cambia.
+- [x] La barra apilada, la leyenda, el tooltip y la línea "Mostrador" se ven bien en modo claro y en modo oscuro.
 
 ## Decisiones
 
