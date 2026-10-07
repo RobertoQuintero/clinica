@@ -42,7 +42,7 @@ export interface IPayrollEmployeeRow {
   bono_extension_asignado:    boolean;           // spec 68
   bono_extension_dias:        number;
   importe_bono_extension:     number;
-  total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia, calculado en el SELECT
+  total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia + importe_bono_extension, calculado en el SELECT
   calculated_at:      string;   // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -64,7 +64,7 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; totalPercepciones: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; totalPercepciones: number };   // de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
