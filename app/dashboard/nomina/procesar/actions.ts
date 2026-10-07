@@ -37,6 +37,12 @@ import {
   ATTENDANCE_BONUS_SELECT_SQL,
 } from "@/lib/payroll/attendanceBonusSql";
 import {
+  SHIFT_EXTENSION_BONUS_APPLY_SQL,
+  SHIFT_EXTENSION_BONUS_INSERT_COLUMNS_SQL,
+  SHIFT_EXTENSION_BONUS_SELECT_SQL,
+  SHIFT_EXTENSION_WORKED_DAYS_SQL,
+} from "@/lib/payroll/shiftExtensionBonusSql";
+import {
   PUNCTUALITY_BONUS_APPLY_SQL,
   PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL,
   PUNCTUALITY_BONUS_SELECT_SQL,
@@ -861,6 +867,8 @@ export async function calculatePayrollPeriod(
                            WHERE lj.[id_empleado] = e.[id_empleado] AND lj.[fecha] = d.[fecha])
        OPTION (MAXRECURSION 400);
 
+       ${SHIFT_EXTENSION_WORKED_DAYS_SQL}
+
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
          (id_period, id_empleado, tipo_nomina, salario_diario, dias, dias_falta, dias_retardo, dias_retardo_sin_tope,
           importe_salario, consultas_atendidas, importe_comision,
@@ -870,6 +878,7 @@ export async function calculatePayrollPeriod(
           limite_horas_dobles_aplicado,
           ${PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL},
           ${ATTENDANCE_BONUS_INSERT_COLUMNS_SQL},
+          ${SHIFT_EXTENSION_BONUS_INSERT_COLUMNS_SQL},
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, net.dias, absences.dias_falta,
               lateness_days.dias_retardo, lateness_days.dias_retardo_sin_tope,
@@ -885,6 +894,7 @@ export async function calculatePayrollPeriod(
               CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(overtime_settings.[limite_horas_dobles_periodo], 0) ELSE 0 END,
               ${PUNCTUALITY_BONUS_SELECT_SQL},
               ${ATTENDANCE_BONUS_SELECT_SQL},
+              ${SHIFT_EXTENSION_BONUS_SELECT_SQL},
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
          LEFT JOIN [CentroPodologico].[payroll].[treatment_commission_settings] treatment_settings
@@ -983,7 +993,7 @@ export async function calculatePayrollPeriod(
                  SUM(od.[importe_dobles]) AS importe_dobles, SUM(od.[importe_triples]) AS importe_triples
             FROM #overtime_days od
            WHERE salary.tipo_nomina = 'O' AND od.[id_empleado] = e.[id_empleado]
-        ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}
+        ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
 
