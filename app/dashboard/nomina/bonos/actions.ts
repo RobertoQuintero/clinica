@@ -9,6 +9,12 @@ import {
   IAttendanceBonusSettingsLogEntry,
 } from "@/interfaces/payroll_attendance_bonus";
 import {
+  IShiftExtensionAssignmentLogEntry,
+  IShiftExtensionBonusPage,
+  IShiftExtensionEmployeeRow,
+  IShiftExtensionFilters,
+} from "@/interfaces/payroll_shift_extension_bonus";
+import {
   IPunctualityBonusEmployeeRow,
   IPunctualityBonusFilters,
   IPunctualityBonusPage,
@@ -23,6 +29,7 @@ import {
   ATTENDANCE_BONUS_PAGE_SIZE,
   PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY,
   PUNCTUALITY_BONUS_PAGE_SIZE,
+  SHIFT_EXTENSION_BONUS_PAGE_SIZE,
 } from "@/lib/payroll/constants";
 import {
   loadCheckInDays,
@@ -32,13 +39,24 @@ import {
   loadScheduleByEmployee,
 } from "@/lib/payroll/incidentSources";
 import { detectEmployeeLateness } from "@/lib/payroll/latenessDetection";
+import {
+  ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
+  ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
+} from "@/lib/payroll/eligibleEmployees";
+import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { resolvePeriod } from "@/lib/payroll/period";
+import {
+  calculateShiftExtensionAmount,
+  calculateShiftExtensionDailyRate,
+  countShiftExtensionWorkedDays,
+} from "@/lib/payroll/shiftExtensionBonus";
 import { evaluatePunctualityBonus } from "@/lib/payroll/punctualityBonus";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import {
   attendanceBonusPageFiltersSchema,
   punctualityBonusPageFiltersSchema,
+  shiftExtensionBonusPageFiltersSchema,
   updateAttendanceBonusSettingsSchema,
   updatePunctualityBonusSettingsSchema,
 } from "@/lib/payroll/schemas";
@@ -763,5 +781,184 @@ export async function updateAttendanceBonusSettings(input: unknown): Promise<Act
   } catch (error) {
     console.error("updateAttendanceBonusSettings", error);
     return { ok: false, message: "No se pudo guardar la configuración del bono" };
+  }
+}
+
+// ---- Bono por extensión de jornada (spec 68) ----
+
+const SHIFT_EXTENSION_ASSIGNMENTS_LOG_LIMIT = 20;
+
+/** Las últimas 20 entradas de la bitácora de asignaciones de los empleados de la sucursal activa, de la más reciente a la más antigua. */
+export async function getShiftExtensionAssignmentsLog(): Promise<ActionResult<IShiftExtensionAssignmentLogEntry[]>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  try {
+    // La bitácora no guarda sucursal: se filtra por la del empleado, igual que la población de la pestaña.
+    const rows = await db.queryParams(
+      `SELECT TOP (@limit)
+              l.id_log,
+              ${EMPLOYEE_FULL_NAME_SQL}                              AS nombre_completo,
+              l.activo_anterior, l.activo_nuevo,
+              ISNULL(u.nombre, '')                                   AS updated_by_name,
+              CONVERT(varchar(19), l.updated_at, 120)                AS updated_at
+         FROM [CentroPodologico].[payroll].[shift_extension_assignments_log] l
+         JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = l.id_empleado
+         LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.id_user = l.updated_by
+        WHERE e.id_sucursal = @id_sucursal
+        ORDER BY l.updated_at DESC, l.id_log DESC`,
+      { id_sucursal: access.data.id_sucursal, limit: SHIFT_EXTENSION_ASSIGNMENTS_LOG_LIMIT },
+    );
+    return {
+      ok: true,
+      data: (rows as IShiftExtensionAssignmentLogEntry[]).map((row) => ({
+        id_log: Number(row.id_log),
+        nombre_completo: row.nombre_completo,
+        activo_anterior: row.activo_anterior === null ? null : Boolean(row.activo_anterior),
+        activo_nuevo: Boolean(row.activo_nuevo),
+        updated_by_name: row.updated_by_name,
+        updated_at: row.updated_at,
+      })),
+    };
+  } catch (error) {
+    console.error("getShiftExtensionAssignmentsLog", error);
+    return { ok: false, message: "No se pudo cargar la bitácora de asignaciones" };
+  }
+}
+
+interface IShiftExtensionEmployeeSourceRow {
+  id_empleado: number;
+  salario_diario: number;
+  activo: boolean | null;   // null: el empleado no tiene fila de asignación
+}
+
+/**
+ * Vista previa del bono por extensión de jornada de un periodo (spec 68): por cada podólogo con control, cuenta los
+ * días con horario y checada con el helper espejo, lee su asignación y su `salario_diario` actual, y estima el
+ * importe (0 si no está asignado). El resumen se calcula sin filtros y después se aplican asignación, búsqueda y
+ * paginación. En el cálculo manda el SQL; esto solo alimenta la pantalla.
+ */
+export async function getShiftExtensionBonusPage(
+  filters: IShiftExtensionFilters,
+): Promise<ActionResult<IShiftExtensionBonusPage>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  const parsedFilters = shiftExtensionBonusPageFiltersSchema.safeParse(filters);
+  if (!parsedFilters.success) {
+    return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Filtros inválidos" };
+  }
+  const { idPeriod, assignment: assignmentFilter, search: rawSearch, page } = parsedFilters.data;
+
+  try {
+    const [period, periodOptions] = await Promise.all([
+      resolvePeriod(id_sucursal, idPeriod),
+      db.queryParams(
+        `SELECT p.id_period, p.codigo,
+                CONVERT(varchar(10), p.fecha_inicio, 120) AS fecha_inicio,
+                CONVERT(varchar(10), p.fecha_fin, 120)    AS fecha_fin,
+                p.status
+           FROM [CentroPodologico].[payroll].[periods] p
+          WHERE p.id_sucursal = @id_sucursal
+          ORDER BY p.fecha_inicio DESC, p.id_period DESC`,
+        { id_sucursal },
+      ),
+    ]);
+
+    const emptyPage: IShiftExtensionBonusPage = {
+      period,
+      periodOptions: periodOptions as IShiftExtensionBonusPage["periodOptions"],
+      rows: [],
+      totalRows: 0,
+      summary: { assigned: 0, estimatedAmount: 0 },
+      employeesWithoutSchedule: [],
+      recalculationNeeded: false,
+    };
+    if (!period) return { ok: true, data: emptyPage };
+
+    const [employees, scheduleByEmployee, checkInDateRows, sourceRows] = await Promise.all([
+      loadReviewedEmployees(id_sucursal, period),
+      loadScheduleByEmployee(id_sucursal, period),
+      loadCheckInDays(id_sucursal, period),
+      db.queryParams(
+        `SELECT e.id_empleado, CAST(e.salario_diario AS float) AS salario_diario, a.activo
+           FROM [CentroPodologico].[RH].[empleados] e
+           LEFT JOIN [CentroPodologico].[payroll].[shift_extension_assignments] a ON a.id_empleado = e.id_empleado
+          WHERE ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
+            AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}`,
+        { id_sucursal, id_payment_period: period.id_payment_period, fecha_fin: period.fecha_fin },
+      ),
+    ]);
+
+    const sourceByEmployee = new Map(
+      (sourceRows as IShiftExtensionEmployeeSourceRow[]).map((row) => [row.id_empleado, row]),
+    );
+    const checkInDatesByEmployee = groupByEmployee(checkInDateRows);
+
+    const allRows: IShiftExtensionEmployeeRow[] = [];
+    const employeesWithoutSchedule: IShiftExtensionBonusPage["employeesWithoutSchedule"] = [];
+
+    for (const employee of employees) {
+      const schedule = scheduleByEmployee.get(employee.id_empleado) ?? [];
+      if (schedule.length === 0) {
+        employeesWithoutSchedule.push({ id_empleado: employee.id_empleado, nombre_completo: employee.nombre_completo });
+      }
+
+      const source = sourceByEmployee.get(employee.id_empleado);
+      const salarioDiario = Number(source?.salario_diario ?? 0);
+      const isAssigned = Boolean(source?.activo);
+      const { scheduledDays, workedDays } = countShiftExtensionWorkedDays({
+        fechaInicio: period.fecha_inicio,
+        fechaFin: period.fecha_fin,
+        fechaIngreso: employee.fecha_ingreso,
+        scheduledIsoWeekdays: schedule.map((scheduleDay) => scheduleDay.dia_semana),
+        checkInDates: (checkInDatesByEmployee.get(employee.id_empleado) ?? []).map((row) => row.fecha),
+      });
+
+      allRows.push({
+        id_empleado: employee.id_empleado,
+        codigo_empleado: employee.codigo_empleado,
+        nombre_completo: employee.nombre_completo,
+        isAssigned,
+        scheduledDays,
+        workedDays,
+        dailyRate: calculateShiftExtensionDailyRate(salarioDiario),
+        estimatedAmount: isAssigned ? calculateShiftExtensionAmount(salarioDiario, workedDays) : 0,
+      });
+    }
+
+    // Tarjetas del periodo completo: no cambian con el filtro de asignación ni con la búsqueda.
+    const summary = {
+      assigned: allRows.filter((row) => row.isAssigned).length,
+      estimatedAmount: Math.round(allRows.reduce((sum, row) => sum + row.estimatedAmount, 0) * 100) / 100,
+    };
+
+    const search = normalizeSearchText(rawSearch.trim());
+    const filteredRows = allRows.filter(
+      (row) =>
+        (assignmentFilter === "all" || row.isAssigned === (assignmentFilter === "assigned")) &&
+        (search === "" ||
+          normalizeSearchText(row.nombre_completo).includes(search) ||
+          normalizeSearchText(row.codigo_empleado).includes(search)),
+    );
+
+    const pageStart = (page - 1) * SHIFT_EXTENSION_BONUS_PAGE_SIZE;
+
+    return {
+      ok: true,
+      data: {
+        ...emptyPage,
+        rows: filteredRows.slice(pageStart, pageStart + SHIFT_EXTENSION_BONUS_PAGE_SIZE),
+        totalRows: filteredRows.length,
+        summary,
+        employeesWithoutSchedule,
+        // El aviso "Recalcula" se conecta en el paso 10.
+        recalculationNeeded: false,
+      },
+    };
+  } catch (error) {
+    console.error("getShiftExtensionBonusPage", error);
+    return { ok: false, message: "No se pudo cargar el bono por extensión de jornada" };
   }
 }
