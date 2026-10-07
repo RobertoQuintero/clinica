@@ -3,8 +3,9 @@ import { readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUr
 import AttendanceBonusView from "./componentes/AttendanceBonusView";
 import BonusKindTabs from "./componentes/BonusKindTabs";
 import PunctualityBonusView from "./componentes/PunctualityBonusView";
+import ShiftExtensionBonusView from "./componentes/ShiftExtensionBonusView";
 
-/** Filtros que conservan las pestañas al cambiar de bono; `pagina` se reinicia. */
+/** Filtros que conservan las pestañas al cambiar de bono; `pagina` se reinicia. `resultado` no pasa a la pestaña de extensión. */
 const TAB_PRESERVED_PARAM_KEYS = ["periodo", "resultado", "q"];
 
 export default async function BonusesPage({ searchParams }: { searchParams: Promise<SearchParamsInput> }) {
@@ -18,6 +19,8 @@ export default async function BonusesPage({ searchParams }: { searchParams: Prom
   }
 
   const kindTabs = <BonusKindTabs activeKind={bonusKind} preservedSearchParams={preservedSearchParams} />;
+
+  if (bonusKind === "shift_extension") return <ShiftExtensionBonusView kindTabs={kindTabs} />;
 
   return bonusKind === "attendance" ? (
     <AttendanceBonusView rawSearchParams={rawSearchParams} kindTabs={kindTabs} />

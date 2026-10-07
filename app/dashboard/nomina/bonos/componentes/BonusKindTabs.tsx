@@ -11,10 +11,13 @@ interface Props {
 const TABS: { kind: BonusKind; label: string }[] = [
   { kind: "punctuality", label: "Puntualidad" },
   { kind: "attendance", label: "Asistencia" },
+  { kind: "shift_extension", label: "Extensión de jornada" },
 ];
 
 function buildTabHref(kind: BonusKind, preservedSearchParams: Record<string, string>): string {
+  // `resultado` solo se pasa entre puntualidad y asistencia; `asignacion` nunca sale de la pestaña de extensión.
   const searchParams = new URLSearchParams({ ...preservedSearchParams, bono: BONUS_KIND_URL_VALUES[kind] });
+  if (kind === "shift_extension") searchParams.delete("resultado");
   return `/dashboard/nomina/bonos?${searchParams.toString()}`;
 }
 
