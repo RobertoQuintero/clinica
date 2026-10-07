@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md) y [54 — Detalle de percepciones](54-nomina-detalle-percepciones-empleado.md): `calculatePayrollPeriod`, el snapshot `payroll.period_employees` (con el `salario_diario` operativo congelado), `buildPerceptionLines`, el Detalle y "Total percepciones" en Procesar.
   - [55 — Empleado: vincular usuarios](55-empleado-vincular-usuarios.md) y [62 — Nómina: control de faltas](62-nomina-control-faltas.md): la población controlada `ABSENCE_CONTROLLED_EMPLOYEE_CONDITION` (usuario vinculado activo con `id_role = 2`), los días con checada y `lib/payroll/incidentSources.ts`.
@@ -300,79 +300,79 @@ export const SHIFT_EXTENSION_BONUS_PAGE_SIZE = 25;
 
 **Base de datos**
 
-- [ ] Existen `payroll.shift_extension_assignments` y `payroll.shift_extension_assignments_log`.
-- [ ] `payroll.period_employees` tiene `bono_extension_asignado`, `bono_extension_dias` e `importe_bono_extension`.
-- [ ] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
-- [ ] Los snapshots calculados antes de esta spec tienen `bono_extension_asignado = 0`, `bono_extension_dias = 0` e `importe_bono_extension = 0`.
-- [ ] Insertar a mano cualquiera de estos renglones falla por `CK_period_employees_bono_extension`:
+- [x] Existen `payroll.shift_extension_assignments` y `payroll.shift_extension_assignments_log`.
+- [x] `payroll.period_employees` tiene `bono_extension_asignado`, `bono_extension_dias` e `importe_bono_extension`.
+- [x] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
+- [x] Los snapshots calculados antes de esta spec tienen `bono_extension_asignado = 0`, `bono_extension_dias = 0` e `importe_bono_extension = 0`.
+- [x] Insertar a mano cualquiera de estos renglones falla por `CK_period_employees_bono_extension`:
   - un renglón `'F'` con `bono_extension_asignado = 1`;
   - un renglón con `bono_extension_asignado = 0` y `bono_extension_dias = 3`.
 
 **Pestaña "Extensión de jornada"**
 
-- [ ] Bonos muestra tres pestañas: "Puntualidad", "Asistencia" y "Extensión de jornada". La activa está marcada.
-- [ ] `?bono=extension` abre la pestaña nueva, y sin `bono` o con un valor desconocido se abre puntualidad.
-- [ ] Puntualidad y asistencia se ven y se comportan igual que antes de esta spec.
-- [ ] Cambiar de pestaña conserva `periodo` y `q`, y regresa a la página 1.
-- [ ] La paginación y los filtros de la pestaña nueva conservan `bono=extension`.
-- [ ] Se listan solo los podólogos controlados del periodo. Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` no aparece.
-- [ ] El filtro `asignacion=asignado` muestra solo a los asignados, y `sin_asignar` solo a los que no lo están.
-- [ ] Las tarjetas de resumen (asignados e importe estimado total) no cambian al filtrar por asignación o búsqueda.
-- [ ] Un podólogo sin horario aparece en el aviso "Sin horario definido" con 0 días trabajados.
+- [x] Bonos muestra tres pestañas: "Puntualidad", "Asistencia" y "Extensión de jornada". La activa está marcada.
+- [x] `?bono=extension` abre la pestaña nueva, y sin `bono` o con un valor desconocido se abre puntualidad.
+- [x] Puntualidad y asistencia se ven y se comportan igual que antes de esta spec.
+- [x] Cambiar de pestaña conserva `periodo` y `q`, y regresa a la página 1.
+- [x] La paginación y los filtros de la pestaña nueva conservan `bono=extension`.
+- [x] Se listan solo los podólogos controlados del periodo. Un empleado sin usuario vinculado con `id_role = 2` y `status = 1` no aparece.
+- [x] El filtro `asignacion=asignado` muestra solo a los asignados, y `sin_asignar` solo a los que no lo están.
+- [x] Las tarjetas de resumen (asignados e importe estimado total) no cambian al filtrar por asignación o búsqueda.
+- [x] Un podólogo sin horario aparece en el aviso "Sin horario definido" con 0 días trabajados.
 
 **Días trabajados e importe**
 
-- [ ] Un día con horario y al menos una checada cuenta como trabajado.
-- [ ] Un día con horario y una checada incompleta (solo entrada) cuenta como trabajado.
-- [ ] Un día de descanso (sin horario) con checada **no** cuenta.
-- [ ] Un día con horario y sin checada no cuenta, aunque esté justificado (`'J'`) o marcado "No aplica" (`'N'`).
-- [ ] Un día con retardo grave cuenta como trabajado.
-- [ ] Un podólogo con `fecha_ingreso` a mitad del periodo solo suma los días desde su ingreso.
-- [ ] Con `salario_diario = 315.04` y 12 días trabajados, el importe es $945.12.
-- [ ] Un podólogo sin asignar aparece con $0 de importe estimado, aunque tenga días trabajados.
+- [x] Un día con horario y al menos una checada cuenta como trabajado.
+- [x] Un día con horario y una checada incompleta (solo entrada) cuenta como trabajado.
+- [x] Un día de descanso (sin horario) con checada **no** cuenta.
+- [x] Un día con horario y sin checada no cuenta, aunque esté justificado (`'J'`) o marcado "No aplica" (`'N'`).
+- [x] Un día con retardo grave cuenta como trabajado.
+- [x] Un podólogo con `fecha_ingreso` a mitad del periodo solo suma los días desde su ingreso.
+- [x] Con `salario_diario = 315.04` y 12 días trabajados, el importe es $945.12.
+- [x] Un podólogo sin asignar aparece con $0 de importe estimado, aunque tenga días trabajados.
 
 **Asignación**
 
-- [ ] "Asignar" pide confirmación dentro de la interfaz y no usa `confirm()` nativo.
-- [ ] Confirmar "Asignar" cambia la fila a "Asignado" y escribe una fila en la bitácora con `activo_anterior = NULL` y `activo_nuevo = 1`.
-- [ ] "Quitar" cambia la fila a "Sin asignar" y escribe una fila con `1 → 0`.
-- [ ] Llamar a `setShiftExtensionAssignment` con el mismo valor que ya tiene no escribe en la bitácora ni cambia `updated_at`.
-- [ ] Llamar a la action con un empleado de otra sucursal, inactivo o no controlado devuelve `{ ok: false }` y no escribe nada.
-- [ ] Un usuario con rol 2, 3, 5 o 6 que llama a la action directamente recibe `{ ok: false }`.
-- [ ] La bitácora muestra solo los cambios de los empleados de la sucursal activa.
+- [x] "Asignar" pide confirmación dentro de la interfaz y no usa `confirm()` nativo.
+- [x] Confirmar "Asignar" cambia la fila a "Asignado" y escribe una fila en la bitácora con `activo_anterior = NULL` y `activo_nuevo = 1`.
+- [x] "Quitar" cambia la fila a "Sin asignar" y escribe una fila con `1 → 0`.
+- [x] Llamar a `setShiftExtensionAssignment` con el mismo valor que ya tiene no escribe en la bitácora ni cambia `updated_at`.
+- [x] Llamar a la action con un empleado de otra sucursal, inactivo o no controlado devuelve `{ ok: false }` y no escribe nada.
+- [x] Un usuario con rol 2, 3, 5 o 6 que llama a la action directamente recibe `{ ok: false }`.
+- [x] La bitácora muestra solo los cambios de los empleados de la sucursal activa.
 
 **Cálculo**
 
-- [ ] Recalcular un periodo ya calculado deja idénticas las columnas `dias`, `dias_falta`, `dias_retardo` e `importe_salario`, las de comisiones, las de horas extra y las de los bonos de puntualidad y asistencia.
-- [ ] Un podólogo asignado con 12 días trabajados queda en su renglón `'O'` con asignado en 1, `bono_extension_dias = 12` e `importe_bono_extension = ROUND(salario_diario × 2 / 8 × 12, 2)`.
-- [ ] El renglón `'F'` del mismo podólogo queda con asignado en 0 y 0 / 0.
-- [ ] Un podólogo sin asignar, o con `activo = 0`, queda con asignado en 0 y 0 / 0.
-- [ ] Un empleado asignado que ya no es podólogo controlado queda con asignado en 0 y 0 / 0.
-- [ ] Un podólogo asignado sin días trabajados queda con asignado en 1, 0 días y $0.
-- [ ] El bono no cambia `horas_extra_dobles`, `horas_extra_triples` ni `limite_horas_dobles_aplicado`, y no aparece en Horas extra.
-- [ ] "Revertir" deja el periodo sin snapshot. Al calcular de nuevo, el bono se evalúa desde cero.
+- [x] Recalcular un periodo ya calculado deja idénticas las columnas `dias`, `dias_falta`, `dias_retardo` e `importe_salario`, las de comisiones, las de horas extra y las de los bonos de puntualidad y asistencia.
+- [x] Un podólogo asignado con 12 días trabajados queda en su renglón `'O'` con asignado en 1, `bono_extension_dias = 12` e `importe_bono_extension = ROUND(salario_diario × 2 / 8 × 12, 2)`.
+- [x] El renglón `'F'` del mismo podólogo queda con asignado en 0 y 0 / 0.
+- [x] Un podólogo sin asignar, o con `activo = 0`, queda con asignado en 0 y 0 / 0.
+- [x] Un empleado asignado que ya no es podólogo controlado queda con asignado en 0 y 0 / 0.
+- [x] Un podólogo asignado sin días trabajados queda con asignado en 1, 0 días y $0.
+- [x] El bono no cambia `horas_extra_dobles`, `horas_extra_triples` ni `limite_horas_dobles_aplicado`, y no aparece en Horas extra.
+- [x] "Revertir" deja el periodo sin snapshot. Al calcular de nuevo, el bono se evalúa desde cero.
 
 **Procesar y Detalle**
 
-- [ ] En Procesar, la columna "Bono ext." aparece después de "Bono asist." y muestra el importe, con "N días" debajo cuando es mayor que 0.
-- [ ] "Total percepciones", la tarjeta y el pie incluyen el bono por extensión, y no cambian con los filtros de puesto o búsqueda.
-- [ ] En el Detalle (operativa), un podólogo asignado con importe mayor que 0 ve "Bono por extensión de jornada" con "N días × $X" y el importe guardado.
-- [ ] La línea no aparece si el empleado no está asignado, si el importe es 0 o en la vista fiscal.
+- [x] En Procesar, la columna "Bono ext." aparece después de "Bono asist." y muestra el importe, con "N días" debajo cuando es mayor que 0.
+- [x] "Total percepciones", la tarjeta y el pie incluyen el bono por extensión, y no cambian con los filtros de puesto o búsqueda.
+- [x] En el Detalle (operativa), un podólogo asignado con importe mayor que 0 ve "Bono por extensión de jornada" con "N días × $X" y el importe guardado.
+- [x] La línea no aparece si el empleado no está asignado, si el importe es 0 o en la vista fiscal.
 
 **Aviso "Recalcula"**
 
-- [ ] Con el periodo en estatus 2, cualquiera de estos cambios muestra "Hay bonos por extensión de jornada que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en la pestaña:
+- [x] Con el periodo en estatus 2, cualquiera de estos cambios muestra "Hay bonos por extensión de jornada que no coinciden con el último cálculo. Recalcula la nómina." en Procesar y en la pestaña:
   - asignar o quitar el bono a un podólogo del periodo;
   - una checada nueva en un día con horario de un podólogo asignado.
-- [ ] Cambiar el `salario_diario` del empleado no muestra el aviso.
-- [ ] Después de "Recalcular", el aviso desaparece.
-- [ ] Con el periodo en estatus 1, el aviso nunca aparece.
-- [ ] Los demás avisos "Recalcula" siguen mostrando su propio texto.
+- [x] Cambiar el `salario_diario` del empleado no muestra el aviso.
+- [x] Después de "Recalcular", el aviso desaparece.
+- [x] Con el periodo en estatus 1, el aviso nunca aparece.
+- [x] Los demás avisos "Recalcula" siguen mostrando su propio texto.
 
 **Documentación**
 
-- [ ] `docs/nomina.md` tiene la sección "Bono por extensión de jornada (spec 68)", con la nota de capturar el horario con la hora extendida incluida.
-- [ ] El párrafo inicial menciona el bono como concepto calculado, junto con sus tablas.
+- [x] `docs/nomina.md` tiene la sección "Bono por extensión de jornada (spec 68)", con la nota de capturar el horario con la hora extendida incluida.
+- [x] El párrafo inicial menciona el bono como concepto calculado, junto con sus tablas.
 
 ## Decisiones tomadas y descartadas
 
