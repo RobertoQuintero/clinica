@@ -48,6 +48,8 @@ import {
   PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL,
   PUNCTUALITY_BONUS_SELECT_SQL,
 } from "@/lib/payroll/punctualityBonusSql";
+import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
+import { ISR_DEDUCTION_ID } from "@/lib/payroll/constants";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
 import {
@@ -680,6 +682,8 @@ function revalidatePayrollPaths() {
  * Restan días pagados en las dos nóminas ('O' y 'F'); `dias` guarda los días netos.
  * Los retardos injustificados (spec 63) también: `lib/payroll/latenessDetection.ts` los espeja y, si divergen, manda este SQL.
  * Descuentan sueldo base en las dos nóminas sin tocar `dias`: `importe_salario = salario × (dias − dias_retardo)`.
+ * El ISR de la nómina fiscal (spec 70) también, solo para las filas 'F': `lib/payroll/isrCalculation.ts` lo espeja y, si
+ * divergen, manda este SQL. Escribe la fila ISR de `period_employee_deductions`, que el cascade borra al recalcular o revertir.
  * Solo la nómina operativa ('O') comisiona y paga horas extra; las filas 'F' quedan en 0. `cancelada` es nullable y
  * NULL significa "no cancelada" (así lo lee la app), por eso `ISNULL(c.[cancelada], 0) = 0`.
  */
@@ -1005,6 +1009,22 @@ export async function calculatePayrollPeriod(
         ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
+
+       -- Spec 70: ISR de los renglones 'F' recién insertados. Va después del INSERT porque la base es importe_salario,
+       -- que se calcula ahí. Los renglones 'O' se quedan en 'X'.
+       ${ISR_PARAMETERS_SQL}
+
+       UPDATE pe
+          SET ${ISR_UPDATE_SET_SQL}
+         FROM [CentroPodologico].[payroll].[period_employees] pe${ISR_BRACKET_APPLY_SQL}
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F';
+
+       -- Spec 70: una fila de deducción ISR por renglón 'F' calculado, aunque el retenido sea 0.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_deductions]
+         (id_period_employee, id_deduction, importe)
+       SELECT pe.[id_period_employee], ${ISR_DEDUCTION_ID}, pe.[isr_retenido]
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[isr_estado] = 'C';
 
        -- Desglose y candado anti doble pago: solo los tratamientos de quien entró a la nómina operativa.
        INSERT INTO [CentroPodologico].[payroll].[period_employee_treatments]

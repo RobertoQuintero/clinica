@@ -257,7 +257,7 @@ export interface IIsrBreakdown {
 
 **Cálculo**
 
-- [ ] Al recalcular `NOM-2026-S01`, los renglones `'F'` quedan así:
+- [x] Al recalcular `NOM-2026-S01`, los renglones `'F'` quedan así:
 
   | Empleado | Base | ISR causado | Subsidio aplicado | ISR retenido |
   |---|---|---|---|---|
@@ -267,16 +267,16 @@ export interface IIsrBreakdown {
   | 1006 | 2,205.28 | 157.29 | 123.34 | 33.95 |
   | 1007 | 2,450.00 | 183.92 | 123.34 | 60.58 |
 
-- [ ] El subsidio causado de esos renglones es 123.34 (535.65 / 30.4 × 7), con `subsidio_monto_vigente_desde = 2026-02-01`. El empleado 6 tiene `subsidio_con_derecho = 0`.
-- [ ] Cada renglón `'F'` en `'C'` tiene exactamente una fila `id_deduction = 2` con `importe = isr_retenido`, incluido el empleado 5 con 0.00.
-- [ ] Ningún renglón `'O'` tiene columnas de ISR llenas ni filas en `period_employee_deductions`.
-- [ ] Las columnas anteriores a esta spec de todos los renglones de `NOM-2026-S01` quedan idénticas antes y después de recalcular.
-- [ ] Un periodo quincenal se calcula sin error. Sus renglones `'F'` quedan en `'N'` / `no_withholding_table`, sin fila de deducción.
-- [ ] Sin `SUBSIDIO_MONTO_MENSUAL` vigente a `fecha_fin` (probado con rollback), los renglones `'F'` quedan en `'N'` / `missing_subsidy_parameters`.
-- [ ] Un renglón `'F'` con base 0 queda en `'C'`, con ISR causado, subsidio aplicado e ISR retenido en 0.
-- [ ] "Revertir" borra las filas de `period_employee_deductions` del periodo.
-- [ ] `calculateIsrBreakdown` da los mismos resultados que el SQL en los 5 casos.
-- [ ] `calculateIsrBreakdown` da subsidio con una base de 2,646.33 y 7 días, y no lo da con 2,646.34.
+- [x] El subsidio causado de esos renglones es 123.34 (535.65 / 30.4 × 7), con `subsidio_monto_vigente_desde = 2026-02-01`. El empleado 6 tiene `subsidio_con_derecho = 0`.
+- [x] Cada renglón `'F'` en `'C'` tiene exactamente una fila `id_deduction = 2` con `importe = isr_retenido`, incluido el empleado 5 con 0.00.
+- [x] Ningún renglón `'O'` tiene columnas de ISR llenas ni filas en `period_employee_deductions`.
+- [x] Las columnas anteriores a esta spec de todos los renglones de `NOM-2026-S01` quedan idénticas antes y después de recalcular.
+- [x] Un periodo quincenal se calcula sin error. Sus renglones `'F'` quedan en `'N'` / `no_withholding_table`, sin fila de deducción.
+- [x] Sin `SUBSIDIO_MONTO_MENSUAL` vigente a `fecha_fin` (probado con rollback), los renglones `'F'` quedan en `'N'` / `missing_subsidy_parameters`.
+- [x] Un renglón `'F'` con base 0 queda en `'C'`, con ISR causado, subsidio aplicado e ISR retenido en 0.
+- [x] "Revertir" borra las filas de `period_employee_deductions` del periodo.
+- [x] `calculateIsrBreakdown` da los mismos resultados que el SQL en los 5 casos.
+- [x] `calculateIsrBreakdown` da subsidio con una base de 2,646.33 y 7 días, y no lo da con 2,646.34.
 
 **Procesar**
 
