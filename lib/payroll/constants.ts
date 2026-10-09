@@ -1,3 +1,5 @@
+import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
+
 export const PAYROLL_PERIOD_STATUS = {
   1: { label: "Programada",  badge: "neutral" },
   2: { label: "En cálculo",  badge: "info" },
@@ -30,3 +32,17 @@ export const ATTENDANCE_BONUS_PAGE_SIZE = 25;
 export const SHIFT_EXTENSION_HOURS_PER_DAY = 1;
 export const SHIFT_EXTENSION_PAY_MULTIPLIER = 2;
 export const SHIFT_EXTENSION_BONUS_PAGE_SIZE = 25;
+
+// Parámetros fiscales anuales (spec 69). Las 9 claves de payroll.tax_parameters, con etiqueta y unidad para la pantalla.
+export const TAX_PARAMETER_KEYS: Record<TaxParameterKey, { label: string; unit: string }> = {
+  UMA_DIARIA:                    { label: "UMA diaria",                        unit: "$ por día" },
+  UMA_MENSUAL:                   { label: "UMA mensual",                       unit: "$ por mes" },
+  UMA_ANUAL:                     { label: "UMA anual",                         unit: "$ por año" },
+  SALARIO_MINIMO_GENERAL:        { label: "Salario mínimo general",            unit: "$ por día" },
+  SALARIO_MINIMO_FRONTERA:       { label: "Salario mínimo zona fronteriza",    unit: "$ por día" },
+  SUBSIDIO_MONTO_MENSUAL:        { label: "Subsidio para el empleo (monto)",   unit: "$ por mes" },
+  SUBSIDIO_TOPE_INGRESO_MENSUAL: { label: "Subsidio para el empleo (tope de ingreso)", unit: "$ por mes" },
+  SUBSIDIO_FACTOR_DIAS_MES:      { label: "Subsidio para el empleo (factor de días)",  unit: "días" },
+  DIAS_ANIO:                     { label: "Días del año",                      unit: "días" },
+};
+export const TAX_PARAMETERS_LOG_PAGE_SIZE = 20;
