@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md): los renglones fiscales `'F'`, `importe_salario` y `calculatePayrollPeriod`.
   - [54 — Detalle de percepciones por empleado](54-nomina-detalle-percepciones-empleado.md): la pantalla Detalle donde va la tarjeta de deducciones.
@@ -306,11 +306,11 @@ export interface IIsrBreakdown {
 
 **Acceso**
 
-- [ ] Ninguna action nueva o modificada devuelve datos a los roles 2, 3, 5 o 6. Todas pasan por `assertPayrollAccess()`.
+- [x] Ninguna action nueva o modificada devuelve datos a los roles 2, 3, 5 o 6. Todas pasan por `assertPayrollAccess()`.
 
 **Documentación**
 
-- [ ] `docs/nomina.md` tiene la sección "ISR (spec 70)", el párrafo inicial actualizado y `PayrollDeductionsCard` en la sección del Detalle.
+- [x] `docs/nomina.md` tiene la sección "ISR (spec 70)", el párrafo inicial actualizado y `PayrollDeductionsCard` en la sección del Detalle.
 
 ## Decisiones tomadas y descartadas
 
