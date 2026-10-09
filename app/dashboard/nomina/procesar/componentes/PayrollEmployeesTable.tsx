@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import type { IPayrollEmployeeRow, IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
+import type { IsrStatus } from "@/interfaces/payroll_isr";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
@@ -22,6 +23,21 @@ function CommissionAmountCell({ amount, countLabel }: { amount: number; countLab
     <td className="px-4 py-3.5 text-right tabular-nums">
       <span className="block text-sm text-[#0b1c30] dark:text-zinc-200">{formatPayrollCurrency(amount)}</span>
       {countLabel && <span className="block text-[11px] text-[#747780] dark:text-zinc-500">{countLabel}</span>}
+    </td>
+  );
+}
+
+/** ISR retenido del renglón (spec 70): el importe si se calculó, "No calculado" en 'N' y "—" en 'X'. */
+function IsrAmountCell({ isrStatus, isrWithheld }: { isrStatus: IsrStatus; isrWithheld: number | null }) {
+  return (
+    <td className="px-4 py-3.5 text-sm text-right tabular-nums whitespace-nowrap">
+      {isrStatus === "C" && isrWithheld !== null ? (
+        <span className="text-[#0b1c30] dark:text-zinc-200">{formatPayrollCurrency(isrWithheld)}</span>
+      ) : isrStatus === "N" ? (
+        <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">No calculado</span>
+      ) : (
+        <span className="text-[#747780] dark:text-zinc-500" title="Recalcula la nómina para ver el ISR">—</span>
+      )}
     </td>
   );
 }
@@ -57,6 +73,9 @@ export default function PayrollEmployeesTable({
 }: Props) {
   // El detalle conserva los filtros para "Regresar" y para Anterior / Siguiente.
   const detailFilters = { idPeriod, payrollType, idPuesto, search };
+  // Spec 70: solo la nómina fiscal lleva deducciones (ISR) y neto.
+  const showsDeductions = payrollType === "F";
+  const columnCount = showsDeductions ? 16 : 14;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
@@ -78,6 +97,12 @@ export default function PayrollEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono asist.</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono ext.</th>
               <th scope="col" className="px-6 py-3 font-semibold text-right">Total percepciones</th>
+              {showsDeductions && (
+                <>
+                  <th scope="col" className="px-4 py-3 font-semibold text-right">ISR</th>
+                  <th scope="col" className="px-6 py-3 font-semibold text-right">Neto</th>
+                </>
+              )}
               <th scope="col" className="w-12 pr-4 py-3">
                 <span className="sr-only">Acciones</span>
               </th>
@@ -86,7 +111,7 @@ export default function PayrollEmployeesTable({
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={14} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
+                <td colSpan={columnCount} className="px-6 py-8 text-center text-sm text-[#747780] dark:text-zinc-500">
                   {hasActiveFilters
                     ? "Ningún empleado coincide con los filtros."
                     : "Ningún empleado tiene sueldo calculado en esta nómina."}
@@ -172,6 +197,14 @@ export default function PayrollEmployeesTable({
                     <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
                       {formatPayrollCurrency(employeeRow.total_percepciones)}
                     </td>
+                    {showsDeductions && (
+                      <>
+                        <IsrAmountCell isrStatus={employeeRow.isr_estado} isrWithheld={employeeRow.isr_retenido} />
+                        <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
+                          {formatPayrollCurrency(employeeRow.neto)}
+                        </td>
+                      </>
+                    )}
                     <td className="pr-4 py-3.5 text-right">
                       <Link
                         href={detailHref}
@@ -224,9 +257,25 @@ export default function PayrollEmployeesTable({
               <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeBonoExtension)}
               </td>
-              <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
+              <td
+                className={`px-6 py-4 text-right tabular-nums ${
+                  showsDeductions
+                    ? "text-sm font-semibold text-[#0b1c30] dark:text-zinc-100"
+                    : "text-base font-bold text-[#0051d5] dark:text-blue-300"
+                }`}
+              >
                 {formatPayrollCurrency(totals.totalPercepciones)}
               </td>
+              {showsDeductions && (
+                <>
+                  <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                    {formatPayrollCurrency(totals.importeIsr)}
+                  </td>
+                  <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
+                    {formatPayrollCurrency(totals.totalNeto)}
+                  </td>
+                </>
+              )}
               <td aria-hidden />
             </tr>
           </tfoot>

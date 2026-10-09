@@ -4,6 +4,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
+import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
 
 export type PayrollType = "O" | "F";
 
@@ -43,6 +44,10 @@ export interface IPayrollEmployeeRow {
   bono_extension_dias:        number;
   importe_bono_extension:     number;
   total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia + importe_bono_extension, calculado en el SELECT
+  isr_estado:         IsrStatus;      // spec 70; siempre 'X' en operativa
+  isr_retenido:       number | null;  // null salvo en 'C'
+  total_deducciones:  number;         // ISNULL(SUM(period_employee_deductions.importe), 0), calculado en el SELECT
+  neto:               number;         // total_percepciones − total_deducciones, calculado en el SELECT
   calculated_at:      string;   // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -64,7 +69,8 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; totalPercepciones: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; totalPercepciones: number; importeIsr: number; totalNeto: number };   // de todo el tipo, sin filtros
+  isrNotCalculated:  { reason: IsrSkipReason; employees: number }[];   // renglones 'N' por motivo (spec 70), de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
@@ -74,6 +80,7 @@ export interface IPayrollProcessPage {
   punctualityBonusRecalculationNeeded: boolean;   // ídem, para el bono de puntualidad (spec 64)
   attendanceBonusRecalculationNeeded:  boolean;   // ídem, para el bono de asistencia (spec 65)
   shiftExtensionBonusRecalculationNeeded: boolean;   // ídem, para el bono por extensión de jornada (spec 68)
+  isrRecalculationNeeded: boolean;   // ídem, para el ISR de la nómina fiscal (spec 70)
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".
@@ -93,8 +100,8 @@ export interface IPayrollEmployeeDetailFilters {
   search:      string;          // ídem
 }
 
-// Fila del snapshot `payroll.period_employees` para un empleado y tipo.
-export interface IPayrollEmployeeSnapshot {
+// Fila del snapshot `payroll.period_employees` para un empleado y tipo, con el desglose del ISR (spec 70).
+export interface IPayrollEmployeeSnapshot extends IIsrBreakdown {
   salario_diario:  number;
   dias:            number;   // días netos pagados (calendario − dias_falta)
   dias_falta:      number;
@@ -142,6 +149,7 @@ export interface IPayrollEmployeeDetail {
   snapshot:         IPayrollEmployeeSnapshot | null;
   perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
   totalPerceptions: number;                     // suma de perceptions[].amount
+  totalDeductions:  number;                     // ISNULL(SUM(period_employee_deductions.importe), 0); 0 si snapshot es null (spec 70)
   paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
   soldProducts:     IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
   overtimeDays:     IPayrollOvertimeDay[];      // [] en fiscal o sin días pagados
