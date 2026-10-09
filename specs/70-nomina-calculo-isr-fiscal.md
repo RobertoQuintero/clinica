@@ -288,13 +288,13 @@ export interface IIsrBreakdown {
 
 **Detalle**
 
-- [ ] La vista fiscal muestra la tarjeta "Deducciones" con:
+- [x] La vista fiscal muestra la tarjeta "Deducciones" con:
   - base, tramo, ISR causado, subsidio causado y aplicado, e ISR retenido;
   - el `vigente_desde` de los 3 parámetros y el ejercicio de la tarifa;
   - el total de deducciones y el neto.
-- [ ] El empleado 6 muestra "Sin derecho: ingreso mayor al tope".
-- [ ] Un renglón en `'N'` muestra el motivo, y uno en `'X'` muestra "Recalcula la nómina para ver el ISR".
-- [ ] La vista operativa no muestra la tarjeta "Deducciones".
+- [x] El empleado 6 muestra "Sin derecho: ingreso mayor al tope".
+- [x] Un renglón en `'N'` muestra el motivo, y uno en `'X'` muestra "Recalcula la nómina para ver el ISR".
+- [x] La vista operativa no muestra la tarjeta "Deducciones".
 
 **Aviso "Recalcula"**
 

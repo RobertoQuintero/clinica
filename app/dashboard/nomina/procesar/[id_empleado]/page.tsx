@@ -16,6 +16,7 @@ import PayrollEmployeeNavigation from "./componentes/PayrollEmployeeNavigation";
 import PayrollEmployeeProfileCard from "./componentes/PayrollEmployeeProfileCard";
 import PayrollTypeToggle from "./componentes/PayrollTypeToggle";
 import PayrollPerceptionsCard from "./componentes/PayrollPerceptionsCard";
+import PayrollDeductionsCard from "./componentes/PayrollDeductionsCard";
 import PayrollPaidTreatmentsList from "./componentes/PayrollPaidTreatmentsList";
 import PayrollOvertimeDaysList from "./componentes/PayrollOvertimeDaysList";
 import PayrollAbsencesList from "./componentes/PayrollAbsencesList";
@@ -128,6 +129,13 @@ export default async function PayrollEmployeeDetailPage({
                 perceptions={detail.perceptions}
                 totalPerceptions={detail.totalPerceptions}
               />
+              {filters.payrollType === "F" && (
+                <PayrollDeductionsCard
+                  isrBreakdown={detail.snapshot}
+                  totalPerceptions={detail.totalPerceptions}
+                  totalDeductions={detail.totalDeductions}
+                />
+              )}
               <PayrollPaidTreatmentsList paidTreatments={detail.paidTreatments} />
               <PayrollSoldProductsList soldProducts={detail.soldProducts} />
               <PayrollOvertimeDaysList overtimeDays={detail.overtimeDays} />

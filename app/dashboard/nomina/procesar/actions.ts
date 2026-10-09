@@ -70,6 +70,10 @@ function roundToCents(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
 
+function toNullableNumber(value: unknown): number | null {
+  return value === null || value === undefined ? null : Number(value);
+}
+
 /** Orden de la tabla de Procesar; Anterior / Siguiente del detalle lo sigue. Determinista gracias al id. */
 const PAYROLL_EMPLOYEE_ORDER_BY = "e.apellido_paterno, e.apellido_materno, e.nombre, pe.id_empleado";
 
@@ -426,6 +430,26 @@ export async function getPayrollEmployeeDetail(
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
                 pe.bono_extension_asignado, pe.bono_extension_dias,
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
+                pe.isr_estado, pe.isr_motivo,
+                CAST(pe.isr_base_gravable AS float)             AS isr_base_gravable,
+                pe.isr_ejercicio_tarifa,
+                CAST(pe.isr_limite_inferior AS float)           AS isr_limite_inferior,
+                CAST(pe.isr_cuota_fija AS float)                AS isr_cuota_fija,
+                CAST(pe.isr_porcentaje_excedente AS float)      AS isr_porcentaje_excedente,
+                CAST(pe.isr_causado AS float)                   AS isr_causado,
+                CAST(pe.subsidio_monto_mensual AS float)        AS subsidio_monto_mensual,
+                CONVERT(varchar(10), pe.subsidio_monto_vigente_desde, 120)  AS subsidio_monto_vigente_desde,
+                CAST(pe.subsidio_tope_ingreso_mensual AS float) AS subsidio_tope_ingreso_mensual,
+                CONVERT(varchar(10), pe.subsidio_tope_vigente_desde, 120)   AS subsidio_tope_vigente_desde,
+                CAST(pe.subsidio_factor_dias_mes AS float)      AS subsidio_factor_dias_mes,
+                CONVERT(varchar(10), pe.subsidio_factor_vigente_desde, 120) AS subsidio_factor_vigente_desde,
+                pe.subsidio_con_derecho,
+                CAST(pe.subsidio_causado AS float)              AS subsidio_causado,
+                CAST(pe.subsidio_aplicado AS float)             AS subsidio_aplicado,
+                CAST(pe.isr_retenido AS float)                  AS isr_retenido,
+                CAST((SELECT ISNULL(SUM(d.importe), 0)
+                        FROM [CentroPodologico].[payroll].[period_employee_deductions] d
+                       WHERE d.id_period_employee = pe.id_period_employee) AS float) AS total_deducciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
@@ -569,9 +593,29 @@ export async function getPayrollEmployeeDetail(
           bono_extension_asignado: Boolean(snapshotRow.bono_extension_asignado),
           bono_extension_dias: Number(snapshotRow.bono_extension_dias),
           importe_bono_extension: Number(snapshotRow.importe_bono_extension),
+          isr_estado: snapshotRow.isr_estado,
+          isr_motivo: snapshotRow.isr_motivo ?? null,
+          isr_base_gravable: toNullableNumber(snapshotRow.isr_base_gravable),
+          isr_ejercicio_tarifa: toNullableNumber(snapshotRow.isr_ejercicio_tarifa),
+          isr_limite_inferior: toNullableNumber(snapshotRow.isr_limite_inferior),
+          isr_cuota_fija: toNullableNumber(snapshotRow.isr_cuota_fija),
+          isr_porcentaje_excedente: toNullableNumber(snapshotRow.isr_porcentaje_excedente),
+          isr_causado: toNullableNumber(snapshotRow.isr_causado),
+          subsidio_monto_mensual: toNullableNumber(snapshotRow.subsidio_monto_mensual),
+          subsidio_monto_vigente_desde: snapshotRow.subsidio_monto_vigente_desde ?? null,
+          subsidio_tope_ingreso_mensual: toNullableNumber(snapshotRow.subsidio_tope_ingreso_mensual),
+          subsidio_tope_vigente_desde: snapshotRow.subsidio_tope_vigente_desde ?? null,
+          subsidio_factor_dias_mes: toNullableNumber(snapshotRow.subsidio_factor_dias_mes),
+          subsidio_factor_vigente_desde: snapshotRow.subsidio_factor_vigente_desde ?? null,
+          subsidio_con_derecho:
+            snapshotRow.subsidio_con_derecho === null ? null : Boolean(snapshotRow.subsidio_con_derecho),
+          subsidio_causado: toNullableNumber(snapshotRow.subsidio_causado),
+          subsidio_aplicado: toNullableNumber(snapshotRow.subsidio_aplicado),
+          isr_retenido: toNullableNumber(snapshotRow.isr_retenido),
           calculated_at: snapshotRow.calculated_at,
         }
       : null;
+    const totalDeductions = snapshotRow ? Number(snapshotRow.total_deducciones) : 0;
 
     // El catálogo solo se consulta si hay comisión que describir.
     const commissionTiers =
@@ -644,6 +688,7 @@ export async function getPayrollEmployeeDetail(
         snapshot,
         perceptions,
         totalPerceptions,
+        totalDeductions,
         paidTreatments,
         soldProducts,
         overtimeDays,

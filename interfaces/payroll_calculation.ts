@@ -148,6 +148,7 @@ export interface IPayrollEmployeeDetail {
   snapshot:         IPayrollEmployeeSnapshot | null;
   perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
   totalPerceptions: number;                     // suma de perceptions[].amount
+  totalDeductions:  number;                     // ISNULL(SUM(period_employee_deductions.importe), 0); 0 si snapshot es null (spec 70)
   paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
   soldProducts:     IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
   overtimeDays:     IPayrollOvertimeDay[];      // [] en fiscal o sin días pagados
