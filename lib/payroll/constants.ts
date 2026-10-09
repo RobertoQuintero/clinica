@@ -1,3 +1,4 @@
+import type { IsrSkipReason } from "@/interfaces/payroll_isr";
 import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
 
 export const PAYROLL_PERIOD_STATUS = {
@@ -46,3 +47,11 @@ export const TAX_PARAMETER_KEYS: Record<TaxParameterKey, { label: string; unit: 
   DIAS_ANIO:                     { label: "Días del año",                      unit: "días" },
 };
 export const TAX_PARAMETERS_LOG_PAGE_SIZE = 20;
+
+// ISR de la nómina fiscal (spec 70). id_deduction del ISR en el catálogo payroll.deductions (clave SAT 002).
+export const ISR_DEDUCTION_ID = 2;
+export const ISR_SKIP_REASON_LABELS: Record<IsrSkipReason, string> = {
+  no_withholding_table:       "No hay tarifa de retención para la frecuencia y el ejercicio del periodo",
+  income_in_gap:              "El ingreso cae en un hueco de la tarifa de retención",
+  missing_subsidy_parameters: "Faltan parámetros del subsidio para el empleo vigentes al fin del periodo",
+};
