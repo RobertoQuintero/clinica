@@ -247,53 +247,53 @@ export interface ITaxParametersLogEntry {
 
 **Base de datos**
 
-- [ ] Existen `payroll.tax_parameters` y `payroll.tax_parameters_log`.
-- [ ] `tax_parameters` rechaza `valor <= 0`, una `clave` fuera de la lista y una `(clave, vigente_desde)` repetida.
-- [ ] `tablas_retencion` rechaza un segundo tramo con el mismo `(ejercicio, id_payment_period, limite_inferior)`.
-- [ ] `perceptions.id_perception` es `NOT NULL` con PK.
-- [ ] `perceptions` rechaza cada combinación inválida de `CK_perceptions_exencion`:
+- [x] Existen `payroll.tax_parameters` y `payroll.tax_parameters_log`.
+- [x] `tax_parameters` rechaza `valor <= 0`, una `clave` fuera de la lista y una `(clave, vigente_desde)` repetida.
+- [x] `tablas_retencion` rechaza un segundo tramo con el mismo `(ejercicio, id_payment_period, limite_inferior)`.
+- [x] `perceptions.id_perception` es `NOT NULL` con PK.
+- [x] `perceptions` rechaza cada combinación inválida de `CK_perceptions_exencion`:
   - `'N'` con `umas_limite`;
   - `'U'` sin `periodicidad_limite`;
   - `'P'` con `porcentaje_exento` mayor que 100.
-- [ ] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
+- [x] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`.
 
 **Acceso**
 
-- [ ] Los roles 1 y 4 abren `/dashboard/nomina/parametros-fiscales`.
-- [ ] Un usuario con rol 2, 3, 5 o 6 es redirigido por `proxy.ts` y no ve la entrada del menú.
+- [x] Los roles 1 y 4 abren `/dashboard/nomina/parametros-fiscales`.
+- [x] Un usuario con rol 2, 3, 5 o 6 es redirigido por `proxy.ts` y no ve la entrada del menú.
 - [ ] Un usuario con rol 2, 3, 5 o 6 que llama a cualquier action directamente recibe `{ ok: false }`.
 
 **Parámetros**
 
-- [ ] Se puede capturar, editar y borrar cada una de las 9 claves, con su `vigente_desde`.
-- [ ] La pestaña Parámetros muestra solo las filas cuyo `vigente_desde` cae en el ejercicio del selector.
-- [ ] Cada alta, cambio o baja escribe una fila en la bitácora.
-- [ ] Un guardado sin cambios no escribe en la bitácora ni cambia `updated_at`.
-- [ ] La bitácora muestra las últimas 20 entradas.
-- [ ] `resolveTaxParameter` devuelve el valor de la fila más reciente con `vigente_desde <= fecha_fin` y `null` si no hay ninguna.
+- [x] Se puede capturar, editar y borrar cada una de las 9 claves, con su `vigente_desde`.
+- [x] La pestaña Parámetros muestra solo las filas cuyo `vigente_desde` cae en el ejercicio del selector.
+- [x] Cada alta, cambio o baja escribe una fila en la bitácora.
+- [x] Un guardado sin cambios no escribe en la bitácora ni cambia `updated_at`.
+- [x] La bitácora muestra las últimas 20 entradas.
+- [x] `resolveTaxParameter` devuelve el valor de la fila más reciente con `vigente_desde <= fecha_fin` y `null` si no hay ninguna.
 
 **Tarifa ISR**
 
-- [ ] Se listan los tramos semanales del ejercicio seleccionado, ordenados por `limite_inferior`.
-- [ ] No se puede guardar un tramo que traslape a otro.
-- [ ] No se puede guardar un segundo tramo abierto.
-- [ ] No se puede guardar un tramo con `limite_superior <= limite_inferior`.
-- [ ] Dos altas simultáneas no producen el mismo `id_tarifa`.
-- [ ] La pantalla señala los huecos de la tarifa (entre qué montos) y los tramos contiguos no los generan.
-- [ ] "Copiar ejercicio anterior" copia todos los tramos semanales y falla si el ejercicio destino ya tiene tramos.
-- [ ] `findWithholdingBracket` ubica un ingreso en el primer tramo, en el límite exacto entre dos tramos y en el tramo abierto.
+- [x] Se listan los tramos semanales del ejercicio seleccionado, ordenados por `limite_inferior`.
+- [x] No se puede guardar un tramo que traslape a otro.
+- [x] No se puede guardar un segundo tramo abierto.
+- [x] No se puede guardar un tramo con `limite_superior <= limite_inferior`.
+- [x] Dos altas simultáneas no producen el mismo `id_tarifa`.
+- [x] La pantalla señala los huecos de la tarifa (entre qué montos) y los tramos contiguos no los generan.
+- [x] "Copiar ejercicio anterior" copia todos los tramos semanales y falla si el ejercicio destino ya tiene tramos.
+- [x] `findWithholdingBracket` ubica un ingreso en el primer tramo, en el límite exacto entre dos tramos y en el tramo abierto.
 
 **Percepciones**
 
-- [ ] El formulario solo pide los campos que aplican al tipo de límite elegido.
-- [ ] Una percepción `'M'` guarda porcentaje, UMA y periodicidad, y una `'T'` o `'N'` no guarda ninguno.
-- [ ] Horas extra se puede guardar como `'M'` con 50%, 5 UMA y periodicidad semanal.
-- [ ] Prima dominical se puede guardar como `'U'` con 1 UMA y periodicidad por evento.
+- [x] El formulario solo pide los campos que aplican al tipo de límite elegido.
+- [x] Una percepción `'M'` guarda porcentaje, UMA y periodicidad, y una `'T'` o `'N'` no guarda ninguno.
+- [x] Horas extra se puede guardar como `'M'` con 50%, 5 UMA y periodicidad semanal.
+- [x] Prima dominical se puede guardar como `'U'` con 1 UMA y periodicidad por evento.
 
 **Documentación**
 
-- [ ] `docs/nomina.md` tiene la sección "Parámetros fiscales (spec 69)".
-- [ ] El párrafo inicial de `docs/nomina.md` menciona las tablas nuevas y dice que el ISR queda para la spec 70.
+- [x] `docs/nomina.md` tiene la sección "Parámetros fiscales (spec 69)".
+- [x] El párrafo inicial de `docs/nomina.md` menciona las tablas nuevas y dice que el ISR queda para la spec 70.
 
 ## Decisiones tomadas y descartadas
 
@@ -351,7 +351,12 @@ export interface ITaxParametersLogEntry {
 - **2026-10-09 — Paso 3 a 5.** Tipos, constantes, resolutor puro, pantalla de lectura y alta/edición/baja de parámetros. Se corrigió además `tablas_retencion`: las 11 filas de 2026 venían con `id_payment_period = 2` (quincenal) pero son montos semanales; se pasaron a `1` (semanal) para que la pantalla las muestre.
 - **2026-10-09 — Paso 6: tarifa ISR.** Decisión del usuario sobre huecos: la regla "sin huecos" de esta spec, aplicada fila por fila junto con "sin traslapes", impide editar un tramo intermedio (subir un superior traslapa con el siguiente; subir antes el inferior del siguiente deja un hueco; borrar un intermedio deja un hueco). Se eligió **bloquear solo traslapes, tramo abierto duplicado y rangos inválidos** al guardar, y **señalar los huecos** en pantalla. Verificado con rollback: copia 2026 → 2027 (11 tramos, ids únicos) y falla si el destino ya tiene tramos o el origen está vacío; traslape (incluido el límite exacto), segundo tramo abierto, `superior <= inferior` y porcentaje 101 rechazados en SQL; edición en dos pasos aceptada; dos altas concurrentes se serializan por `UPDLOCK, HOLDLOCK` sobre `MAX(id_tarifa)`.
 - **2026-10-09 — Paso 7: percepciones.** `savePerception` con schema `zod` discriminado por `tipo_limite_exencion` (refleja `CK_perceptions_exencion`) y `PerceptionModal`, que solo muestra los campos que aplican al tipo. Verificado en navegador (localhost:3000, rol 4): `'U'` sin UMA no envía el formulario; Horas extras guardada como `'M'` (50%, 5 UMA, por semana) y Prima dominical como `'U'` (1 UMA, por evento); la tabla las muestra como "50% con tope de 5 UMA por semana" y "Hasta 1 UMA por evento". Quedan sin tope estructurado aguinaldo, PTU y prima vacacional (siguen en `'N'`) hasta confirmar sus valores.
-- **Pendiente:** paso 8 del Plan de implementación y captura de los topes de aguinaldo, PTU y prima vacacional. Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
+- **2026-10-09 — Topes restantes capturados por la pantalla:** aguinaldo `'U'` 30 UMA por año, PTU `'U'` 15 UMA por año y prima vacacional `'U'` 15 UMA por año, tomados del texto libre ya existente en `exempt_limit`; la periodicidad anual es interpretación del usuario aprobada en el chat. Sueldos y comisiones quedan en `'N'`.
+- **2026-10-09 — Paso 8: documentación.** `docs/nomina.md` gana la sección "Parámetros fiscales (spec 69)", el párrafo inicial menciona las tablas nuevas y la pantalla, y dice que el ISR queda para la spec 70.
+- **2026-10-09 — Verificación de criterios.** Se marcaron los criterios cumplidos. Evidencia: SQL real de las actions ejecutado en transacciones revertidas (parámetros, bitácora, tramos, copia, concurrencia, `UNIQUE`, las 9 claves, `CK_perceptions_exencion`); navegador con rol 4 (alta, edición, guardado sin cambios, baja, bitácora de 3 entradas, aviso de traslape, rechazo de copia sobre un ejercicio con tramos, topes de percepciones); HTTP con tokens de prueba por rol (1 y 4 abren la pantalla; 2, 3, 5 y 6 reciben 307). El registro de prueba del ejercicio 2030 se creó y se dio de baja desde la pantalla; sus 3 entradas quedan en `tax_parameters_log`.
+- **Acción directa con rol sin permiso (criterio sin marcar).** Con roles 2, 3, 5 y 6 las actions responden 200 con cuerpo `{}` en lugar de `{ "ok": false, ... }`; no devuelven datos ni escriben, y una acción previa del módulo (`deleteCommissionTier`) responde igual. Las 10 actions de esta spec abren con `assertPayrollAccess()`. Falta confirmar por qué Next serializa así la respuesta antes de marcar el criterio.
+- **Corrección de la fuente.** La sección 2.4 de `references/nomina/reglas_modulo_nomina.md` ya no dice que las primeras 9 horas estén exentas: las dobles exentan 50% con tope de 5 UMA por semana y las triples son gravadas. El límite de 9 horas queda solo como regla de pago.
+- **Pendiente:** confirmar el criterio de acceso directo a las actions y cambiar el estado a "Implementado". Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
 
