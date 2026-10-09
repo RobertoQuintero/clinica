@@ -9,6 +9,7 @@ import {
   getWithholdingTable,
 } from "./actions";
 import PerceptionsTable from "./componentes/PerceptionsTable";
+import { NewTaxParameterButton } from "./componentes/TaxParameterModal";
 import TaxParametersLog from "./componentes/TaxParametersLog";
 import TaxParametersTable from "./componentes/TaxParametersTable";
 import TaxParametersTabs from "./componentes/TaxParametersTabs";
@@ -50,13 +51,16 @@ export default async function TaxParametersPage({ searchParams }: { searchParams
             UMA, salario mínimo, subsidio, tarifa semanal del ISR y topes de exención que usa la nómina fiscal.
           </p>
         </div>
-        {activeTab !== "perceptions" && (
-          <TaxYearSelector
-            selectedYear={selectedYear}
-            yearOptions={buildYearOptions(currentYear, selectedYear)}
-            activeTab={activeTab}
-          />
-        )}
+        <div className="flex items-end gap-3">
+          {activeTab !== "perceptions" && (
+            <TaxYearSelector
+              selectedYear={selectedYear}
+              yearOptions={buildYearOptions(currentYear, selectedYear)}
+              activeTab={activeTab}
+            />
+          )}
+          {activeTab === "parameters" && <NewTaxParameterButton year={selectedYear} />}
+        </div>
       </div>
 
       <TaxParametersTabs activeTab={activeTab} year={selectedYear} />

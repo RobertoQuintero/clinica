@@ -3,6 +3,8 @@ import { TAX_PARAMETER_KEYS } from "@/lib/payroll/constants";
 import { formatPeriodDate } from "@/lib/payroll/periodFormat";
 import { formatTaxParameterValue } from "@/lib/payroll/taxParametersFormat";
 import PayrollEmptyState from "../../componentes/PayrollEmptyState";
+import DeleteTaxParameterButton from "./DeleteTaxParameterButton";
+import { EditTaxParameterButton } from "./TaxParameterModal";
 
 interface Props {
   parameters: ITaxParameter[];
@@ -29,6 +31,7 @@ export default function TaxParametersTable({ parameters, year }: Props) {
               <th className="px-6 py-4 font-semibold">Vigente desde</th>
               <th className="px-6 py-4 font-semibold text-right">Valor</th>
               <th className="px-6 py-4 font-semibold">Capturado por</th>
+              <th className="px-6 py-4 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
@@ -44,6 +47,15 @@ export default function TaxParametersTable({ parameters, year }: Props) {
                   {formatTaxParameterValue(parameter.clave, parameter.valor)}
                 </td>
                 <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">{parameter.updated_by_name || "—"}</td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center justify-end gap-1">
+                    <EditTaxParameterButton parameter={parameter} year={year} />
+                    <DeleteTaxParameterButton
+                      idTaxParameter={parameter.id_tax_parameter}
+                      parameterLabel={`${TAX_PARAMETER_KEYS[parameter.clave].label} desde ${formatPeriodDate(parameter.vigente_desde)}`}
+                    />
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

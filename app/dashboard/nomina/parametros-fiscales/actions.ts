@@ -9,9 +9,14 @@ import type {
 } from "@/interfaces/payroll_tax_parameters";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { TAX_PARAMETERS_LOG_PAGE_SIZE } from "@/lib/payroll/constants";
+import { deleteTaxParameterSchema, taxParameterSchema } from "@/lib/payroll/taxParametersSchemas";
+import { buildDate } from "@/utils/date_helpper";
+import { revalidatePath } from "next/cache";
 
 /** Clave SAT c_PeriodicidadPago de la frecuencia semanal: la única tarifa ISR que captura esta pantalla (spec 69). */
 const WEEKLY_FREQUENCY_SAT_KEY = "02";
+const TAX_PARAMETERS_PATH = "/dashboard/nomina/parametros-fiscales";
+const PARAMETER_NOT_FOUND_MARKER = "TAX_PARAMETER_NOT_FOUND";
 
 /** Parámetros fiscales cuyo `vigente_desde` cae en el ejercicio, ordenados por clave y vigencia. */
 export async function getTaxParametersPage(year: number): Promise<ActionResult<ITaxParameter[]>> {
@@ -119,5 +124,124 @@ export async function getTaxParametersLog(): Promise<ActionResult<ITaxParameters
   } catch (error) {
     console.error("getTaxParametersLog", error);
     return { ok: false, message: "No se pudo cargar la bitácora de parámetros" };
+  }
+}
+
+/**
+ * Alta o edición de un parámetro por (clave, vigente_desde). La fila se lee con UPDLOCK/HOLDLOCK y la bitácora
+ * se escribe en la misma transacción; un guardado sin cambios no escribe nada ni toca `updated_at`.
+ */
+export async function saveTaxParameter(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  const parsed = taxParameterSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { clave, vigente_desde, valor } = parsed.data;
+
+  try {
+    await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @new_value      decimal(18,4) = CAST(@valor AS decimal(18,4));
+       DECLARE @effective_on   date          = CAST(@vigente_desde AS date);
+       DECLARE @updated_at     datetime2(0)  = CAST(@updated_at_text AS datetime2(0));
+       DECLARE @previous_value decimal(18,4), @has_row bit = 0;
+
+       SELECT @previous_value = valor, @has_row = 1
+         FROM [CentroPodologico].[payroll].[tax_parameters] WITH (UPDLOCK, HOLDLOCK)
+        WHERE clave = @clave AND vigente_desde = @effective_on;
+
+       IF @has_row = 1 AND @previous_value = @new_value
+       BEGIN
+         COMMIT;
+         RETURN;
+       END
+
+       IF @has_row = 1
+         UPDATE [CentroPodologico].[payroll].[tax_parameters]
+            SET valor = @new_value, updated_by = @updated_by, updated_at = @updated_at
+          WHERE clave = @clave AND vigente_desde = @effective_on;
+       ELSE
+         INSERT INTO [CentroPodologico].[payroll].[tax_parameters]
+           (clave, valor, vigente_desde, updated_by, updated_at)
+         VALUES (@clave, @new_value, @effective_on, @updated_by, @updated_at);
+
+       INSERT INTO [CentroPodologico].[payroll].[tax_parameters_log]
+         (clave, vigente_desde, valor_anterior, valor_nuevo, updated_by, updated_at)
+       VALUES (@clave, @effective_on, @previous_value, @new_value, @updated_by, @updated_at);
+
+       COMMIT;`,
+      {
+        clave,
+        vigente_desde,
+        valor,
+        updated_by: access.data.id_user,
+        updated_at_text: buildDate(new Date()),
+      },
+    );
+
+    revalidatePath(TAX_PARAMETERS_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("saveTaxParameter", error);
+    return { ok: false, message: "No se pudo guardar el parámetro fiscal" };
+  }
+}
+
+/** Borra un parámetro y deja la baja en la bitácora (`valor_nuevo` NULL), en una sola transacción. */
+export async function deleteTaxParameter(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  const parsed = deleteTaxParameterSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  try {
+    await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @updated_at datetime2(0) = CAST(@updated_at_text AS datetime2(0));
+       DECLARE @clave varchar(40), @effective_on date, @previous_value decimal(18,4);
+
+       SELECT @clave = clave, @effective_on = vigente_desde, @previous_value = valor
+         FROM [CentroPodologico].[payroll].[tax_parameters] WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_tax_parameter = @id_tax_parameter;
+
+       IF @clave IS NULL
+         THROW 50020, '${PARAMETER_NOT_FOUND_MARKER}', 1;
+
+       DELETE FROM [CentroPodologico].[payroll].[tax_parameters]
+        WHERE id_tax_parameter = @id_tax_parameter;
+
+       INSERT INTO [CentroPodologico].[payroll].[tax_parameters_log]
+         (clave, vigente_desde, valor_anterior, valor_nuevo, updated_by, updated_at)
+       VALUES (@clave, @effective_on, @previous_value, NULL, @updated_by, @updated_at);
+
+       COMMIT;`,
+      {
+        id_tax_parameter: parsed.data.id_tax_parameter,
+        updated_by: access.data.id_user,
+        updated_at_text: buildDate(new Date()),
+      },
+    );
+
+    revalidatePath(TAX_PARAMETERS_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("deleteTaxParameter", error);
+    const message = (error as { message?: string }).message ?? "";
+    return {
+      ok: false,
+      message: message.includes(PARAMETER_NOT_FOUND_MARKER)
+        ? "El parámetro ya no existe"
+        : "No se pudo eliminar el parámetro fiscal",
+    };
   }
 }
