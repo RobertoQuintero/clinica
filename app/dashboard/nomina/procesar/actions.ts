@@ -23,6 +23,7 @@ import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
 import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
+import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -142,6 +143,7 @@ export async function getPayrollProcessPage(
       punctualityBonusRecalculationNeeded: false,
       attendanceBonusRecalculationNeeded: false,
       shiftExtensionBonusRecalculationNeeded: false,
+      isrRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -168,6 +170,7 @@ export async function getPayrollProcessPage(
       punctualityBonusRecalculationNeeded,
       attendanceBonusRecalculationNeeded,
       shiftExtensionBonusRecalculationNeeded,
+      isrRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -274,6 +277,7 @@ export async function getPayrollProcessPage(
       isPunctualityBonusRecalculationNeeded(period.id_period),
       isAttendanceBonusRecalculationNeeded(period.id_period),
       isShiftExtensionBonusRecalculationNeeded(period.id_period),
+      isIsrRecalculationNeeded(period.id_period),
     ]);
 
     const totalPercepciones = roundToCents(
@@ -353,6 +357,7 @@ export async function getPayrollProcessPage(
         punctualityBonusRecalculationNeeded,
         attendanceBonusRecalculationNeeded,
         shiftExtensionBonusRecalculationNeeded,
+        isrRecalculationNeeded,
       },
     };
   } catch (error) {

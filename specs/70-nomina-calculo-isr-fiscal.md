@@ -298,11 +298,11 @@ export interface IIsrBreakdown {
 
 **Aviso "Recalcula"**
 
-- [ ] Con el periodo en estatus 2, cambiar `SUBSIDIO_TOPE_INGRESO_MENSUAL` o un tramo de la tarifa 2026 muestra el aviso en Procesar.
-- [ ] Devolver el valor original quita el aviso.
-- [ ] Recalcular quita el aviso.
-- [ ] Un periodo en estatus 2 con renglones `'F'` en `'X'` muestra el aviso.
-- [ ] Un periodo en estatus 1 nunca muestra el aviso.
+- [x] Con el periodo en estatus 2, cambiar `SUBSIDIO_TOPE_INGRESO_MENSUAL` o un tramo de la tarifa 2026 muestra el aviso en Procesar.
+- [x] Devolver el valor original quita el aviso.
+- [x] Recalcular quita el aviso.
+- [x] Un periodo en estatus 2 con renglones `'F'` en `'X'` muestra el aviso.
+- [x] Un periodo en estatus 1 nunca muestra el aviso.
 
 **Acceso**
 

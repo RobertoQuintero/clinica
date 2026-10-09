@@ -141,6 +141,10 @@ export default async function ProcesarNominaPage({
             recalculationNeeded={result.data.shiftExtensionBonusRecalculationNeeded}
             message="Hay bonos por extensión de jornada que no coinciden con el último cálculo. Recalcula la nómina."
           />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.isrRecalculationNeeded}
+            message="Hay cálculos de ISR que no coinciden con la tarifa o los parámetros actuales. Recalcula la nómina."
+          />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"
