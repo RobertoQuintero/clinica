@@ -115,11 +115,20 @@ ALTER TABLE [payroll].[perceptions] ADD
     [porcentaje_exento]    [decimal](5,2) NULL,
     [periodicidad_limite]  [char](1)      NULL
 GO
+-- IS NOT NULL explícito: en un CHECK, `NULL > 0` es UNKNOWN y SQL Server lo acepta.
 ALTER TABLE [payroll].[perceptions] WITH CHECK ADD CONSTRAINT [CK_perceptions_exencion] CHECK (
     ([tipo_limite_exencion] IN ('N','T') AND [umas_limite] IS NULL AND [porcentaje_exento] IS NULL AND [periodicidad_limite] IS NULL)
- OR ([tipo_limite_exencion] = 'U' AND [umas_limite] > 0 AND [porcentaje_exento] IS NULL AND [periodicidad_limite] IN ('D','S','M','A','E'))
- OR ([tipo_limite_exencion] = 'P' AND [porcentaje_exento] > 0 AND [porcentaje_exento] <= 100 AND [umas_limite] IS NULL AND [periodicidad_limite] IS NULL)
- OR ([tipo_limite_exencion] = 'M' AND [porcentaje_exento] > 0 AND [porcentaje_exento] <= 100 AND [umas_limite] > 0 AND [periodicidad_limite] IN ('D','S','M','A','E')))
+ OR ([tipo_limite_exencion] = 'U'
+        AND [umas_limite] IS NOT NULL AND [umas_limite] > 0
+        AND [porcentaje_exento] IS NULL
+        AND [periodicidad_limite] IS NOT NULL AND [periodicidad_limite] IN ('D','S','M','A','E'))
+ OR ([tipo_limite_exencion] = 'P'
+        AND [porcentaje_exento] IS NOT NULL AND [porcentaje_exento] > 0 AND [porcentaje_exento] <= 100
+        AND [umas_limite] IS NULL AND [periodicidad_limite] IS NULL)
+ OR ([tipo_limite_exencion] = 'M'
+        AND [porcentaje_exento] IS NOT NULL AND [porcentaje_exento] > 0 AND [porcentaje_exento] <= 100
+        AND [umas_limite] IS NOT NULL AND [umas_limite] > 0
+        AND [periodicidad_limite] IS NOT NULL AND [periodicidad_limite] IN ('D','S','M','A','E')))
 GO
 ```
 
@@ -337,7 +346,8 @@ export interface ITaxParametersLogEntry {
   - `perceptions`: 12 filas, **0** con `id_perception` nulo y **0** repetidos.
   - `cat_taxed_exempt`: 3 filas.
   - Conclusión: el `UNIQUE` y la PK del paso 2 no requieren correcciones previas.
-- **Pendiente:** pasos 2 a 8 del Plan de implementación. Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
+- **2026-10-09 — Paso 2: BD.** DDL aplicado y documentado en `queries.txt`. Al verificar, `CK_perceptions_exencion` aceptaba `'U'` sin `umas_limite` o sin `periodicidad_limite` (y `'P'`/`'M'` con campos nulos): en un `CHECK`, `NULL > 0` y `NULL IN (...)` evalúan a `UNKNOWN` y SQL Server lo acepta. Se recreó la restricción con `IS NOT NULL` explícito en cada rama y se corrigió el DDL de esta spec y de `queries.txt`. Verificado con rollback: rechaza `'U'` sin UMA, `'U'` sin periodicidad, `'P'` sin porcentaje, `'M'` sin UMA o sin porcentaje, `'N'`/`'T'` con campos y `'P'` > 100; acepta `'M'`, `'U'`, `'P'` y `'T'` válidos.
+- **Pendiente:** pasos 3 a 8 del Plan de implementación. Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
 

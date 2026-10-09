@@ -1948,3 +1948,72 @@ ALTER TABLE [payroll].[period_employees] WITH CHECK
      OR ([bono_extension_asignado] = 1
             AND [tipo_nomina] = 'O' AND [bono_extension_dias] >= 0 AND [importe_bono_extension] >= 0))
 GO
+
+-- Spec 69: parámetros fiscales anuales para el ISR
+-- Spec 69: parámetros fiscales con vigencia. Sin valores precargados: el usuario los captura.
+CREATE TABLE [payroll].[tax_parameters](
+    [id_tax_parameter] [int] IDENTITY(1,1) NOT NULL,
+    [clave]            [varchar](40)    NOT NULL,
+    [valor]            [decimal](18,4)  NOT NULL,
+    [vigente_desde]    [date]           NOT NULL,
+    [updated_by]       [int]            NOT NULL,
+    [updated_at]       [datetime2](0)   NOT NULL,
+ CONSTRAINT [PK_tax_parameters] PRIMARY KEY CLUSTERED ([id_tax_parameter] ASC),
+ CONSTRAINT [UQ_tax_parameters_clave_vigencia] UNIQUE ([clave], [vigente_desde]),
+ CONSTRAINT [CK_tax_parameters_clave] CHECK ([clave] IN (
+    'UMA_DIARIA','UMA_MENSUAL','UMA_ANUAL',
+    'SALARIO_MINIMO_GENERAL','SALARIO_MINIMO_FRONTERA',
+    'SUBSIDIO_MONTO_MENSUAL','SUBSIDIO_TOPE_INGRESO_MENSUAL','SUBSIDIO_FACTOR_DIAS_MES',
+    'DIAS_ANIO')),
+ CONSTRAINT [CK_tax_parameters_valor] CHECK ([valor] > 0)
+) ON [PRIMARY]
+GO
+
+-- Spec 69: bitácora. Una fila por alta, cambio o baja.
+CREATE TABLE [payroll].[tax_parameters_log](
+    [id_log]         [int] IDENTITY(1,1) NOT NULL,
+    [clave]          [varchar](40)   NOT NULL,
+    [vigente_desde]  [date]          NOT NULL,
+    [valor_anterior] [decimal](18,4) NULL,   -- NULL: alta
+    [valor_nuevo]    [decimal](18,4) NULL,   -- NULL: baja
+    [updated_by]     [int]           NOT NULL,
+    [updated_at]     [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_tax_parameters_log] PRIMARY KEY CLUSTERED ([id_log] ASC)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_tax_parameters_log_fecha]
+    ON [payroll].[tax_parameters_log] ([updated_at] DESC)
+GO
+
+-- Spec 69: un tramo por ejercicio + frecuencia + límite inferior.
+ALTER TABLE [payroll].[tablas_retencion] ADD CONSTRAINT [UQ_tablas_retencion_tramo]
+    UNIQUE ([ejercicio], [id_payment_period], [limite_inferior])
+GO
+
+-- Spec 69: llave primaria y tope de exención estructurado en perceptions.
+ALTER TABLE [payroll].[perceptions] ALTER COLUMN [id_perception] [smallint] NOT NULL
+GO
+ALTER TABLE [payroll].[perceptions] ADD CONSTRAINT [PK_perceptions] PRIMARY KEY CLUSTERED ([id_perception])
+GO
+ALTER TABLE [payroll].[perceptions] ADD
+    [tipo_limite_exencion] [char](1)      NOT NULL CONSTRAINT [DF_perceptions_tipo_limite] DEFAULT ('N'),
+    [umas_limite]          [decimal](9,4) NULL,
+    [porcentaje_exento]    [decimal](5,2) NULL,
+    [periodicidad_limite]  [char](1)      NULL
+GO
+-- IS NOT NULL explícito: en un CHECK, `NULL > 0` es UNKNOWN y SQL Server lo acepta.
+ALTER TABLE [payroll].[perceptions] WITH CHECK ADD CONSTRAINT [CK_perceptions_exencion] CHECK (
+    ([tipo_limite_exencion] IN ('N','T') AND [umas_limite] IS NULL AND [porcentaje_exento] IS NULL AND [periodicidad_limite] IS NULL)
+ OR ([tipo_limite_exencion] = 'U'
+        AND [umas_limite] IS NOT NULL AND [umas_limite] > 0
+        AND [porcentaje_exento] IS NULL
+        AND [periodicidad_limite] IS NOT NULL AND [periodicidad_limite] IN ('D','S','M','A','E'))
+ OR ([tipo_limite_exencion] = 'P'
+        AND [porcentaje_exento] IS NOT NULL AND [porcentaje_exento] > 0 AND [porcentaje_exento] <= 100
+        AND [umas_limite] IS NULL AND [periodicidad_limite] IS NULL)
+ OR ([tipo_limite_exencion] = 'M'
+        AND [porcentaje_exento] IS NOT NULL AND [porcentaje_exento] > 0 AND [porcentaje_exento] <= 100
+        AND [umas_limite] IS NOT NULL AND [umas_limite] > 0
+        AND [periodicidad_limite] IS NOT NULL AND [periodicidad_limite] IN ('D','S','M','A','E')))
+GO
