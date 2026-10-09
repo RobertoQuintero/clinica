@@ -2017,3 +2017,69 @@ ALTER TABLE [payroll].[perceptions] WITH CHECK ADD CONSTRAINT [CK_perceptions_ex
         AND [umas_limite] IS NOT NULL AND [umas_limite] > 0
         AND [periodicidad_limite] IS NOT NULL AND [periodicidad_limite] IN ('D','S','M','A','E')))
 GO
+
+-- Spec 70: desglose del ISR por renglón. Solo los renglones 'F' calculados llevan datos.
+-- isr_estado: 'X' no aplica (operativa o snapshot anterior a la spec 70), 'C' calculado, 'N' no calculado.
+ALTER TABLE [payroll].[period_employees] ADD
+    [isr_estado]                      [char](1)       NOT NULL CONSTRAINT [DF_period_employees_isr_estado] DEFAULT ('X'),
+    [isr_motivo]                      [varchar](30)   NULL,   -- solo 'N'
+    [isr_base_gravable]               [decimal](12,2) NULL,
+    [isr_ejercicio_tarifa]            [smallint]      NULL,
+    [isr_limite_inferior]             [decimal](18,2) NULL,   -- tramo congelado; NULL si la base es 0
+    [isr_cuota_fija]                  [decimal](18,2) NULL,
+    [isr_porcentaje_excedente]        [decimal](5,2)  NULL,
+    [isr_causado]                     [decimal](12,2) NULL,
+    [subsidio_monto_mensual]          [decimal](18,4) NULL,   -- parámetros congelados con su vigencia
+    [subsidio_monto_vigente_desde]    [date]          NULL,
+    [subsidio_tope_ingreso_mensual]   [decimal](18,4) NULL,
+    [subsidio_tope_vigente_desde]     [date]          NULL,
+    [subsidio_factor_dias_mes]        [decimal](18,4) NULL,
+    [subsidio_factor_vigente_desde]   [date]          NULL,
+    [subsidio_con_derecho]            [bit]           NULL,
+    [subsidio_causado]                [decimal](12,2) NULL,
+    [subsidio_aplicado]               [decimal](12,2) NULL,
+    [isr_retenido]                    [decimal](12,2) NULL
+GO
+
+-- IS NOT NULL explícito en cada rama: en un CHECK, `NULL >= 0` es UNKNOWN y SQL Server lo acepta (lección de la spec 69).
+ALTER TABLE [payroll].[period_employees] WITH CHECK ADD CONSTRAINT [CK_period_employees_isr] CHECK (
+    ([isr_estado] = 'X'
+        AND [isr_motivo] IS NULL AND [isr_base_gravable] IS NULL AND [isr_causado] IS NULL
+        AND [isr_retenido] IS NULL AND [subsidio_causado] IS NULL AND [subsidio_aplicado] IS NULL)
+ OR ([isr_estado] = 'N' AND [tipo_nomina] = 'F'
+        AND [isr_motivo] IS NOT NULL
+        AND [isr_motivo] IN ('no_withholding_table','income_in_gap','missing_subsidy_parameters')
+        AND [isr_base_gravable] IS NOT NULL AND [isr_base_gravable] >= 0
+        AND [isr_causado] IS NULL AND [isr_retenido] IS NULL
+        AND [subsidio_causado] IS NULL AND [subsidio_aplicado] IS NULL)
+ OR ([isr_estado] = 'C' AND [tipo_nomina] = 'F'
+        AND [isr_motivo] IS NULL
+        AND [isr_base_gravable] IS NOT NULL AND [isr_base_gravable] >= 0
+        AND [isr_ejercicio_tarifa] IS NOT NULL
+        AND ([isr_limite_inferior] IS NOT NULL OR [isr_base_gravable] = 0)
+        AND [isr_causado] IS NOT NULL AND [isr_causado] >= 0
+        AND [subsidio_con_derecho] IS NOT NULL
+        AND [subsidio_monto_mensual] IS NOT NULL AND [subsidio_tope_ingreso_mensual] IS NOT NULL
+        AND [subsidio_factor_dias_mes] IS NOT NULL
+        AND [subsidio_causado] IS NOT NULL AND [subsidio_causado] >= 0
+        AND [subsidio_aplicado] IS NOT NULL AND [subsidio_aplicado] >= 0
+        AND [subsidio_aplicado] <= [subsidio_causado] AND [subsidio_aplicado] <= [isr_causado]
+        AND [isr_retenido] IS NOT NULL AND [isr_retenido] = [isr_causado] - [subsidio_aplicado]))
+GO
+
+-- Spec 70: deducciones por renglón, ligadas al catálogo payroll.deductions. Hoy solo id_deduction = 2 (ISR).
+-- ON DELETE CASCADE: "Recalcular" y "Revertir" las borran con el DELETE de period_employees que ya ejecutan.
+CREATE TABLE [payroll].[period_employee_deductions](
+    [id_period_employee_deduction] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee]           [int]           NOT NULL,
+    [id_deduction]                 [smallint]      NOT NULL,
+    [importe]                      [decimal](12,2) NOT NULL,
+ CONSTRAINT [PK_period_employee_deductions] PRIMARY KEY CLUSTERED ([id_period_employee_deduction] ASC),
+ CONSTRAINT [UQ_period_employee_deductions] UNIQUE ([id_period_employee], [id_deduction]),
+ CONSTRAINT [FK_period_employee_deductions_period_employee] FOREIGN KEY ([id_period_employee])
+    REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [FK_period_employee_deductions_deduction] FOREIGN KEY ([id_deduction])
+    REFERENCES [payroll].[deductions] ([id_deduction]),
+ CONSTRAINT [CK_period_employee_deductions_importe] CHECK ([importe] >= 0)
+) ON [PRIMARY]
+GO
