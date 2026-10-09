@@ -12,6 +12,7 @@ import {
   PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
+import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
@@ -63,6 +64,10 @@ import { revalidatePath } from "next/cache";
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
 function escapeLikePattern(text: string): string {
   return text.replace(/[\[%_]/g, (character) => `[${character}]`);
+}
+
+function roundToCents(amount: number): number {
+  return Math.round(amount * 100) / 100;
 }
 
 /** Orden de la tabla de Procesar; Anterior / Siguiente del detalle lo sigue. Determinista gracias al id. */
@@ -122,7 +127,8 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, totalPercepciones: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
+      isrNotCalculated: [],
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
@@ -148,6 +154,7 @@ export async function getPayrollProcessPage(
     const [
       rows,
       totals,
+      isrNotCalculatedRows,
       puestoOptions,
       excludedEmployees,
       lastCalculated,
@@ -180,10 +187,20 @@ export async function getPayrollProcessPage(
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension AS total_percepciones,
+                pe.isr_estado, CAST(pe.isr_retenido AS float) AS isr_retenido,
+                CAST(deductions.total AS float) AS total_deducciones,
+                CAST(pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
+                  + pe.importe_comision_productos
+                  + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
+                  + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
+                  + pe.importe_bono_extension - deductions.total AS float) AS neto,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
            JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
+          CROSS APPLY (SELECT ISNULL(SUM(d.importe), 0) AS total
+                         FROM [CentroPodologico].[payroll].[period_employee_deductions] d
+                        WHERE d.id_period_employee = pe.id_period_employee) AS deductions
           WHERE ${rowConditions.join(" AND ")}
           ORDER BY ${PAYROLL_EMPLOYEE_ORDER_BY}`,
         rowParams,
@@ -197,9 +214,24 @@ export async function getPayrollProcessPage(
                 ISNULL(SUM(importe_horas_extra_dobles + importe_horas_extra_triples), 0) AS importe_horas_extra,
                 CAST(ISNULL(SUM(importe_bono_puntualidad), 0) AS float) AS importe_bono_puntualidad,
                 CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia,
-                CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension
-           FROM [CentroPodologico].[payroll].[period_employees]
+                CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension,
+                CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
+                CAST(ISNULL(SUM(deductions.total), 0) AS float) AS total_deducciones
+           FROM [CentroPodologico].[payroll].[period_employees] pe
+          CROSS APPLY (SELECT ISNULL(SUM(d.importe), 0) AS total,
+                              ISNULL(SUM(CASE WHEN d.id_deduction = @isr_deduction_id THEN d.importe END), 0) AS isr
+                         FROM [CentroPodologico].[payroll].[period_employee_deductions] d
+                        WHERE d.id_period_employee = pe.id_period_employee) AS deductions
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
+        { id_period: period.id_period, tipo_nomina: filters.payrollType, isr_deduction_id: ISR_DEDUCTION_ID },
+      ),
+      // Spec 70: renglones "ISR no calculado" por motivo, de todo el tipo (sin filtros de puesto ni búsqueda).
+      db.queryParams(
+        `SELECT isr_motivo, COUNT(*) AS employees
+           FROM [CentroPodologico].[payroll].[period_employees]
+          WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina AND isr_estado = 'N'
+          GROUP BY isr_motivo
+          ORDER BY isr_motivo`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
       ),
       db.queryParams(
@@ -240,6 +272,17 @@ export async function getPayrollProcessPage(
       isShiftExtensionBonusRecalculationNeeded(period.id_period),
     ]);
 
+    const totalPercepciones = roundToCents(
+      Number(totals[0]?.importe_salario ?? 0) +
+        Number(totals[0]?.importe_comision ?? 0) +
+        Number(totals[0]?.importe_comision_tratamientos ?? 0) +
+        Number(totals[0]?.importe_comision_productos ?? 0) +
+        Number(totals[0]?.importe_horas_extra ?? 0) +
+        Number(totals[0]?.importe_bono_puntualidad ?? 0) +
+        Number(totals[0]?.importe_bono_asistencia ?? 0) +
+        Number(totals[0]?.importe_bono_extension ?? 0),
+    );
+
     return {
       ok: true,
       data: {
@@ -272,6 +315,9 @@ export async function getPayrollProcessPage(
           bono_extension_dias: Number(row.bono_extension_dias),
           importe_bono_extension: Number(row.importe_bono_extension),
           total_percepciones: Number(row.total_percepciones),
+          isr_retenido: row.isr_retenido === null ? null : Number(row.isr_retenido),
+          total_deducciones: Number(row.total_deducciones),
+          neto: Number(row.neto),
         })),
         totals: {
           employees: Number(totals[0]?.employees ?? 0),
@@ -283,19 +329,14 @@ export async function getPayrollProcessPage(
           importeBonoPuntualidad: Number(totals[0]?.importe_bono_puntualidad ?? 0),
           importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
           importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
-          totalPercepciones:
-            Math.round(
-              (Number(totals[0]?.importe_salario ?? 0) +
-                Number(totals[0]?.importe_comision ?? 0) +
-                Number(totals[0]?.importe_comision_tratamientos ?? 0) +
-                Number(totals[0]?.importe_comision_productos ?? 0) +
-                Number(totals[0]?.importe_horas_extra ?? 0) +
-                Number(totals[0]?.importe_bono_puntualidad ?? 0) +
-                Number(totals[0]?.importe_bono_asistencia ?? 0) +
-                Number(totals[0]?.importe_bono_extension ?? 0)) *
-                100,
-            ) / 100,
+          totalPercepciones,
+          importeIsr: Number(totals[0]?.importe_isr ?? 0),
+          totalNeto: roundToCents(totalPercepciones - Number(totals[0]?.total_deducciones ?? 0)),
         },
+        isrNotCalculated: (isrNotCalculatedRows as { isr_motivo: IsrSkipReason; employees: number }[]).map((row) => ({
+          reason: row.isr_motivo,
+          employees: Number(row.employees),
+        })),
         puestoOptions: puestoOptions.map((row: { id_puesto: number; name: string }) => ({
           id_puesto: row.id_puesto,
           name: row.name,

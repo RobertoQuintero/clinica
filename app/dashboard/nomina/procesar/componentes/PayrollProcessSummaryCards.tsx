@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Banknote, CalendarCheck2, CalendarRange, UsersRound } from "lucide-react";
+import { Banknote, CalendarCheck2, CalendarRange, Landmark, UsersRound, Wallet } from "lucide-react";
 import type { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import type { IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
@@ -13,6 +13,8 @@ interface Props {
   totals: IPayrollProcessPage["totals"];
   lastCalculatedAt: string | null;
   today: string;
+  /** Renglones con "ISR no calculado" (spec 70); solo se usa en la vista fiscal. */
+  isrNotCalculatedEmployees: number;
 }
 
 function describePaymentDistance(paymentDate: string, today: string): string {
@@ -40,9 +42,19 @@ function SummaryCard({ icon, label, children }: { icon: ReactNode; label: string
   );
 }
 
-export default function PayrollProcessSummaryCards({ period, payrollType, totals, lastCalculatedAt, today }: Props) {
+export default function PayrollProcessSummaryCards({
+  period,
+  payrollType,
+  totals,
+  lastCalculatedAt,
+  today,
+  isrNotCalculatedEmployees,
+}: Props) {
+  // Spec 70: la vista fiscal agrega ISR y neto; con 6 tarjetas, 3 por fila.
+  const showsDeductions = payrollType === "F";
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${showsDeductions ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
       <SummaryCard icon={<CalendarRange size={20} />} label="Periodo">
         <span className="text-base font-semibold text-[#0b1c30] dark:text-zinc-50 truncate">
           {formatPeriodRange(period.fecha_inicio, period.fecha_fin)}
@@ -93,6 +105,33 @@ export default function PayrollProcessSummaryCards({ period, payrollType, totals
               : "Ningún empleado elegible"}
         </span>
       </SummaryCard>
+
+      {showsDeductions && (
+        <>
+          <SummaryCard icon={<Landmark size={20} />} label="ISR retenido">
+            <span className="text-xl font-bold leading-tight text-[#0b1c30] dark:text-zinc-50 tabular-nums">
+              {formatPayrollCurrency(totals.importeIsr)}
+            </span>
+            <span className="text-xs text-[#44474f] dark:text-zinc-400">
+              Tarifa del periodo menos subsidio para el empleo
+            </span>
+            {isrNotCalculatedEmployees > 0 && (
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                {isrNotCalculatedEmployees === 1
+                  ? "1 empleado sin ISR calculado"
+                  : `${isrNotCalculatedEmployees} empleados sin ISR calculado`}
+              </span>
+            )}
+          </SummaryCard>
+
+          <SummaryCard icon={<Wallet size={20} />} label="Neto a pagar">
+            <span className="text-xl font-bold leading-tight text-[#0051d5] dark:text-blue-300 tabular-nums">
+              {formatPayrollCurrency(totals.totalNeto)}
+            </span>
+            <span className="text-xs text-[#44474f] dark:text-zinc-400">Percepciones menos deducciones</span>
+          </SummaryCard>
+        </>
+      )}
     </div>
   );
 }

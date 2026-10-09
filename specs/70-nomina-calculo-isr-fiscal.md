@@ -280,11 +280,11 @@ export interface IIsrBreakdown {
 
 **Procesar**
 
-- [ ] La vista operativa no cambia: no aparecen columnas ni tarjetas de ISR.
-- [ ] La vista fiscal muestra las columnas "ISR" y "Neto". En `NOM-2026-S01`, el neto del empleado 2 es 2,233.46 (2,275.00 − 41.54).
-- [ ] Las tarjetas de ISR total y neto total son la suma de los renglones y no cambian con los filtros de puesto o búsqueda.
-- [ ] Con renglones en `'N'`, aparece el aviso con cuántos son, el motivo y una liga a Parámetros fiscales.
-- [ ] Un renglón `'F'` en `'X'` muestra "—" en ISR.
+- [x] La vista operativa no cambia: no aparecen columnas ni tarjetas de ISR.
+- [x] La vista fiscal muestra las columnas "ISR" y "Neto". En `NOM-2026-S01`, el neto del empleado 2 es 2,233.46 (2,275.00 − 41.54).
+- [x] Las tarjetas de ISR total y neto total son la suma de los renglones y no cambian con los filtros de puesto o búsqueda.
+- [x] Con renglones en `'N'`, aparece el aviso con cuántos son, el motivo y una liga a Parámetros fiscales.
+- [x] Un renglón `'F'` en `'X'` muestra "—" en ISR.
 
 **Detalle**
 

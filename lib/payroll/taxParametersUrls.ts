@@ -15,6 +15,15 @@ export function readTaxParametersTab(rawValue: string): TaxParametersTab {
   return match ? match[0] : "parameters";
 }
 
+/** Liga a Parámetros fiscales en una pestaña y ejercicio. */
+export function buildTaxParametersHref(tab: TaxParametersTab, fiscalYear: number): string {
+  const searchParams = new URLSearchParams({
+    pestana: TAX_PARAMETERS_TAB_URL_VALUES[tab],
+    ejercicio: String(fiscalYear),
+  });
+  return `/dashboard/nomina/parametros-fiscales?${searchParams.toString()}`;
+}
+
 /** Años que ofrece el selector: dos atrás y uno adelante del actual, más el seleccionado si queda fuera. */
 export function buildYearOptions(currentYear: number, selectedYear: number): number[] {
   const years = new Set([currentYear - 2, currentYear - 1, currentYear, currentYear + 1, selectedYear]);

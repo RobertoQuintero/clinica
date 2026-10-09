@@ -12,6 +12,7 @@ import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
+import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
 import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
 import PayrollProcessSummaryCards from "./componentes/PayrollProcessSummaryCards";
@@ -104,11 +105,18 @@ export default async function ProcesarNominaPage({
             totals={result.data.totals}
             lastCalculatedAt={result.data.lastCalculatedAt}
             today={today}
+            isrNotCalculatedEmployees={result.data.isrNotCalculated.reduce((sum, group) => sum + group.employees, 0)}
           />
           <ExcludedEmployeesNotice
             excludedEmployees={result.data.excludedEmployees}
             payrollType={filters.payrollType}
           />
+          {filters.payrollType === "F" && (
+            <IsrNotCalculatedNotice
+              isrNotCalculated={result.data.isrNotCalculated}
+              fiscalYear={Number(result.data.period.fecha_fin.slice(0, 4))}
+            />
+          )}
           <PayrollRecalculationNotice
             recalculationNeeded={result.data.overtimeRecalculationNeeded}
             message="Hay autorizaciones que no coinciden con el último cálculo. Recalcula la nómina."
