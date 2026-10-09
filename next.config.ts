@@ -2,10 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Permite abrir el dev server a través de un Dev Tunnel de VS Code.
+  allowedDevOrigins: ["*.devtunnels.ms"],
   serverExternalPackages: ["cloudinary"],
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",
+      allowedOrigins: ["*.devtunnels.ms"],
     },
   },
   images: {

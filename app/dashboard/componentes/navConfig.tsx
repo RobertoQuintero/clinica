@@ -27,6 +27,7 @@ import {
   CalendarX2,
   AlarmClock,
   Award,
+  Scale,
   type LucideIcon,
 } from "lucide-react";
 
@@ -121,6 +122,12 @@ export const NAV_LINKS: NavLink[] = [
         href: "/dashboard/nomina/bonos",
         label: "Bonos",
         icon: Award,
+        excludeRoles: [2, 3, 5, 6],
+      },
+      {
+        href: "/dashboard/nomina/parametros-fiscales",
+        label: "Parámetros fiscales",
+        icon: Scale,
         excludeRoles: [2, 3, 5, 6],
       },
     ],
