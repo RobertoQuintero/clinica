@@ -81,4 +81,52 @@ export const deleteWithholdingBracketSchema = z.object({
   id_tarifa: z.number().int().positive("Tramo inválido"),
 });
 
+const EXEMPTION_PERIODICITY_SCHEMA = z.enum(["D", "S", "M", "A", "E"], { error: "Elige la periodicidad del tope" });
+
+const UMAS_LIMIT_SCHEMA = z
+  .number({ error: "El tope en UMA debe ser un número" })
+  .positive("El tope en UMA debe ser mayor que cero")
+  .max(99_999, "El tope en UMA es demasiado grande")
+  .refine((value) => Math.abs(value * 10_000 - Math.round(value * 10_000)) < 1e-6, "El tope en UMA admite hasta 4 decimales");
+
+const EXEMPT_PERCENTAGE_SCHEMA = z
+  .number({ error: "El porcentaje exento debe ser un número" })
+  .positive("El porcentaje exento debe ser mayor que cero")
+  .max(100, "El porcentaje exento no puede ser mayor a 100")
+  .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, "El porcentaje exento admite hasta 2 decimales");
+
+const perceptionIdShape = { id_perception: z.number().int().positive("Percepción inválida") };
+
+/** Refleja `CK_perceptions_exencion`: cada tipo exige y prohíbe exactamente los campos que el CHECK de SQL. */
+export const savePerceptionSchema = z.discriminatedUnion("tipo_limite_exencion", [
+  z.object({
+    ...perceptionIdShape,
+    tipo_limite_exencion: z.enum(["N", "T"]),
+    umas_limite: z.null(),
+    porcentaje_exento: z.null(),
+    periodicidad_limite: z.null(),
+  }),
+  z.object({
+    ...perceptionIdShape,
+    tipo_limite_exencion: z.literal("U"),
+    umas_limite: UMAS_LIMIT_SCHEMA,
+    porcentaje_exento: z.null(),
+    periodicidad_limite: EXEMPTION_PERIODICITY_SCHEMA,
+  }),
+  z.object({
+    ...perceptionIdShape,
+    tipo_limite_exencion: z.literal("P"),
+    umas_limite: z.null(),
+    porcentaje_exento: EXEMPT_PERCENTAGE_SCHEMA,
+    periodicidad_limite: z.null(),
+  }),
+  z.object({
+    ...perceptionIdShape,
+    tipo_limite_exencion: z.literal("M"),
+    umas_limite: UMAS_LIMIT_SCHEMA,
+    porcentaje_exento: EXEMPT_PERCENTAGE_SCHEMA,
+    periodicidad_limite: EXEMPTION_PERIODICITY_SCHEMA,
+  }),
+]);
+
 export const copyWithholdingTableSchema = z.object({ ejercicio_destino: EXERCISE_YEAR_SCHEMA });

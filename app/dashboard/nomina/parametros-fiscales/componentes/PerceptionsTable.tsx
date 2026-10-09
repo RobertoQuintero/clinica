@@ -1,6 +1,7 @@
 import type { IPerception } from "@/interfaces/payroll_tax_parameters";
 import { formatExemptionLimit } from "@/lib/payroll/taxParametersFormat";
 import PayrollEmptyState from "../../componentes/PayrollEmptyState";
+import { EditPerceptionButton } from "./PerceptionModal";
 
 interface Props {
   perceptions: IPerception[];
@@ -26,6 +27,7 @@ export default function PerceptionsTable({ perceptions }: Props) {
               <th className="px-6 py-4 font-semibold">Percepción</th>
               <th className="px-6 py-4 font-semibold">Tope de exención</th>
               <th className="px-6 py-4 font-semibold">Estatus</th>
+              <th className="px-6 py-4 font-semibold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
@@ -38,6 +40,11 @@ export default function PerceptionsTable({ perceptions }: Props) {
                 <td className="px-6 py-4 text-[#0b1c30] dark:text-zinc-100">{formatExemptionLimit(perception)}</td>
                 <td className="px-6 py-4 text-[#44474f] dark:text-zinc-400">
                   {perception.status ? "Activa" : "Inactiva"}
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center justify-end">
+                    <EditPerceptionButton perception={perception} />
+                  </div>
                 </td>
               </tr>
             ))}

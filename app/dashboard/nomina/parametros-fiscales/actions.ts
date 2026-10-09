@@ -14,6 +14,7 @@ import {
   createWithholdingBracketSchema,
   deleteTaxParameterSchema,
   deleteWithholdingBracketSchema,
+  savePerceptionSchema,
   taxParameterSchema,
   updateWithholdingBracketSchema,
 } from "@/lib/payroll/taxParametersSchemas";
@@ -455,5 +456,52 @@ export async function copyWithholdingTableFromPreviousYear(input: unknown): Prom
       return { ok: false, message: `El ejercicio ${targetYear - 1} no tiene tarifa semanal que copiar` };
     }
     return { ok: false, message: "No se pudo copiar la tarifa del ejercicio anterior" };
+  }
+}
+
+/**
+ * Guarda el tope de exención estructurado de una percepción. El schema refleja `CK_perceptions_exencion`;
+ * si algo se cuela, el CHECK de SQL lo rechaza. `exempt_limit` (texto libre) no se toca.
+ */
+export async function savePerception(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  const parsed = savePerceptionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const perception = parsed.data;
+
+  try {
+    const updatedRows = await db.queryParams(
+      `UPDATE [CentroPodologico].[payroll].[perceptions]
+          SET tipo_limite_exencion = @tipo_limite_exencion,
+              umas_limite          = CAST(@umas_limite AS decimal(9,4)),
+              porcentaje_exento    = CAST(@porcentaje_exento AS decimal(5,2)),
+              periodicidad_limite  = @periodicidad_limite
+       OUTPUT inserted.id_perception
+        WHERE id_perception = @id_perception`,
+      {
+        id_perception: perception.id_perception,
+        tipo_limite_exencion: perception.tipo_limite_exencion,
+        umas_limite: perception.umas_limite,
+        porcentaje_exento: perception.porcentaje_exento,
+        periodicidad_limite: perception.periodicidad_limite,
+      },
+    );
+    if (updatedRows.length === 0) return { ok: false, message: "La percepción ya no existe" };
+
+    revalidatePath(TAX_PARAMETERS_PATH);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("savePerception", error);
+    const sqlError = error as { number?: number };
+    return {
+      ok: false,
+      message: sqlError.number === 547
+        ? "El tope de exención no es válido para el tipo elegido"
+        : "No se pudo guardar el tope de exención",
+    };
   }
 }
