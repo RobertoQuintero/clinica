@@ -196,7 +196,7 @@ export interface ITaxParametersLogEntry {
 - **Fechas.** `vigente_desde` se lee con `CONVERT(varchar(10), ..., 120)` y `updated_at` con `CONVERT(varchar(19), ..., 120)`. `updated_at` se escribe con `buildDate(new Date())`.
 - **Decimales.** Al leer, `decimal` pasa por `CAST(... AS float)`, como en las specs 64 a 68.
 - **Vigencia.** El valor aplicable es el de la fila con `vigente_desde <= fecha_fin` del periodo, la más reciente. Sin fila, el resolutor devuelve `null` y el cálculo (spec 70) se niega.
-- **Tramos.** Se validan con `zod` y otra vez en SQL dentro de la transacción: `limite_inferior >= 0`, `limite_superior > limite_inferior` o `NULL`, `cuota_fija >= 0`, `porcentaje_excedente` entre 0 y 100, sin traslapes y a lo más un tramo abierto. No se permiten huecos, porque la tarifa del SAT es continua.
+- **Tramos.** Se validan con `zod` y otra vez en SQL dentro de la transacción: `limite_inferior >= 0`, `limite_superior > limite_inferior` o `NULL`, `cuota_fija >= 0`, `porcentaje_excedente` entre 0 y 100, sin traslapes y a lo más un tramo abierto. **Los huecos no se bloquean al guardar** (decisión del Paso 6): con traslapes y huecos bloqueados fila por fila no se podría editar un tramo intermedio. La pantalla señala los huecos y `findWithholdingBracket` devuelve `null` en ellos, así que el cálculo (spec 70) se niega.
 
 ## Plan de implementación
 
@@ -279,6 +279,7 @@ export interface ITaxParametersLogEntry {
 - [ ] No se puede guardar un segundo tramo abierto.
 - [ ] No se puede guardar un tramo con `limite_superior <= limite_inferior`.
 - [ ] Dos altas simultáneas no producen el mismo `id_tarifa`.
+- [ ] La pantalla señala los huecos de la tarifa (entre qué montos) y los tramos contiguos no los generan.
 - [ ] "Copiar ejercicio anterior" copia todos los tramos semanales y falla si el ejercicio destino ya tiene tramos.
 - [ ] `findWithholdingBracket` ubica un ingreso en el primer tramo, en el límite exacto entre dos tramos y en el tramo abierto.
 
@@ -347,7 +348,9 @@ export interface ITaxParametersLogEntry {
   - `cat_taxed_exempt`: 3 filas.
   - Conclusión: el `UNIQUE` y la PK del paso 2 no requieren correcciones previas.
 - **2026-10-09 — Paso 2: BD.** DDL aplicado y documentado en `queries.txt`. Al verificar, `CK_perceptions_exencion` aceptaba `'U'` sin `umas_limite` o sin `periodicidad_limite` (y `'P'`/`'M'` con campos nulos): en un `CHECK`, `NULL > 0` y `NULL IN (...)` evalúan a `UNKNOWN` y SQL Server lo acepta. Se recreó la restricción con `IS NOT NULL` explícito en cada rama y se corrigió el DDL de esta spec y de `queries.txt`. Verificado con rollback: rechaza `'U'` sin UMA, `'U'` sin periodicidad, `'P'` sin porcentaje, `'M'` sin UMA o sin porcentaje, `'N'`/`'T'` con campos y `'P'` > 100; acepta `'M'`, `'U'`, `'P'` y `'T'` válidos.
-- **Pendiente:** pasos 3 a 8 del Plan de implementación. Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
+- **2026-10-09 — Paso 3 a 5.** Tipos, constantes, resolutor puro, pantalla de lectura y alta/edición/baja de parámetros. Se corrigió además `tablas_retencion`: las 11 filas de 2026 venían con `id_payment_period = 2` (quincenal) pero son montos semanales; se pasaron a `1` (semanal) para que la pantalla las muestre.
+- **2026-10-09 — Paso 6: tarifa ISR.** Decisión del usuario sobre huecos: la regla "sin huecos" de esta spec, aplicada fila por fila junto con "sin traslapes", impide editar un tramo intermedio (subir un superior traslapa con el siguiente; subir antes el inferior del siguiente deja un hueco; borrar un intermedio deja un hueco). Se eligió **bloquear solo traslapes, tramo abierto duplicado y rangos inválidos** al guardar, y **señalar los huecos** en pantalla. Verificado con rollback: copia 2026 → 2027 (11 tramos, ids únicos) y falla si el destino ya tiene tramos o el origen está vacío; traslape (incluido el límite exacto), segundo tramo abierto, `superior <= inferior` y porcentaje 101 rechazados en SQL; edición en dos pasos aceptada; dos altas concurrentes se serializan por `UPDLOCK, HOLDLOCK` sobre `MAX(id_tarifa)`.
+- **Pendiente:** pasos 7 y 8 del Plan de implementación. Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
 

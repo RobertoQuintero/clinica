@@ -48,3 +48,48 @@ export function findWithholdingBracket(
   }
   return matchingBracket;
 }
+
+const CENTS_PER_UNIT = 100;
+
+function toCents(amount: number): number {
+  return Math.round(amount * CENTS_PER_UNIT);
+}
+
+export interface IWithholdingGap {
+  after: number;    // limite_superior del tramo anterior
+  before: number;   // limite_inferior del siguiente tramo
+}
+
+/**
+ * Huecos de la tarifa: pares de tramos consecutivos donde el siguiente no empieza un centavo después del
+ * anterior. Un tramo abierto cierra la tarifa, así que después de él no se espera nada.
+ */
+export function findWithholdingGaps(brackets: IWithholdingBracket[]): IWithholdingGap[] {
+  const sortedBrackets = [...brackets].sort((first, second) => first.limite_inferior - second.limite_inferior);
+  const gaps: IWithholdingGap[] = [];
+  for (let index = 1; index < sortedBrackets.length; index++) {
+    const previousUpperLimit = sortedBrackets[index - 1].limite_superior;
+    if (previousUpperLimit === null) continue;
+    const expectedLowerLimitInCents = toCents(previousUpperLimit) + 1;
+    if (toCents(sortedBrackets[index].limite_inferior) > expectedLowerLimitInCents) {
+      gaps.push({ after: previousUpperLimit, before: sortedBrackets[index].limite_inferior });
+    }
+  }
+  return gaps;
+}
+
+/** true si [lowerLimit, upperLimit] se traslapa con algún tramo; `excludedBracketId` se ignora al editar. */
+export function withholdingBracketOverlaps(
+  brackets: IWithholdingBracket[],
+  lowerLimit: number,
+  upperLimit: number | null,
+  excludedBracketId: number | null,
+): boolean {
+  const newUpperLimitInCents = upperLimit === null ? Number.POSITIVE_INFINITY : toCents(upperLimit);
+  return brackets.some((bracket) => {
+    if (bracket.id_tarifa === excludedBracketId) return false;
+    const existingUpperLimitInCents =
+      bracket.limite_superior === null ? Number.POSITIVE_INFINITY : toCents(bracket.limite_superior);
+    return toCents(lowerLimit) <= existingUpperLimitInCents && toCents(bracket.limite_inferior) <= newUpperLimitInCents;
+  });
+}

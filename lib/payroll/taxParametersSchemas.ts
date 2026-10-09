@@ -30,3 +30,55 @@ export const deleteTaxParameterSchema = z.object({
 });
 
 export type TaxParameterInput = z.infer<typeof taxParameterSchema>;
+
+const MAX_BRACKET_AMOUNT = 9_999_999_999_999.99;
+
+function twoDecimalAmount(label: string) {
+  return z
+    .number({ error: `${label} debe ser un número` })
+    .min(0, `${label} no puede ser negativo`)
+    .max(MAX_BRACKET_AMOUNT, `${label} es demasiado grande`)
+    .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, `${label} admite hasta 2 decimales`);
+}
+
+const withholdingBracketFieldsShape = {
+  limite_inferior: twoDecimalAmount("El límite inferior"),
+  limite_superior: twoDecimalAmount("El límite superior").nullable(),
+  cuota_fija: twoDecimalAmount("La cuota fija"),
+  porcentaje_excedente: z
+    .number({ error: "El porcentaje debe ser un número" })
+    .min(0, "El porcentaje no puede ser negativo")
+    .max(100, "El porcentaje no puede ser mayor a 100")
+    .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, "El porcentaje admite hasta 2 decimales"),
+};
+
+function validateUpperLimitAboveLower(
+  bracket: { limite_inferior: number; limite_superior: number | null },
+  context: z.RefinementCtx,
+) {
+  if (bracket.limite_superior !== null && bracket.limite_superior <= bracket.limite_inferior) {
+    context.addIssue({
+      code: "custom",
+      path: ["limite_superior"],
+      message: "El límite superior debe ser mayor que el inferior",
+    });
+  }
+}
+
+const EXERCISE_YEAR_SCHEMA = z.number().int("El ejercicio no es válido").min(2000, "El ejercicio no es válido").max(2100, "El ejercicio no es válido");
+
+/** Alta de un tramo de la tarifa semanal en un ejercicio. */
+export const createWithholdingBracketSchema = z
+  .object({ ejercicio: EXERCISE_YEAR_SCHEMA, ...withholdingBracketFieldsShape })
+  .superRefine(validateUpperLimitAboveLower);
+
+/** Edición: el ejercicio y la frecuencia no cambian; se toman de la fila existente. */
+export const updateWithholdingBracketSchema = z
+  .object({ id_tarifa: z.number().int().positive("Tramo inválido"), ...withholdingBracketFieldsShape })
+  .superRefine(validateUpperLimitAboveLower);
+
+export const deleteWithholdingBracketSchema = z.object({
+  id_tarifa: z.number().int().positive("Tramo inválido"),
+});
+
+export const copyWithholdingTableSchema = z.object({ ejercicio_destino: EXERCISE_YEAR_SCHEMA });

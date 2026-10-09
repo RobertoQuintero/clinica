@@ -8,12 +8,14 @@ import {
   getTaxParametersPage,
   getWithholdingTable,
 } from "./actions";
+import CopyWithholdingTableButton from "./componentes/CopyWithholdingTableButton";
 import PerceptionsTable from "./componentes/PerceptionsTable";
 import { NewTaxParameterButton } from "./componentes/TaxParameterModal";
 import TaxParametersLog from "./componentes/TaxParametersLog";
 import TaxParametersTable from "./componentes/TaxParametersTable";
 import TaxParametersTabs from "./componentes/TaxParametersTabs";
 import TaxYearSelector from "./componentes/TaxYearSelector";
+import { NewWithholdingBracketButton } from "./componentes/WithholdingBracketModal";
 import WithholdingBracketsTable from "./componentes/WithholdingBracketsTable";
 
 function ErrorAlert({ message }: { message: string }) {
@@ -60,6 +62,12 @@ export default async function TaxParametersPage({ searchParams }: { searchParams
             />
           )}
           {activeTab === "parameters" && <NewTaxParameterButton year={selectedYear} />}
+          {activeTab === "withholding" && bracketsResult?.ok && (
+            <>
+              <CopyWithholdingTableButton year={selectedYear} />
+              <NewWithholdingBracketButton year={selectedYear} brackets={bracketsResult.data} />
+            </>
+          )}
         </div>
       </div>
 
