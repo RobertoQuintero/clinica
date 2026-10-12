@@ -34,7 +34,9 @@ import {
   UpdateOrganizationLegalSchema,
   UploadCertificateSchema,
   SetOrgModeSchema,
+  PayrollIssuerSchema,
 } from "@/lib/billing/schemas";
+import { getPayrollIssuerIssues } from "@/lib/billing/payrollIssuer";
 import {
   getOrganizationByUid,
   getOrganizationKey,
@@ -45,9 +47,12 @@ import {
   setLiveKey,
   setLiveMode,
   deleteOrganizationByUid,
+  updatePayrollIssuerData as updatePayrollIssuerDataRecord,
+  setPayrollIssuer as setPayrollIssuerRecord,
+  getPayrollIssuerUid,
   writeAuditEntry,
 } from "@/lib/billing/organizationsRepository";
-import type { OrganizationLegalInput } from "@/interfaces/organization";
+import type { OrganizationLegalInput, PayrollIssuerInput } from "@/interfaces/organization";
 
 const OrgIdSchema = z.string().trim().min(1, "Organización inválida");
 
@@ -105,6 +110,10 @@ export interface IOrganizationDetail {
   isLive: boolean;
   /** Producto de Facturapi usado como concepto único al facturar cobros (spec 34); `null` si no se ha configurado. */
   defaultProductId: string | null;
+  /** Datos del emisor de nómina y si esta organización es la que timbra la nómina (spec 72). */
+  payrollIssuer: PayrollIssuerInput & { isActive: boolean };
+  /** `name` local de la organización activa para nómina si es otra; `null` si no hay o es esta. */
+  currentPayrollIssuerName: string | null;
 }
 
 /**
@@ -123,6 +132,15 @@ export async function getOrganizationDetail(orgId: string): Promise<ActionResult
     const localRecord = await assertOwnedOrganization(uid, id_empresa);
     const organization = await getRootClient().organizations.retrieve(uid);
 
+    let currentPayrollIssuerName: string | null = null;
+    if (!localRecord.is_payroll_issuer) {
+      const currentIssuerUid = await getPayrollIssuerUid(db, id_empresa);
+      if (currentIssuerUid) {
+        const currentIssuer = await getOrganizationByUid(db, currentIssuerUid, id_empresa);
+        currentPayrollIssuerName = currentIssuer?.name ?? currentIssuer?.legal_name ?? null;
+      }
+    }
+
     return {
       ok: true,
       data: {
@@ -131,6 +149,13 @@ export async function getOrganizationDetail(orgId: string): Promise<ActionResult
         hasLiveKey: localRecord.hasLiveKey,
         isLive: localRecord.is_live,
         defaultProductId: localRecord.default_product_id,
+        payrollIssuer: {
+          registro_patronal: localRecord.registro_patronal,
+          riesgo_puesto: localRecord.riesgo_puesto,
+          curp_emisor: localRecord.curp_emisor,
+          isActive: localRecord.is_payroll_issuer,
+        },
+        currentPayrollIssuerName,
       },
     };
   } catch (err) {
@@ -341,7 +366,12 @@ export async function deleteOrganization(orgId: string): Promise<ActionResult<vo
     const orgIdCheck = OrgIdSchema.safeParse(orgId);
     if (!orgIdCheck.success) return { ok: false, message: orgIdCheck.error.issues[0].message };
     const uid = orgIdCheck.data;
-    await assertOwnedOrganization(uid, id_empresa);
+    const localRecord = await assertOwnedOrganization(uid, id_empresa);
+
+    // Antes de llamar a Facturapi: la nómina no debe quedarse sin emisor por accidente (spec 72).
+    if (localRecord.is_payroll_issuer) {
+      return { ok: false, message: "Es la organización que timbra nómina; desactívala primero" };
+    }
 
     await getRootClient().organizations.del(uid);
 
@@ -357,6 +387,118 @@ export async function deleteOrganization(orgId: string): Promise<ActionResult<vo
 
     revalidatePath("/dashboard/facturacion");
     return { ok: true, data: undefined };
+  } catch (err) {
+    return { ok: false, message: toUserMessage(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Emisor de nómina (spec 72)
+// ---------------------------------------------------------------------------
+
+const PayrollIssuerActiveSchema = z.boolean({ error: () => "Estado inválido" });
+
+/**
+ * Guarda registro patronal, clase de riesgo y CURP del emisor. Solo escribe en local
+ * (no se mandan a Facturapi). Los formatos se validan siempre; la obligatoriedad, solo si
+ * la organización ya está activa, con el RFC en vivo de Facturapi (la copia local puede
+ * estar desincronizada).
+ */
+export async function updatePayrollIssuerData(
+  orgId: string,
+  input: unknown
+): Promise<ActionResult<PayrollIssuerInput>> {
+  try {
+    const { id_empresa, id_user } = await requireBillingAccess();
+
+    const orgIdCheck = OrgIdSchema.safeParse(orgId);
+    if (!orgIdCheck.success) return { ok: false, message: orgIdCheck.error.issues[0].message };
+    const uid = orgIdCheck.data;
+    const localRecord = await assertOwnedOrganization(uid, id_empresa);
+
+    const parsed = PayrollIssuerSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const payrollIssuerData: PayrollIssuerInput = parsed.data;
+
+    if (localRecord.is_payroll_issuer) {
+      const facturapiOrganization = await getRootClient().organizations.retrieve(uid);
+      const issues = getPayrollIssuerIssues(payrollIssuerData, facturapiOrganization.legal.tax_id);
+      if (issues.length > 0) {
+        return {
+          ok: false,
+          message: `La organización timbra nómina; no se puede dejar incompleta. ${issues
+            .map((issue) => issue.label)
+            .join(". ")}`,
+        };
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      await updatePayrollIssuerDataRecord(tx, uid, id_empresa, payrollIssuerData);
+      await writeAuditEntry(tx, {
+        id_empresa,
+        id_user,
+        action: "org.update_payroll_issuer",
+        org_uid: uid,
+      });
+    });
+
+    revalidatePath(`/dashboard/facturacion/${uid}/general`);
+    revalidatePath("/dashboard/facturacion");
+    return { ok: true, data: payrollIssuerData };
+  } catch (err) {
+    return { ok: false, message: toUserMessage(err) };
+  }
+}
+
+/**
+ * Activa o desactiva la organización como la que timbra la nómina. Al activar exige los
+ * datos completos (CURP solo con RFC de persona física, tomado en vivo de Facturapi) y
+ * desactiva en la misma transacción a la que estuviera activa. Sin CSD o en modo Test no
+ * bloquea: eso solo se avisa en la UI.
+ */
+export async function setPayrollIssuer(
+  orgId: string,
+  active: boolean
+): Promise<ActionResult<{ deactivatedUid: string | null }>> {
+  try {
+    const { id_empresa, id_user } = await requireBillingAccess();
+
+    const orgIdCheck = OrgIdSchema.safeParse(orgId);
+    if (!orgIdCheck.success) return { ok: false, message: orgIdCheck.error.issues[0].message };
+    const uid = orgIdCheck.data;
+    const activeCheck = PayrollIssuerActiveSchema.safeParse(active);
+    if (!activeCheck.success) return { ok: false, message: activeCheck.error.issues[0].message };
+    const localRecord = await assertOwnedOrganization(uid, id_empresa);
+
+    if (activeCheck.data) {
+      const facturapiOrganization = await getRootClient().organizations.retrieve(uid);
+      const issues = getPayrollIssuerIssues(localRecord, facturapiOrganization.legal.tax_id);
+      if (issues.length > 0) {
+        return {
+          ok: false,
+          message: `No se puede activar para nómina. ${issues.map((issue) => issue.label).join(". ")}`,
+        };
+      }
+    }
+
+    let deactivatedUid: string | null = null;
+    await db.transaction(async (tx) => {
+      ({ deactivatedUid } = await setPayrollIssuerRecord(tx, uid, id_empresa, activeCheck.data));
+      await writeAuditEntry(tx, {
+        id_empresa,
+        id_user,
+        action: "org.set_payroll_issuer",
+        org_uid: uid,
+        detail: JSON.stringify({ active: activeCheck.data, deactivated_uid: deactivatedUid }),
+      });
+    });
+
+    revalidatePath(`/dashboard/facturacion/${uid}/general`);
+    revalidatePath("/dashboard/facturacion");
+    return { ok: true, data: { deactivatedUid } };
   } catch (err) {
     return { ok: false, message: toUserMessage(err) };
   }
