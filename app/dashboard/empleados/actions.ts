@@ -12,6 +12,7 @@ import { IBank, IDepartment, IPosition, IShift, IPaymentPeriod } from "@/interfa
 import { ISucursal } from "@/interfaces/sucursal";
 import { getSucursalesForUser } from "@/app/dashboard/sucursales/actions";
 import { toDBString, buildDate } from "@/utils/date_helpper";
+import { parseEmployeeInput } from "./schemas";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
@@ -279,22 +280,7 @@ export async function getEmployeeCatalogs(): Promise<IEmployeeCatalogs> {
   };
 }
 
-const REQUIRED_FIELD_MESSAGES: Record<string, string> = {
-  nombre: "El nombre es obligatorio",
-  id_department: "El departamento es obligatorio",
-  id_puesto: "El puesto es obligatorio",
-  id_sucursal: "La sucursal es obligatoria",
-  fecha_ingreso: "La fecha de ingreso es obligatoria",
-};
-
-function validateRequiredFields(input: EmployeeFormInput): string | null {
-  if (!input.nombre || !input.nombre.trim()) return REQUIRED_FIELD_MESSAGES.nombre;
-  if (!input.id_department) return REQUIRED_FIELD_MESSAGES.id_department;
-  if (!input.id_puesto) return REQUIRED_FIELD_MESSAGES.id_puesto;
-  if (!input.id_sucursal) return REQUIRED_FIELD_MESSAGES.id_sucursal;
-  if (!input.fecha_ingreso) return REQUIRED_FIELD_MESSAGES.fecha_ingreso;
-  return null;
-}
+const FECHA_INGRESO_REQUIRED_MESSAGE = "La fecha de ingreso es obligatoria";
 
 /** Consecutivo `EMP-{YYYY}-{NNN}` por año de ingreso y por empresa. */
 async function generateEmployeeCode(id_empresa: number, fechaIngresoDb: string): Promise<string> {
@@ -353,14 +339,15 @@ function buildEmployeeWriteParams(input: EmployeeFormInput, fechaIngresoDb: stri
   };
 }
 
-export async function createEmployee(input: EmployeeFormInput): Promise<ActionResult<number>> {
+export async function createEmployee(rawInput: EmployeeFormInput): Promise<ActionResult<number>> {
   try {
-    const validationError = validateRequiredFields(input);
-    if (validationError) return { ok: false, message: validationError };
+    const parsedInput = parseEmployeeInput(rawInput);
+    if (!parsedInput.ok) return { ok: false, message: parsedInput.message };
+    const input = parsedInput.data;
 
     const { id_empresa } = await getActiveUser();
     const fechaIngresoDb = toDBString(String(input.fecha_ingreso ?? ""));
-    if (!fechaIngresoDb) return { ok: false, message: REQUIRED_FIELD_MESSAGES.fecha_ingreso };
+    if (!fechaIngresoDb) return { ok: false, message: FECHA_INGRESO_REQUIRED_MESSAGE };
 
     const codigo_empleado = await generateEmployeeCode(id_empresa, fechaIngresoDb);
     const writeParams = buildEmployeeWriteParams(input, fechaIngresoDb);
@@ -398,15 +385,16 @@ export async function createEmployee(input: EmployeeFormInput): Promise<ActionRe
 
 export async function updateEmployee(
   id_empleado: number,
-  input: EmployeeFormInput
+  rawInput: EmployeeFormInput
 ): Promise<ActionResult<null>> {
   try {
-    const validationError = validateRequiredFields(input);
-    if (validationError) return { ok: false, message: validationError };
+    const parsedInput = parseEmployeeInput(rawInput);
+    if (!parsedInput.ok) return { ok: false, message: parsedInput.message };
+    const input = parsedInput.data;
 
     const { id_empresa } = await getActiveUser();
     const fechaIngresoDb = toDBString(String(input.fecha_ingreso ?? ""));
-    if (!fechaIngresoDb) return { ok: false, message: REQUIRED_FIELD_MESSAGES.fecha_ingreso };
+    if (!fechaIngresoDb) return { ok: false, message: FECHA_INGRESO_REQUIRED_MESSAGE };
 
     const writeParams = buildEmployeeWriteParams(input, fechaIngresoDb);
 

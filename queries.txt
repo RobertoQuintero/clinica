@@ -967,6 +967,33 @@ UPDATE [RH].[empleados]
        [sindicalizado] = ISNULL([sindicalizado], 0);
 GO
 
+-- Spec 71: formatos y valores de catálogo. WITH NOCHECK: los datos actuales no se validan,
+-- pero todo INSERT/UPDATE posterior sí. Ojo: el UPDATE de un empleado con RFC, CURP o cuenta
+-- mal capturados fallará hasta que se corrijan (hoy: id_empleado 2).
+-- Ejecutar DESPUÉS de desplegar la validación zod (paso 4 de la spec).
+ALTER TABLE [RH].[empleados] WITH NOCHECK ADD
+    CONSTRAINT [CK_empleados_rfc] CHECK ([rfc] IS NULL OR [rfc] LIKE
+        '[A-ZÑ&][A-ZÑ&][A-ZÑ&][A-ZÑ&][0-9][0-9][0-9][0-9][0-9][0-9][A-Z0-9][A-Z0-9][A-Z0-9]'),
+    CONSTRAINT [CK_empleados_curp] CHECK ([curp] IS NULL OR [curp] LIKE
+        '[A-Z][A-Z][A-Z][A-Z][0-9][0-9][0-9][0-9][0-9][0-9][HMX][A-Z][A-Z][A-Z][A-Z][A-Z][A-Z0-9][0-9]'),
+    CONSTRAINT [CK_empleados_nss] CHECK ([nss] IS NULL OR (LEN([nss]) = 11 AND [nss] NOT LIKE '%[^0-9]%')),
+    CONSTRAINT [CK_empleados_cp_fiscal] CHECK ([codigo_postal_fiscal] IS NULL
+        OR [codigo_postal_fiscal] LIKE '[0-9][0-9][0-9][0-9][0-9]'),
+    CONSTRAINT [CK_empleados_cuenta_bancaria] CHECK ([cuenta_bancaria] IS NULL
+        OR (LEN([cuenta_bancaria]) IN (10, 11, 16, 18) AND [cuenta_bancaria] NOT LIKE '%[^0-9]%')),
+    CONSTRAINT [CK_empleados_banco_sin_clabe] CHECK ([banco] IS NULL
+        OR ([cuenta_bancaria] IS NOT NULL AND LEN([cuenta_bancaria]) <> 18)),
+    CONSTRAINT [CK_empleados_tipo_regimen] CHECK ([tipo_regimen] IS NULL OR [tipo_regimen] IN
+        ('02','03','04','05','06','07','08','09','10','11','12','13','99')),
+    CONSTRAINT [CK_empleados_tipo_contrato] CHECK ([tipo_contrato] IS NULL OR [tipo_contrato] IN
+        ('01','02','03','04','05','06','07','08','09','10','99')),
+    CONSTRAINT [CK_empleados_tipo_jornada] CHECK ([tipo_jornada] IS NULL OR [tipo_jornada] IN
+        ('01','02','03','04','05','06','07','08','99')),
+    CONSTRAINT [CK_empleados_contrato_regimen] CHECK ([tipo_contrato] IS NULL OR [tipo_regimen] IS NULL
+        OR ([tipo_contrato] IN ('01','02','03','04','05','06','07','08') AND [tipo_regimen] IN ('02','03','04'))
+        OR ([tipo_contrato] IN ('09','10','99') AND [tipo_regimen] NOT IN ('02','03','04')));
+GO
+
 -------------------- DOCUMENTOS DEL EMPLEADO ---------------------
 USE [CentroPodologico]
 GO
