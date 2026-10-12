@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 import { EmployeeFormInput, IEmployeeListItem } from "@/interfaces/employee";
 import { addZeroToday } from "@/utils/date_helpper";
+import { DEFAULT_EMPLOYEE_FISCAL_VALUES } from "@/lib/payroll/satCatalogs";
 import { createEmployee, updateEmployee, IEmployeeCatalogs } from "../actions";
 
 interface Props {
@@ -51,6 +52,12 @@ function buildEmptyForm(): EmployeeFormInput {
     salario_diario_fiscal: null,
     tipo_salario: null,
     cuenta_bancaria: null,
+    codigo_postal_fiscal: null,
+    tipo_regimen: DEFAULT_EMPLOYEE_FISCAL_VALUES.tipo_regimen,
+    tipo_contrato: DEFAULT_EMPLOYEE_FISCAL_VALUES.tipo_contrato,
+    tipo_jornada: DEFAULT_EMPLOYEE_FISCAL_VALUES.tipo_jornada,
+    sindicalizado: DEFAULT_EMPLOYEE_FISCAL_VALUES.sindicalizado,
+    banco: null,
   };
 }
 
@@ -84,6 +91,12 @@ function employeeToFormInput(employee: IEmployeeListItem): EmployeeFormInput {
     salario_diario_fiscal: employee.salario_diario_fiscal,
     tipo_salario: employee.tipo_salario,
     cuenta_bancaria: employee.cuenta_bancaria,
+    codigo_postal_fiscal: employee.codigo_postal_fiscal,
+    tipo_regimen: employee.tipo_regimen,
+    tipo_contrato: employee.tipo_contrato,
+    tipo_jornada: employee.tipo_jornada,
+    sindicalizado: employee.sindicalizado,
+    banco: employee.banco,
   };
 }
 
