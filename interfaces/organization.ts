@@ -43,6 +43,16 @@ export type OrganizationLegalInput = Pick<
   | "municipality" | "state" | "country"
 >;
 
+/**
+ * Datos del emisor de nómina capturados en la sección (spec 72).
+ * Paso 3 de la spec lo redefine como `Pick<IOrganizationRecord, ...>` al agregar las columnas al record.
+ */
+export interface PayrollIssuerInput {
+  registro_patronal: string | null;
+  riesgo_puesto:     string | null;   // clave c_RiesgoPuesto
+  curp_emisor:       string | null;
+}
+
 /** Modo de operación de una organización: sandbox o producción. */
 export type FacturapiMode = "test" | "live";
 
