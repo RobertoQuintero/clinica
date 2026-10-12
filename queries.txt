@@ -840,6 +840,133 @@ ALTER TABLE [RH].[empleados] ADD
         FOREIGN KEY REFERENCES [RH].[payment_periods] ([id_payment_period]);
 GO
 
+-- Spec 71: catálogo SAT c_Banco (clave de 3 dígitos).
+CREATE TABLE [RH].[cat_bancos](
+    [clave]        [char](3)      NOT NULL,
+    [nombre]       [varchar](100) NOT NULL,   -- nombre corto, ej. 'BANAMEX'
+    [razon_social] [varchar](250) NULL,
+    [status]       [bit]          NOT NULL CONSTRAINT [DF_cat_bancos_status] DEFAULT (1),
+ CONSTRAINT [PK_cat_bancos] PRIMARY KEY CLUSTERED ([clave] ASC),
+ CONSTRAINT [CK_cat_bancos_clave] CHECK ([clave] LIKE '[0-9][0-9][0-9]')
+) ON [PRIMARY]
+GO
+
+-- Catálogo c_Banco (transcrito de memoria: verificar contra el XLS vigente del SAT antes de ejecutar).
+INSERT [RH].[cat_bancos] ([clave],[nombre],[razon_social]) VALUES
+ ('002', N'BANAMEX', N'Banco Nacional de México, S.A., Institución de Banca Múltiple, Grupo Financiero Banamex'),
+ ('006', N'BANCOMEXT', N'Banco Nacional de Comercio Exterior, S.N.C., Institución de Banca de Desarrollo'),
+ ('009', N'BANOBRAS', N'Banco Nacional de Obras y Servicios Públicos, S.N.C., Institución de Banca de Desarrollo'),
+ ('012', N'BBVA BANCOMER', N'BBVA Bancomer, S.A., Institución de Banca Múltiple, Grupo Financiero BBVA Bancomer'),
+ ('014', N'SANTANDER', N'Banco Santander (México), S.A., Institución de Banca Múltiple, Grupo Financiero Santander'),
+ ('019', N'BANJERCITO', N'Banco Nacional del Ejército, Fuerza Aérea y Armada, S.N.C., Institución de Banca de Desarrollo'),
+ ('021', N'HSBC', N'HSBC México, S.A., Institución de Banca Múltiple, Grupo Financiero HSBC'),
+ ('030', N'BAJIO', N'Banco del Bajío, S.A., Institución de Banca Múltiple'),
+ ('032', N'IXE', N'IXE Banco, S.A., Institución de Banca Múltiple, IXE Grupo Financiero'),
+ ('036', N'INBURSA', N'Banco Inbursa, S.A., Institución de Banca Múltiple, Grupo Financiero Inbursa'),
+ ('037', N'INTERACCIONES', N'Banco Interacciones, S.A., Institución de Banca Múltiple'),
+ ('042', N'MIFEL', N'Banca Mifel, S.A., Institución de Banca Múltiple, Grupo Financiero Mifel'),
+ ('044', N'SCOTIABANK', N'Scotiabank Inverlat, S.A.'),
+ ('058', N'BANREGIO', N'Banco Regional de Monterrey, S.A., Institución de Banca Múltiple, Banregio Grupo Financiero'),
+ ('059', N'INVEX', N'Banco Invex, S.A., Institución de Banca Múltiple, Invex Grupo Financiero'),
+ ('060', N'BANSI', N'Bansi, S.A., Institución de Banca Múltiple'),
+ ('062', N'AFIRME', N'Banca Afirme, S.A., Institución de Banca Múltiple'),
+ ('072', N'BANORTE', N'Banco Mercantil del Norte, S.A., Institución de Banca Múltiple, Grupo Financiero Banorte'),
+ ('102', N'THE ROYAL BANK', N'The Royal Bank of Scotland México, S.A., Institución de Banca Múltiple'),
+ ('103', N'AMERICAN EXPRESS', N'American Express Bank (México), S.A., Institución de Banca Múltiple'),
+ ('106', N'BAMSA', N'Bank of America México, S.A., Institución de Banca Múltiple, Grupo Financiero Bank of America'),
+ ('108', N'TOKYO', N'Bank of Tokyo-Mitsubishi UFJ (México), S.A.'),
+ ('110', N'JP MORGAN', N'Banco J.P. Morgan, S.A., Institución de Banca Múltiple, J.P. Morgan Grupo Financiero'),
+ ('112', N'BMONEX', N'Banco Monex, S.A., Institución de Banca Múltiple'),
+ ('113', N'VE POR MAS', N'Banco Ve por Mas, S.A. Institución de Banca Múltiple'),
+ ('116', N'ING', N'ING Bank (México), S.A., Institución de Banca Múltiple, ING Grupo Financiero'),
+ ('124', N'DEUTSCHE', N'Deutsche Bank México, S.A., Institución de Banca Múltiple'),
+ ('126', N'CREDIT SUISSE', N'Banco Credit Suisse (México), S.A. Institución de Banca Múltiple, Grupo Financiero Credit Suisse (México)'),
+ ('127', N'AZTECA', N'Banco Azteca, S.A. Institución de Banca Múltiple.'),
+ ('128', N'AUTOFIN', N'Banco Autofin México, S.A. Institución de Banca Múltiple'),
+ ('129', N'BARCLAYS', N'Barclays Bank México, S.A., Institución de Banca Múltiple, Grupo Financiero Barclays México'),
+ ('130', N'COMPARTAMOS', N'Banco Compartamos, S.A., Institución de Banca Múltiple'),
+ ('131', N'BANCO FAMSA', N'Banco Ahorro Famsa, S.A., Institución de Banca Múltiple'),
+ ('132', N'BMULTIVA', N'Banco Multiva, S.A., Institución de Banca Múltiple, Multivalores Grupo Financiero'),
+ ('133', N'ACTINVER', N'Banco Actinver, S.A. Institución de Banca Múltiple, Grupo Financiero Actinver'),
+ ('134', N'WAL-MART', N'Banco Wal Mart de México Adelante, S.A., Institución de Banca Múltiple'),
+ ('135', N'NAFIN', N'Nacional Financiera, S.N.C.'),
+ ('136', N'INTERBANCO', N'Inter Banco, S.A. Institución de Banca Múltiple'),
+ ('137', N'BANCOPPEL', N'BanCoppel, S.A., Institución de Banca Múltiple'),
+ ('138', N'ABC CAPITAL', N'ABC Capital, S.A. Institución de Banca Múltiple'),
+ ('139', N'UBS BANK', N'UBS Banco, S.A., Institución de Banca Múltiple'),
+ ('140', N'CONSUBANCO', N'Consubanco, S.A. Institución de Banca Múltiple'),
+ ('141', N'VOLKSWAGEN', N'Volkswagen Bank, S.A. Institución de Banca Múltiple'),
+ ('143', N'CIBANCO', N'CIBanco, S.A.'),
+ ('145', N'BBASE', N'Banco Base, S.A., Institución de Banca Múltiple'),
+ ('166', N'BANSEFI', N'Banco del Ahorro Nacional y Servicios Financieros, S.N.C.'),
+ ('168', N'HIPOTECARIA FEDERAL', N'Sociedad Hipotecaria Federal, S.N.C.'),
+ ('600', N'MONEXCB', N'Monex Casa de Bolsa, S.A. de C.V. Monex Grupo Financiero'),
+ ('601', N'GBM', N'GBM Grupo Bursátil Mexicano, S.A. de C.V., Casa de Bolsa'),
+ ('602', N'MASARI', N'Masari Casa de Bolsa, S.A.'),
+ ('605', N'VALUE', N'Value, S.A. de C.V. Casa de Bolsa'),
+ ('606', N'ESTRUCTURADORES', N'Estructuradores del Mercado de Valores Casa de Bolsa, S.A. de C.V.'),
+ ('607', N'TIBER', N'Casa de Cambio Tiber, S.A. de C.V.'),
+ ('608', N'VECTOR', N'Vector Casa de Bolsa, S.A. de C.V.'),
+ ('610', N'B&B', N'B y B Casa de Cambio, S.A. de C.V.'),
+ ('614', N'ACCIVAL', N'Acciones y Valores Banamex, S.A. de C.V., Casa de Bolsa'),
+ ('615', N'MERRILL LYNCH', N'Merrill Lynch México, S.A. de C.V., Casa de Bolsa'),
+ ('616', N'FINAMEX', N'Casa de Bolsa Finamex, S.A. de C.V.'),
+ ('617', N'VALMEX', N'Valores Mexicanos Casa de Bolsa, S.A. de C.V.'),
+ ('618', N'UNICA', N'Única Casa de Cambio, S.A. de C.V.'),
+ ('619', N'MAPFRE', N'MAPFRE Tepeyac, S.A.'),
+ ('620', N'PROFUTURO', N'Profuturo G.N.P., S.A. de C.V.'),
+ ('621', N'CB ACTINVER', N'Actinver Casa de Bolsa, S.A. de C.V.'),
+ ('622', N'OACTIN', N'OPERADORA ACTINVER, S.A. de C.V.'),
+ ('623', N'SKANDIA', N'Skandia Vida S.A. de C.V.'),
+ ('626', N'CBDEUTSCHE', N'Deutsche Securities, S.A. de C.V. CASA DE BOLSA'),
+ ('627', N'ZURICH', N'Zurich Compañía de Seguros, S.A.'),
+ ('628', N'ZURICHVI', N'Zurich Vida, Compañía de Seguros, S.A.'),
+ ('629', N'SU CASITA', N'Hipotecaria Su Casita, S.A. de C.V. SOFOM ENR'),
+ ('630', N'CB INTERCAM', N'Intercam Casa de Bolsa, S.A. de C.V.'),
+ ('631', N'CI BOLSA', N'CI Casa de Bolsa, S.A. de C.V.'),
+ ('632', N'BULLTICK CB', N'Bulltick Casa de Bolsa, S.A., de C.V.'),
+ ('633', N'STERLING', N'Sterling Casa de Cambio, S.A. de C.V.'),
+ ('634', N'FINCOMUN', N'Fincomún, Servicios Financieros Comunitarios, S.A. de C.V.'),
+ ('636', N'HDI SEGUROS', N'HDI Seguros, S.A. de C.V.'),
+ ('637', N'ORDER', N'Order Express Casa de Cambio S.A. de C.V.'),
+ ('638', N'AKALA', N'Akala, S.A. de C.V., Sociedad Financiera Popular'),
+ ('640', N'CB JPMORGAN', N'J.P. Morgan Casa de Bolsa, S.A. de C.V.'),
+ ('642', N'REFORMA', N'Operadora de Recursos Reforma, S.A. de C.V.'),
+ ('646', N'STP', N'Sistema de Transferencias y Pagos STP, S.A. de C.V. SOFOM ENR'),
+ ('647', N'TELECOMM', N'Telecomunicaciones de México'),
+ ('648', N'EVERCORE', N'Evercore Casa de Bolsa, S.A. de C.V.'),
+ ('649', N'SKANDIA', N'Skandia Operadora de Fondos, S.A. de C.V.'),
+ ('651', N'SEGMTY', N'Seguros Monterrey New York Life, S.A de C.V.'),
+ ('652', N'ASEA', N'Solución Asea, S.A. de C.V., Sociedad Financiera Popular'),
+ ('653', N'KUSPIT', N'Kuspit Casa de Bolsa, S.A. de C.V.'),
+ ('655', N'SOFIEXPRESS', N'J.P. SOFIEXPRESS, S.A. de C.V., S.F.P.'),
+ ('656', N'UNAGRA', N'UNAGRA, S.A. de C.V., S.F.P.'),
+ ('659', N'OPCIONES EMPRESARIALES DEL NOROESTE', N'OPCIONES EMPRESARIALES DEL NOROESTE, S.A. DE C.V., S.F.P.'),
+ ('670', N'LIBERTAD', N'Libertad Servicios Financieros, S.A. De C.V.'),
+ ('901', N'CLS', N'Cls Bank International'),
+ ('902', N'INDEVAL', N'SD. Indeval, S.A. de C.V.'),
+ ('999', N'N/A', N'N/A')
+GO
+
+-- Spec 71: datos del receptor para el CFDI de nómina.
+ALTER TABLE [RH].[empleados] ADD
+    [codigo_postal_fiscal] [char](5)    NULL,   -- DomicilioFiscalReceptor
+    [tipo_regimen]         [varchar](2) NULL,   -- c_TipoRegimen
+    [tipo_contrato]        [varchar](2) NULL,   -- c_TipoContrato
+    [tipo_jornada]         [varchar](2) NULL,   -- c_TipoJornada
+    [sindicalizado]        [bit]        NULL,   -- NULL se envía como 'No'
+    [banco]                [char](3)    NULL
+        CONSTRAINT [FK_empleados_banco] FOREIGN KEY REFERENCES [RH].[cat_bancos] ([clave]);
+GO
+
+-- Spec 71: valores por defecto para los empleados existentes (una sola vez).
+UPDATE [RH].[empleados]
+   SET [tipo_regimen]  = ISNULL([tipo_regimen],  '02'),
+       [tipo_contrato] = ISNULL([tipo_contrato], '01'),
+       [tipo_jornada]  = ISNULL([tipo_jornada],  '01'),
+       [sindicalizado] = ISNULL([sindicalizado], 0);
+GO
+
 -------------------- DOCUMENTOS DEL EMPLEADO ---------------------
 USE [CentroPodologico]
 GO
@@ -2081,5 +2208,21 @@ CREATE TABLE [payroll].[period_employee_deductions](
  CONSTRAINT [FK_period_employee_deductions_deduction] FOREIGN KEY ([id_deduction])
     REFERENCES [payroll].[deductions] ([id_deduction]),
  CONSTRAINT [CK_period_employee_deductions_importe] CHECK ([importe] >= 0)
+) ON [PRIMARY]
+GO
+
+
+------------ OTROS PAGOS -----------------------
+
+CREATE TABLE [payroll].[other_payments](
+	[id_other_payment] [tinyint] IDENTITY(1,1) NOT NULL,
+	[clave_sat] [varchar](10) NULL,
+	[description] [varchar](100) NULL,
+	[status] [bit] NULL,
+	[is_billed] [bit] NULL,
+ CONSTRAINT [PK_other_payments] PRIMARY KEY CLUSTERED 
+(
+	[id_other_payment] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
