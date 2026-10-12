@@ -5,7 +5,17 @@ import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 import { EmployeeFormInput, IEmployeeListItem } from "@/interfaces/employee";
 import { addZeroToday } from "@/utils/date_helpper";
-import { DEFAULT_EMPLOYEE_FISCAL_VALUES } from "@/lib/payroll/satCatalogs";
+import {
+  DEFAULT_EMPLOYEE_FISCAL_VALUES,
+  SAT_CONTRACT_TYPES,
+  SAT_REGIME_TYPES,
+  SAT_WORKDAY_TYPES,
+} from "@/lib/payroll/satCatalogs";
+import {
+  getRequiredStampingFields,
+  isClabeAccount,
+  type StampingField,
+} from "@/lib/payroll/payrollStampingReadiness";
 import { createEmployee, updateEmployee, IEmployeeCatalogs } from "../actions";
 
 interface Props {
@@ -125,6 +135,13 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
     [catalogs.positions, form.id_department]
   );
 
+  const requiredStampingFields = useMemo(() => new Set(getRequiredStampingFields(form)), [form]);
+  const isFiscal = requiredStampingFields.size > 0;
+  const hasClabeAccount = isClabeAccount(form.cuenta_bancaria);
+
+  /** Asterisco de obligatorio para los campos que exige el timbrado del empleado actual. */
+  const requiredMark = (field: StampingField) => (requiredStampingFields.has(field) ? " *" : "");
+
   const codePlaceholder = `EMP-${(form.fecha_ingreso || addZeroToday(new Date())).slice(0, 4)}-XXX`;
 
   const handleTextChange = (
@@ -132,6 +149,20 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value === "" ? null : value }));
+  };
+
+  /** Una CLABE (18 dígitos) no lleva banco: se limpia en cuanto la cuenta lo es. */
+  const handleBankAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value === "" ? null : e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      cuenta_bancaria: value,
+      banco: isClabeAccount(value) ? null : prev.banco,
+    }));
+  };
+
+  const handleUnionizedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, sindicalizado: e.target.value === "" ? null : e.target.value === "true" }));
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -302,18 +333,6 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
                   <span className={labelClass}>Correo</span>
                   <input type="email" name="email" value={form.email ?? ""} onChange={handleTextChange} className={inputClass} />
                 </label>
-                <label className="flex flex-col gap-1">
-                  <span className={labelClass}>RFC</span>
-                  <input type="text" name="rfc" value={form.rfc ?? ""} onChange={handleTextChange} className={inputClass} />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={labelClass}>CURP</span>
-                  <input type="text" name="curp" value={form.curp ?? ""} onChange={handleTextChange} className={inputClass} />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className={labelClass}>NSS</span>
-                  <input type="text" name="nss" value={form.nss ?? ""} onChange={handleTextChange} className={inputClass} />
-                </label>
               </div>
             </div>
           </section>
@@ -423,7 +442,7 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
                 </select>
               </label>
               <label className="flex flex-col gap-1">
-                <span className={labelClass}>Periodo de pago</span>
+                <span className={labelClass}>Periodo de pago{requiredMark("id_periodo_pago")}</span>
                 <select name="id_periodo_pago" value={form.id_periodo_pago ?? ""} onChange={handleSelectIdChange("id_periodo_pago")} className={inputClass}>
                   <option value="">Sin periodo</option>
                   {catalogs.paymentPeriods.map((paymentPeriod) => (
@@ -450,9 +469,166 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
                 <span className={labelClass}>Salario diario fiscal</span>
                 <input type="number" step="0.01" min="0" name="salario_diario_fiscal" value={form.salario_diario_fiscal ?? ""} onChange={handleNumberChange} className={inputClass} />
               </label>
-              <label className="flex flex-col gap-1 sm:col-span-2">
+              <label className="flex flex-col gap-1">
                 <span className={labelClass}>Cuenta bancaria</span>
-                <input type="text" name="cuenta_bancaria" value={form.cuenta_bancaria ?? ""} onChange={handleTextChange} className={inputClass} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  name="cuenta_bancaria"
+                  value={form.cuenta_bancaria ?? ""}
+                  onChange={handleBankAccountChange}
+                  placeholder="CLABE (18), tarjeta (16) o cuenta (10 u 11)"
+                  className={inputClass}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Banco{requiredMark("banco")}</span>
+                <select
+                  name="banco"
+                  value={form.banco ?? ""}
+                  onChange={handleTextChange}
+                  disabled={hasClabeAccount}
+                  aria-required={requiredStampingFields.has("banco")}
+                  className={hasClabeAccount ? disabledInputClass : inputClass}
+                >
+                  <option value="">{hasClabeAccount ? "No aplica con CLABE" : "Seleccione…"}</option>
+                  {catalogs.banks.map((bank) => (
+                    <option key={bank.clave} value={bank.clave}>
+                      {bank.clave} — {bank.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          {/* Datos fiscales (CFDI de nómina) */}
+          <section className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1 pb-2 border-b border-[#c4c6d0]/50 dark:border-zinc-700/50">
+              <h4 className="text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">
+                Datos fiscales (CFDI de nómina)
+              </h4>
+              <p className="text-xs text-[#44474f] dark:text-zinc-400">
+                {isFiscal
+                  ? "Los campos con * son obligatorios porque el empleado tiene salario diario fiscal."
+                  : "Se vuelven obligatorios cuando el salario diario fiscal es mayor a 0. Si los captura, se valida su formato."}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>RFC{requiredMark("rfc")}</span>
+                <input
+                  type="text"
+                  name="rfc"
+                  maxLength={13}
+                  autoCapitalize="characters"
+                  value={form.rfc ?? ""}
+                  onChange={handleTextChange}
+                  aria-required={requiredStampingFields.has("rfc")}
+                  className={`${inputClass} uppercase`}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>CURP{requiredMark("curp")}</span>
+                <input
+                  type="text"
+                  name="curp"
+                  maxLength={18}
+                  autoCapitalize="characters"
+                  value={form.curp ?? ""}
+                  onChange={handleTextChange}
+                  aria-required={requiredStampingFields.has("curp")}
+                  className={`${inputClass} uppercase`}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>NSS{requiredMark("nss")}</span>
+                <input
+                  type="text"
+                  name="nss"
+                  inputMode="numeric"
+                  maxLength={11}
+                  value={form.nss ?? ""}
+                  onChange={handleTextChange}
+                  aria-required={requiredStampingFields.has("nss")}
+                  className={inputClass}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Código postal fiscal{requiredMark("codigo_postal_fiscal")}</span>
+                <input
+                  type="text"
+                  name="codigo_postal_fiscal"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={form.codigo_postal_fiscal ?? ""}
+                  onChange={handleTextChange}
+                  aria-required={requiredStampingFields.has("codigo_postal_fiscal")}
+                  className={inputClass}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Tipo de régimen{requiredMark("tipo_regimen")}</span>
+                <select
+                  name="tipo_regimen"
+                  value={form.tipo_regimen ?? ""}
+                  onChange={handleTextChange}
+                  aria-required={requiredStampingFields.has("tipo_regimen")}
+                  className={inputClass}
+                >
+                  <option value="">Seleccione…</option>
+                  {SAT_REGIME_TYPES.map((regimeType) => (
+                    <option key={regimeType.key} value={regimeType.key}>
+                      {regimeType.key} — {regimeType.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Tipo de contrato{requiredMark("tipo_contrato")}</span>
+                <select
+                  name="tipo_contrato"
+                  value={form.tipo_contrato ?? ""}
+                  onChange={handleTextChange}
+                  aria-required={requiredStampingFields.has("tipo_contrato")}
+                  className={inputClass}
+                >
+                  <option value="">Seleccione…</option>
+                  {SAT_CONTRACT_TYPES.map((contractType) => (
+                    <option key={contractType.key} value={contractType.key}>
+                      {contractType.key} — {contractType.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Tipo de jornada{requiredMark("tipo_jornada")}</span>
+                <select
+                  name="tipo_jornada"
+                  value={form.tipo_jornada ?? ""}
+                  onChange={handleTextChange}
+                  aria-required={requiredStampingFields.has("tipo_jornada")}
+                  className={inputClass}
+                >
+                  <option value="">Seleccione…</option>
+                  {SAT_WORKDAY_TYPES.map((workdayType) => (
+                    <option key={workdayType.key} value={workdayType.key}>
+                      {workdayType.key} — {workdayType.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={labelClass}>Sindicalizado</span>
+                <select
+                  name="sindicalizado"
+                  value={form.sindicalizado === null ? "" : String(form.sindicalizado)}
+                  onChange={handleUnionizedChange}
+                  className={inputClass}
+                >
+                  <option value="false">No</option>
+                  <option value="true">Sí</option>
+                </select>
               </label>
             </div>
           </section>
