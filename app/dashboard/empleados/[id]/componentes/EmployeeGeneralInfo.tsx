@@ -5,6 +5,13 @@ import { IEmployeeSchedule } from "@/interfaces/employee_schedule";
 import { formatScheduleSummary } from "../horario/scheduleFormatting";
 import { dayFirst } from "@/utils/date_helpper";
 import { calculateAge, calculateSeniority } from "@/utils/employee_helpers";
+import {
+  SAT_CONTRACT_TYPES,
+  SAT_REGIME_TYPES,
+  SAT_WORKDAY_TYPES,
+  describeCatalogKey,
+} from "@/lib/payroll/satCatalogs";
+import { getStampingIssues, isFiscalEmployee } from "@/lib/payroll/payrollStampingReadiness";
 
 interface Props {
   employee: IEmployeeRecord;
@@ -47,6 +54,10 @@ export default function EmployeeGeneralInfo({ employee, schedule }: Props) {
   const scheduleSummary = formatScheduleSummary(schedule.days);
   const age = calculateAge(employee.fecha_nacimiento);
   const seniority = calculateSeniority(employee.fecha_ingreso);
+  const isFiscal = isFiscalEmployee(employee);
+  const stampingIssues = getStampingIssues(employee, employee.clave_estado_sat);
+  // Nombre que viajaría al SAT: nombre + apellidos en mayúsculas. No se guarda aparte (spec 71).
+  const fiscalName = employee.nombre_completo.toUpperCase();
   const seniorityLabel =
     seniority.years === 0 && seniority.months === 0
       ? "Menos de 1 mes"
@@ -123,6 +134,57 @@ export default function EmployeeGeneralInfo({ employee, schedule }: Props) {
             <InfoRow label="Periodo de pago" value={employee.nombre_periodo_pago || "—"} />
             <InfoRow label="Cuenta bancaria" value={employee.cuenta_bancaria || "—"} />
           </div>
+        </div>
+      </div>
+
+      {/* Datos fiscales (CFDI de nómina) */}
+      <div>
+        <h3 className="text-sm font-bold text-[#0b1c30] dark:text-zinc-100 mb-4 pb-2 border-b border-[#c4c6d0]/50 dark:border-zinc-700/50">
+          Datos fiscales
+        </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-3 text-sm">
+          <div className="flex flex-col gap-3">
+            <InfoRow label="Nombre fiscal" value={fiscalName} />
+            <InfoRow label="RFC" value={employee.rfc || "—"} />
+            <InfoRow label="CURP" value={employee.curp || "—"} />
+            <InfoRow label="NSS" value={employee.nss || "—"} />
+            <InfoRow label="Código postal fiscal" value={employee.codigo_postal_fiscal || "—"} />
+            <InfoRow
+              label="Entidad federativa"
+              value={employee.clave_estado_sat ?? "La sucursal no tiene estado"}
+            />
+          </div>
+          <div className="flex flex-col gap-3">
+            <InfoRow label="Tipo de régimen" value={describeCatalogKey(SAT_REGIME_TYPES, employee.tipo_regimen) ?? "—"} />
+            <InfoRow label="Tipo de contrato" value={describeCatalogKey(SAT_CONTRACT_TYPES, employee.tipo_contrato) ?? "—"} />
+            <InfoRow label="Tipo de jornada" value={describeCatalogKey(SAT_WORKDAY_TYPES, employee.tipo_jornada) ?? "—"} />
+            <InfoRow label="Sindicalizado" value={employee.sindicalizado ? "Sí" : "No"} />
+            <InfoRow
+              label="Banco"
+              value={employee.banco ? `${employee.banco} — ${employee.nombre_banco ?? "Banco no encontrado"}` : "—"}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 text-sm">
+          {stampingIssues.length > 0 ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 px-4 py-3">
+              <p className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                {isFiscal ? "Pendiente para timbrar" : "Revisar antes de activar salario fiscal"}
+              </p>
+              <ul className="list-disc pl-5 text-amber-900 dark:text-amber-200">
+                {stampingIssues.map((issue) => (
+                  <li key={`${issue.field}-${issue.reason}`}>{issue.label}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-[#44474f] dark:text-zinc-400">
+              {isFiscal
+                ? "Sin pendientes: el empleado tiene todo lo necesario para timbrar su nómina."
+                : "Sin salario diario fiscal: estos datos no se exigen para la nómina."}
+            </p>
+          )}
         </div>
       </div>
     </div>

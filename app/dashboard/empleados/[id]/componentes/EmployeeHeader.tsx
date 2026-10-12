@@ -4,6 +4,7 @@ import { IEmployeeCatalogs } from "../../actions";
 import EmployeeAvatar from "../../componentes/EmployeeAvatar";
 import EmployeeStatusBadge from "../../componentes/EmployeeStatusBadge";
 import EmployeeActions from "./EmployeeActions";
+import EmployeeFiscalStatusBadge from "./EmployeeFiscalStatusBadge";
 
 interface Props {
   employee: IEmployeeRecord;
@@ -37,6 +38,7 @@ export default function EmployeeHeader({ employee, catalogs }: Props) {
                   {employee.nombre_completo}
                 </h1>
                 <EmployeeStatusBadge activo={employee.activo} />
+                <EmployeeFiscalStatusBadge employee={employee} />
               </div>
               <p className="text-sm font-semibold text-[#0051d5] dark:text-blue-400">
                 {employee.nombre_puesto}

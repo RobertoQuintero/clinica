@@ -29,3 +29,10 @@ export interface IPaymentPeriod {
   days:               number | null;
   status:             boolean;
 }
+
+export interface IBank {
+  clave:        string;   // clave SAT c_Banco, 3 dígitos
+  nombre:       string;
+  razon_social: string | null;
+  status:       boolean;
+}

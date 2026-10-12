@@ -37,6 +37,14 @@ export interface IEmployee {
   tipo_salario:        string | null;
   cuenta_bancaria:     string | null;
 
+  // Datos fiscales del receptor del CFDI de nómina (spec 71)
+  codigo_postal_fiscal: string | null;
+  tipo_regimen:        string | null;   // clave c_TipoRegimen
+  tipo_contrato:       string | null;   // clave c_TipoContrato
+  tipo_jornada:        string | null;   // clave c_TipoJornada
+  sindicalizado:       boolean | null;
+  banco:               string | null;   // clave c_Banco
+
   activo:              boolean;
   status:              boolean;
   created_at:          string | null;   // "YYYY-MM-DD HH:mm:ss"
@@ -57,6 +65,8 @@ export interface IEmployeeListItem extends IEmployee {
 export interface IEmployeeRecord extends IEmployeeListItem {
   nombre_supervisor:   string | null;   // concatenación de las tres columnas del supervisor
   nombre_turno:        string | null;
+  nombre_banco:        string | null;   // JOIN RH.cat_bancos
+  clave_estado_sat:    string | null;   // Cat_states.state_key de la sucursal; NULL si no tiene estado
 }
 
 /** Payload del modal de alta/edición. Sin campos derivados ni generados.
