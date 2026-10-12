@@ -1250,6 +1250,32 @@ GO
 ALTER TABLE [CentroPodologico].[BILLING].[organizations]
   ADD [default_product_id] NVARCHAR(50) NULL; -- producto de Facturapi usado como concepto unico al facturar cobros
 
+-- spec 72 — datos del emisor para el complemento de Nómina 1.2
+ALTER TABLE [CentroPodologico].[BILLING].[organizations] ADD
+    [registro_patronal] [varchar](11) NULL,   -- Nomina12:Emisor/@RegistroPatronal
+    [riesgo_puesto]     [varchar](2)  NULL,   -- c_RiesgoPuesto, va en Receptor/@RiesgoPuesto
+    [curp_emisor]       [varchar](18) NULL,   -- Nomina12:Emisor/@Curp, solo persona física
+    [is_payroll_issuer] [bit]         NOT NULL
+        CONSTRAINT [DF_organizations_is_payroll_issuer] DEFAULT (0);
+GO
+
+ALTER TABLE [CentroPodologico].[BILLING].[organizations] ADD
+    CONSTRAINT [CK_organizations_registro_patronal] CHECK ([registro_patronal] IS NULL
+        OR (LEN([registro_patronal]) = 11 AND [registro_patronal] NOT LIKE '%[^A-Z0-9]%')),
+    CONSTRAINT [CK_organizations_riesgo_puesto] CHECK ([riesgo_puesto] IS NULL
+        OR [riesgo_puesto] IN ('1','2','3','4','5')),
+    CONSTRAINT [CK_organizations_curp_emisor] CHECK ([curp_emisor] IS NULL OR [curp_emisor] LIKE
+        '[A-Z][A-Z][A-Z][A-Z][0-9][0-9][0-9][0-9][0-9][0-9][HMX][A-Z][A-Z][A-Z][A-Z][A-Z][A-Z0-9][0-9]'),
+    CONSTRAINT [CK_organizations_payroll_issuer_completo] CHECK ([is_payroll_issuer] = 0
+        OR ([registro_patronal] IS NOT NULL AND [riesgo_puesto] IS NOT NULL));
+GO
+
+-- Como máximo una organización emisora de nómina por empresa.
+CREATE UNIQUE INDEX [UX_organizations_payroll_issuer]
+    ON [CentroPodologico].[BILLING].[organizations] ([id_empresa])
+    WHERE [is_payroll_issuer] = 1;
+GO
+
 -- spec 35 — ventas con múltiples productos por ticket
 DROP TABLE [CentroPodologico].[dbo].[Ventas];
 GO
