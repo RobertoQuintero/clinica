@@ -7,6 +7,7 @@ import {
   IOrganizationRecord,
   IOrganizationSecrets,
   OrganizationLegalInput,
+  PayrollIssuerInput,
   FacturapiMode,
 } from "@/interfaces/organization";
 
@@ -46,6 +47,10 @@ const ORGANIZATION_SELECT_COLUMNS = `
   [state],
   [country],
   [default_product_id],
+  [registro_patronal],
+  [riesgo_puesto],
+  [curp_emisor],
+  [is_payroll_issuer],
   CONVERT(varchar(19), [created_at], 120) AS created_at,
   CONVERT(varchar(19), [updated_at], 120) AS updated_at,
   CASE WHEN [test_key] IS NULL THEN 0 ELSE 1 END AS has_test_key,
@@ -56,6 +61,7 @@ function normalizeOrganizationRow(row: Record<string, unknown>): OrganizationRow
   return {
     ...(row as unknown as IOrganizationRecord),
     is_live: Boolean(row.is_live),
+    is_payroll_issuer: Boolean(row.is_payroll_issuer),
     hasTestKey: Boolean(row.has_test_key),
     hasLiveKey: Boolean(row.has_live_key),
   };
@@ -161,6 +167,10 @@ export async function insertOrganization(
        INSERTED.[state],
        INSERTED.[country],
        INSERTED.[default_product_id],
+       INSERTED.[registro_patronal],
+       INSERTED.[riesgo_puesto],
+       INSERTED.[curp_emisor],
+       INSERTED.[is_payroll_issuer],
        CONVERT(varchar(19), INSERTED.[created_at], 120) AS created_at,
        CONVERT(varchar(19), INSERTED.[updated_at], 120) AS updated_at,
        CASE WHEN INSERTED.[test_key] IS NULL THEN 0 ELSE 1 END AS has_test_key,
@@ -363,6 +373,96 @@ export async function setLiveMode(
 }
 
 /**
+ * Guarda los datos del emisor de nómina (spec 72). Solo escribe en local: no se mandan a
+ * Facturapi. Lanza si `uid` no existe para `idEmpresa`. Los `CHECK` de la BD rechazan formatos inválidos.
+ */
+export async function updatePayrollIssuerData(
+  client: ITransactionClient,
+  uid: string,
+  idEmpresa: number,
+  input: PayrollIssuerInput
+): Promise<void> {
+  const now = buildDate(new Date());
+
+  const rows = await client.queryParams(
+    `UPDATE ${SCHEMA_TABLE_ORGANIZATIONS}
+        SET [registro_patronal] = @registro_patronal,
+            [riesgo_puesto] = @riesgo_puesto,
+            [curp_emisor] = @curp_emisor,
+            [updated_at] = @updated_at
+      OUTPUT INSERTED.[id]
+      WHERE [uid] = @uid AND [id_empresa] = @idEmpresa`,
+    {
+      uid,
+      idEmpresa,
+      registro_patronal: input.registro_patronal,
+      riesgo_puesto: input.riesgo_puesto,
+      curp_emisor: input.curp_emisor,
+      updated_at: now,
+    }
+  );
+
+  if (rows.length === 0) {
+    throw new Error("La organización no existe o no pertenece a esta empresa");
+  }
+}
+
+/**
+ * Activa o desactiva la organización como emisora de nómina (spec 72). Al activar,
+ * desactiva primero la que estuviera activa en la empresa (el índice filtrado
+ * `UX_organizations_payroll_issuer` no admite dos a la vez). **Debe llamarse con el
+ * cliente de una `db.transaction()`**: son dos `UPDATE` que deben ser atómicos, y el
+ * llamador agrega ahí mismo su `writeAuditEntry`. Devuelve el `uid` de la organización
+ * que se desactivó en automático, o `null`.
+ */
+export async function setPayrollIssuer(
+  client: ITransactionClient,
+  uid: string,
+  idEmpresa: number,
+  active: boolean
+): Promise<{ deactivatedUid: string | null }> {
+  const now = buildDate(new Date());
+  let deactivatedUid: string | null = null;
+
+  if (active) {
+    const deactivatedRows = await client.queryParams(
+      `UPDATE ${SCHEMA_TABLE_ORGANIZATIONS}
+          SET [is_payroll_issuer] = 0, [updated_at] = @updated_at
+        OUTPUT INSERTED.[uid]
+        WHERE [id_empresa] = @idEmpresa AND [is_payroll_issuer] = 1 AND [uid] <> @uid`,
+      { uid, idEmpresa, updated_at: now }
+    );
+    deactivatedUid = (deactivatedRows[0]?.uid as string | undefined) ?? null;
+  }
+
+  const rows = await client.queryParams(
+    `UPDATE ${SCHEMA_TABLE_ORGANIZATIONS}
+        SET [is_payroll_issuer] = @is_payroll_issuer, [updated_at] = @updated_at
+      OUTPUT INSERTED.[id]
+      WHERE [uid] = @uid AND [id_empresa] = @idEmpresa`,
+    { uid, idEmpresa, is_payroll_issuer: active, updated_at: now }
+  );
+
+  if (rows.length === 0) {
+    throw new Error("La organización no existe o no pertenece a esta empresa");
+  }
+  return { deactivatedUid };
+}
+
+/** `uid` de la organización que timbra la nómina de la empresa, o `null` si no hay (spec 72). */
+export async function getPayrollIssuerUid(
+  client: ITransactionClient,
+  idEmpresa: number
+): Promise<string | null> {
+  const rows = await client.queryParams(
+    `SELECT [uid] FROM ${SCHEMA_TABLE_ORGANIZATIONS}
+      WHERE [id_empresa] = @idEmpresa AND [is_payroll_issuer] = 1`,
+    { idEmpresa }
+  );
+  return (rows[0]?.uid as string | undefined) ?? null;
+}
+
+/**
  * Borra la fila local. Corrige el bug del proyecto original, que solo eliminaba la
  * organización en Facturapi y dejaba la fila local huérfana con ambas API keys.
  */
@@ -404,7 +504,9 @@ export type BillingAuditAction =
   | "invoice.email"
   | "invoice.pdf"
   | "org.upload_logo"
-  | "org.update_customization";
+  | "org.update_customization"
+  | "org.update_payroll_issuer"
+  | "org.set_payroll_issuer";
 
 export interface INewAuditEntry {
   id_empresa: number;
