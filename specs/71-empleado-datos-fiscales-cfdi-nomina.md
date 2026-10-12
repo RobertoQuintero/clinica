@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [25 — Empleados: alta, listado y expediente](25-empleados-alta-listado-detalle.md): `RH.empleados`, `EmployeeModal.tsx`, `createEmployee` / `updateEmployee`.
   - [38 — Contactos de referencia y salario fiscal](38-empleado-contactos-referencia-salario-fiscal.md): `salario_diario_fiscal`, que decide si un empleado es fiscal.
@@ -254,49 +254,49 @@ Cada paso compila (`npx tsc --noEmit`) y deja la app funcionando.
 
 **Base de datos**
 
-- [ ] `RH.cat_bancos` existe con el catálogo `c_Banco` completo, y su DDL e `INSERT` están en `queries.txt`.
-- [ ] `RH.empleados` tiene `codigo_postal_fiscal`, `tipo_regimen`, `tipo_contrato`, `tipo_jornada`, `sindicalizado` y `banco`, con FK de `banco` a `RH.cat_bancos`.
-- [ ] Los 5 empleados existentes tienen `tipo_regimen = '02'`, `tipo_contrato = '01'`, `tipo_jornada = '01'` y `sindicalizado = 0`.
-- [ ] Los 10 `CHECK` de la spec existen, creados `WITH NOCHECK`, y están documentados en `queries.txt`.
-- [ ] Un `UPDATE` directo en SQL con `rfc = 'ABC123'` es rechazado por `CK_empleados_rfc`.
-- [ ] Un `UPDATE` directo con `cuenta_bancaria` de 18 dígitos y `banco` no nulo es rechazado por `CK_empleados_banco_sin_clabe`.
+- [x] `RH.cat_bancos` existe con el catálogo `c_Banco` completo, y su DDL e `INSERT` están en `queries.txt`.
+- [x] `RH.empleados` tiene `codigo_postal_fiscal`, `tipo_regimen`, `tipo_contrato`, `tipo_jornada`, `sindicalizado` y `banco`, con FK de `banco` a `RH.cat_bancos`.
+- [x] Los 5 empleados existentes tienen `tipo_regimen = '02'`, `tipo_contrato = '01'`, `tipo_jornada = '01'` y `sindicalizado = 0`.
+- [x] Los 10 `CHECK` de la spec existen, creados `WITH NOCHECK`, y están documentados en `queries.txt`.
+- [x] Un `UPDATE` directo en SQL con `rfc = 'ABC123'` es rechazado por `CK_empleados_rfc`.
+- [x] Un `UPDATE` directo con `cuenta_bancaria` de 18 dígitos y `banco` no nulo es rechazado por `CK_empleados_banco_sin_clabe`.
 
 **Validación (`createEmployee` / `updateEmployee`)**
 
-- [ ] Guardar un empleado con `salario_diario_fiscal > 0` sin RFC, CURP, CP fiscal, tipo de contrato, tipo de régimen o periodo de pago devuelve `{ ok: false }` con un mensaje que nombra el campo, y no escribe en la BD.
-- [ ] Con régimen `02` falta NSS o tipo de jornada → rechazado. Con régimen `09` y sin esos dos datos → se guarda.
-- [ ] Contrato `01` con régimen `09` → rechazado por la regla cruzada.
-- [ ] Cuenta de 10 dígitos sin banco en un empleado fiscal → rechazado.
-- [ ] Cuenta de 18 dígitos → se guarda con `banco = NULL` aunque el cliente haya mandado un banco.
-- [ ] Un empleado con `salario_diario_fiscal` nulo o 0 se guarda sin ningún dato fiscal.
-- [ ] Ese mismo empleado no fiscal es rechazado si captura un RFC, CURP, NSS, CP o cuenta con formato inválido.
-- [ ] Un RFC o CURP capturado en minúsculas o con espacios se guarda en mayúsculas y sin espacios.
-- [ ] Una cuenta capturada con espacios o guiones se guarda solo con dígitos.
-- [ ] `validateRequiredFields` ya no existe en `empleados/actions.ts`.
+- [x] Guardar un empleado con `salario_diario_fiscal > 0` sin RFC, CURP, CP fiscal, tipo de contrato, tipo de régimen o periodo de pago devuelve `{ ok: false }` con un mensaje que nombra el campo, y no escribe en la BD.
+- [x] Con régimen `02` falta NSS o tipo de jornada → rechazado. Con régimen `09` y sin esos dos datos → se guarda.
+- [x] Contrato `01` con régimen `09` → rechazado por la regla cruzada.
+- [x] Cuenta de 10 dígitos sin banco en un empleado fiscal → rechazado.
+- [x] Cuenta de 18 dígitos → se guarda con `banco = NULL` aunque el cliente haya mandado un banco.
+- [x] Un empleado con `salario_diario_fiscal` nulo o 0 se guarda sin ningún dato fiscal.
+- [x] Ese mismo empleado no fiscal es rechazado si captura un RFC, CURP, NSS, CP o cuenta con formato inválido.
+- [x] Un RFC o CURP capturado en minúsculas o con espacios se guarda en mayúsculas y sin espacios.
+- [x] Una cuenta capturada con espacios o guiones se guarda solo con dígitos.
+- [x] `validateRequiredFields` ya no existe en `empleados/actions.ts`.
 
 **Modal**
 
-- [ ] El modal tiene la sección "Datos fiscales (CFDI de nómina)" con RFC, CURP, NSS, CP fiscal, tipo de régimen, tipo de contrato, tipo de jornada y sindicalizado. RFC, CURP y NSS ya no aparecen en otra sección.
-- [ ] En un alta nueva, régimen, contrato, jornada y sindicalizado vienen prellenados con `02`, `01`, `01` y "No".
-- [ ] Con `salario_diario_fiscal > 0` los campos obligatorios muestran asterisco. Con 0 o vacío no lo muestran.
-- [ ] Al cambiar el régimen a `09` desaparecen los asteriscos de NSS y tipo de jornada.
-- [ ] Al capturar una cuenta de 18 dígitos, el select de banco se deshabilita y queda vacío.
-- [ ] Editar a un empleado existente y guardar sin tocar nada conserva sus valores fiscales.
+- [x] El modal tiene la sección "Datos fiscales (CFDI de nómina)" con RFC, CURP, NSS, CP fiscal, tipo de régimen, tipo de contrato, tipo de jornada y sindicalizado. RFC, CURP y NSS ya no aparecen en otra sección.
+- [x] En un alta nueva, régimen, contrato, jornada y sindicalizado vienen prellenados con `02`, `01`, `01` y "No".
+- [x] Con `salario_diario_fiscal > 0` los campos obligatorios muestran asterisco. Con 0 o vacío no lo muestran.
+- [x] Al cambiar el régimen a `09` desaparecen los asteriscos de NSS y tipo de jornada.
+- [x] Al capturar una cuenta de 18 dígitos, el select de banco se deshabilita y queda vacío.
+- [x] Editar a un empleado existente y guardar sin tocar nada conserva sus valores fiscales.
 
 **Expediente**
 
-- [ ] La tarjeta "Datos fiscales" muestra los valores con la descripción del catálogo (ej. "02 — Sueldos").
-- [ ] Muestra el nombre fiscal en mayúsculas, la `ClaveEntFed` de la sucursal y la lista de problemas de `getStampingIssues`.
-- [ ] El empleado con el RFC mal capturado muestra "RFC con formato inválido" en la tarjeta y "Faltan N datos fiscales" en el header.
-- [ ] Si la sucursal del empleado no tiene `id_state`, la tarjeta muestra "La sucursal no tiene estado" y cuenta como dato faltante.
-- [ ] Un empleado fiscal con todo completo muestra el badge "Datos fiscales completos" y la tarjeta sin lista de faltantes.
-- [ ] Un empleado no fiscal no muestra el badge.
-- [ ] `EmployeeGeneralInfo.tsx` y `EmployeeHeader.tsx` no tienen `"use client"`.
+- [x] La tarjeta "Datos fiscales" muestra los valores con la descripción del catálogo (ej. "02 — Sueldos").
+- [x] Muestra el nombre fiscal en mayúsculas, la `ClaveEntFed` de la sucursal y la lista de problemas de `getStampingIssues`.
+- [x] El empleado con el RFC mal capturado muestra "RFC con formato inválido" en la tarjeta y "Faltan N datos fiscales" en el header.
+- [x] Si la sucursal del empleado no tiene `id_state`, la tarjeta muestra "La sucursal no tiene estado" y cuenta como dato faltante.
+- [x] Un empleado fiscal con todo completo muestra el badge "Datos fiscales completos" y la tarjeta sin lista de faltantes.
+- [x] Un empleado no fiscal no muestra el badge.
+- [x] `EmployeeGeneralInfo.tsx` y `EmployeeHeader.tsx` no tienen `"use client"`.
 
 **General**
 
-- [ ] `npx tsc --noEmit` no reporta errores.
-- [ ] `docs/rh-empleados.md` tiene la sección "Datos fiscales (spec 71)".
+- [x] `npx tsc --noEmit` no reporta errores.
+- [x] `docs/rh-empleados.md` tiene la sección "Datos fiscales (spec 71)".
 
 ## Decisiones
 
