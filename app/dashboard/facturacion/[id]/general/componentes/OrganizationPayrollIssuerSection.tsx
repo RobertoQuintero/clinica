@@ -12,6 +12,7 @@ import {
   type PayrollIssuerWarning,
 } from "@/lib/billing/payrollIssuer";
 import { SAT_JOB_RISK_CLASSES } from "@/lib/payroll/satCatalogs";
+import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
 
 interface Props {
   orgId: string;
@@ -20,6 +21,8 @@ interface Props {
   hasCertificate: boolean;
   isLive: boolean;
   payrollIssuer: PayrollIssuerInput & { isActive: boolean };
+  /** `name` de la organización que hoy timbra nómina, si es otra; `null` si no hay o es esta. */
+  currentPayrollIssuerName: string | null;
 }
 
 interface FormState {
@@ -62,6 +65,7 @@ export default function OrganizationPayrollIssuerSection({
   hasCertificate,
   isLive,
   payrollIssuer,
+  currentPayrollIssuerName,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(() => toFormState(payrollIssuer));
@@ -69,6 +73,7 @@ export default function OrganizationPayrollIssuerSection({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
 
   const savedForm = toFormState(payrollIssuer);
   const hasUnsavedChanges =
@@ -113,6 +118,16 @@ export default function OrganizationPayrollIssuerSection({
     }
   };
 
+  const handleSwitchClick = () => {
+    // Activar desactiva a la organización que hoy timbra nómina: se pide confirmación nombrándola.
+    if (!isActive && currentPayrollIssuerName) {
+      setToggleError(null);
+      setShowReplaceConfirm(true);
+      return;
+    }
+    handleToggle();
+  };
+
   const handleToggle = async () => {
     setToggling(true);
     setToggleError(null);
@@ -122,6 +137,7 @@ export default function OrganizationPayrollIssuerSection({
         setToggleError(result.message);
         return;
       }
+      setShowReplaceConfirm(false);
       router.refresh();
     } catch {
       setToggleError("Error inesperado al cambiar el emisor de nómina");
@@ -236,7 +252,7 @@ export default function OrganizationPayrollIssuerSection({
             aria-checked={isActive}
             aria-labelledby="payroll-issuer-switch-label"
             disabled={isSwitchDisabled}
-            onClick={handleToggle}
+            onClick={handleSwitchClick}
             className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0051d5] focus-visible:ring-offset-2 dark:focus-visible:ring-zinc-400 dark:focus-visible:ring-offset-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 ${
               isActive ? "bg-[#009c6b]" : "bg-[#c4c6d0] dark:bg-zinc-600"
             }`}
@@ -266,10 +282,21 @@ export default function OrganizationPayrollIssuerSection({
           </p>
         )}
 
-        {toggleError && (
+        {toggleError && !showReplaceConfirm && (
           <p className="rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">
             {toggleError}
           </p>
+        )}
+
+        {showReplaceConfirm && (
+          <ConfirmModal
+            message={`"${currentPayrollIssuerName}" es la organización que timbra la nómina hoy. Al activar esta, "${currentPayrollIssuerName}" dejará de timbrarla.`}
+            confirmLabel="Activar y reemplazar"
+            loading={toggling}
+            error={toggleError}
+            onConfirm={handleToggle}
+            onCancel={() => setShowReplaceConfirm(false)}
+          />
         )}
 
         {warnings.length > 0 && (

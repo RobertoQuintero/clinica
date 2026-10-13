@@ -16,7 +16,7 @@ export default async function OrganizationGeneralPage({ params }: Props) {
   const result = await getOrganizationDetail(id);
   if (!result.ok) notFound();
 
-  const { organization, hasTestKey, hasLiveKey, isLive, payrollIssuer } = result.data;
+  const { organization, hasTestKey, hasLiveKey, isLive, payrollIssuer, currentPayrollIssuerName } = result.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,6 +27,7 @@ export default async function OrganizationGeneralPage({ params }: Props) {
         hasCertificate={organization.certificate.has_certificate}
         isLive={isLive}
         payrollIssuer={payrollIssuer}
+        currentPayrollIssuerName={currentPayrollIssuerName}
       />
       <OrganizationCertificateSection orgId={id} organization={organization} />
       <OrganizationApiKeysSection orgId={id} hasTestKey={hasTestKey} hasLiveKey={hasLiveKey} />
