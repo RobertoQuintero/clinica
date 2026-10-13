@@ -55,7 +55,13 @@ import {
   PUNCTUALITY_BONUS_SELECT_SQL,
 } from "@/lib/payroll/punctualityBonusSql";
 import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
-import { ISR_DEDUCTION_ID, PERCEPTION_LINE_KEY_BY_ID, SALARY_PERCEPTION_ID } from "@/lib/payroll/constants";
+import {
+  ISR_DEDUCTION_ID,
+  OVERTIME_DOUBLE_PERCEPTION_ID,
+  OVERTIME_TRIPLE_PERCEPTION_ID,
+  PERCEPTION_LINE_KEY_BY_ID,
+  SALARY_PERCEPTION_ID,
+} from "@/lib/payroll/constants";
 import { describePerceptionExemption } from "@/lib/payroll/exemptionCalculation";
 import {
   EXEMPTION_APPLY_SQL,
@@ -1225,7 +1231,8 @@ export async function calculatePayrollPeriod(
 
        -- Spec 73: percepciones de los renglones 'F' con su gravado y exento. Cada spec de percepción fiscal nueva
        -- agrega su UNION ALL a #fiscal_perception_lines (id_perception, importe y, solo en periodicidad 'E', eventos).
-       -- Hoy solo el sueldo. Va después del snapshot (de ahí sale importe_salario) y antes del ISR, que suma lo gravado.
+       -- Hoy el sueldo y las horas extra dobles y triples (spec 75). Va después del snapshot (de ahí salen los importes)
+       -- y antes del ISR, que suma lo gravado.
        CREATE TABLE #fiscal_perception_lines (
          id_period_employee int NOT NULL,
          id_perception      smallint NOT NULL,
@@ -1235,7 +1242,15 @@ export async function calculatePayrollPeriod(
        INSERT INTO #fiscal_perception_lines (id_period_employee, id_perception, importe, eventos)
        SELECT pe.[id_period_employee], ${SALARY_PERCEPTION_ID}, pe.[importe_salario], NULL
          FROM [CentroPodologico].[payroll].[period_employees] pe
-        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_salario] > 0;
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_salario] > 0
+       UNION ALL
+       SELECT pe.[id_period_employee], ${OVERTIME_DOUBLE_PERCEPTION_ID}, pe.[importe_horas_extra_dobles], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_horas_extra_dobles] > 0
+       UNION ALL
+       SELECT pe.[id_period_employee], ${OVERTIME_TRIPLE_PERCEPTION_ID}, pe.[importe_horas_extra_triples], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_horas_extra_triples] > 0;
 
        ${EXEMPTION_PARAMETERS_SQL}
 

@@ -195,9 +195,9 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Base de datos**
 
-- [ ] `payroll.period_employee_overtime` tiene `tipo_nomina char(1) NOT NULL` con `CK_period_employee_overtime_tipo` (`'O'`, `'F'`), sin default, y todas las filas anteriores a esta spec quedan en `'O'`.
-- [ ] `UQ_period_employee_overtime_empleado_fecha` ya no existe. `UQ_period_employee_overtime_empleado_fecha_tipo` acepta el mismo día en `'O'` y en `'F'`, y rechaza un segundo día del mismo tipo (verificado con rollback).
-- [ ] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`, después de la spec 74.
+- [x] `payroll.period_employee_overtime` tiene `tipo_nomina char(1) NOT NULL` con `CK_period_employee_overtime_tipo` (`'O'`, `'F'`), sin default, y todas las filas anteriores a esta spec quedan en `'O'`.
+- [x] `UQ_period_employee_overtime_empleado_fecha` ya no existe. `UQ_period_employee_overtime_empleado_fecha_tipo` acepta el mismo día en `'O'` y en `'F'`, y rechaza un segundo día del mismo tipo (verificado con rollback).
+- [x] El DDL está en `queries.txt`, bloque `NOMINA PAYROLL`, después de la spec 74.
 
 **Ejemplo de referencia** (helper y SQL; `salario_diario_fiscal = 325`, límite 9, `UMA_DIARIA` = 117.31, periodo semanal, días de 3, 4, 2.5 y 1 h)
 
@@ -219,10 +219,10 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Cálculo** (`NOM-2026-S01` recalculado, con el empleado de prueba del paso 1)
 
-- [ ] El renglón `'F'` tiene las mismas `horas_extra_dobles`, `horas_extra_triples` y `limite_horas_dobles_aplicado` que su renglón `'O'`. Sus importes son la suma de los importes diarios a `salario_diario_fiscal / 8 × 2|3`, redondeados por día.
+- [x] El renglón `'F'` tiene las mismas `horas_extra_dobles`, `horas_extra_triples` y `limite_horas_dobles_aplicado` que su renglón `'O'`. Sus importes son la suma de los importes diarios a `salario_diario_fiscal / 8 × 2|3`, redondeados por día.
 - [ ] El desglose `'F'` tiene los mismos días, horas y reparto que el `'O'`, con los importes del salario fiscal, y coincide al centavo con el helper.
-- [ ] El renglón `'F'` tiene exactamente un renglón de percepción 5 y uno 13 (cada uno solo si su importe es mayor que 0). El exento y el gravado siguen la regla del catálogo.
-- [ ] `isr_base_gravable` del renglón `'F'` = `importe_salario` + gravado de la 5 + gravado de la 13. El ISR coincide con `calculateIsrBreakdown` sobre esa base.
+- [x] El renglón `'F'` tiene exactamente un renglón de percepción 5 y uno 13 (cada uno solo si su importe es mayor que 0). El exento y el gravado siguen la regla del catálogo.
+- [x] `isr_base_gravable` del renglón `'F'` = `importe_salario` + gravado de la 5 + gravado de la 13. El ISR coincide con `calculateIsrBreakdown` sobre esa base.
 - [ ] Los renglones `'O'`, su desglose, y los renglones `'F'` de los empleados sin horas extra son idénticos a la foto del paso 1, salvo `calculated_at` y `calculated_by`.
 - [ ] Un empleado con `salario_diario_fiscal = 0` no tiene renglón `'F'` ni desglose `'F'`, y sus horas `'O'` se pagan igual.
 - [ ] Un día ya pagado en `'F'` por otro periodo no se vuelve a pagar en `'F'` ni consume horas dobles fiscales del periodo actual.
@@ -299,6 +299,13 @@ Cada paso deja el sistema compilando y funcionando.
   - **Empleado de prueba: 1007.** Ya tiene autorizaciones `'A'` en el rango (16 sep 1 h, 17 sep 2.5 h, 19 sep 2.5 h; el 14 sep está `'R'`) y su desglose `'O'` (ids 347–349, renglón 2026) paga 6 h dobles y 0 triples. No se crearon autorizaciones de prueba, así que no hay nada que borrar al final. Para ejercitar el reparto con triples haría falta autorizar más horas (ejemplo de la spec: 3, 4, 2.5 y 1 h); se decide en el paso 3.
   - **Salario mínimo:** el empleado 1006 tiene `salario_diario_fiscal = 315.04`, igual a `SALARIO_MINIMO_GENERAL` vigente (2026-01-01). Es el caso del riesgo "trabajador de salario mínimo". Hoy no tiene autorizaciones, así que no se ve afectado; si se le autorizan horas, esta spec le aplica la regla general (queda fuera de alcance).
   - **Foto previa** de `NOM-2026-S01` (`period_employees` 10 renglones, `period_employee_overtime` 3, `period_employee_perceptions` 5, `period_employee_deductions` 5) guardada en el scratchpad de la sesión: `foto-NOM-2026-S01.json`. El `calculated_at` de los renglones es 2026-10-13T13:48:58Z.
+- **2026-10-13 — Pasos 2, 3 y 4 (BD y cálculo).** Hallazgos:
+  - DDL aplicado y verificado con rollback (mismo día en `'O'` y `'F'` aceptado; segundo `'O'` y `'X'` rechazados). Recalcular `NOM-2026-S01` dejó los cuatro conjuntos idénticos a la foto del paso 1.
+  - `#overtime_days` por tipo, snapshot y desglose por tipo, y percepciones 5 y 13 en `#fiscal_perception_lines` implementados en `calculatePayrollPeriod`.
+  - **Datos de prueba (borrar en el paso 7):** `overtime_authorizations` ids 48, 49 y 50 (empleado 1007, 15 sep 4 h, 18 sep 3 h, 20 sep 1 h, comentario `SPEC75-PRUEBA`). Con las 3 autorizaciones previas dan 9 h dobles y 5 h triples.
+  - Resultado en 1007 `'F'` (350/día): dobles 787.50 (350, 87.50, 218.75, 131.25) y triples 656.26 (196.88, 328.13, 131.25). Percepción 5: exento 393.75 (50%, tope 586.55) y gravado 393.75. Percepción 13: gravado 656.26. Base ISR 3,500.01; causado 331.27 en el tramo 3,372.12 de la tarifa semanal (verificado contra `tablas_retencion`, no con el helper); subsidio 0.
+  - **Caso no semanal (verificado con datos reales, restaurado después):** periodo 38 y empleado 1007 pasados a quincenal (`id_payment_period` y `id_periodo_pago` = 2) y recalculado; luego restaurados a 1 y recalculado. Resultado en 1007 `'F'`: horas extra pagadas igual (787.50 y 656.26); percepción 5 `'N'` / `unsupported_frequency` con exento y gravado en NULL; percepción 13 `'C'` 100% gravado. **Diferencia con el criterio:** el ISR quedó `'N'` / `no_withholding_table` con base 3,106.26, no `exemption_not_calculated` con base NULL, porque `calculateIsrBreakdown` revisa primero la tabla de retención y no existe tarifa quincenal 2026. Es el orden de la spec 70; con una tarifa quincenal cargada sí sería `exemption_not_calculated`.
+  - **Pendientes de verificar:** el caso no semanal resultó con una diferencia respecto al criterio (ver Registro, línea siguiente), `salario_diario_fiscal = 0`, el día ya pagado en otro periodo, y la comparación contra los helpers de TypeScript.
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
