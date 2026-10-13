@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [28 — Facturación: cimientos](28-facturacion-cimientos.md): `BILLING.organizations`, `BILLING.audit_log`, `organizationsRepository.ts` y la pestaña General.
   - [33 — Refrescar el RFC local tras subir/eliminar el CSD](33-facturacion-refrescar-tax-id-csd.md): el RFC de cada organización sale de su CSD. Con él se decide si el emisor es persona física.
