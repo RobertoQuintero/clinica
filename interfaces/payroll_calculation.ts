@@ -81,6 +81,7 @@ export interface IPayrollProcessPage {
   attendanceBonusRecalculationNeeded:  boolean;   // ídem, para el bono de asistencia (spec 65)
   shiftExtensionBonusRecalculationNeeded: boolean;   // ídem, para el bono por extensión de jornada (spec 68)
   isrRecalculationNeeded: boolean;   // ídem, para el ISR de la nómina fiscal (spec 70)
+  exemptionRecalculationNeeded: boolean;   // ídem, para el gravado/exento de las percepciones fiscales (spec 73)
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".

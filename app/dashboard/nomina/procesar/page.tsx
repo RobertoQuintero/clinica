@@ -145,6 +145,10 @@ export default async function ProcesarNominaPage({
             recalculationNeeded={result.data.isrRecalculationNeeded}
             message="Hay cálculos de ISR que no coinciden con la tarifa o los parámetros actuales. Recalcula la nómina."
           />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.exemptionRecalculationNeeded}
+            message="Hay percepciones cuyo exento no coincide con el catálogo, la UMA o lo exentado en periodos anteriores. Recalcula la nómina."
+          />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"

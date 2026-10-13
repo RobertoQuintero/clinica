@@ -313,9 +313,9 @@ export interface IPeriodEmployeePerception {
 
 **Aviso "Recalcula"**
 
-- [ ] En estatus 2, cambiar la regla de una percepción usada o la `UMA_DIARIA` vigente muestra el aviso; devolverla lo quita; recalcular lo quita.
-- [ ] Un renglón `'F'` con sueldo y sin renglón de percepción muestra el aviso.
-- [ ] Un periodo en estatus 1 nunca lo muestra.
+- [x] En estatus 2, cambiar la regla de una percepción usada o la `UMA_DIARIA` vigente muestra el aviso; devolverla lo quita; recalcular lo quita.
+- [x] Un renglón `'F'` con sueldo y sin renglón de percepción muestra el aviso.
+- [x] Un periodo en estatus 1 nunca lo muestra.
 
 **Acceso y documentación**
 
