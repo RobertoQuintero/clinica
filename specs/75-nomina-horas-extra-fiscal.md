@@ -232,14 +232,14 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Detalle y pantallas** (navegador, rol 4)
 
-- [ ] En el Detalle fiscal del empleado de prueba aparecen "Horas extra dobles" y "Horas extra triples":
+- [x] En el Detalle fiscal del empleado de prueba aparecen "Horas extra dobles" y "Horas extra triples":
   - con "X h × $tarifa" calculada del `salario_diario_fiscal`;
   - con su columna "Gravado" y "Exento" y la nota de la regla ("Exento 50% hasta 5 UMA por semana (tope $586.55)" y "Gravado al 100%");
   - y el total gravado igual a la base de la tarjeta "Deducciones".
-- [ ] `PayrollOvertimeDaysList` aparece en el Detalle fiscal con los días e importes del desglose `'F'`, y su total es igual a la suma de las dos líneas.
-- [ ] El Detalle operativo del empleado de prueba se ve igual que antes de esta spec.
-- [ ] En Procesar fiscal, la columna "Horas extra" muestra el importe `'F'` y "Xh dobles · Yh triples", y "Total percepciones", "ISR" y "Neto" lo incluyen. No hay columnas nuevas.
-- [ ] La pantalla Horas extra muestra una sola marca "Pagada en {código}" por día.
+- [x] `PayrollOvertimeDaysList` aparece en el Detalle fiscal con los días e importes del desglose `'F'`, y su total es igual a la suma de las dos líneas.
+- [x] El Detalle operativo del empleado de prueba se ve igual que antes de esta spec.
+- [x] En Procesar fiscal, la columna "Horas extra" muestra el importe `'F'` y "Xh dobles · Yh triples", y "Total percepciones", "ISR" y "Neto" lo incluyen. No hay columnas nuevas.
+- [x] La pantalla Horas extra muestra una sola marca "Pagada en {código}" por día.
 
 **Aviso "Recalcula"**
 
@@ -306,6 +306,7 @@ Cada paso deja el sistema compilando y funcionando.
   - Resultado en 1007 `'F'` (350/día): dobles 787.50 (350, 87.50, 218.75, 131.25) y triples 656.26 (196.88, 328.13, 131.25). Percepción 5: exento 393.75 (50%, tope 586.55) y gravado 393.75. Percepción 13: gravado 656.26. Base ISR 3,500.01; causado 331.27 en el tramo 3,372.12 de la tarifa semanal (verificado contra `tablas_retencion`, no con el helper); subsidio 0.
   - **Caso no semanal (verificado con datos reales, restaurado después):** periodo 38 y empleado 1007 pasados a quincenal (`id_payment_period` y `id_periodo_pago` = 2) y recalculado; luego restaurados a 1 y recalculado. Resultado en 1007 `'F'`: horas extra pagadas igual (787.50 y 656.26); percepción 5 `'N'` / `unsupported_frequency` con exento y gravado en NULL; percepción 13 `'C'` 100% gravado. **Diferencia con el criterio:** el ISR quedó `'N'` / `no_withholding_table` con base 3,106.26, no `exemption_not_calculated` con base NULL, porque `calculateIsrBreakdown` revisa primero la tabla de retención y no existe tarifa quincenal 2026. Es el orden de la spec 70; con una tarifa quincenal cargada sí sería `exemption_not_calculated`.
   - **Pendientes de verificar:** el caso no semanal resultó con una diferencia respecto al criterio (ver Registro, línea siguiente), `salario_diario_fiscal = 0`, el día ya pagado en otro periodo, y la comparación contra los helpers de TypeScript.
+- **2026-10-13 — Paso 5 (lecturas).** `getPayrollEmployeeDetail` carga `overtimeDays` del tipo seleccionado (con `o.tipo_nomina = @tipo_nomina`) y `getOvertimePage` filtra la marca "Pagada en …" a `tipo_nomina = 'O'`. La página del Detalle ya renderizaba `PayrollOvertimeDaysList` para los dos tipos, y las líneas de percepción ya usaban el `salario_diario` del snapshot, así que no hubo cambio de UI. Verificado en el navegador (rol 4) con el empleado 1007: Detalle fiscal con "9 h × $87.50" y "5 h × $131.25", gravado/exento y notas de regla, total gravado $3,500.01 igual a la base de Deducciones, y lista de 6 días con total $1,443.76 (= 787.50 + 656.26); Procesar fiscal con "$1,443.76 · 9h dobles · 5h triples"; Horas extra con una sola marca "Pagada en NOM-2026-S01" por día.
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec

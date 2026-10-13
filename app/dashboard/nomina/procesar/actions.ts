@@ -605,20 +605,19 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
-      // Días de horas extra pagados en el renglón operativo (spec 61); en fiscal no hay desglose.
-      payrollType === "O"
-        ? db.queryParams(
-            `SELECT CONVERT(varchar(10), o.fecha, 120) AS fecha,
-                    o.horas_autorizadas, o.horas_dobles, o.horas_triples,
-                    o.importe_dobles, o.importe_triples
-               FROM [CentroPodologico].[payroll].[period_employee_overtime] o
-               JOIN [CentroPodologico].[payroll].[period_employees] pe
-                 ON pe.id_period_employee = o.id_period_employee
-              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'O'
-              ORDER BY o.fecha`,
-            { id_period: period.id_period, id_empleado: idEmpleado },
-          )
-        : Promise.resolve([]),
+      // Días de horas extra pagados en el renglón del tipo seleccionado (specs 61 y 75); existen en operativa y en fiscal.
+      db.queryParams(
+        `SELECT CONVERT(varchar(10), o.fecha, 120) AS fecha,
+                o.horas_autorizadas, o.horas_dobles, o.horas_triples,
+                o.importe_dobles, o.importe_triples
+           FROM [CentroPodologico].[payroll].[period_employee_overtime] o
+           JOIN [CentroPodologico].[payroll].[period_employees] pe
+             ON pe.id_period_employee = o.id_period_employee
+          WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina
+            AND o.tipo_nomina = @tipo_nomina
+          ORDER BY o.fecha`,
+        { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
+      ),
       // Faltas descontadas en el renglón del tipo seleccionado (spec 62); existen en operativa y en fiscal.
       db.queryParams(
         `SELECT CONVERT(varchar(10), pa.fecha, 120) AS fecha
