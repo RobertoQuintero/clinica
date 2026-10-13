@@ -2357,6 +2357,42 @@ GO
 
 
 
+-- Spec 74: horas extra dobles (5) y triples (13) separadas en el catálogo. Idempotente.
+-- Solo datos: la 5 se renombra y se agrega la 13 (019, 'N', 100% gravada). @id_gravado = id de "Gravado" en cat_taxed_exempt.
+SET XACT_ABORT ON;
+BEGIN TRAN;
+
+DECLARE @id_gravado smallint = 1;
+
+-- La 5 tiene que ser la de horas extra; si no, nada de esto aplica.
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions]
+                WHERE [id_perception] = 5 AND [clave_sat] = '019' AND [tipo_limite_exencion] = 'M')
+    THROW 50074, 'La percepción 5 no es la de horas extra (019, M). Revisa el catálogo antes de seguir.', 1;
+
+-- El 13 está libre o ya es la de horas extra triples (segunda corrida); nunca se pisa otra fila.
+IF EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions]
+            WHERE [id_perception] = 13
+              AND NOT ([clave_sat] = '019' AND [description] = 'Horas extra triples'))
+    THROW 50074, 'id_perception 13 ya está ocupado por otra percepción. Decide el id a mano.', 1;
+
+UPDATE [CentroPodologico].[payroll].[perceptions]
+   SET [description] = 'Horas extra dobles'
+ WHERE [id_perception] = 5;
+
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions] WHERE [id_perception] = 13)
+    INSERT INTO [CentroPodologico].[payroll].[perceptions]
+           ([id_perception], [clave_sat], [description], [id_taxed_exempt], [exempt_limit],
+            [is_billed], [status],
+            [tipo_limite_exencion], [umas_limite], [porcentaje_exento], [periodicidad_limite])
+    SELECT 13, '019', 'Horas extra triples', @id_gravado, NULL,
+           doubles.[is_billed], doubles.[status],
+           'N', NULL, NULL, NULL
+      FROM [CentroPodologico].[payroll].[perceptions] doubles
+     WHERE doubles.[id_perception] = 5;
+
+COMMIT;
+GO
+
 ------------ OTROS PAGOS -----------------------
 
 CREATE TABLE [payroll].[other_payments](
