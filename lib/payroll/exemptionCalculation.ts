@@ -95,8 +95,8 @@ export function calculatePerceptionExemption(input: IExemptionCalculationInput):
   if (rule.umas_limite === null || rule.periodicidad_limite === null) {
     throw new Error("La regla con tope no trae umas_limite o periodicidad_limite");
   }
-  if (rule.periodicidad_limite === "S" && !isWeeklyFrequency) return notCalculated("unsupported_frequency");
   if (umaDiaria === null) return notCalculated("missing_uma");
+  if (rule.periodicidad_limite === "S" && !isWeeklyFrequency) return notCalculated("unsupported_frequency");
 
   let multiplier = 1;
   if (rule.periodicidad_limite === "E") {

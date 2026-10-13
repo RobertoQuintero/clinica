@@ -51,7 +51,13 @@ import {
   PUNCTUALITY_BONUS_SELECT_SQL,
 } from "@/lib/payroll/punctualityBonusSql";
 import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
-import { ISR_DEDUCTION_ID } from "@/lib/payroll/constants";
+import { ISR_DEDUCTION_ID, SALARY_PERCEPTION_ID } from "@/lib/payroll/constants";
+import {
+  EXEMPTION_APPLY_SQL,
+  EXEMPTION_INSERT_COLUMNS_SQL,
+  EXEMPTION_PARAMETERS_SQL,
+  EXEMPTION_SELECT_SQL,
+} from "@/lib/payroll/exemptionSql";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
 import {
@@ -1100,6 +1106,31 @@ export async function calculatePayrollPeriod(
         ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
+
+       -- Spec 73: percepciones de los renglones 'F' con su gravado y exento. Cada spec de percepción fiscal nueva
+       -- agrega su UNION ALL a #fiscal_perception_lines (id_perception, importe y, solo en periodicidad 'E', eventos).
+       -- Hoy solo el sueldo. Va después del snapshot (de ahí sale importe_salario) y antes del ISR, que suma lo gravado.
+       CREATE TABLE #fiscal_perception_lines (
+         id_period_employee int NOT NULL,
+         id_perception      smallint NOT NULL,
+         importe            decimal(12,2) NOT NULL,
+         eventos            smallint NULL
+       );
+       INSERT INTO #fiscal_perception_lines (id_period_employee, id_perception, importe, eventos)
+       SELECT pe.[id_period_employee], ${SALARY_PERCEPTION_ID}, pe.[importe_salario], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_salario] > 0;
+
+       ${EXEMPTION_PARAMETERS_SQL}
+
+       -- La regla se lee del catálogo en este momento y queda congelada en el renglón.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_perceptions] (${EXEMPTION_INSERT_COLUMNS_SQL})
+       SELECT ${EXEMPTION_SELECT_SQL}
+         FROM #fiscal_perception_lines fl
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period_employee] = fl.[id_period_employee]
+         JOIN [CentroPodologico].[payroll].[perceptions] exemption_rule
+           ON exemption_rule.[id_perception] = fl.[id_perception]${EXEMPTION_APPLY_SQL};
 
        -- Spec 70: ISR de los renglones 'F' recién insertados. Va después del INSERT porque la base es importe_salario,
        -- que se calcula ahí. Los renglones 'O' se quedan en 'X'.
