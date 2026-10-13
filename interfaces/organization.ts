@@ -24,6 +24,12 @@ export interface IOrganizationRecord {
   updated_at:    string | null;   // "YYYY-MM-DD HH:mm:ss"
   /** Producto de Facturapi usado como concepto único al facturar cobros (spec 34). */
   default_product_id: string | null;
+  /** Datos del emisor de nómina (spec 72). */
+  registro_patronal: string | null;
+  riesgo_puesto:     string | null;   // clave c_RiesgoPuesto
+  curp_emisor:       string | null;
+  /** Única organización por empresa que timbra la nómina (índice filtrado en BD). */
+  is_payroll_issuer: boolean;
 }
 
 /**
@@ -41,6 +47,12 @@ export type OrganizationLegalInput = Pick<
   | "name" | "legal_name" | "tax_id" | "tax_system" | "phone" | "website" | "support_email"
   | "street" | "exterior" | "interior" | "neighborhood" | "zip" | "city"
   | "municipality" | "state" | "country"
+>;
+
+/** Datos del emisor de nómina capturados en la sección (spec 72). */
+export type PayrollIssuerInput = Pick<
+  IOrganizationRecord,
+  "registro_patronal" | "riesgo_puesto" | "curp_emisor"
 >;
 
 /** Modo de operación de una organización: sandbox o producción. */

@@ -133,6 +133,67 @@ and not with the other three.
 - `invoice.create`/`invoice.cancel` are reused as-is — no new `audit_log` action was added;
   `source`/`source_id` travel in `invoice.create`'s `detail` (see catalog below).
 
+## Payroll issuer (spec 72)
+
+The organization that stamps the company's payroll CFDI (Nómina 1.2) is a local flag on
+`BILLING.organizations`, set from a section of the General tab. Nothing here is sent to
+Facturapi: the data is local-only and the stamping spec will copy it onto each payroll receipt.
+
+- **Columns** (DDL in `queries.txt`, after the spec 34 block):
+
+  | Column | Type | XML attribute |
+  |---|---|---|
+  | `registro_patronal` | `varchar(11) NULL` | `Nomina12:Emisor/@RegistroPatronal` |
+  | `riesgo_puesto` | `varchar(2) NULL` | `Nomina12:Receptor/@RiesgoPuesto` (c_RiesgoPuesto `1`–`5`; `99` is excluded) |
+  | `curp_emisor` | `varchar(18) NULL` | `Nomina12:Emisor/@Curp`, individuals only |
+  | `is_payroll_issuer` | `bit NOT NULL DEFAULT 0` | — |
+
+  `riesgo_puesto` lives on the organization, not on the employee (it is defined per employer
+  registration); the stamping spec copies it into each receiver node.
+- **Database guarantees.** `CK_organizations_registro_patronal` (exactly 11 chars, `A-Z0-9`),
+  `CK_organizations_riesgo_puesto` (`'1'`–`'5'`), `CK_organizations_curp_emisor` (CURP
+  layout) and `CK_organizations_payroll_issuer_completo` (`is_payroll_issuer = 1` requires
+  `registro_patronal` and `riesgo_puesto`, so not even a manual `UPDATE` can activate an
+  incomplete organization). The filtered unique index `UX_organizations_payroll_issuer`
+  (`id_empresa` `WHERE is_payroll_issuer = 1`) allows at most one active issuer per company,
+  even if two users activate at the same time.
+- **The CURP is not enforced by the database.** Whether it is required depends on the RFC,
+  and the local `tax_id` copy can be stale. That rule lives in `lib/billing/payrollIssuer.ts`
+  and in the actions.
+- **Where the RFC comes from.** An individual is an RFC of 13 characters (a company has 12).
+  Both `updatePayrollIssuerData` (when the organization is active) and `setPayrollIssuer`
+  read it live from `getRootClient().organizations.retrieve(uid)` → `legal.tax_id`, not from
+  `BILLING.organizations.tax_id` — Facturapi is the system of record for the RFC (it is
+  derived from the CSD, spec 33).
+- **Pure rules.** `lib/billing/payrollIssuer.ts` (importable from client and server):
+  `EMPLOYER_REGISTRATION_PATTERN`, `isIndividualTaxId`, `getRequiredPayrollIssuerFields`,
+  `getPayrollIssuerIssues` (`[]` = can be activated) and `getPayrollIssuerWarnings`.
+  `CURP_PATTERN` is reused from `lib/payroll/payrollStampingReadiness.ts` (spec 71) and
+  `SAT_JOB_RISK_CLASSES` lives in `lib/payroll/satCatalogs.ts`. `PayrollIssuerSchema`
+  (`lib/billing/schemas.ts`) uppercases and strips spaces, and validates formats whenever a
+  field has a value; mandatory-ness is applied afterwards with `getPayrollIssuerIssues`.
+- **Actions** (`app/dashboard/facturacion/actions.ts`, repository functions take the
+  transaction client first, like the rest of `organizationsRepository.ts`):
+  - `updatePayrollIssuerData(orgId, input)` — saves the three fields; if the organization is
+    active it refuses to leave a mandatory field empty. Audit: `org.update_payroll_issuer`.
+  - `setPayrollIssuer(orgId, active)` — activating requires complete data; inside one
+    `db.transaction()` it deactivates the company's previous issuer, activates this one and
+    writes the audit entry. `detail` is `{ active, deactivated_uid }`. Deactivating leaves
+    the company with no payroll issuer on purpose (e.g. a change of legal entity).
+  - `deleteOrganization` refuses the active issuer (`"Es la organización que timbra nómina;
+    desactívala primero"`) **before** calling Facturapi.
+  - `getOrganizationDetail` returns `payrollIssuer` and `currentPayrollIssuerName` (the local
+    `name` of the active issuer when it is a different organization — used by the replace
+    confirmation).
+- **Not blocking.** A missing CSD or Test mode only shows a warning ("Sin CSD", "En modo
+  Test"); the stamping spec decides what it requires at stamp time.
+- **UI.** `[id]/general/componentes/OrganizationPayrollIssuerSection.tsx` sits between the
+  legal and certificate sections; the listing shows a "Timbra nómina" badge
+  (`OrganizationRow.tsx`) fed by `getPayrollIssuerUid` in `facturacion/page.tsx`.
+- **Out of scope here:** stamping, receipts, `RfcPatronOrigen`/`EntidadSNCF`, several
+  employer registrations per organization, IMSS contributions, and showing the active issuer
+  inside the payroll module.
+
 ## API key lifecycle
 
 - Every organization has a **test key** (always present after creation) and an optional
@@ -172,8 +233,8 @@ and not with the other three.
 ## `audit_log` catalog
 
 `BILLING.audit_log` is append-only (by convention, not by DB permission — see spec 28 Risks)
-and not read from any UI yet. Complete `action` catalog as of spec 31 (unchanged through
-spec 34 — Por facturar reuses `invoice.create`/`invoice.cancel` rather than adding new
+and not read from any UI yet. Complete `action` catalog as of spec 72 (unchanged between
+spec 31 and spec 72 except for the payroll issuer actions; spec 34 — Por facturar reuses `invoice.create`/`invoice.cancel` rather than adding new
 actions; it records `source`/`source_id` in `detail` instead), and which `actions.ts` writes
 each one:
 
@@ -199,9 +260,11 @@ each one:
 | `invoice.pdf` | PDF route handler (`app/api/facturacion/organizations/[orgId]/invoices/[invoiceId]/pdf`) | — |
 | `org.upload_logo` | `uploadOrganizationLogo` | `[id]/customize/actions.ts` |
 | `org.update_customization` | `updateOrganizationCustomization`; also `setDefaultProductAction` (spec 34) | `[id]/customize/actions.ts` |
+| `org.update_payroll_issuer` | `updatePayrollIssuerData` (spec 72) | `app/dashboard/facturacion/actions.ts` |
+| `org.set_payroll_issuer` | `setPayrollIssuer` (spec 72, `detail` = `{ active, deactivated_uid }`) | `app/dashboard/facturacion/actions.ts` |
 
 `detail` must never contain key material or the CSD password. The catalog is complete as
-of spec 31 — a future spec that adds a new mutation should extend
+of spec 72 (the two `org.*_payroll_issuer` actions were added there) — a future spec that adds a new mutation should extend
 `BillingAuditAction` (`lib/billing/organizationsRepository.ts`) and this table together.
 
 ## `getOrgClient` contract

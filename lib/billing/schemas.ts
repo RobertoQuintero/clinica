@@ -1,6 +1,9 @@
 import "server-only";
 import { z } from "zod";
 import { CancellationMotive, InvoiceUse, PaymentForm, PaymentMethod } from "facturapi";
+import { EMPLOYER_REGISTRATION_PATTERN } from "@/lib/billing/payrollIssuer";
+import { CURP_PATTERN } from "@/lib/payroll/payrollStampingReadiness";
+import { SAT_JOB_RISK_CLASSES } from "@/lib/payroll/satCatalogs";
 
 /**
  * Schemas `zod` de toda entrada del módulo de facturación. Una frontera `'use server'`
@@ -448,6 +451,47 @@ export const SetDefaultProductSchema = z.object({
 });
 
 export type SetDefaultProductInput = z.infer<typeof SetDefaultProductSchema>;
+
+// ---------------------------------------------------------------------------
+// Emisor de nómina (spec 72)
+// ---------------------------------------------------------------------------
+
+/** "" o ausente → `null`; el resto se normaliza a mayúsculas y sin espacios antes de validar el formato. */
+function optionalIssuerField(label: string, isValid: (value: string) => boolean, message: string) {
+  return z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      const normalized = (value ?? "").replace(/\s+/g, "").toUpperCase();
+      return normalized.length > 0 ? normalized : null;
+    })
+    .refine((value) => value === null || isValid(value), { message: `${label}: ${message}` });
+}
+
+/**
+ * Datos del emisor de nómina de una organización. Normaliza (mayúsculas y sin espacios;
+ * "" → null) y valida formatos siempre que el campo traiga valor. La obligatoriedad
+ * depende de `is_payroll_issuer` y del RFC, así que la action la aplica con
+ * `getPayrollIssuerIssues` después del parse.
+ */
+export const PayrollIssuerSchema = z.object({
+  registro_patronal: optionalIssuerField(
+    "Registro patronal",
+    (value) => EMPLOYER_REGISTRATION_PATTERN.test(value),
+    "debe tener 11 caracteres alfanuméricos",
+  ),
+  riesgo_puesto: optionalIssuerField(
+    "Clase de riesgo",
+    (value) => SAT_JOB_RISK_CLASSES.some((riskClass) => riskClass.key === value),
+    "elige una clase de la I a la V",
+  ),
+  curp_emisor: optionalIssuerField(
+    "CURP del emisor",
+    (value) => CURP_PATTERN.test(value),
+    "no tiene un formato válido",
+  ),
+});
 
 /** Los tres orígenes de una operación cobrable de la pestaña Por facturar (spec 34). */
 const BillableSourceEnum = z.enum(["consulta", "tratamiento_revision", "tratamiento"], {

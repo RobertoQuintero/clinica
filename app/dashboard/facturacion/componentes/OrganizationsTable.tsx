@@ -8,9 +8,11 @@ import CreateOrganizationModal from "./CreateOrganizationModal";
 
 interface Props {
   organizations: Organization[];
+  /** `uid` de la organización que timbra nómina (spec 72); `null` si no hay ninguna. */
+  payrollIssuerUid: string | null;
 }
 
-export default function OrganizationsTable({ organizations }: Props) {
+export default function OrganizationsTable({ organizations, payrollIssuerUid }: Props) {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -80,7 +82,13 @@ export default function OrganizationsTable({ organizations }: Props) {
                   </td>
                 </tr>
               ) : (
-                filteredOrganizations.map((org) => <OrganizationRow key={org.id} organization={org} />)
+                filteredOrganizations.map((org) => (
+                  <OrganizationRow
+                    key={org.id}
+                    organization={org}
+                    isPayrollIssuer={org.id === payrollIssuerUid}
+                  />
+                ))
               )}
             </tbody>
           </table>

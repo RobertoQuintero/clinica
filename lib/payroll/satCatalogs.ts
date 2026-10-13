@@ -48,6 +48,18 @@ export const SAT_WORKDAY_TYPES: ReadonlyArray<SatCatalogEntry> = [
   { key: "99", label: "Otra jornada" },
 ];
 
+/**
+ * Catálogo SAT c_RiesgoPuesto (complemento de Nómina 1.2). Se excluye la clave 99
+ * "No aplica": con registro patronal el SAT exige una clase real (spec 72).
+ */
+export const SAT_JOB_RISK_CLASSES: ReadonlyArray<SatCatalogEntry> = [
+  { key: "1", label: "Clase I" },
+  { key: "2", label: "Clase II" },
+  { key: "3", label: "Clase III" },
+  { key: "4", label: "Clase IV" },
+  { key: "5", label: "Clase V" },
+];
+
 /** Claves fijas del receptor en un CFDI de nómina. Las usará la spec de timbrado. */
 export const PAYROLL_RECEIVER_TAX_REGIME = "605";
 export const PAYROLL_CFDI_USE = "CN01";
