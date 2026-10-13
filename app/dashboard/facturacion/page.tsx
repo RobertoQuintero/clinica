@@ -1,9 +1,22 @@
+import db from "@/database/connection";
+import { requireBillingAccess } from "@/lib/auth/session";
+import { getPayrollIssuerUid } from "@/lib/billing/organizationsRepository";
 import { listOrganizations } from "./actions";
 import OrganizationsTable from "./componentes/OrganizationsTable";
 
+/** `uid` de la organización que timbra nómina, para el badge del listado (spec 72). No bloquea la página si falla. */
+async function findPayrollIssuerUid(): Promise<string | null> {
+  try {
+    const { id_empresa } = await requireBillingAccess();
+    return await getPayrollIssuerUid(db, id_empresa);
+  } catch {
+    return null;
+  }
+}
+
 /** Server Component: trae el listado (ya filtrado por empresa en la action) de una vez. */
 export default async function FacturacionPage() {
-  const result = await listOrganizations();
+  const [result, payrollIssuerUid] = await Promise.all([listOrganizations(), findPayrollIssuerUid()]);
   const organizations = result.ok ? result.data : [];
 
   return (
@@ -21,7 +34,7 @@ export default async function FacturacionPage() {
         </p>
       )}
 
-      <OrganizationsTable organizations={organizations} />
+      <OrganizationsTable organizations={organizations} payrollIssuerUid={payrollIssuerUid} />
     </div>
   );
 }
