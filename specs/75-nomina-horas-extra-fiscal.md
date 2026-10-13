@@ -243,10 +243,10 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Aviso "Recalcula"**
 
-- [ ] Recién recalculado `NOM-2026-S01`, no hay aviso.
-- [ ] Al cambiar las horas de un día pagado, rechazarlo o cambiar el límite, aparece el aviso; desaparece al recalcular.
-- [ ] Con rollback, un renglón `'F'` sin desglose y con días autorizados en el rango hace aparecer el aviso.
-- [ ] Con el periodo en estatus 1, nunca aparece.
+- [x] Recién recalculado `NOM-2026-S01`, no hay aviso.
+- [x] Al cambiar las horas de un día pagado, rechazarlo o cambiar el límite, aparece el aviso; desaparece al recalcular.
+- [x] Con rollback, un renglón `'F'` sin desglose y con días autorizados en el rango hace aparecer el aviso.
+- [x] Con el periodo en estatus 1, nunca aparece.
 
 **Transversal**
 
@@ -307,6 +307,7 @@ Cada paso deja el sistema compilando y funcionando.
   - **Caso no semanal (verificado con datos reales, restaurado después):** periodo 38 y empleado 1007 pasados a quincenal (`id_payment_period` y `id_periodo_pago` = 2) y recalculado; luego restaurados a 1 y recalculado. Resultado en 1007 `'F'`: horas extra pagadas igual (787.50 y 656.26); percepción 5 `'N'` / `unsupported_frequency` con exento y gravado en NULL; percepción 13 `'C'` 100% gravado. **Diferencia con el criterio:** el ISR quedó `'N'` / `no_withholding_table` con base 3,106.26, no `exemption_not_calculated` con base NULL, porque `calculateIsrBreakdown` revisa primero la tabla de retención y no existe tarifa quincenal 2026. Es el orden de la spec 70; con una tarifa quincenal cargada sí sería `exemption_not_calculated`.
   - **Pendientes de verificar:** el caso no semanal resultó con una diferencia respecto al criterio (ver Registro, línea siguiente), `salario_diario_fiscal = 0`, el día ya pagado en otro periodo, y la comparación contra los helpers de TypeScript.
 - **2026-10-13 — Paso 5 (lecturas).** `getPayrollEmployeeDetail` carga `overtimeDays` del tipo seleccionado (con `o.tipo_nomina = @tipo_nomina`) y `getOvertimePage` filtra la marca "Pagada en …" a `tipo_nomina = 'O'`. La página del Detalle ya renderizaba `PayrollOvertimeDaysList` para los dos tipos, y las líneas de percepción ya usaban el `salario_diario` del snapshot, así que no hubo cambio de UI. Verificado en el navegador (rol 4) con el empleado 1007: Detalle fiscal con "9 h × $87.50" y "5 h × $131.25", gravado/exento y notas de regla, total gravado $3,500.01 igual a la base de Deducciones, y lista de 6 días con total $1,443.76 (= 787.50 + 656.26); Procesar fiscal con "$1,443.76 · 9h dobles · 5h triples"; Horas extra con una sola marca "Pagada en NOM-2026-S01" por día.
+- **2026-10-13 — Paso 6 (aviso "Recalcula" por tipo).** `isOvertimeRecalculationNeeded` evalúa los cuatro casos para los renglones `'O'` y `'F'`, cada uno contra el desglose de su tipo (el caso 1 compara `po.tipo_nomina = pe.tipo_nomina` y exige `salario_diario > 0`, igual que la elegibilidad del cálculo). Verificado con rollback sobre `NOM-2026-S01` (resultado 0 = sin aviso, 1 = aviso): recién recalculado 0; cambiar horas de un día pagado 1; rechazar un día pagado 1; cambiar el límite 9 → 8 1; borrar solo el desglose `'F'` del 1007 1; borrar solo el `'O'` 1; con el periodo en estatus 1 la consulta no devuelve fila y la función responde false. El estado de la BD quedó intacto (periodo en 2, límite 9, 12 filas de desglose).
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
