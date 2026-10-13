@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [61 — Pago de horas extra](61-nomina-horas-extra-pago.md): `#overtime_days`, el reparto cronológico doble/triple, las cinco columnas del snapshot, `payroll.period_employee_overtime` con su candado, `overtimePay.ts`, `isOvertimeRecalculationNeeded` y `PayrollOvertimeDaysList`.
   - [73 — Motor gravado/exento](73-nomina-motor-gravado-exento.md): `#fiscal_perception_lines`, la periodicidad `'S'` (solo en frecuencia semanal) y la base del ISR como suma de lo gravado.
@@ -37,7 +37,7 @@
     - cada uno solo si es mayor que 0, con `eventos = NULL`.
 
     El motor de la spec 73 calcula el gravado y el exento; el ISR suma lo gravado.
-  - **Periodos no semanales.** El importe se paga igual. La percepción 5 queda `'N'` / `unsupported_frequency`, y el ISR del empleado queda `'N'` / `exemption_not_calculated`. Es el comportamiento de la spec 73, sin código nuevo.
+  - **Periodos no semanales.** El importe se paga igual. La percepción 5 queda `'N'` / `unsupported_frequency`, y el ISR del empleado queda `'N'`: `no_withholding_table` si no existe tarifa de esa frecuencia (hoy no hay quincenal) o `exemption_not_calculated` si existe. Es el comportamiento de las specs 70 y 73, sin código nuevo.
   - `describePayrollCalculationError` reconoce el nombre nuevo del candado, con el mismo mensaje de la spec 61.
 - **Lecturas de `period_employee_overtime`.** Todas filtran por `tipo_nomina`:
   - el Detalle carga los días del tipo seleccionado;
@@ -214,21 +214,21 @@ Cada paso deja el sistema compilando y funcionando.
 | 5 Horas extra dobles (`'M'` 50%, tope 586.55) | 731.25 | 365.63 | 365.62 |
 | 13 Horas extra triples (`'N'`) | 182.82 | 0.00 | 182.82 |
 
-- [ ] `splitOvertimeHours` y `calculateOvertimeDayAmounts` dan exactamente la primera tabla con salario 325.
-- [ ] `calculatePerceptionExemption` da exactamente la segunda tabla. Con un sueldo de 2,275.00, la base gravable es 2,823.44.
+- [x] `splitOvertimeHours` y `calculateOvertimeDayAmounts` dan exactamente la primera tabla con salario 325.
+- [x] `calculatePerceptionExemption` da exactamente la segunda tabla. Con un sueldo de 2,275.00, la base gravable es 2,823.44.
 
 **Cálculo** (`NOM-2026-S01` recalculado, con el empleado de prueba del paso 1)
 
 - [x] El renglón `'F'` tiene las mismas `horas_extra_dobles`, `horas_extra_triples` y `limite_horas_dobles_aplicado` que su renglón `'O'`. Sus importes son la suma de los importes diarios a `salario_diario_fiscal / 8 × 2|3`, redondeados por día.
-- [ ] El desglose `'F'` tiene los mismos días, horas y reparto que el `'O'`, con los importes del salario fiscal, y coincide al centavo con el helper.
+- [x] El desglose `'F'` tiene los mismos días, horas y reparto que el `'O'`, con los importes del salario fiscal, y coincide al centavo con el helper.
 - [x] El renglón `'F'` tiene exactamente un renglón de percepción 5 y uno 13 (cada uno solo si su importe es mayor que 0). El exento y el gravado siguen la regla del catálogo.
 - [x] `isr_base_gravable` del renglón `'F'` = `importe_salario` + gravado de la 5 + gravado de la 13. El ISR coincide con `calculateIsrBreakdown` sobre esa base.
-- [ ] Los renglones `'O'`, su desglose, y los renglones `'F'` de los empleados sin horas extra son idénticos a la foto del paso 1, salvo `calculated_at` y `calculated_by`.
-- [ ] Un empleado con `salario_diario_fiscal = 0` no tiene renglón `'F'` ni desglose `'F'`, y sus horas `'O'` se pagan igual.
-- [ ] Un día ya pagado en `'F'` por otro periodo no se vuelve a pagar en `'F'` ni consume horas dobles fiscales del periodo actual.
-- [ ] Con rollback, en un periodo no semanal (`@exemption_is_weekly = 0`), el renglón 5 queda `'N'` / `unsupported_frequency`, el 13 queda `'C'` 100% gravado y el ISR queda `'N'` / `exemption_not_calculated` con la base en `NULL`.
-- [ ] Recalcular produce el mismo resultado. "Revertir" borra el desglose `'O'` y `'F'`, y los renglones de percepción del periodo.
-- [ ] Un choque del candado nuevo responde "Otro cálculo tomó algunas de estas horas extra al mismo tiempo. Intenta de nuevo.", nunca un error 500.
+- [x] Los renglones `'O'`, su desglose, y los renglones `'F'` de los empleados sin horas extra son idénticos a la foto del paso 1, salvo `calculated_at` y `calculated_by`.
+- [x] Un empleado con `salario_diario_fiscal = 0` no tiene renglón `'F'` ni desglose `'F'`, y sus horas `'O'` se pagan igual.
+- [x] Un día ya pagado en `'F'` por otro periodo no se vuelve a pagar en `'F'` ni consume horas dobles fiscales del periodo actual.
+- [x] En un periodo no semanal (`@exemption_is_weekly = 0`), el importe de las horas extra se paga igual, el renglón 5 queda `'N'` / `unsupported_frequency` sin exento ni gravado, el 13 queda `'C'` 100% gravado y el ISR queda `'N'`: con motivo `no_withholding_table` mientras no exista tarifa de esa frecuencia (el caso de hoy, verificado con la frecuencia quincenal) o `exemption_not_calculated` con la base en `NULL` si existe la tarifa. Es el orden de la spec 70, sin código nuevo.
+- [x] Recalcular produce el mismo resultado. "Revertir" borra el desglose `'O'` y `'F'`, y los renglones de percepción del periodo.
+- [x] Un choque del candado nuevo responde "Otro cálculo tomó algunas de estas horas extra al mismo tiempo. Intenta de nuevo.", nunca un error 500.
 
 **Detalle y pantallas** (navegador, rol 4)
 
@@ -250,11 +250,11 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Transversal**
 
-- [ ] Ninguna action nueva o modificada devuelve datos a los roles 2, 3, 5 o 6; todas pasan por `assertPayrollAccess()`.
-- [ ] Ningún componente nuevo o modificado gana `"use client"`.
-- [ ] `tsc --noEmit` termina sin errores.
-- [ ] `docs/nomina.md` describe el desglose y el candado por tipo, las percepciones 5 y 13 generadas, y el párrafo inicial actualizado.
-- [ ] Las autorizaciones de prueba del paso 1 (si se crearon) están borradas, y `NOM-2026-S01` está recalculado e idéntico a la foto del paso 1.
+- [x] Ninguna action nueva o modificada devuelve datos a los roles 2, 3, 5 o 6; todas pasan por `assertPayrollAccess()`.
+- [x] Ningún componente nuevo o modificado gana `"use client"`.
+- [x] `tsc --noEmit` termina sin errores.
+- [x] `docs/nomina.md` describe el desglose y el candado por tipo, las percepciones 5 y 13 generadas, y el párrafo inicial actualizado.
+- [x] Las autorizaciones de prueba del paso 1 (si se crearon) están borradas, y `NOM-2026-S01` está recalculado e idéntico a la foto del paso 1.
 
 ## Decisiones tomadas y descartadas
 
@@ -280,7 +280,7 @@ Cada paso deja el sistema compilando y funcionando.
 | **Tocar `#overtime_days` y el `INSERT` del snapshot** puede alterar los importes operativos, que hoy son correctos. | La foto del paso 1 y el criterio que exige los renglones `'O'` y su desglose idénticos antes y después de recalcular `NOM-2026-S01`. |
 | **El ISR de los periodos en estatus 2 cambia al recalcular**, para quien tenga horas extra. | Es el resultado esperado. El aviso "Recalcula" extendido a `'F'` señala esos periodos, para que nadie pague con el ISR viejo. |
 | **Trabajador de salario mínimo:** sus horas extra deberían estar 100% exentas, y esta spec les aplica la regla general (se retiene de más). | En el paso 1 se revisa si algún `salario_diario_fiscal` es igual al salario mínimo vigente y se anota en el Registro. La exención quedó fuera de alcance y va en su propia spec. |
-| **En periodos no semanales, el ISR del empleado con horas extra queda "No calculado".** | Hoy el ISR solo se calcula en semanales (spec 70), así que no se pierde nada que hoy funcione. El aviso `IsrNotCalculatedNotice` ya lo muestra. |
+| **En periodos no semanales, el ISR del empleado con horas extra queda "No calculado"** (`no_withholding_table` sin tarifa de esa frecuencia, `exemption_not_calculated` con ella). | Hoy el ISR solo se calcula en semanales (spec 70), así que no se pierde nada que hoy funcione. El aviso `IsrNotCalculatedNotice` ya lo muestra. |
 | **Cambio de frecuencia:** con candados por tipo, un mismo día podría pagarse en `'O'` en un periodo y en `'F'` en otro. | Solo pasa si dos periodos de distinta frecuencia cubren la misma fecha (ya documentado en la spec 61). Cada tipo lo paga una sola vez; se anota en `docs/nomina.md`. |
 | **Otro código usa el nombre del candado viejo** y deja de reconocer el choque. | Solo `OVERTIME_DAY_ALREADY_PAID_CONSTRAINT` lo usa (verificado con búsqueda); se cambia en el mismo paso que el DDL. |
 | **El CFDI necesitará `Dias`, `TipoHoras` y `HorasExtra`** por tipo de hora. | El desglose `'F'` congela los días, las horas y el reparto por tipo. La spec de timbrado lo lee sin recalcular nada. |
@@ -308,6 +308,14 @@ Cada paso deja el sistema compilando y funcionando.
   - **Pendientes de verificar:** el caso no semanal resultó con una diferencia respecto al criterio (ver Registro, línea siguiente), `salario_diario_fiscal = 0`, el día ya pagado en otro periodo, y la comparación contra los helpers de TypeScript.
 - **2026-10-13 — Paso 5 (lecturas).** `getPayrollEmployeeDetail` carga `overtimeDays` del tipo seleccionado (con `o.tipo_nomina = @tipo_nomina`) y `getOvertimePage` filtra la marca "Pagada en …" a `tipo_nomina = 'O'`. La página del Detalle ya renderizaba `PayrollOvertimeDaysList` para los dos tipos, y las líneas de percepción ya usaban el `salario_diario` del snapshot, así que no hubo cambio de UI. Verificado en el navegador (rol 4) con el empleado 1007: Detalle fiscal con "9 h × $87.50" y "5 h × $131.25", gravado/exento y notas de regla, total gravado $3,500.01 igual a la base de Deducciones, y lista de 6 días con total $1,443.76 (= 787.50 + 656.26); Procesar fiscal con "$1,443.76 · 9h dobles · 5h triples"; Horas extra con una sola marca "Pagada en NOM-2026-S01" por día.
 - **2026-10-13 — Paso 6 (aviso "Recalcula" por tipo).** `isOvertimeRecalculationNeeded` evalúa los cuatro casos para los renglones `'O'` y `'F'`, cada uno contra el desglose de su tipo (el caso 1 compara `po.tipo_nomina = pe.tipo_nomina` y exige `salario_diario > 0`, igual que la elegibilidad del cálculo). Verificado con rollback sobre `NOM-2026-S01` (resultado 0 = sin aviso, 1 = aviso): recién recalculado 0; cambiar horas de un día pagado 1; rechazar un día pagado 1; cambiar el límite 9 → 8 1; borrar solo el desglose `'F'` del 1007 1; borrar solo el `'O'` 1; con el periodo en estatus 1 la consulta no devuelve fila y la función responde false. El estado de la BD quedó intacto (periodo en 2, límite 9, 12 filas de desglose).
+- **2026-10-13 — Paso 7 (documentación y limpieza).** `docs/nomina.md` actualizado: párrafo inicial, "Horas extra: pago (spec 61)" (desglose y candado por tipo, aviso por tipo, Detalle fiscal, riesgos no semanales y fuera de alcance) y "Gravado/exento (spec 73)" (las percepciones 5 y 13 ya se generan). Se borraron las autorizaciones de prueba 48, 49 y 50 (el aviso "Recalcula" apareció solo, como debe) y se recalculó `NOM-2026-S01`. Comparación contra la foto del paso 1: los 5 renglones `'O'` y su desglose son idénticos. Los 4 renglones `'F'` sin horas extra son idénticos salvo `limite_horas_dobles_aplicado` (0 → 9, que la spec exige congelar también en `'F'`). El 1007 `'F'` ahora paga 6 h dobles ($525.00) con sus 3 días en el desglose `'F'`, su percepción 5 y un ISR retenido de $212.48 (antes $60.58, sin subsidio): es el resultado esperado de pagar horas extra fiscales, no una regresión.
+  - **Helpers TS (ejecutados con `node --experimental-strip-types`):** `splitOvertimeHours` y `calculateOvertimeDayAmounts` dan la primera tabla del ejemplo (9 h dobles, 1.5 triples, 731.25 y 182.82); `calculatePerceptionExemption` da exento 365.63 / gravado 365.62 para la 5 y 0 / 182.82 para la 13, y la base con sueldo 2,275.00 es 2,823.44. Con las horas de prueba del 1007 (4, 1, 2.5, 3, 2.5 y 1 h a 350/día) el helper coincide al centavo con el desglose `'F'` que guardó el SQL.
+- **2026-10-13 — Pruebas de los criterios pendientes (datos temporales, restaurados).**
+  - **`salario_diario_fiscal = 0`:** con el 1007 en 0 y recalculado desde el navegador, solo tiene renglón `'O'` (6 h dobles, $600.00) y el desglose solo trae sus 3 días `'O'`. Restaurado a 350 y recalculado.
+  - **Día ya pagado en `'F'` por otro periodo (rollback, SQL extraído de `calculatePayrollPeriod`, límite 3 h):** sin pago previo `'F'` reparte 16 sep 1 h dobles, 17 sep 2 d + 0.5 t, 19 sep 2.5 t; con el 16 sep ya pagado en `'F'`, ese día desaparece de `'F'` y no consume horas dobles (17 sep pasa a 2.5 d, 19 sep a 0.5 d + 2 t). El `'O'` no cambia.
+  - **Choque del candado:** un segundo `'F'` del mismo `(id_empleado, fecha)` falla con `UQ_period_employee_overtime_empleado_fecha_tipo`, el nombre que `describePayrollCalculationError` reconoce para devolver "Otro cálculo tomó algunas de estas horas extra al mismo tiempo. Intenta de nuevo.". No se forzó una carrera real entre dos cálculos.
+  - **Revertir:** desde el navegador, `NOM-2026-S01` quedó en estatus 1 con 0 renglones, 0 desglose, 0 percepciones y 0 deducciones. Se volvió a calcular y el resultado es idéntico al del paso 7.
+  - **Caso no semanal:** criterio ajustado (decisión del usuario, opción 1) para aceptar `no_withholding_table` cuando no existe la tarifa de esa frecuencia; con ello queda marcado.
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
