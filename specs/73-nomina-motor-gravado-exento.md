@@ -332,7 +332,7 @@ export interface IPeriodEmployeePerception {
 - **Sí:** el gravado es la resta del exento. Así gravado + exento = importe al centavo, que es lo que valida el SAT.
 - **Sí:** el acumulado de `A` y `M` solo cuenta periodos **anteriores** (`fecha_fin`, luego `id_period`). Así el resultado no depende del orden en que se calcula. Recalcular un periodo anterior puede cambiar lo que debió exentar uno posterior; el aviso "Recalcula" del posterior lo detecta.
 - **No:** acumular por fecha de cálculo. Recalcular un periodo viejo cambiaría lo exentado según el día en que alguien apretó el botón.
-- **Propuesta, confirmar con el contador:** el año y el mes del acumulado son los de `fecha_fin`, igual que la tarifa del ISR (spec 70). Legalmente el ISR se causa al pago (`fecha_pago`). Las dos fechas solo difieren en un periodo que se paga en diciembre y termina en enero. Si se cambia, se cambian **las dos a la vez** (`ISR_PARAMETERS_SQL` y `EXEMPTION_APPLY_SQL`) para que la tarifa y los topes usen el mismo año.
+- **Sí (confirmado por el usuario, 2026-10-13):** el año y el mes del acumulado son los de `fecha_fin`, igual que la tarifa del ISR (spec 70). **No:** `fecha_pago`. Las dos fechas solo difieren en un periodo que se paga en diciembre y termina en enero. Si algún día se cambia, se cambian **las dos a la vez** (`ISR_PARAMETERS_SQL` y `EXEMPTION_APPLY_SQL`) para que la tarifa y los topes usen el mismo año.
 - **Sí:** el acumulado no filtra por sucursal ni frecuencia. El tope es por persona.
 - **No:** limitar el acumulado a periodos Aprobados o Pagados. Esos estatus todavía no existen; cuando existan, la spec del estatus 3 debe decidir si cambia el criterio.
 - **Sí:** la periodicidad `S` solo se acepta en frecuencia semanal; en otras queda "No calculado". Partir un periodo quincenal en semanas calendario se hace cuando llegue la tarifa quincenal y haya horas extra fiscales que lo necesiten.
@@ -353,7 +353,7 @@ export interface IPeriodEmployeePerception {
 | **Olvidar la UMA de febrero:** se sigue usando la de enero y los topes salen bajos. | El Detalle muestra `uma_vigente_desde`. Mismo riesgo que la spec 69, ya anotado en la operación anual. |
 | **Dependencia entre periodos en `A` y `M`:** recalcular un periodo anterior deja mal el exento de uno posterior ya calculado. | El aviso del posterior lo detecta (compara `exento_consumido_previo`). Cuando exista Aprobada, un periodo aprobado no se recalcula. |
 | **Dos cálculos simultáneos** de periodos del mismo empleado leen cada uno el acumulado viejo del otro. | Hoy hay un periodo por frecuencia y sucursal a la vez y el caso es raro. El aviso "Recalcula" lo detecta en el periodo posterior. |
-| **El subsidio cambia de comportamiento** cuando haya exentos: el derecho se compara con la base gravada, no con el total pagado. | Es la regla del decreto (ingresos que sirven de base para el impuesto). Confirmar con el contador al llegar la primera percepción exenta. |
+| **El subsidio cambia de comportamiento** cuando haya exentos: el derecho se compara con la base gravada, no con el total pagado. | Es la regla del decreto (ingresos que sirven de base para el impuesto). Confirmado por el usuario el 2026-10-13: el derecho se compara con la base gravada. |
 | **El SQL y el helper TS divergen** por redondeo. | Los dos redondean igual y en el mismo orden; hay criterios con casos de redondeo y la prueba de integración. Si difieren, manda el SQL. |
 | **`calculatePayrollPeriod` encadena un paso más** entre el snapshot y el ISR. | El paso solo inserta en la tabla nueva. Criterio que compara las columnas anteriores antes y después. |
 | **Una línea guardada sin entrada en `PERCEPTION_LINE_KEY_BY_ID`** no se vería en el Detalle. | El Detalle agrega al final cualquier renglón guardado sin línea, con la descripción del catálogo. |
@@ -365,9 +365,11 @@ export interface IPeriodEmployeePerception {
   - **9 Vales de despensa** está en `N`, pero su `id_taxed_exempt` legado es 3 ("Gravado y Exento"). El motor solo lee `tipo_limite_exencion`, así que hoy se trata como gravado al 100%. Revisarlo cuando se usen vales (límite de previsión social, fuera de alcance).
   - Solo hay una percepción de horas extra (5, `M`); las triples, que son 100% gravadas, necesitan su propio renglón de catálogo en la spec de horas extra fiscales.
   - `NOM-2026-S01` (id 38, estatus 2, `fecha_fin` 2026-09-20, `fecha_pago` 2026-09-18) tiene 5 renglones `'F'` en `'C'`; sus bases y retenidos coinciden con la tabla de la spec 70. La `UMA_DIARIA` vigente a esa fecha es 117.31 (desde 2026-02-01).
-- **Pendiente antes de aprobar:**
-  - Confirmar con el contador el criterio de año y mes (`fecha_fin` contra `fecha_pago`).
-  - Confirmar que el derecho al subsidio se compara con la base gravada.
+- **2026-10-13 — Pendientes cerrados** (durante la especificación de la spec 75). El usuario confirmó:
+  - el año y el mes salen de `fecha_fin`, no de `fecha_pago`;
+  - el derecho al subsidio se compara con la base gravada.
+
+  El código ya calculaba así; no hubo cambios.
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec

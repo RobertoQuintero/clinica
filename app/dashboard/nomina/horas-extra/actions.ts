@@ -482,7 +482,8 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
             AND oa.[fecha] BETWEEN CAST(@fecha_inicio AS date) AND CAST(@fecha_fin AS date)`,
         periodParams,
       ),
-      // Días ya pagados por algún periodo (spec 61): el UNIQUE (id_empleado, fecha) los indexa.
+      // Días ya pagados por algún periodo (specs 61 y 75): el UNIQUE (id_empleado, fecha, tipo_nomina) los indexa.
+      // Solo el desglose 'O': los dos tipos salen del mismo batch, así que es el mismo periodo y una sola marca.
       db.queryParams(
         `SELECT po.[id_empleado], CONVERT(varchar(10), po.[fecha], 120) AS fecha, p.[codigo]
            FROM [CentroPodologico].[payroll].[period_employee_overtime] po
@@ -490,6 +491,7 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
            JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pe.[id_period]
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = po.[id_empleado]
           WHERE ${ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS}
+            AND po.[tipo_nomina] = 'O'
             AND po.[fecha] BETWEEN CAST(@fecha_inicio AS date) AND CAST(@fecha_fin AS date)`,
         periodParams,
       ),

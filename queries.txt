@@ -2393,6 +2393,27 @@ IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions] WHERE [i
 COMMIT;
 GO
 
+-- Spec 75: el desglose de horas extra se separa por tipo de nómina. Las filas existentes son operativas.
+-- El default solo sirve para llenar las filas viejas; se quita para que cada INSERT diga su tipo.
+ALTER TABLE [CentroPodologico].[payroll].[period_employee_overtime]
+    ADD [tipo_nomina] [char](1) NOT NULL
+        CONSTRAINT [DF_period_employee_overtime_tipo] DEFAULT ('O')
+GO
+ALTER TABLE [CentroPodologico].[payroll].[period_employee_overtime] DROP CONSTRAINT [DF_period_employee_overtime_tipo]
+GO
+ALTER TABLE [CentroPodologico].[payroll].[period_employee_overtime] WITH CHECK
+    ADD CONSTRAINT [CK_period_employee_overtime_tipo] CHECK ([tipo_nomina] IN ('O', 'F'))
+GO
+
+-- Un día se paga una sola vez por tipo de nómina en toda la historia.
+ALTER TABLE [CentroPodologico].[payroll].[period_employee_overtime] DROP CONSTRAINT [UQ_period_employee_overtime_empleado_fecha]
+GO
+ALTER TABLE [CentroPodologico].[payroll].[period_employee_overtime]
+    ADD CONSTRAINT [UQ_period_employee_overtime_empleado_fecha_tipo] UNIQUE ([id_empleado], [fecha], [tipo_nomina])
+GO
+
+
+
 ------------ OTROS PAGOS -----------------------
 
 CREATE TABLE [payroll].[other_payments](
