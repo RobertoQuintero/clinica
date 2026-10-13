@@ -981,31 +981,36 @@ export async function calculatePayrollPeriod(
           AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_product_sales] ps
                            WHERE ps.[origen] = 'V' AND ps.[id_linea_origen] = vd.[id_venta_detalle]);
 
-       -- Spec 61: días con horas extra autorizadas en el rango y aún no pagados por ningún periodo.
-       -- Solo de empleados elegibles a la nómina operativa y de empresas con configuración. Las primeras
-       -- limite_horas_dobles_periodo horas (en orden cronológico) son dobles y el resto triples; el día que cruza se parte.
+       -- Spec 61 y 75: días con horas extra autorizadas en el rango y aún no pagados por ningún periodo, por tipo de
+       -- nómina ('O' con salario_diario, 'F' con salario_diario_fiscal). Solo de empleados elegibles a la nómina
+       -- operativa y de empresas con configuración. Las primeras limite_horas_dobles_periodo horas (en orden
+       -- cronológico, por empleado y tipo) son dobles y el resto triples; el día que cruza se parte.
        ;WITH authorized_days AS (
-         SELECT a.[id_empleado], a.[fecha], a.[horas_autorizadas] AS horas,
-                s.[limite_horas_dobles_periodo] AS limite, e.[salario_diario],
-                SUM(a.[horas_autorizadas]) OVER (PARTITION BY a.[id_empleado]
+         SELECT a.[id_empleado], salary.[tipo_nomina], a.[fecha], a.[horas_autorizadas] AS horas,
+                s.[limite_horas_dobles_periodo] AS limite, salary.[salario_diario],
+                SUM(a.[horas_autorizadas]) OVER (PARTITION BY a.[id_empleado], salary.[tipo_nomina]
                                                  ORDER BY a.[fecha]
                                                  ROWS UNBOUNDED PRECEDING) - a.[horas_autorizadas] AS acumulado_previo
            FROM [CentroPodologico].[payroll].[overtime_authorizations] a
            JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = a.[id_empleado]
            JOIN [CentroPodologico].[payroll].[overtime_settings] s ON s.[id_empresa] = e.[id_empresa]
+          CROSS APPLY (VALUES ('O', e.[salario_diario]), ('F', e.[salario_diario_fiscal]))
+                      AS salary ([tipo_nomina], [salario_diario])
           WHERE a.[estado] = 'A'
+            AND salary.[salario_diario] > 0
             AND a.[fecha] >= @fecha_inicio AND a.[fecha] <= @fecha_fin
             AND a.[fecha] >= e.[fecha_ingreso]
             AND ${ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS}
             AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_overtime] po
-                             WHERE po.[id_empleado] = a.[id_empleado] AND po.[fecha] = a.[fecha])
+                             WHERE po.[id_empleado] = a.[id_empleado] AND po.[fecha] = a.[fecha]
+                               AND po.[tipo_nomina] = salary.[tipo_nomina])
        ), split_days AS (
          SELECT d.*, CAST(CASE WHEN d.limite - d.acumulado_previo <= 0 THEN 0
                                WHEN d.limite - d.acumulado_previo >= d.horas THEN d.horas
                                ELSE d.limite - d.acumulado_previo END AS decimal(4,1)) AS horas_dobles
            FROM authorized_days d
        )
-       SELECT sd.[id_empleado], sd.[fecha], sd.horas AS horas_autorizadas,
+       SELECT sd.[id_empleado], sd.[tipo_nomina], sd.[fecha], sd.horas AS horas_autorizadas,
               sd.horas_dobles, CAST(sd.horas - sd.horas_dobles AS decimal(4,1)) AS horas_triples,
               ROUND(sd.horas_dobles * sd.[salario_diario] * 2 / 8, 2) AS importe_dobles,
               ROUND((sd.horas - sd.horas_dobles) * sd.[salario_diario] * 3 / 8, 2) AS importe_triples
@@ -1112,7 +1117,7 @@ export async function calculatePayrollPeriod(
               ISNULL(product_sales.piezas, 0), ISNULL(product_sales.importe, 0),
               ISNULL(overtime.dobles, 0), ISNULL(overtime.triples, 0),
               ISNULL(overtime.importe_dobles, 0), ISNULL(overtime.importe_triples, 0),
-              CASE WHEN salary.tipo_nomina = 'O' THEN ISNULL(overtime_settings.[limite_horas_dobles_periodo], 0) ELSE 0 END,
+              ISNULL(overtime_settings.[limite_horas_dobles_periodo], 0),
               ${PUNCTUALITY_BONUS_SELECT_SQL},
               ${ATTENDANCE_BONUS_SELECT_SQL},
               ${SHIFT_EXTENSION_BONUS_SELECT_SQL},
@@ -1213,7 +1218,7 @@ export async function calculatePayrollPeriod(
           SELECT SUM(od.[horas_dobles]) AS dobles, SUM(od.[horas_triples]) AS triples,
                  SUM(od.[importe_dobles]) AS importe_dobles, SUM(od.[importe_triples]) AS importe_triples
             FROM #overtime_days od
-           WHERE salary.tipo_nomina = 'O' AND od.[id_empleado] = e.[id_empleado]
+           WHERE od.[id_empleado] = e.[id_empleado] AND od.[tipo_nomina] = salary.tipo_nomina
         ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
@@ -1277,15 +1282,16 @@ export async function calculatePayrollPeriod(
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period] = @id_period AND pe.[id_empleado] = s.[id_empleado] AND pe.[tipo_nomina] = 'O';
 
-       -- Desglose y candado anti doble pago de horas extra: solo los días de quien entró a la nómina operativa.
+       -- Spec 75: desglose y candado anti doble pago de horas extra, por tipo de nómina: cada día se une al renglón
+       -- de su tipo. Un empleado sin renglón de ese tipo (salario en 0) ni paga ni bloquea el día en ese tipo.
        INSERT INTO [CentroPodologico].[payroll].[period_employee_overtime]
          (id_period_employee, id_empleado, tipo_nomina, fecha, horas_autorizadas, horas_dobles, horas_triples,
           importe_dobles, importe_triples)
-       SELECT pe.[id_period_employee], od.[id_empleado], pe.[tipo_nomina], od.[fecha], od.[horas_autorizadas],
+       SELECT pe.[id_period_employee], od.[id_empleado], od.[tipo_nomina], od.[fecha], od.[horas_autorizadas],
               od.[horas_dobles], od.[horas_triples], od.[importe_dobles], od.[importe_triples]
          FROM #overtime_days od
          JOIN [CentroPodologico].[payroll].[period_employees] pe
-           ON pe.[id_period] = @id_period AND pe.[id_empleado] = od.[id_empleado] AND pe.[tipo_nomina] = 'O';
+           ON pe.[id_period] = @id_period AND pe.[id_empleado] = od.[id_empleado] AND pe.[tipo_nomina] = od.[tipo_nomina];
 
        -- Spec 62: desglose y candado de faltas. Cada falta se descuenta una vez por tipo de nómina ('O' y 'F'): se
        -- omiten las que otro periodo ya descontó para ese mismo tipo (el mismo criterio que cuenta dias_falta arriba).
