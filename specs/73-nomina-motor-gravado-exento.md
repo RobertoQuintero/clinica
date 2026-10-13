@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Nómina: cálculo de salario](53-nomina-calculo-salario.md): los renglones fiscales `'F'`, `importe_salario` y `calculatePayrollPeriod`.
   - [54 — Detalle de percepciones por empleado](54-nomina-detalle-percepciones-empleado.md): `buildPerceptionLines` y la tarjeta "Percepciones totales".
@@ -299,16 +299,16 @@ export interface IPeriodEmployeePerception {
 - [x] Al recalcular `NOM-2026-S01`, cada uno de los 5 renglones `'F'` (empleados 2, 5, 6, 1006 y 1007) tiene exactamente un renglón `id_perception = 1`, `'C'`, tipo `N`, exento 0.00 y gravado = `importe_salario`.
 - [x] Las 18 columnas del ISR y las filas de deducción de `NOM-2026-S01` son idénticas antes y después de recalcular (empleado 2: base 2,275.00, retenido 41.54; empleado 6: base 3,900.00, retenido 402.95).
 - [x] Las columnas de los renglones `'O'` y las columnas de `'F'` anteriores a esta spec no cambian; ningún renglón `'O'` tiene renglones de percepción.
-- [ ] **Prueba de integración con el catálogo cambiado.** Se cambia la percepción 1 a `U` 15 UMA `A` y se recalcula `NOM-2026-S01`. Cada renglón queda con exento 1,759.65 y gravado: 515.35 (2), 40.35 (5), 2,140.35 (6), 445.63 (1006) y 690.35 (1007). El ISR se calcula sobre ese gravado. Se devuelve la percepción a `N`, se recalcula y todo vuelve a los valores originales.
-- [ ] **Acumulado.** Con la misma regla temporal, se crea y calcula `NOM-2026-S02`. Sus renglones tienen `exento_consumido_previo` = 1,759.65, exento 0.00 y gravado = el sueldo. Recalcular después `NOM-2026-S01` no cambia S01 (S02 no es anterior). Al terminar, se revierte y se borra S02, se devuelve el catálogo y se recalcula S01.
-- [ ] Sin `UMA_DIARIA` vigente (rollback) y con una percepción `U` en un renglón, ese renglón queda `'N'` / `missing_uma` y el ISR del empleado queda `'N'` / `exemption_not_calculated`, sin fila de deducción.
-- [ ] "Revertir" borra los renglones de percepción del periodo.
-- [ ] El helper TS y el SQL dan el mismo resultado en la prueba de integración.
+- [x] **Prueba de integración con el catálogo cambiado.** Se cambia la percepción 1 a `U` 15 UMA `A` y se recalcula `NOM-2026-S01`. Cada renglón queda con exento 1,759.65 y gravado: 515.35 (2), 40.35 (5), 2,140.35 (6), 445.63 (1006) y 690.35 (1007). El ISR se calcula sobre ese gravado. Se devuelve la percepción a `N`, se recalcula y todo vuelve a los valores originales.
+- [x] **Acumulado.** Con la misma regla temporal, se crea y calcula `NOM-2026-S02`. Sus renglones tienen `exento_consumido_previo` = 1,759.65, exento 0.00 y gravado = el sueldo. Recalcular después `NOM-2026-S01` no cambia S01 (S02 no es anterior). Al terminar, se revierte y se borra S02, se devuelve el catálogo y se recalcula S01.
+- [x] Sin `UMA_DIARIA` vigente (rollback) y con una percepción `U` en un renglón, ese renglón queda `'N'` / `missing_uma` y el ISR del empleado queda `'N'` / `exemption_not_calculated`, sin fila de deducción.
+- [x] "Revertir" borra los renglones de percepción del periodo.
+- [x] El helper TS y el SQL dan el mismo resultado en la prueba de integración.
 
 **Detalle**
 
 - [x] La vista fiscal muestra "Gravado" y "Exento" por línea, la nota de la regla y los totales; el total gravado es igual a la base de la tarjeta "Deducciones".
-- [ ] Un renglón `'N'` muestra "No calculado" y el motivo; un snapshot sin renglones muestra "—" y el aviso de recalcular.
+- [x] Un renglón `'N'` muestra "No calculado" y el motivo; un snapshot sin renglones muestra "—" y el aviso de recalcular.
 - [x] La vista operativa no cambia.
 
 **Aviso "Recalcula"**
@@ -319,8 +319,8 @@ export interface IPeriodEmployeePerception {
 
 **Acceso y documentación**
 
-- [ ] Ninguna action nueva o modificada devuelve datos a los roles 2, 3, 5 o 6; todas pasan por `assertPayrollAccess()`.
-- [ ] `docs/nomina.md` tiene la sección "Gravado/exento (spec 73)" y la base del ISR actualizada.
+- [x] Ninguna action nueva o modificada devuelve datos a los roles 2, 3, 5 o 6; todas pasan por `assertPayrollAccess()`.
+- [x] `docs/nomina.md` tiene la sección "Gravado/exento (spec 73)" y la base del ISR actualizada.
 
 ## Decisiones tomadas y descartadas
 
