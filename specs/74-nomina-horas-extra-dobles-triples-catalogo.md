@@ -147,14 +147,14 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Base de datos**
 
-- [ ] `payroll.perceptions` tiene la 5 como "Horas extra dobles", `019`, `'M'` 50%, 5 UMA, `'S'`, con su regla sin cambios.
-- [ ] `payroll.perceptions` tiene la 13 como "Horas extra triples":
+- [x] `payroll.perceptions` tiene la 5 como "Horas extra dobles", `019`, `'M'` 50%, 5 UMA, `'S'`, con su regla sin cambios.
+- [x] `payroll.perceptions` tiene la 13 como "Horas extra triples":
   - `019`, `'N'`, con `umas_limite`, `porcentaje_exento`, `periodicidad_limite` y `exempt_limit` en `NULL`;
   - `id_taxed_exempt` = el id de "Gravado" de `cat_taxed_exempt`;
   - `is_billed` y `status` iguales a los de la 5.
-- [ ] Correr el script dos veces deja exactamente una fila 13 y no lanza error.
-- [ ] Con el id 13 ocupado por otra percepción, o con la 5 distinta de `019` / `'M'`, el script lanza `THROW 50074` y no cambia ninguna fila (verificado con rollback).
-- [ ] El script está en `queries.txt`, bloque `NOMINA PAYROLL`, después de la spec 73.
+- [x] Correr el script dos veces deja exactamente una fila 13 y no lanza error.
+- [x] Con el id 13 ocupado por otra percepción, o con la 5 distinta de `019` / `'M'`, el script lanza `THROW 50074` y no cambia ninguna fila (verificado con rollback).
+- [x] El script está en `queries.txt`, bloque `NOMINA PAYROLL`, después de la spec 73.
 
 **Código**
 
@@ -220,6 +220,10 @@ Cada paso deja el sistema compilando y funcionando.
   - `payroll.cat_taxed_exempt`: 1 = Gravado, 2 = Exento, 3 = Gravado y Exento. `@id_gravado = 1`.
   - Ninguna fila de `period_employee_perceptions` tiene `id_perception` 5 o 13.
   - `CK_perceptions_exencion` acepta `'N'` con las tres columnas de la regla en `NULL`.
+- **2026-10-13 — Paso 2: script de datos.** Corrido contra la BD y documentado en `queries.txt` (después de la spec 73):
+  - Primera corrida: la 5 queda "Horas extra dobles" con su regla intacta; la 13 existe con `019`, `'N'`, regla en `NULL`, `id_taxed_exempt = 1` (Gravado), `is_billed = 0` y `status = 1` (copiados de la 5). El catálogo pasa a 13 filas.
+  - Segunda corrida: sin error y sin cambios; una sola fila 13.
+  - Rollback: con la 13 ocupada por otra descripción y con la 5 en `020`, el script lanza `THROW 50074` y el estado queda intacto.
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
