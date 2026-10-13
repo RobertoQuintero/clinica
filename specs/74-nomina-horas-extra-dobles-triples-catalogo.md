@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [69 — Parámetros fiscales](69-nomina-parametros-fiscales-isr.md): el catálogo `payroll.perceptions` con `CK_perceptions_exencion`, `getPerceptions` y la pestaña Percepciones.
   - [73 — Motor gravado/exento](73-nomina-motor-gravado-exento.md): `PERCEPTION_LINE_KEY_BY_ID`, `SALARY_PERCEPTION_ID` y el aviso "Recalcula", que compara contra el catálogo.

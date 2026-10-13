@@ -837,7 +837,7 @@ const PERIOD_NOT_CALCULABLE_MARKER = "PERIOD_NOT_CALCULABLE";
 const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
-const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha";
+const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha_tipo";
 const ABSENCE_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_absences_empleado_fecha_tipo";
 const LATENESS_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_lateness_empleado_fecha_tipo";
 
