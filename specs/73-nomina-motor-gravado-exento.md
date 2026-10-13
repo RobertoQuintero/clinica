@@ -290,9 +290,9 @@ export interface IPeriodEmployeePerception {
 | Aguinaldo, tope parcial | `U` 30 UMA, `A` | 2,000.00 | previo 3,000.00 | 519.30 | 1,480.70 |
 | Aguinaldo, tope agotado | `U` 30 UMA, `A` | 2,000.00 | previo 3,519.30 | 0.00 | 2,000.00 |
 
-- [ ] `calculatePerceptionExemption` da exactamente la tabla anterior.
-- [ ] Sin UMA, `U` y `M` quedan `'N'` / `missing_uma`, y `N`, `T` y `P` se calculan.
-- [ ] `S` en una frecuencia que no es semanal queda `'N'` / `unsupported_frequency`.
+- [x] `calculatePerceptionExemption` da exactamente la tabla anterior.
+- [x] Sin UMA, `U` y `M` quedan `'N'` / `missing_uma`, y `N`, `T` y `P` se calculan.
+- [x] `S` en una frecuencia que no es semanal queda `'N'` / `unsupported_frequency`.
 
 **Cálculo**
 

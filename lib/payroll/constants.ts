@@ -1,3 +1,4 @@
+import type { ExemptionSkipReason } from "@/interfaces/payroll_exemption";
 import type { IsrSkipReason } from "@/interfaces/payroll_isr";
 import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
 
@@ -54,4 +55,15 @@ export const ISR_SKIP_REASON_LABELS: Record<IsrSkipReason, string> = {
   no_withholding_table:       "No hay tarifa de retención para la frecuencia y el ejercicio del periodo",
   income_in_gap:              "El ingreso cae en un hueco de la tarifa de retención",
   missing_subsidy_parameters: "Faltan parámetros del subsidio para el empleo vigentes al fin del periodo",
+  exemption_not_calculated:   "Alguna percepción no tiene su gravado y exento calculados, así que la base del ISR es desconocida",
+};
+
+// Gravado/exento de la nómina fiscal (spec 73). id_perception del sueldo en el catálogo payroll.perceptions.
+export const SALARY_PERCEPTION_ID = 1;
+// id_perception -> clave de la línea de buildPerceptionLines que lo representa en el Detalle.
+// Cada spec de percepción nueva agrega su entrada.
+export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = { 1: "sueldo_base" };
+export const EXEMPTION_SKIP_REASON_LABELS: Record<ExemptionSkipReason, string> = {
+  missing_uma:           "No hay UMA diaria vigente al fin del periodo",
+  unsupported_frequency: "El tope semanal solo se calcula en periodos de frecuencia semanal",
 };

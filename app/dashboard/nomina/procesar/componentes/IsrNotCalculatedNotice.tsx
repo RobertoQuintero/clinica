@@ -16,6 +16,7 @@ const TAX_PARAMETERS_TAB_BY_REASON: Record<IsrSkipReason, TaxParametersTab> = {
   no_withholding_table: "withholding",
   income_in_gap: "withholding",
   missing_subsidy_parameters: "parameters",
+  exemption_not_calculated: "parameters",
 };
 
 const LINK_LABEL_BY_TAB: Record<TaxParametersTab, string> = {

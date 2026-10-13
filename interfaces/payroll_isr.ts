@@ -5,7 +5,8 @@ export type IsrStatus = "X" | "C" | "N";
 export type IsrSkipReason =
   | "no_withholding_table"         // sin tarifa para la frecuencia y el ejercicio
   | "income_in_gap"                // la base cae en un hueco de la tarifa
-  | "missing_subsidy_parameters";  // falta alguno de los 3 parámetros del subsidio vigentes a fecha_fin
+  | "missing_subsidy_parameters"  // falta alguno de los 3 parámetros del subsidio vigentes a fecha_fin
+  | "exemption_not_calculated";   // alguna percepción del renglón quedó sin gravado/exento (spec 73)
 
 /** Desglose del ISR congelado en `payroll.period_employees`. */
 export interface IIsrBreakdown {
