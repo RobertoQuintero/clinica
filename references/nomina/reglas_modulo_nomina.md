@@ -63,8 +63,8 @@ El sistema debe mostrar explícitamente en la vista de nómina los siguientes ca
   * Hasta **9 horas extras a la semana**: Se pagan al **doble** ($\$80.00\text{ MXN}$ aprox.).
   * **A partir de la hora 10 en adelante** (si excede 9 horas semanales): Se pagan al **triple**.
 * **Impacto Fiscal (ISR):** *(corregido en la spec 69; el límite de 9 horas aplica solo al pago doble/triple, no a la exención)*
-  * Las horas extra **dobles** están exentas en un **50% del importe pagado, con tope de 5 UMA por semana**; el resto es gravado. Ese tope se captura en `payroll.perceptions` (tipo `'M'`, 50%, 5 UMA, por semana).
-  * Las horas extra **triples** (a partir de la hora 10 de la semana) están **totalmente gravadas**.
+  * Las horas extra **dobles** están exentas en un **50% del importe pagado, con tope de 5 UMA por semana**; el resto es gravado. Ese tope se captura en `payroll.perceptions` (tipo `'M'`, 50%, 5 UMA, por semana), percepción **id 5** ("Horas extra dobles").
+  * Las horas extra **triples** (a partir de la hora 10 de la semana) están **totalmente gravadas**: percepción **id 13** ("Horas extra triples", tipo `'N'`). Ambas llevan la clave SAT `019`; el tipo de hora se distingue por el id del catálogo (spec 74).
 
 ### 2.5 Vacaciones y Prima Vacacional
 * **Tabla de Antigüedad y Días de Vacaciones (Ley Federal del Trabajo):**

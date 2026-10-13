@@ -171,18 +171,18 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Sin efecto en la nómina**
 
-- [ ] Al recalcular `NOM-2026-S01` son idénticos antes y después, salvo `calculated_at` y `calculated_by`:
+- [x] Al recalcular `NOM-2026-S01` son idénticos antes y después, salvo `calculated_at` y `calculated_by`:
   - las 18 columnas del ISR (empleado 2: base 2,275.00, retenido 41.54; empleado 6: base 3,900.00, retenido 402.95);
   - las filas de `period_employee_deductions`;
   - los renglones de `period_employee_perceptions`.
-- [ ] Ningún renglón de `period_employee_perceptions` tiene `id_perception` 5 o 13.
-- [ ] El aviso "Recalcula" de gravado/exento no aparece en `NOM-2026-S01`.
-- [ ] El Detalle operativo y el fiscal del empleado 2 en `NOM-2026-S01` se ven igual que antes de la spec.
+- [x] Ningún renglón de `period_employee_perceptions` tiene `id_perception` 5 o 13.
+- [x] El aviso "Recalcula" de gravado/exento no aparece en `NOM-2026-S01`.
+- [x] El Detalle operativo y el fiscal del empleado 2 en `NOM-2026-S01` se ven igual que antes de la spec.
 
 **Documentación**
 
-- [ ] `docs/nomina.md` lista dobles `'M'` (id 5) y triples `'N'` (id 13) en la sección de la spec 69, y ya no lista la separación como pendiente en la sección de la spec 73.
-- [ ] `references/nomina/reglas_modulo_nomina.md` (2.4) dice qué id corresponde a cada tipo de hora.
+- [x] `docs/nomina.md` lista dobles `'M'` (id 5) y triples `'N'` (id 13) en la sección de la spec 69, y ya no lista la separación como pendiente en la sección de la spec 73.
+- [x] `references/nomina/reglas_modulo_nomina.md` (2.4) dice qué id corresponde a cada tipo de hora.
 
 ## Decisiones tomadas y descartadas
 
@@ -227,6 +227,11 @@ Cada paso deja el sistema compilando y funcionando.
 - **2026-10-13 — Paso 3: constantes y orden del catálogo.** `lib/payroll/constants.ts` exporta las dos constantes y `PERCEPTION_LINE_KEY_BY_ID` tiene tres entradas; `getPerceptions` ordena por `clave_sat, id_perception`. `tsc --noEmit` sin errores.
   - Navegador (rol 4): dobles "50% con tope de 5 UMA por semana" y, justo debajo, triples "Sin exención". El usuario guardó la 13 como "Totalmente exenta" desde `PerceptionModal` y la devolvió a "Sin exención".
   - BD tras la prueba: la 13 volvió a `'N'` con la regla en `NULL`; las demás percepciones conservan descripción y regla del Paso 1.
+- **2026-10-13 — Paso 4: sin efecto en la nómina calculada.** Se tomó una foto de `NOM-2026-S01` (periodo 38) antes y después de recalcular:
+  - `period_employees` (18 columnas del ISR incluidas), `period_employee_deductions` y `period_employee_perceptions` son idénticos, salvo `calculated_at`/`calculated_by` y los ids sustitutos (el recálculo reemplaza las filas). Empleado 2: base 2,275.00, retenido 41.54; empleado 6: base 3,900.00, retenido 402.95.
+  - Ningún renglón tiene `id_perception` 5 o 13.
+  - El aviso "Recalcula" no aparece antes ni después. El Detalle fiscal del empleado 2 muestra el mismo desglose (sueldo $2,275.00, ISR $41.54, neto $2,233.46).
+- **2026-10-13 — Paso 5: documentación.** `docs/nomina.md`: "Captured so far" lista dobles `'M'` (id 5) y triples `'N'` (id 13); se quitó la separación de dobles y triples de los pendientes de la spec 73; se anotó que `PERCEPTION_LINE_KEY_BY_ID` ya mapea 5 y 13. `references/nomina/reglas_modulo_nomina.md` (2.4): id 5 dobles, id 13 triples, ambas `019`.
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
