@@ -104,7 +104,7 @@ export async function getPerceptions(): Promise<ActionResult<IPerception[]>> {
               ISNULL(is_billed, 0)             AS is_billed,
               ISNULL(status, 0)                AS status
          FROM [CentroPodologico].[payroll].[perceptions]
-        ORDER BY id_perception`,
+        ORDER BY clave_sat, id_perception`,
     );
     return { ok: true, data: rows as IPerception[] };
   } catch (error) {

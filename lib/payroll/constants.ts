@@ -60,9 +60,17 @@ export const ISR_SKIP_REASON_LABELS: Record<IsrSkipReason, string> = {
 
 // Gravado/exento de la nómina fiscal (spec 73). id_perception del sueldo en el catálogo payroll.perceptions.
 export const SALARY_PERCEPTION_ID = 1;
+// Spec 74: horas extra en el catálogo payroll.perceptions. Las dos son clave SAT 019;
+// las dobles llevan exención ('M' 50%, 5 UMA por semana) y las triples son 100% gravadas ('N').
+export const OVERTIME_DOUBLE_PERCEPTION_ID = 5;
+export const OVERTIME_TRIPLE_PERCEPTION_ID = 13;
 // id_perception -> clave de la línea de buildPerceptionLines que lo representa en el Detalle.
 // Cada spec de percepción nueva agrega su entrada.
-export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = { 1: "sueldo_base" };
+export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = {
+  [SALARY_PERCEPTION_ID]:          "sueldo_base",
+  [OVERTIME_DOUBLE_PERCEPTION_ID]: "horas_extra_dobles",
+  [OVERTIME_TRIPLE_PERCEPTION_ID]: "horas_extra_triples",
+};
 export const EXEMPTION_SKIP_REASON_LABELS: Record<ExemptionSkipReason, string> = {
   missing_uma:           "No hay UMA diaria vigente al fin del periodo",
   unsupported_frequency: "El tope semanal solo se calcula en periodos de frecuencia semanal",

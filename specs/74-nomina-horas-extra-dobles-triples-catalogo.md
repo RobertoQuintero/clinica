@@ -158,16 +158,16 @@ Cada paso deja el sistema compilando y funcionando.
 
 **Código**
 
-- [ ] `lib/payroll/constants.ts` exporta `OVERTIME_DOUBLE_PERCEPTION_ID = 5` y `OVERTIME_TRIPLE_PERCEPTION_ID = 13`.
-- [ ] `PERCEPTION_LINE_KEY_BY_ID` tiene exactamente tres entradas: `1 → "sueldo_base"`, `5 → "horas_extra_dobles"` y `13 → "horas_extra_triples"`. Las tres claves existen en `buildPerceptionLines`.
-- [ ] `getPerceptions` ordena por `clave_sat, id_perception`.
-- [ ] `tsc --noEmit` termina sin errores.
+- [x] `lib/payroll/constants.ts` exporta `OVERTIME_DOUBLE_PERCEPTION_ID = 5` y `OVERTIME_TRIPLE_PERCEPTION_ID = 13`.
+- [x] `PERCEPTION_LINE_KEY_BY_ID` tiene exactamente tres entradas: `1 → "sueldo_base"`, `5 → "horas_extra_dobles"` y `13 → "horas_extra_triples"`. Las tres claves existen en `buildPerceptionLines`.
+- [x] `getPerceptions` ordena por `clave_sat, id_perception`.
+- [x] `tsc --noEmit` termina sin errores.
 
 **Pestaña Percepciones** (navegador, rol 4)
 
-- [ ] "Horas extra dobles" aparece con "50% con tope de 5 UMA por semana", y en la fila siguiente aparece "Horas extra triples" con el tope de tipo `'N'`.
-- [ ] La 13 se abre en `PerceptionModal`, acepta un cambio de regla y lo guarda. Al devolverla a `'N'`, el catálogo queda como al terminar el paso 2.
-- [ ] Ninguna otra percepción cambia de regla ni de descripción.
+- [x] "Horas extra dobles" aparece con "50% con tope de 5 UMA por semana", y en la fila siguiente aparece "Horas extra triples" con el tope de tipo `'N'`.
+- [x] La 13 se abre en `PerceptionModal`, acepta un cambio de regla y lo guarda. Al devolverla a `'N'`, el catálogo queda como al terminar el paso 2.
+- [x] Ninguna otra percepción cambia de regla ni de descripción.
 
 **Sin efecto en la nómina**
 
@@ -224,6 +224,9 @@ Cada paso deja el sistema compilando y funcionando.
   - Primera corrida: la 5 queda "Horas extra dobles" con su regla intacta; la 13 existe con `019`, `'N'`, regla en `NULL`, `id_taxed_exempt = 1` (Gravado), `is_billed = 0` y `status = 1` (copiados de la 5). El catálogo pasa a 13 filas.
   - Segunda corrida: sin error y sin cambios; una sola fila 13.
   - Rollback: con la 13 ocupada por otra descripción y con la 5 en `020`, el script lanza `THROW 50074` y el estado queda intacto.
+- **2026-10-13 — Paso 3: constantes y orden del catálogo.** `lib/payroll/constants.ts` exporta las dos constantes y `PERCEPTION_LINE_KEY_BY_ID` tiene tres entradas; `getPerceptions` ordena por `clave_sat, id_perception`. `tsc --noEmit` sin errores.
+  - Navegador (rol 4): dobles "50% con tope de 5 UMA por semana" y, justo debajo, triples "Sin exención". El usuario guardó la 13 como "Totalmente exenta" desde `PerceptionModal` y la devolvió a "Sin exención".
+  - BD tras la prueba: la 13 volvió a `'N'` con la regla en `NULL`; las demás percepciones conservan descripción y regla del Paso 1.
 - Al terminar cada paso, marcar sus criterios de aceptación; al cerrar la spec, cambiar el estado a "Implementado".
 
 ## Lo que no incluye esta spec
