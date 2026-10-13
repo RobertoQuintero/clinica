@@ -124,21 +124,23 @@ export default async function PayrollEmployeeDetailPage({
               }
             />
           ) : detail.snapshot ? (
-            <div className="w-full max-w-3xl flex flex-col gap-5">
-              <PayrollPerceptionsCard
-                perceptions={detail.perceptions}
-                totalPerceptions={detail.totalPerceptions}
-                showTaxBreakdown={filters.payrollType === "F"}
-                totalTaxed={detail.totalTaxed}
-                totalExempt={detail.totalExempt}
-              />
-              {filters.payrollType === "F" && (
-                <PayrollDeductionsCard
-                  isrBreakdown={detail.snapshot}
+            <div className="w-full max-w-6xl flex flex-col gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                <PayrollPerceptionsCard
+                  perceptions={detail.perceptions}
                   totalPerceptions={detail.totalPerceptions}
-                  totalDeductions={detail.totalDeductions}
+                  showTaxBreakdown={filters.payrollType === "F"}
+                  totalTaxed={detail.totalTaxed}
+                  totalExempt={detail.totalExempt}
                 />
-              )}
+                {filters.payrollType === "F" && (
+                  <PayrollDeductionsCard
+                    isrBreakdown={detail.snapshot}
+                    totalPerceptions={detail.totalPerceptions}
+                    totalDeductions={detail.totalDeductions}
+                  />
+                )}
+              </div>
               <PayrollPaidTreatmentsList paidTreatments={detail.paidTreatments} />
               <PayrollSoldProductsList soldProducts={detail.soldProducts} />
               <PayrollOvertimeDaysList overtimeDays={detail.overtimeDays} />
