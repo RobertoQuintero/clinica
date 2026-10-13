@@ -1279,9 +1279,9 @@ export async function calculatePayrollPeriod(
 
        -- Desglose y candado anti doble pago de horas extra: solo los días de quien entró a la nómina operativa.
        INSERT INTO [CentroPodologico].[payroll].[period_employee_overtime]
-         (id_period_employee, id_empleado, fecha, horas_autorizadas, horas_dobles, horas_triples,
+         (id_period_employee, id_empleado, tipo_nomina, fecha, horas_autorizadas, horas_dobles, horas_triples,
           importe_dobles, importe_triples)
-       SELECT pe.[id_period_employee], od.[id_empleado], od.[fecha], od.[horas_autorizadas],
+       SELECT pe.[id_period_employee], od.[id_empleado], pe.[tipo_nomina], od.[fecha], od.[horas_autorizadas],
               od.[horas_dobles], od.[horas_triples], od.[importe_dobles], od.[importe_triples]
          FROM #overtime_days od
          JOIN [CentroPodologico].[payroll].[period_employees] pe
