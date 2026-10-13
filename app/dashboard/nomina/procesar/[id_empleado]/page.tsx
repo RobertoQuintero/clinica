@@ -128,6 +128,9 @@ export default async function PayrollEmployeeDetailPage({
               <PayrollPerceptionsCard
                 perceptions={detail.perceptions}
                 totalPerceptions={detail.totalPerceptions}
+                showTaxBreakdown={filters.payrollType === "F"}
+                totalTaxed={detail.totalTaxed}
+                totalExempt={detail.totalExempt}
               />
               {filters.payrollType === "F" && (
                 <PayrollDeductionsCard

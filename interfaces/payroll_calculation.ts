@@ -90,7 +90,13 @@ export interface IPayrollPerceptionLine {
   description: string;          // "15 días × $333.33 diarios"
   note:        string | null;   // "Ingresó el 22/09/2026, proporcional" o null
   amount:      number;          // importe ya redondeado a 2 decimales
+  // Gravado y exento de la línea (spec 73). null en la vista operativa. En fiscal, taxed y exento son null si la
+  // línea quedó "No calculado" o el snapshot es anterior a la spec 73; note explica cuál de los dos casos es.
+  taxBreakdown: { taxed: number | null; exempt: number | null; note: string } | null;
 }
+
+// Lo que arma buildPerceptionLines: la línea sin el gravado/exento, que se agrega desde los renglones guardados.
+export type IPayrollPerceptionLineBase = Omit<IPayrollPerceptionLine, "taxBreakdown">;
 
 export interface IPayrollEmployeeDetailFilters {
   idEmpleado:  number;
@@ -149,6 +155,9 @@ export interface IPayrollEmployeeDetail {
   snapshot:         IPayrollEmployeeSnapshot | null;
   perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
   totalPerceptions: number;                     // suma de perceptions[].amount
+  // Suma de lo gravado y de lo exento (spec 73); null en operativa o si alguna línea no tiene su desglose.
+  totalTaxed:       number | null;
+  totalExempt:      number | null;
   totalDeductions:  number;                     // ISNULL(SUM(period_employee_deductions.importe), 0); 0 si snapshot es null (spec 70)
   paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
   soldProducts:     IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas

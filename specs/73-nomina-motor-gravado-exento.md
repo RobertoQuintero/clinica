@@ -307,9 +307,9 @@ export interface IPeriodEmployeePerception {
 
 **Detalle**
 
-- [ ] La vista fiscal muestra "Gravado" y "Exento" por línea, la nota de la regla y los totales; el total gravado es igual a la base de la tarjeta "Deducciones".
+- [x] La vista fiscal muestra "Gravado" y "Exento" por línea, la nota de la regla y los totales; el total gravado es igual a la base de la tarjeta "Deducciones".
 - [ ] Un renglón `'N'` muestra "No calculado" y el motivo; un snapshot sin renglones muestra "—" y el aviso de recalcular.
-- [ ] La vista operativa no cambia.
+- [x] La vista operativa no cambia.
 
 **Aviso "Recalcula"**
 

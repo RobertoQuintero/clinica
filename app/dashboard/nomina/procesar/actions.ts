@@ -7,11 +7,14 @@ import {
   IPayrollEmployeeRow,
   IPayrollEmployeeSnapshot,
   IPayrollExcludedEmployee,
+  IPayrollPerceptionLine,
+  IPayrollPerceptionLineBase,
   IPayrollProcessFilters,
   IPayrollProcessPage,
   PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
+import type { IPeriodEmployeePerception } from "@/interfaces/payroll_exemption";
 import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
@@ -51,7 +54,8 @@ import {
   PUNCTUALITY_BONUS_SELECT_SQL,
 } from "@/lib/payroll/punctualityBonusSql";
 import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
-import { ISR_DEDUCTION_ID, SALARY_PERCEPTION_ID } from "@/lib/payroll/constants";
+import { ISR_DEDUCTION_ID, PERCEPTION_LINE_KEY_BY_ID, SALARY_PERCEPTION_ID } from "@/lib/payroll/constants";
+import { describePerceptionExemption } from "@/lib/payroll/exemptionCalculation";
 import {
   EXEMPTION_APPLY_SQL,
   EXEMPTION_INSERT_COLUMNS_SQL,
@@ -79,6 +83,76 @@ function roundToCents(amount: number): number {
 
 function toNullableNumber(value: unknown): number | null {
   return value === null || value === undefined ? null : Number(value);
+}
+
+const MISSING_TAX_BREAKDOWN_NOTE = "Recalcula la nómina para ver el gravado y exento";
+
+const PERCEPTION_ID_BY_LINE_KEY = new Map(
+  Object.entries(PERCEPTION_LINE_KEY_BY_ID).map(([idPerception, lineKey]) => [lineKey, Number(idPerception)]),
+);
+
+function toTaxBreakdown(perception: IPeriodEmployeePerception): NonNullable<IPayrollPerceptionLine["taxBreakdown"]> {
+  return {
+    taxed: perception.importe_gravado,
+    exempt: perception.importe_exento,
+    note: describePerceptionExemption(perception),
+  };
+}
+
+/**
+ * Liga cada línea de la tarjeta "Percepciones totales" con su renglón guardado (spec 73), por
+ * `PERCEPTION_LINE_KEY_BY_ID`. En operativa no hay desglose. Un renglón guardado sin línea se agrega al final con la
+ * descripción del catálogo, para que el Detalle nunca esconda un importe. Una línea sin renglón guardado es de un
+ * snapshot anterior a la spec 73 (o tiene importe 0, que no genera renglón).
+ */
+function attachTaxBreakdown(
+  lines: IPayrollPerceptionLineBase[],
+  payrollType: PayrollType,
+  storedPerceptions: IPeriodEmployeePerception[],
+): IPayrollPerceptionLine[] {
+  if (payrollType !== "F") return lines.map((line) => ({ ...line, taxBreakdown: null }));
+
+  const storedById = new Map(storedPerceptions.map((perception) => [perception.id_perception, perception]));
+  const shownIds = new Set<number>();
+
+  const linesWithBreakdown: IPayrollPerceptionLine[] = lines.map((line) => {
+    const idPerception = PERCEPTION_ID_BY_LINE_KEY.get(line.key);
+    const stored = idPerception === undefined ? undefined : storedById.get(idPerception);
+    if (stored) {
+      shownIds.add(stored.id_perception);
+      return { ...line, taxBreakdown: toTaxBreakdown(stored) };
+    }
+    const note = line.amount === 0 ? "Sin importe: no genera percepción fiscal" : MISSING_TAX_BREAKDOWN_NOTE;
+    return {
+      ...line,
+      taxBreakdown: line.amount === 0 ? { taxed: 0, exempt: 0, note } : { taxed: null, exempt: null, note },
+    };
+  });
+
+  const orphanLines: IPayrollPerceptionLine[] = storedPerceptions
+    .filter((perception) => !shownIds.has(perception.id_perception))
+    .map((perception) => ({
+      key: `percepcion_${perception.id_perception}`,
+      label: perception.description,
+      description: `Clave SAT ${perception.clave_sat}`,
+      note: null,
+      amount: perception.importe,
+      taxBreakdown: toTaxBreakdown(perception),
+    }));
+
+  return [...linesWithBreakdown, ...orphanLines];
+}
+
+/** Suma de lo gravado o lo exento de las líneas; null si no hay desglose en alguna (operativa, "No calculado"…). */
+function sumTaxBreakdown(lines: IPayrollPerceptionLine[], field: "taxed" | "exempt"): number | null {
+  if (lines.length === 0) return null;
+  let total = 0;
+  for (const line of lines) {
+    const amount = line.taxBreakdown?.[field];
+    if (amount === null || amount === undefined) return null;
+    total += amount;
+  }
+  return roundToCents(total);
 }
 
 /** Orden de la tabla de Procesar; Anterior / Siguiente del detalle lo sigue. Determinista gracias al id. */
@@ -409,6 +483,7 @@ export async function getPayrollEmployeeDetail(
       overtimeDayRows,
       discountedAbsenceRows,
       discountedLatenessRows,
+      storedPerceptionRows,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -556,6 +631,30 @@ export async function getPayrollEmployeeDetail(
           ORDER BY pl.fecha`,
         { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
       ),
+      // Percepciones del renglón fiscal con su gravado y exento (spec 73); en operativa no hay.
+      payrollType === "F"
+        ? db.queryParams(
+            `SELECT r.id_perception, c.clave_sat, c.[description],
+                    CAST(r.importe AS float) AS importe, r.eventos,
+                    r.exencion_estado, r.exencion_motivo, r.tipo_limite_exencion,
+                    CAST(r.umas_limite AS float) AS umas_limite,
+                    CAST(r.porcentaje_exento AS float) AS porcentaje_exento,
+                    r.periodicidad_limite,
+                    CAST(r.uma_diaria AS float) AS uma_diaria,
+                    CONVERT(varchar(10), r.uma_vigente_desde, 120) AS uma_vigente_desde,
+                    CAST(r.tope_exento AS float) AS tope_exento,
+                    CAST(r.exento_consumido_previo AS float) AS exento_consumido_previo,
+                    CAST(r.importe_exento AS float) AS importe_exento,
+                    CAST(r.importe_gravado AS float) AS importe_gravado
+               FROM [CentroPodologico].[payroll].[period_employee_perceptions] r
+               JOIN [CentroPodologico].[payroll].[period_employees] pe
+                 ON pe.id_period_employee = r.id_period_employee
+               JOIN [CentroPodologico].[payroll].[perceptions] c ON c.id_perception = r.id_perception
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'F'
+              ORDER BY r.id_perception`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -631,11 +730,16 @@ export async function getPayrollEmployeeDetail(
     // El catálogo solo se consulta si hay comisión que describir.
     const commissionTiers =
       snapshot && snapshot.importe_comision > 0 ? await getCommissionTiersOrEmpty() : [];
-    const perceptions = snapshot
+    const baseLines = snapshot
       ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers)
+      : [];
+    const perceptions = snapshot
+      ? attachTaxBreakdown(baseLines, payrollType, storedPerceptionRows as IPeriodEmployeePerception[])
       : [];
     const totalPerceptions =
       Math.round(perceptions.reduce((sum, line) => sum + line.amount, 0) * 100) / 100;
+    const totalTaxed = sumTaxBreakdown(perceptions, "taxed");
+    const totalExempt = sumTaxBreakdown(perceptions, "exempt");
 
     const paidTreatments: IPayrollPaidTreatment[] = snapshot
       ? paidTreatmentRows.map((row: IPayrollPaidTreatment) => ({
@@ -699,6 +803,8 @@ export async function getPayrollEmployeeDetail(
         snapshot,
         perceptions,
         totalPerceptions,
+        totalTaxed,
+        totalExempt,
         totalDeductions,
         paidTreatments,
         soldProducts,

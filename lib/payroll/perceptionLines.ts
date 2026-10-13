@@ -1,4 +1,4 @@
-import { IPayrollEmployeeSnapshot, IPayrollPerceptionLine } from "@/interfaces/payroll_calculation";
+import { IPayrollEmployeeSnapshot, IPayrollPerceptionLineBase } from "@/interfaces/payroll_calculation";
 import type { ICommissionTier } from "@/interfaces/payroll_commission";
 import { findCommissionTier, formatTierRange } from "@/lib/payroll/commissionTiers";
 import { describeAttendanceBonus } from "@/lib/payroll/attendanceBonus";
@@ -108,10 +108,10 @@ export function buildPerceptionLines(
   fechaIngreso: string,
   fechaInicio: string,
   commissionTiers: ICommissionTier[],
-): IPayrollPerceptionLine[] {
+): IPayrollPerceptionLineBase[] {
   const joinedDuringPeriod = fechaIngreso > fechaInicio;
 
-  const lines: IPayrollPerceptionLine[] = [
+  const lines: IPayrollPerceptionLineBase[] = [
     {
       key: "sueldo_base",
       label: "Sueldo base",
