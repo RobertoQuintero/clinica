@@ -1,17 +1,48 @@
-import { Banknote, CirclePlus, Info } from "lucide-react";
+import { Banknote, CirclePlus, Info, Scale } from "lucide-react";
 import type { IPayrollPerceptionLine } from "@/interfaces/payroll_calculation";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 
 interface Props {
   perceptions: IPayrollPerceptionLine[];
   totalPerceptions: number;
+  /** Vista fiscal (spec 73): agrega "Gravado" y "Exento" por línea, la regla aplicada y los totales. */
+  showTaxBreakdown?: boolean;
+  totalTaxed?: number | null;
+  totalExempt?: number | null;
 }
 
 function describeConceptCount(count: number): string {
   return count === 1 ? "1 concepto" : `${count} conceptos`;
 }
 
-export default function PayrollPerceptionsCard({ perceptions, totalPerceptions }: Props) {
+function formatOptionalAmount(amount: number | null): string {
+  return amount === null ? "—" : formatPayrollCurrency(amount);
+}
+
+function AmountColumn({ label, value, emphasized = false }: { label: string; value: string; emphasized?: boolean }) {
+  return (
+    <div className="flex flex-col items-end">
+      <dt className="text-[10px] font-semibold uppercase tracking-wider text-[#44474f] dark:text-zinc-400">{label}</dt>
+      <dd
+        className={`tabular-nums ${
+          emphasized
+            ? "text-base font-semibold text-[#0b1c30] dark:text-zinc-50"
+            : "text-sm text-[#44474f] dark:text-zinc-300"
+        }`}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+export default function PayrollPerceptionsCard({
+  perceptions,
+  totalPerceptions,
+  showTaxBreakdown = false,
+  totalTaxed = null,
+  totalExempt = null,
+}: Props) {
   return (
     <section
       aria-labelledby="payroll-perceptions-title"
@@ -41,7 +72,12 @@ export default function PayrollPerceptionsCard({ perceptions, totalPerceptions }
 
       <ul className="divide-y divide-[#e5e8f0] dark:divide-zinc-800">
         {perceptions.map((line) => (
-          <li key={line.key} className="px-5 py-4 flex items-center justify-between gap-4">
+          <li
+            key={line.key}
+            className={`px-5 py-4 flex justify-between gap-4 ${
+              showTaxBreakdown ? "flex-col sm:flex-row sm:items-start" : "items-center"
+            }`}
+          >
             <div className="flex items-start gap-3 min-w-0">
               <span className="w-9 h-9 shrink-0 mt-0.5 rounded-lg bg-[#dce9ff] dark:bg-zinc-800 text-[#0051d5] dark:text-blue-300 flex items-center justify-center">
                 <Banknote size={18} aria-hidden />
@@ -49,6 +85,12 @@ export default function PayrollPerceptionsCard({ perceptions, totalPerceptions }
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">{line.label}</span>
                 <span className="mt-0.5 text-sm text-[#44474f] dark:text-zinc-400 tabular-nums">{line.description}</span>
+                {showTaxBreakdown && line.taxBreakdown && (
+                  <span className="mt-1.5 inline-flex items-center gap-1.5 self-start text-xs text-[#44474f] dark:text-zinc-400">
+                    <Scale size={13} className="shrink-0" aria-hidden />
+                    {line.taxBreakdown.note}
+                  </span>
+                )}
                 {line.note && (
                   <span className="mt-1.5 inline-flex items-center gap-1.5 self-start rounded-md bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
                     <Info size={13} aria-hidden />
@@ -57,12 +99,33 @@ export default function PayrollPerceptionsCard({ perceptions, totalPerceptions }
                 )}
               </div>
             </div>
-            <span className="shrink-0 text-base font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
-              {formatPayrollCurrency(line.amount)}
-            </span>
+            {showTaxBreakdown && line.taxBreakdown ? (
+              <dl className="shrink-0 grid grid-cols-3 gap-x-5 self-end sm:self-auto">
+                <AmountColumn label="Importe" value={formatPayrollCurrency(line.amount)} emphasized />
+                <AmountColumn label="Gravado" value={formatOptionalAmount(line.taxBreakdown.taxed)} />
+                <AmountColumn label="Exento" value={formatOptionalAmount(line.taxBreakdown.exempt)} />
+              </dl>
+            ) : (
+              <span className="shrink-0 text-base font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
+                {formatPayrollCurrency(line.amount)}
+              </span>
+            )}
           </li>
         ))}
       </ul>
+
+      {showTaxBreakdown && (
+        <footer className="px-5 py-3 border-t border-[#e5e8f0] dark:border-zinc-700 bg-[#f8f9ff] dark:bg-zinc-800/60 flex flex-wrap items-center justify-end gap-x-8 gap-y-1">
+          <p className="text-sm text-[#44474f] dark:text-zinc-400 tabular-nums">
+            Total gravado{" "}
+            <span className="font-semibold text-[#0b1c30] dark:text-zinc-100">{formatOptionalAmount(totalTaxed)}</span>
+          </p>
+          <p className="text-sm text-[#44474f] dark:text-zinc-400 tabular-nums">
+            Total exento{" "}
+            <span className="font-semibold text-[#0b1c30] dark:text-zinc-100">{formatOptionalAmount(totalExempt)}</span>
+          </p>
+        </footer>
+      )}
     </section>
   );
 }

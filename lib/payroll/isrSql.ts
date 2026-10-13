@@ -12,8 +12,10 @@ import type { IsrSkipReason } from "@/interfaces/payroll_isr";
  * `[payroll].[period_employees] pe` (ya con `importe_salario` y `dias` calculados) y necesita @id_payment_period.
  * `ISR_COLUMNS_SQL` lista las 18 columnas del desglose con su expresión sobre esos dos fragmentos.
  *
- * La base gravable es `pe.importe_salario` (hoy la única percepción fiscal, gravada al 100%) y los días del subsidio
- * son `pe.dias` (días pagados, ya sin faltas). Solo se aplica a renglones 'F'.
+ * La base gravable (spec 73) es la suma de `importe_gravado` de los renglones de
+ * `[payroll].[period_employee_perceptions]` del renglón; si alguno quedó 'N' (exento no calculado) la base se
+ * desconoce y el ISR queda 'N' / exemption_not_calculated. Esos renglones se insertan antes de este fragmento.
+ * Los días del subsidio son `pe.dias` (días pagados, ya sin faltas). Solo se aplica a renglones 'F'.
  */
 
 function skipReasonLiteral(reason: IsrSkipReason): string {
@@ -45,10 +47,12 @@ export const ISR_PARAMETERS_SQL = `
 
 /**
  * Tramo y cálculo por renglón:
+ * - `isr_base`: base gravable = suma de lo gravado de sus percepciones (0 si no tiene) y si alguna está pendiente.
  * - `isr_table`: si hay tarifa para la frecuencia y el ejercicio.
  * - `isr_bracket`: el tramo de mayor `limite_inferior <= base` que contiene la base (como `findWithholdingBracket`).
  *   Con base 0 no se busca tramo: queda calculado en 0 sin tramo.
- * - `isr_skip`: motivo de "No calculado", en orden: tarifa, parámetros del subsidio, hueco. NULL si se calcula.
+ * - `isr_skip`: motivo de "No calculado", en orden: tarifa, parámetros del subsidio, exento pendiente, hueco.
+ *   NULL si se calcula.
  * - `isr_tax`: ISR causado = ROUND(cuota_fija + (base − limite_inferior) × porcentaje / 100, 2), y el derecho al
  *   subsidio sin divisiones (base × factor <= tope × dias).
  * - `isr_subsidy`: subsidio causado = ROUND(monto × dias / factor, 2); se multiplica antes de dividir para no
@@ -56,6 +60,14 @@ export const ISR_PARAMETERS_SQL = `
  * - `isr_applied`: subsidio aplicado = min(subsidio causado, ISR causado). Nunca hay saldo a favor.
  */
 export const ISR_BRACKET_APPLY_SQL = `
+        -- Spec 73: la base gravable es lo gravado de las percepciones del renglón.
+        CROSS APPLY (
+          SELECT CAST(ISNULL(SUM(pep.[importe_gravado]), 0) AS decimal(12,2)) AS gravable,
+                 CAST(CASE WHEN MAX(CASE WHEN pep.[exencion_estado] = 'N' THEN 1 ELSE 0 END) = 1 THEN 1 ELSE 0 END
+                      AS bit) AS pendiente
+            FROM [CentroPodologico].[payroll].[period_employee_perceptions] pep
+           WHERE pep.[id_period_employee] = pe.[id_period_employee]
+        ) AS isr_base
         -- Spec 70: tarifa del periodo, tramo de la base y desglose del ISR.
         OUTER APPLY (
           SELECT CASE WHEN EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[tablas_retencion] t
@@ -66,16 +78,18 @@ export const ISR_BRACKET_APPLY_SQL = `
           SELECT TOP 1 t.[limite_inferior], t.[cuota_fija], t.[porcentaje_excedente]
             FROM [CentroPodologico].[payroll].[tablas_retencion] t
            WHERE t.[ejercicio] = @isr_fiscal_year AND t.[id_payment_period] = @id_payment_period
-             AND pe.[importe_salario] > 0
-             AND t.[limite_inferior] <= pe.[importe_salario]
-             AND (t.[limite_superior] IS NULL OR pe.[importe_salario] <= t.[limite_superior])
+             AND isr_base.gravable > 0
+             AND t.[limite_inferior] <= isr_base.gravable
+             AND (t.[limite_superior] IS NULL OR isr_base.gravable <= t.[limite_superior])
            ORDER BY t.[limite_inferior] DESC
         ) AS isr_bracket
         CROSS APPLY (
           SELECT CAST(CASE WHEN isr_table.has_table = 0 THEN ${skipReasonLiteral("no_withholding_table")}
                            WHEN @isr_subsidy_amount IS NULL OR @isr_subsidy_cap IS NULL OR @isr_subsidy_factor IS NULL
                              THEN ${skipReasonLiteral("missing_subsidy_parameters")}
-                           WHEN pe.[importe_salario] > 0 AND isr_bracket.[limite_inferior] IS NULL
+                           WHEN isr_base.pendiente = 1
+                             THEN ${skipReasonLiteral("exemption_not_calculated")}
+                           WHEN isr_base.gravable > 0 AND isr_bracket.[limite_inferior] IS NULL
                              THEN ${skipReasonLiteral("income_in_gap")}
                       END AS varchar(30)) AS motivo
         ) AS isr_skip
@@ -83,11 +97,11 @@ export const ISR_BRACKET_APPLY_SQL = `
           SELECT CAST(CASE WHEN isr_skip.motivo IS NOT NULL THEN NULL
                            WHEN isr_bracket.[limite_inferior] IS NULL THEN 0
                            ELSE ROUND(isr_bracket.[cuota_fija]
-                                      + (pe.[importe_salario] - isr_bracket.[limite_inferior])
+                                      + (isr_base.gravable - isr_bracket.[limite_inferior])
                                         * isr_bracket.[porcentaje_excedente] / 100, 2)
                       END AS decimal(12,2)) AS causado,
                  CAST(CASE WHEN isr_skip.motivo IS NOT NULL THEN NULL
-                           WHEN pe.[importe_salario] * @isr_subsidy_factor <= @isr_subsidy_cap * pe.[dias] THEN 1
+                           WHEN isr_base.gravable * @isr_subsidy_factor <= @isr_subsidy_cap * pe.[dias] THEN 1
                            ELSE 0
                       END AS bit) AS con_derecho
         ) AS isr_tax
@@ -109,13 +123,13 @@ function whenCalculated(expression: string): string {
 
 /**
  * Las 18 columnas del desglose del ISR, con su expresión sobre `ISR_PARAMETERS_SQL` e `ISR_BRACKET_APPLY_SQL`.
- * Cumplen `CK_period_employees_isr`: en 'N' todo va NULL salvo estado, motivo y base; en 'C' la base 0 deja el tramo
+ * Cumplen `CK_period_employees_isr`: en 'N' todo va NULL salvo estado, motivo y base (NULL si el exento está pendiente); en 'C' la base 0 deja el tramo
  * en NULL e ISR, subsidio aplicado y retenido en 0.
  */
 export const ISR_COLUMNS_SQL = [
   { column: "isr_estado",                    expression: "CASE WHEN isr_skip.motivo IS NULL THEN 'C' ELSE 'N' END" },
   { column: "isr_motivo",                    expression: "isr_skip.motivo" },
-  { column: "isr_base_gravable",             expression: "pe.[importe_salario]" },
+  { column: "isr_base_gravable",             expression: "CASE WHEN isr_skip.motivo = 'exemption_not_calculated' THEN NULL ELSE isr_base.gravable END" },
   { column: "isr_ejercicio_tarifa",          expression: whenCalculated("@isr_fiscal_year") },
   { column: "isr_limite_inferior",           expression: whenCalculated("isr_bracket.[limite_inferior]") },
   { column: "isr_cuota_fija",                expression: whenCalculated("isr_bracket.[cuota_fija]") },

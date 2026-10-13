@@ -2265,6 +2265,98 @@ CREATE TABLE [payroll].[period_employee_deductions](
 GO
 
 
+-- Spec 73: una fila por percepción de cada renglón fiscal, con su gravado y exento y la regla congelada.
+-- exencion_estado: 'C' calculado, 'N' no calculado (sin gravado ni exento).
+-- ON DELETE CASCADE: "Recalcular" y "Revertir" las borran con el DELETE de period_employees que ya ejecutan.
+CREATE TABLE [payroll].[period_employee_perceptions](
+    [id_period_employee_perception] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee]            [int]           NOT NULL,
+    [id_perception]                 [smallint]      NOT NULL,
+    [importe]                       [decimal](12,2) NOT NULL,
+    [eventos]                       [smallint]      NULL,     -- solo periodicidad 'E'
+    [exencion_estado]               [char](1)       NOT NULL,
+    [exencion_motivo]               [varchar](30)   NULL,     -- solo 'N'
+    [tipo_limite_exencion]          [char](1)       NOT NULL, -- regla congelada del catálogo
+    [umas_limite]                   [decimal](9,4)  NULL,
+    [porcentaje_exento]             [decimal](5,2)  NULL,
+    [periodicidad_limite]           [char](1)       NULL,
+    [uma_diaria]                    [decimal](18,4) NULL,     -- solo 'U' y 'M' calculados
+    [uma_vigente_desde]             [date]          NULL,
+    [tope_exento]                   [decimal](12,2) NULL,     -- tope de la ventana, solo 'U' y 'M'
+    [exento_consumido_previo]       [decimal](12,2) NULL,     -- solo 'U' y 'M'; 0 salvo en 'A' y 'M'
+    [importe_exento]                [decimal](12,2) NULL,
+    [importe_gravado]               [decimal](12,2) NULL,
+ CONSTRAINT [PK_period_employee_perceptions] PRIMARY KEY CLUSTERED ([id_period_employee_perception] ASC),
+ CONSTRAINT [UQ_period_employee_perceptions] UNIQUE ([id_period_employee], [id_perception]),
+ CONSTRAINT [FK_period_employee_perceptions_period_employee] FOREIGN KEY ([id_period_employee])
+    REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [FK_period_employee_perceptions_perception] FOREIGN KEY ([id_perception])
+    REFERENCES [payroll].[perceptions] ([id_perception]),
+ CONSTRAINT [CK_period_employee_perceptions_importe] CHECK ([importe] > 0),
+ CONSTRAINT [CK_period_employee_perceptions_eventos] CHECK (
+    ([periodicidad_limite] = 'E' AND [eventos] IS NOT NULL AND [eventos] > 0)
+ OR (([periodicidad_limite] IS NULL OR [periodicidad_limite] <> 'E') AND [eventos] IS NULL)),
+ -- La misma forma que CK_perceptions_exencion (spec 69), con IS NOT NULL explícito.
+ CONSTRAINT [CK_period_employee_perceptions_regla] CHECK (
+    ([tipo_limite_exencion] IN ('N','T','P') AND [umas_limite] IS NULL AND [periodicidad_limite] IS NULL
+        AND [uma_diaria] IS NULL AND [tope_exento] IS NULL AND [exento_consumido_previo] IS NULL
+        AND (([tipo_limite_exencion] = 'P' AND [porcentaje_exento] IS NOT NULL)
+          OR ([tipo_limite_exencion] IN ('N','T') AND [porcentaje_exento] IS NULL)))
+ OR ([tipo_limite_exencion] IN ('U','M') AND [umas_limite] IS NOT NULL AND [periodicidad_limite] IS NOT NULL
+        AND (([tipo_limite_exencion] = 'M' AND [porcentaje_exento] IS NOT NULL)
+          OR ([tipo_limite_exencion] = 'U' AND [porcentaje_exento] IS NULL)))),
+ CONSTRAINT [CK_period_employee_perceptions_exencion] CHECK (
+    ([exencion_estado] = 'C' AND [exencion_motivo] IS NULL
+        AND [importe_exento] IS NOT NULL AND [importe_exento] >= 0
+        AND [importe_gravado] IS NOT NULL AND [importe_gravado] >= 0
+        AND [importe_exento] + [importe_gravado] = [importe]
+        AND ([tipo_limite_exencion] NOT IN ('U','M')
+          OR ([uma_diaria] IS NOT NULL AND [uma_vigente_desde] IS NOT NULL
+              AND [tope_exento] IS NOT NULL AND [exento_consumido_previo] IS NOT NULL
+              AND [exento_consumido_previo] >= 0)))
+ OR ([exencion_estado] = 'N' AND [exencion_motivo] IS NOT NULL
+        AND [exencion_motivo] IN ('missing_uma','unsupported_frequency')
+        AND [importe_exento] IS NULL AND [importe_gravado] IS NULL))
+) ON [PRIMARY]
+GO
+
+-- El acumulado anual/mensual busca por percepción y empleado en otros periodos.
+CREATE NONCLUSTERED INDEX [IX_period_employee_perceptions_perception]
+    ON [payroll].[period_employee_perceptions] ([id_perception], [id_period_employee])
+    INCLUDE ([exencion_estado], [importe_exento])
+GO
+
+-- Spec 73: el ISR admite 'exemption_not_calculated', con la base en NULL (no se conoce).
+ALTER TABLE [payroll].[period_employees] DROP CONSTRAINT [CK_period_employees_isr]
+GO
+ALTER TABLE [payroll].[period_employees] WITH CHECK ADD CONSTRAINT [CK_period_employees_isr] CHECK (
+    ([isr_estado] = 'X'
+        AND [isr_motivo] IS NULL AND [isr_base_gravable] IS NULL AND [isr_causado] IS NULL
+        AND [isr_retenido] IS NULL AND [subsidio_causado] IS NULL AND [subsidio_aplicado] IS NULL)
+ OR ([isr_estado] = 'N' AND [tipo_nomina] = 'F'
+        AND [isr_motivo] IS NOT NULL
+        AND (([isr_motivo] IN ('no_withholding_table','income_in_gap','missing_subsidy_parameters')
+                AND [isr_base_gravable] IS NOT NULL AND [isr_base_gravable] >= 0)
+          OR ([isr_motivo] = 'exemption_not_calculated' AND [isr_base_gravable] IS NULL))
+        AND [isr_causado] IS NULL AND [isr_retenido] IS NULL
+        AND [subsidio_causado] IS NULL AND [subsidio_aplicado] IS NULL)
+ OR ([isr_estado] = 'C' AND [tipo_nomina] = 'F'
+        AND [isr_motivo] IS NULL
+        AND [isr_base_gravable] IS NOT NULL AND [isr_base_gravable] >= 0
+        AND [isr_ejercicio_tarifa] IS NOT NULL
+        AND ([isr_limite_inferior] IS NOT NULL OR [isr_base_gravable] = 0)
+        AND [isr_causado] IS NOT NULL AND [isr_causado] >= 0
+        AND [subsidio_con_derecho] IS NOT NULL
+        AND [subsidio_monto_mensual] IS NOT NULL AND [subsidio_tope_ingreso_mensual] IS NOT NULL
+        AND [subsidio_factor_dias_mes] IS NOT NULL
+        AND [subsidio_causado] IS NOT NULL AND [subsidio_causado] >= 0
+        AND [subsidio_aplicado] IS NOT NULL AND [subsidio_aplicado] >= 0
+        AND [subsidio_aplicado] <= [subsidio_causado] AND [subsidio_aplicado] <= [isr_causado]
+        AND [isr_retenido] IS NOT NULL AND [isr_retenido] = [isr_causado] - [subsidio_aplicado]))
+GO
+
+
+
 ------------ OTROS PAGOS -----------------------
 
 CREATE TABLE [payroll].[other_payments](

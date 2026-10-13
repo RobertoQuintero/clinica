@@ -47,29 +47,32 @@ function emptyBreakdown(): IIsrBreakdown {
 
 /**
  * Espejo puro del ISR de un renglón fiscal que calcula el SQL de `calculatePayrollPeriod` (donde manda el SQL).
- * - `base`: base gravable (`importe_salario`); `dias`: días pagados, base del subsidio.
+ * - `taxableBase`: base gravable, la suma de `importe_gravado` de las percepciones del renglón (spec 73);
+ *   `hasPendingExemption`: alguna percepción quedó 'N' (exento no calculado), así que la base se desconoce.
+ * - `dias`: días pagados, base del subsidio.
  * - `fechaFin`: "YYYY-MM-DD"; resuelve los parámetros y el ejercicio de la tarifa (su año).
  * - `brackets`: tramos de la frecuencia del periodo; aquí se filtran por el ejercicio.
- * Los motivos de "No calculado" se revisan en orden: tarifa, parámetros del subsidio, hueco. En 'N' solo se
- * llenan estado, motivo y base. Con base 0 queda 'C' sin tramo e ISR 0.
+ * Los motivos de "No calculado" se revisan en orden: tarifa, parámetros del subsidio, exento pendiente, hueco.
+ * En 'N' solo se llenan estado, motivo y base (que es null si el exento está pendiente). Con base 0 queda 'C' sin tramo e ISR 0.
  * El derecho al subsidio se compara sin divisiones (`base × factor <= tope × dias`) y todo se opera en enteros
  * escalados para no diferir del `decimal` de SQL Server por redondeo de coma flotante.
  */
 export function calculateIsrBreakdown(
-  base: number,
+  taxableBase: number,
+  hasPendingExemption: boolean,
   dias: number,
   fechaFin: string,
   brackets: IWithholdingBracket[],
   parameters: TaxParameterRow[],
 ): IIsrBreakdown {
   const fiscalYear = Number(fechaFin.slice(0, 4));
-  const baseInCents = toCents(base);
+  const baseInCents = toCents(taxableBase);
 
   const notCalculated = (reason: IsrSkipReason): IIsrBreakdown => ({
     ...emptyBreakdown(),
     isr_estado: "N",
     isr_motivo: reason,
-    isr_base_gravable: fromCents(baseInCents),
+    isr_base_gravable: reason === "exemption_not_calculated" ? null : fromCents(baseInCents),
   });
 
   const yearBrackets = brackets.filter((bracket) => bracket.ejercicio === fiscalYear);
@@ -81,6 +84,8 @@ export function calculateIsrBreakdown(
   if (!subsidyAmountRow || !subsidyIncomeCapRow || !subsidyDaysFactorRow) {
     return notCalculated("missing_subsidy_parameters");
   }
+
+  if (hasPendingExemption) return notCalculated("exemption_not_calculated");
 
   const bracket = baseInCents === 0 ? null : findWithholdingBracket(yearBrackets, fromCents(baseInCents));
   if (baseInCents > 0 && !bracket) return notCalculated("income_in_gap");

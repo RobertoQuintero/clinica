@@ -7,11 +7,14 @@ import {
   IPayrollEmployeeRow,
   IPayrollEmployeeSnapshot,
   IPayrollExcludedEmployee,
+  IPayrollPerceptionLine,
+  IPayrollPerceptionLineBase,
   IPayrollProcessFilters,
   IPayrollProcessPage,
   PayrollType,
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
+import type { IPeriodEmployeePerception } from "@/interfaces/payroll_exemption";
 import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
@@ -23,6 +26,7 @@ import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
 import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
+import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
@@ -51,7 +55,14 @@ import {
   PUNCTUALITY_BONUS_SELECT_SQL,
 } from "@/lib/payroll/punctualityBonusSql";
 import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
-import { ISR_DEDUCTION_ID } from "@/lib/payroll/constants";
+import { ISR_DEDUCTION_ID, PERCEPTION_LINE_KEY_BY_ID, SALARY_PERCEPTION_ID } from "@/lib/payroll/constants";
+import { describePerceptionExemption } from "@/lib/payroll/exemptionCalculation";
+import {
+  EXEMPTION_APPLY_SQL,
+  EXEMPTION_INSERT_COLUMNS_SQL,
+  EXEMPTION_PARAMETERS_SQL,
+  EXEMPTION_SELECT_SQL,
+} from "@/lib/payroll/exemptionSql";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { getCommissionTiers } from "../comisiones/actions";
 import {
@@ -73,6 +84,76 @@ function roundToCents(amount: number): number {
 
 function toNullableNumber(value: unknown): number | null {
   return value === null || value === undefined ? null : Number(value);
+}
+
+const MISSING_TAX_BREAKDOWN_NOTE = "Recalcula la nómina para ver el gravado y exento";
+
+const PERCEPTION_ID_BY_LINE_KEY = new Map(
+  Object.entries(PERCEPTION_LINE_KEY_BY_ID).map(([idPerception, lineKey]) => [lineKey, Number(idPerception)]),
+);
+
+function toTaxBreakdown(perception: IPeriodEmployeePerception): NonNullable<IPayrollPerceptionLine["taxBreakdown"]> {
+  return {
+    taxed: perception.importe_gravado,
+    exempt: perception.importe_exento,
+    note: describePerceptionExemption(perception),
+  };
+}
+
+/**
+ * Liga cada línea de la tarjeta "Percepciones totales" con su renglón guardado (spec 73), por
+ * `PERCEPTION_LINE_KEY_BY_ID`. En operativa no hay desglose. Un renglón guardado sin línea se agrega al final con la
+ * descripción del catálogo, para que el Detalle nunca esconda un importe. Una línea sin renglón guardado es de un
+ * snapshot anterior a la spec 73 (o tiene importe 0, que no genera renglón).
+ */
+function attachTaxBreakdown(
+  lines: IPayrollPerceptionLineBase[],
+  payrollType: PayrollType,
+  storedPerceptions: IPeriodEmployeePerception[],
+): IPayrollPerceptionLine[] {
+  if (payrollType !== "F") return lines.map((line) => ({ ...line, taxBreakdown: null }));
+
+  const storedById = new Map(storedPerceptions.map((perception) => [perception.id_perception, perception]));
+  const shownIds = new Set<number>();
+
+  const linesWithBreakdown: IPayrollPerceptionLine[] = lines.map((line) => {
+    const idPerception = PERCEPTION_ID_BY_LINE_KEY.get(line.key);
+    const stored = idPerception === undefined ? undefined : storedById.get(idPerception);
+    if (stored) {
+      shownIds.add(stored.id_perception);
+      return { ...line, taxBreakdown: toTaxBreakdown(stored) };
+    }
+    const note = line.amount === 0 ? "Sin importe: no genera percepción fiscal" : MISSING_TAX_BREAKDOWN_NOTE;
+    return {
+      ...line,
+      taxBreakdown: line.amount === 0 ? { taxed: 0, exempt: 0, note } : { taxed: null, exempt: null, note },
+    };
+  });
+
+  const orphanLines: IPayrollPerceptionLine[] = storedPerceptions
+    .filter((perception) => !shownIds.has(perception.id_perception))
+    .map((perception) => ({
+      key: `percepcion_${perception.id_perception}`,
+      label: perception.description,
+      description: `Clave SAT ${perception.clave_sat}`,
+      note: null,
+      amount: perception.importe,
+      taxBreakdown: toTaxBreakdown(perception),
+    }));
+
+  return [...linesWithBreakdown, ...orphanLines];
+}
+
+/** Suma de lo gravado o lo exento de las líneas; null si no hay desglose en alguna (operativa, "No calculado"…). */
+function sumTaxBreakdown(lines: IPayrollPerceptionLine[], field: "taxed" | "exempt"): number | null {
+  if (lines.length === 0) return null;
+  let total = 0;
+  for (const line of lines) {
+    const amount = line.taxBreakdown?.[field];
+    if (amount === null || amount === undefined) return null;
+    total += amount;
+  }
+  return roundToCents(total);
 }
 
 /** Orden de la tabla de Procesar; Anterior / Siguiente del detalle lo sigue. Determinista gracias al id. */
@@ -144,6 +225,7 @@ export async function getPayrollProcessPage(
       attendanceBonusRecalculationNeeded: false,
       shiftExtensionBonusRecalculationNeeded: false,
       isrRecalculationNeeded: false,
+      exemptionRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -171,6 +253,7 @@ export async function getPayrollProcessPage(
       attendanceBonusRecalculationNeeded,
       shiftExtensionBonusRecalculationNeeded,
       isrRecalculationNeeded,
+      exemptionRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -278,6 +361,7 @@ export async function getPayrollProcessPage(
       isAttendanceBonusRecalculationNeeded(period.id_period),
       isShiftExtensionBonusRecalculationNeeded(period.id_period),
       isIsrRecalculationNeeded(period.id_period),
+      isExemptionRecalculationNeeded(period.id_period),
     ]);
 
     const totalPercepciones = roundToCents(
@@ -358,6 +442,7 @@ export async function getPayrollProcessPage(
         attendanceBonusRecalculationNeeded,
         shiftExtensionBonusRecalculationNeeded,
         isrRecalculationNeeded,
+        exemptionRecalculationNeeded,
       },
     };
   } catch (error) {
@@ -403,6 +488,7 @@ export async function getPayrollEmployeeDetail(
       overtimeDayRows,
       discountedAbsenceRows,
       discountedLatenessRows,
+      storedPerceptionRows,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -550,6 +636,30 @@ export async function getPayrollEmployeeDetail(
           ORDER BY pl.fecha`,
         { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
       ),
+      // Percepciones del renglón fiscal con su gravado y exento (spec 73); en operativa no hay.
+      payrollType === "F"
+        ? db.queryParams(
+            `SELECT r.id_perception, c.clave_sat, c.[description],
+                    CAST(r.importe AS float) AS importe, r.eventos,
+                    r.exencion_estado, r.exencion_motivo, r.tipo_limite_exencion,
+                    CAST(r.umas_limite AS float) AS umas_limite,
+                    CAST(r.porcentaje_exento AS float) AS porcentaje_exento,
+                    r.periodicidad_limite,
+                    CAST(r.uma_diaria AS float) AS uma_diaria,
+                    CONVERT(varchar(10), r.uma_vigente_desde, 120) AS uma_vigente_desde,
+                    CAST(r.tope_exento AS float) AS tope_exento,
+                    CAST(r.exento_consumido_previo AS float) AS exento_consumido_previo,
+                    CAST(r.importe_exento AS float) AS importe_exento,
+                    CAST(r.importe_gravado AS float) AS importe_gravado
+               FROM [CentroPodologico].[payroll].[period_employee_perceptions] r
+               JOIN [CentroPodologico].[payroll].[period_employees] pe
+                 ON pe.id_period_employee = r.id_period_employee
+               JOIN [CentroPodologico].[payroll].[perceptions] c ON c.id_perception = r.id_perception
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'F'
+              ORDER BY r.id_perception`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -625,11 +735,16 @@ export async function getPayrollEmployeeDetail(
     // El catálogo solo se consulta si hay comisión que describir.
     const commissionTiers =
       snapshot && snapshot.importe_comision > 0 ? await getCommissionTiersOrEmpty() : [];
-    const perceptions = snapshot
+    const baseLines = snapshot
       ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers)
+      : [];
+    const perceptions = snapshot
+      ? attachTaxBreakdown(baseLines, payrollType, storedPerceptionRows as IPeriodEmployeePerception[])
       : [];
     const totalPerceptions =
       Math.round(perceptions.reduce((sum, line) => sum + line.amount, 0) * 100) / 100;
+    const totalTaxed = sumTaxBreakdown(perceptions, "taxed");
+    const totalExempt = sumTaxBreakdown(perceptions, "exempt");
 
     const paidTreatments: IPayrollPaidTreatment[] = snapshot
       ? paidTreatmentRows.map((row: IPayrollPaidTreatment) => ({
@@ -693,6 +808,8 @@ export async function getPayrollEmployeeDetail(
         snapshot,
         perceptions,
         totalPerceptions,
+        totalTaxed,
+        totalExempt,
         totalDeductions,
         paidTreatments,
         soldProducts,
@@ -1100,6 +1217,31 @@ export async function calculatePayrollPeriod(
         ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
+
+       -- Spec 73: percepciones de los renglones 'F' con su gravado y exento. Cada spec de percepción fiscal nueva
+       -- agrega su UNION ALL a #fiscal_perception_lines (id_perception, importe y, solo en periodicidad 'E', eventos).
+       -- Hoy solo el sueldo. Va después del snapshot (de ahí sale importe_salario) y antes del ISR, que suma lo gravado.
+       CREATE TABLE #fiscal_perception_lines (
+         id_period_employee int NOT NULL,
+         id_perception      smallint NOT NULL,
+         importe            decimal(12,2) NOT NULL,
+         eventos            smallint NULL
+       );
+       INSERT INTO #fiscal_perception_lines (id_period_employee, id_perception, importe, eventos)
+       SELECT pe.[id_period_employee], ${SALARY_PERCEPTION_ID}, pe.[importe_salario], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_salario] > 0;
+
+       ${EXEMPTION_PARAMETERS_SQL}
+
+       -- La regla se lee del catálogo en este momento y queda congelada en el renglón.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_perceptions] (${EXEMPTION_INSERT_COLUMNS_SQL})
+       SELECT ${EXEMPTION_SELECT_SQL}
+         FROM #fiscal_perception_lines fl
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period_employee] = fl.[id_period_employee]
+         JOIN [CentroPodologico].[payroll].[perceptions] exemption_rule
+           ON exemption_rule.[id_perception] = fl.[id_perception]${EXEMPTION_APPLY_SQL};
 
        -- Spec 70: ISR de los renglones 'F' recién insertados. Va después del INSERT porque la base es importe_salario,
        -- que se calcula ahí. Los renglones 'O' se quedan en 'X'.
