@@ -16,6 +16,7 @@ const STATUS_OPTIONS: IStatusFilterOption[] = [
   { value: "unjustified", label: "Injustificadas", urlValue: ABSENCE_STATUS_URL_VALUES.unjustified },
   { value: "justified", label: "Justificadas", urlValue: ABSENCE_STATUS_URL_VALUES.justified },
   { value: "not_applicable", label: "No aplica", urlValue: ABSENCE_STATUS_URL_VALUES.not_applicable },
+  { value: "vacation", label: "Vacaciones", urlValue: ABSENCE_STATUS_URL_VALUES.vacation },
 ];
 
 export default function AbsenceToolbar({ periodOptions, selectedPeriodId, selectedStatus, searchText }: Props) {

@@ -194,15 +194,15 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 - [ ] En un periodo en estatus 2, capturar un bloque que cubre una falta ya descontada hace aparecer el aviso en Faltas, en Procesar y en la pestaña Asistencia de Bonos. Al recalcular, desaparece.
 - [ ] Capturar un bloque que cubre un retardo ya descontado hace aparecer el aviso en Retardos y en Procesar.
-- [ ] Capturar un bloque que no toca ningún día del periodo no hace aparecer ningún aviso.
+- [x] Capturar un bloque que no toca ningún día del periodo no hace aparecer ningún aviso.
 
 **Pantallas**
 
-- [ ] En Faltas, un día de vacaciones con horario y sin checada aparece con el badge "Vacaciones", sin botones de justificar, "No aplica" ni limpiar, y sin "Descontada en".
+- [x] En Faltas, un día de vacaciones con horario y sin checada aparece con el badge "Vacaciones", sin botones de justificar, "No aplica" ni limpiar, y sin "Descontada en".
 - [ ] Un día de vacaciones con una justificación "No aplica" previa se muestra como "Vacaciones", no como "No aplica".
-- [ ] `?estado=vacaciones` muestra solo esas filas. La tarjeta "Días de vacaciones" cuenta todo el periodo y no cambia con los filtros ni con la búsqueda.
-- [ ] Las tarjetas "Injustificadas", "Justificadas" y "No aplica" ya no cuentan días de vacaciones.
-- [ ] En Retardos, un día de vacaciones con entrada tarde no aparece en la lista ni en las tarjetas.
+- [x] `?estado=vacaciones` muestra solo esas filas. La tarjeta "Días de vacaciones" cuenta todo el periodo y no cambia con los filtros ni con la búsqueda.
+- [x] Las tarjetas "Injustificadas", "Justificadas" y "No aplica" ya no cuentan días de vacaciones.
+- [x] En Retardos, un día de vacaciones con entrada tarde no aparece en la lista ni en las tarjetas.
 - [ ] En Bonos, los conteos de retardos, faltas e incidencias y el resultado de cada empleado coinciden con lo que guarda el cálculo para el mismo periodo.
 - [ ] La tarjeta y el badge nuevos se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
 
@@ -213,8 +213,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **General**
 
-- [ ] `NOT_ON_VACATION_CONDITION` es la única definición SQL de la regla: los seis lugares la importan y ninguno la reescribe.
-- [ ] Ninguna fecha viaja como `Date`: `loadVacationBlocks` usa `CONVERT(varchar(10), …, 120)` y los helpers comparan strings.
+- [x] `NOT_ON_VACATION_CONDITION` es la única definición SQL de la regla: los seis lugares la importan y ninguno la reescribe.
+- [x] Ninguna fecha viaja como `Date`: `loadVacationBlocks` usa `CONVERT(varchar(10), …, 120)` y los helpers comparan strings.
 - [ ] `npm run build` y `npm run lint` pasan sin errores nuevos.
 - [ ] `docs/nomina.md` tiene la sección "Exclusión de vacaciones (spec 77)", y ya no recomienda marcar vacaciones como "No aplica".
 
