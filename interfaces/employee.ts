@@ -1,3 +1,5 @@
+import type { IVacationBadgeSummary } from "@/interfaces/vacation";
+
 /** Fila de RH.empleados tal como la devuelven los server actions. */
 export interface IEmployee {
   id_empleado:         number;
@@ -59,6 +61,8 @@ export interface IEmployeeListItem extends IEmployee {
   nombre_puesto:       string;
   nombre_sucursal:     string;
   nombre_periodo_pago: string | null;
+  /** Estatus de vacaciones del año vigente (spec 76); `null` si aún no tiene año. Solo lo llena el listado. */
+  vacation?:           IVacationBadgeSummary | null;
 }
 
 /** Expediente del detalle: agrega el nombre del supervisor y del turno. */

@@ -325,13 +325,13 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Generación**
 
-- [ ] Un empleado activo con `fecha_ingreso` 2019-03-10 obtiene, al abrir el listado el 2026-10-14, **una sola** fila: `anio_servicio = 7`, aniversario 2026-03-10, límite 2026-09-10, siguiente aniversario 2027-03-10, `dias_derecho = 22`.
+- [x] Un empleado activo con `fecha_ingreso` 2019-03-10 obtiene, al abrir el listado el 2026-10-14, **una sola** fila: `anio_servicio = 7`, aniversario 2026-03-10, límite 2026-09-10, siguiente aniversario 2027-03-10, `dias_derecho = 22`.
 - [x] Abrir el listado o el expediente varias veces no duplica filas.
-- [ ] Un empleado con `fecha_ingreso` 2016-02-29 tiene aniversario 2026-02-28.
+- [x] Un empleado con `fecha_ingreso` 2016-02-29 tiene aniversario 2026-02-28.
 - [x] Un empleado con menos de un año no tiene filas, y su pestaña muestra "Primer derecho: {fecha del primer aniversario}".
-- [ ] Un empleado con `activo = 0` no recibe años nuevos, pero su pestaña sigue mostrando los existentes.
-- [ ] Si un empleado ya tiene el año 7 y hoy cumplió el 8 y el 9 sin que nadie abriera la pantalla, al abrirla se generan el 8 y el 9.
-- [ ] Cambiar `fecha_ingreso`, puesto, sucursal o salario no modifica ninguna fila existente de `RH.vacation_entitlements`.
+- [x] Un empleado con `activo = 0` no recibe años nuevos, pero su pestaña sigue mostrando los existentes.
+- [x] Si un empleado ya tiene el año 7 y hoy cumplió el 8 y el 9 sin que nadie abriera la pantalla, al abrirla se generan el 8 y el 9.
+- [x] Cambiar `fecha_ingreso`, puesto, sucursal o salario no modifica ninguna fila existente de `RH.vacation_entitlements`.
 
 **Captura**
 
@@ -362,7 +362,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 - [ ] La pestaña "Vacaciones" aparece en el expediente; la tarjeta del año vigente y el historial con su bitácora se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
 - [x] El badge del header está en ámbar en `pendiente` con 30 días o menos para el límite, en rojo en `por_pagar`, y no aparece si el empleado no tiene año vigente.
-- [ ] El listado muestra el badge por fila, y la tarjeta "Vacaciones pendientes" cuenta los empleados con año vigente en `pendiente` o `por_pagar`.
+- [x] El listado muestra el badge por fila, y la tarjeta "Vacaciones pendientes" cuenta los empleados con año vigente en `pendiente` o `por_pagar`.
 - [ ] Solo `VacationBlockModal`, `VacationReasonModal` y `MarkVacationPaidModal` (y sus botones) llevan `"use client"`; la página, la tarjeta, el historial y el badge son Server Components.
 - [ ] Ninguna fecha viaja como `Date`: todas las lecturas usan `CONVERT(varchar(…), …, 120)` y ningún helper hace `new Date(string)` sobre un valor crudo.
 

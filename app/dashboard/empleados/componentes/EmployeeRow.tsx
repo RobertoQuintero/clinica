@@ -3,6 +3,7 @@ import { Eye, Pencil } from "lucide-react";
 import { IEmployeeListItem } from "@/interfaces/employee";
 import { dayFirst } from "@/utils/date_helpper";
 import EmployeeStatusBadge from "./EmployeeStatusBadge";
+import VacationStatusBadge from "./VacationStatusBadge";
 
 interface Props {
   employee: IEmployeeListItem;
@@ -42,6 +43,17 @@ export default function EmployeeRow({ employee, onEdit }: Props) {
       </td>
       <td className="px-6 py-4">
         <EmployeeStatusBadge activo={employee.activo} />
+      </td>
+      <td className="px-6 py-4">
+        {employee.vacation ? (
+          <VacationStatusBadge
+            status={employee.vacation.status}
+            label={employee.vacation.label}
+            isUrgent={employee.vacation.isUrgent}
+          />
+        ) : (
+          <span className="text-[#747780] dark:text-zinc-500">—</span>
+        )}
       </td>
       <td className="px-6 py-4 text-right">
         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
