@@ -35,6 +35,7 @@ export function classifyLateness(minutes: number, settings: LatenessThresholds):
  * - `rangeEndInclusive` = min(fecha_fin, hoy): el día de hoy sí se evalúa; los futuros no.
  * - `firstEntryByDate` = fecha "YYYY-MM-DD" -> hora de la primera checada `entrada` "HH:mm:ss".
  *   Un día sin entrada no se evalúa (sin checadas es asunto de Faltas).
+ * - `vacationDates` (spec 77) = fechas de vacaciones: nunca son retardo aunque haya entrada tarde (las vacaciones mandan).
  * Todas las fechas y horas son strings.
  */
 export function detectEmployeeLateness(
@@ -43,6 +44,7 @@ export function detectEmployeeLateness(
   rangeStart: string,
   rangeEndInclusive: string,
   settings: LatenessThresholds,
+  vacationDates: ReadonlySet<string> = new Set<string>(),
 ): ILatenessDetection[] {
   if (schedules.length === 0) return [];
 
@@ -52,7 +54,7 @@ export function detectEmployeeLateness(
   for (let fecha = rangeStart; fecha <= rangeEndInclusive; fecha = nextDate(fecha)) {
     const scheduledDay = scheduleByWeekday.get(weekdayOfDate(fecha));
     const arrival = firstEntryByDate.get(fecha);
-    if (!scheduledDay || !arrival) continue;
+    if (!scheduledDay || !arrival || vacationDates.has(fecha)) continue;
 
     const minutos = calculateLatenessMinutes(scheduledDay.hora_entrada_1, arrival);
     if (minutos <= settings.tolerancia_minutos) continue;
