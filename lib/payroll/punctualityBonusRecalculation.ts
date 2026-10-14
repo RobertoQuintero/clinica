@@ -6,6 +6,7 @@ import {
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
 import { PUNCTUALITY_BONUS_APPLY_SQL, PUNCTUALITY_BONUS_COLUMNS } from "@/lib/payroll/punctualityBonusSql";
+import { NOT_ON_VACATION_CONDITION } from "@/lib/payroll/vacationExclusionSql";
 import { addZeroToday } from "@/utils/date_helpper";
 
 /**
@@ -62,6 +63,7 @@ export async function isPunctualityBonusRecalculationNeeded(idPeriod: number): P
       CROSS JOIN period_days d
       WHERE ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
         AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
+        AND ${NOT_ON_VACATION_CONDITION}
         AND d.[fecha] >= e.[fecha_ingreso]
         AND d.[fecha] <  @today
         AND EXISTS (SELECT 1 FROM [CentroPodologico].[RH].[empleado_horarios] h
@@ -98,6 +100,7 @@ export async function isPunctualityBonusRecalculationNeeded(idPeriod: number): P
                                    CAST(CONVERT(varchar(8), first_entry.[llegada], 108) AS time(0))) / 60 AS minutos) late
       WHERE ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
         AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
+        AND ${NOT_ON_VACATION_CONDITION}
         AND d.[fecha] >= e.[fecha_ingreso]
         AND d.[fecha] <= @today
         AND first_entry.[llegada] IS NOT NULL
