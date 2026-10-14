@@ -209,7 +209,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 **Escrituras**
 
 - [ ] `justifyAbsence`, `markAbsenceNotApplicable`, `justifyLateness` y `markLatenessNotApplicable` sobre un día de vacaciones devuelven `{ ok: false }` con el mensaje de vacaciones y no escriben nada.
-- [ ] `clearAbsenceJustification` sobre un día de vacaciones con una justificación vieja la borra con éxito.
+- [x] `clearAbsenceJustification` sobre un día de vacaciones con una justificación vieja la borra con éxito.
 
 **General**
 

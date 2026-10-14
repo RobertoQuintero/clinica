@@ -6,6 +6,7 @@ import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import {
   JustificationWriteCheck,
   upsertJustification,
+  validateDayIsNotOnVacation,
   validateJustificationTarget,
 } from "@/lib/payroll/justificationWrites";
 import { detectEmployeeAbsences, nextDate } from "@/lib/payroll/absenceDetection";
@@ -267,6 +268,8 @@ export async function justifyAbsence(input: unknown): Promise<ActionResult<null>
         NOT_CONTROLLED_MESSAGE,
       );
       if (!target.ok) return target;
+      const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
+      if (!vacation.ok) return vacation;
       const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
       if (!day.ok) return day;
 
@@ -313,6 +316,8 @@ export async function markAbsenceNotApplicable(input: unknown): Promise<ActionRe
         NOT_CONTROLLED_MESSAGE,
       );
       if (!target.ok) return target;
+      const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
+      if (!vacation.ok) return vacation;
       const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
       if (!day.ok) return day;
 
