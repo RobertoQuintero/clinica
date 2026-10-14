@@ -71,6 +71,29 @@ export async function validateJustificationTarget(
   return { ok: true };
 }
 
+/**
+ * Spec 77: un día dentro de un bloque de vacaciones capturado ya está excluido de faltas y retardos, así que
+ * justificarlo o marcarlo "No aplica" no tendría efecto. Limpiar una justificación vieja no pasa por aquí.
+ */
+export async function validateDayIsNotOnVacation(
+  transaction: ITransactionClient,
+  idEmpleado: number,
+  fecha: string,
+): Promise<JustificationWriteCheck> {
+  const vacationRows = await transaction.queryParams(
+    `SELECT TOP 1 1 AS on_vacation
+       FROM [CentroPodologico].[RH].[vacation_entitlements]
+      WHERE [id_empleado] = @id_empleado
+        AND [fecha_inicio] IS NOT NULL
+        AND CAST(@fecha AS date) BETWEEN [fecha_inicio] AND [fecha_fin]`,
+    { id_empleado: idEmpleado, fecha },
+  );
+  if (vacationRows.length > 0) {
+    return { ok: false, message: "Ese día está dentro de las vacaciones del empleado; no requiere justificación." };
+  }
+  return { ok: true };
+}
+
 /** Inserta o reemplaza la justificación del día; el UNIQUE (id_empleado, fecha) garantiza una sola fila. */
 export async function upsertJustification(
   transaction: ITransactionClient,

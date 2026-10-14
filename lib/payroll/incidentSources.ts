@@ -50,7 +50,13 @@ export interface ICheckInDateRow {
   fecha:       string;
 }
 
-export type IncidentJustificationKind = "absence" | "lateness";
+export interface IVacationBlockRow {
+  id_empleado:  number;
+  fecha_inicio: string;   // "YYYY-MM-DD"
+  fecha_fin:    string;   // "YYYY-MM-DD"
+}
+
+export type IncidentJustificationKind ="absence" | "lateness";
 
 const JUSTIFICATION_TABLE_BY_KIND: Record<IncidentJustificationKind, string> = {
   absence:  "[CentroPodologico].[payroll].[absence_justifications]",
@@ -192,4 +198,24 @@ export async function loadDiscountedDays(
     buildPeriodParams(idSucursal, period),
   );
   return rows as { id_empleado: number; fecha: string; codigo: string }[];
+}
+
+/** Spec 77: bloques de vacaciones capturados de los empleados con control que se traslapan con el periodo. */
+export async function loadVacationBlocks(
+  idSucursal: number,
+  period: IIncidentPeriodRange,
+): Promise<IVacationBlockRow[]> {
+  const rows = await db.queryParams(
+    `SELECT ve.[id_empleado],
+            CONVERT(varchar(10), ve.[fecha_inicio], 120) AS fecha_inicio,
+            CONVERT(varchar(10), ve.[fecha_fin],    120) AS fecha_fin
+       FROM [CentroPodologico].[RH].[vacation_entitlements] ve
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = ve.id_empleado
+      WHERE ${REVIEWED_EMPLOYEE_CONDITIONS}
+        AND ve.[fecha_inicio] IS NOT NULL
+        AND ve.[fecha_inicio] <= CAST(@fecha_fin AS date)
+        AND ve.[fecha_fin]    >= CAST(@fecha_inicio AS date)`,
+    buildPeriodParams(idSucursal, period),
+  );
+  return rows as IVacationBlockRow[];
 }

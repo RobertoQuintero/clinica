@@ -40,6 +40,11 @@ const STATUS_BADGES: Record<AbsenceStatus, { label: string; classes: string }> =
     label: "No aplica",
     classes: "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
   },
+  vacation: {
+    label: "Vacaciones",
+    classes:
+      "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
+  },
 };
 
 /** Resumen del día para el encabezado de los modales de justificación. */
@@ -94,6 +99,8 @@ export default function AbsenceDaysTable({
             ) : (
               rows.map((dayRow) => {
                 const badge = STATUS_BADGES[dayRow.status];
+                // Spec 77: una fila de vacaciones es de solo lectura y no tiene acciones.
+                const justifiableDay = dayRow.status === "vacation" ? null : { ...dayRow, status: dayRow.status };
                 return (
                   <tr
                     key={`${dayRow.id_empleado}-${dayRow.fecha}`}
@@ -139,9 +146,10 @@ export default function AbsenceDaysTable({
                     </td>
                     {canDecide && (
                       <td className="pr-4 py-3.5">
+                        {justifiableDay && (
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           <JustifyDayButton
-                            day={dayRow}
+                            day={justifiableDay}
                             idPeriod={idPeriod}
                             summaryItems={buildSummaryItems(dayRow)}
                             action={justifyAbsence}
@@ -149,17 +157,17 @@ export default function AbsenceDaysTable({
                             fileNamePrefix="falta"
                           />
                           <MarkNotApplicableButton
-                            day={dayRow}
+                            day={justifiableDay}
                             idPeriod={idPeriod}
                             summaryItems={buildSummaryItems(dayRow)}
                             action={markAbsenceNotApplicable}
                             description="Una falta que no aplica no se descuenta de la nómina. El comentario queda como constancia."
-                            emptyCommentMessage="Escribe por qué no aplica esta falta (festivo, vacaciones, checador sin conexión…)."
+                            emptyCommentMessage="Escribe por qué no aplica esta falta (festivo, checador sin conexión…)."
                             ariaLabel={`Marcar como no aplica la falta de ${dayRow.nombre_completo}`}
                           />
-                          {dayRow.status !== "unjustified" && (
+                          {justifiableDay.status !== "unjustified" && (
                             <ClearJustificationButton
-                              day={dayRow}
+                              day={justifiableDay}
                               idPeriod={idPeriod}
                               action={clearAbsenceJustification}
                               ariaLabel={`Volver a injustificada la falta de ${dayRow.nombre_completo}`}
@@ -167,6 +175,7 @@ export default function AbsenceDaysTable({
                             />
                           )}
                         </div>
+                        )}
                       </td>
                     )}
                   </tr>

@@ -5,6 +5,7 @@ export const ABSENCE_STATUS_URL_VALUES: Record<AbsenceStatus, string> = {
   unjustified: "injustificada",
   justified: "justificada",
   not_applicable: "no_aplica",
+  vacation: "vacaciones",
 };
 
 export function readAbsenceStatus(rawValue: string): AbsenceStatusFilter {

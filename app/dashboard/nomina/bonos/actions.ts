@@ -34,11 +34,13 @@ import {
 import {
   loadCheckInDays,
   loadFirstEntries,
+  loadVacationBlocks,
   loadJustifications,
   loadReviewedEmployees,
   loadScheduleByEmployee,
 } from "@/lib/payroll/incidentSources";
 import { detectEmployeeLateness } from "@/lib/payroll/latenessDetection";
+import { buildVacationDatesByEmployee } from "@/lib/payroll/vacationExclusion";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
@@ -215,15 +217,30 @@ export async function getPunctualityBonusPage(
     // Sin tolerancia o sin bono nadie se evalúa: no hace falta leer checadas ni justificaciones.
     const canDetectIncidents = latenessSettings !== null && activeSetting !== null;
 
-    const [employees, scheduleByEmployee, checkInDateRows, firstEntryRows, absenceJustificationRows, latenessJustificationRows] =
-      await Promise.all([
-        loadReviewedEmployees(id_sucursal, period),
-        loadScheduleByEmployee(id_sucursal, period),
-        canDetectIncidents ? loadCheckInDays(id_sucursal, period) : Promise.resolve([]),
-        canDetectIncidents ? loadFirstEntries(id_sucursal, period) : Promise.resolve([]),
-        canDetectIncidents ? loadJustifications("absence", id_sucursal, period) : Promise.resolve([]),
-        canDetectIncidents ? loadJustifications("lateness", id_sucursal, period) : Promise.resolve([]),
-      ]);
+    const [
+      employees,
+      scheduleByEmployee,
+      checkInDateRows,
+      firstEntryRows,
+      absenceJustificationRows,
+      latenessJustificationRows,
+      vacationBlockRows,
+    ] = await Promise.all([
+      loadReviewedEmployees(id_sucursal, period),
+      loadScheduleByEmployee(id_sucursal, period),
+      canDetectIncidents ? loadCheckInDays(id_sucursal, period) : Promise.resolve([]),
+      canDetectIncidents ? loadFirstEntries(id_sucursal, period) : Promise.resolve([]),
+      canDetectIncidents ? loadJustifications("absence", id_sucursal, period) : Promise.resolve([]),
+      canDetectIncidents ? loadJustifications("lateness", id_sucursal, period) : Promise.resolve([]),
+      // Spec 77: los días de vacaciones no son falta ni retardo.
+      canDetectIncidents ? loadVacationBlocks(id_sucursal, period) : Promise.resolve([]),
+    ]);
+
+    const vacationDatesByEmployee = buildVacationDatesByEmployee(
+      vacationBlockRows,
+      period.fecha_inicio,
+      period.fecha_fin,
+    );
 
     const checkInDatesByEmployee = groupByEmployee(checkInDateRows);
     const firstEntriesByEmployee = groupByEmployee(firstEntryRows);
@@ -257,17 +274,27 @@ export async function getPunctualityBonusPage(
         const firstEntryByDate = new Map(
           (firstEntriesByEmployee.get(employee.id_empleado) ?? []).map((row) => [row.fecha, row.hora_llegada]),
         );
-        lateCount = detectEmployeeLateness(schedule, firstEntryByDate, rangeStart, latenessRangeEnd, latenessSettings).filter(
-          (lateness) => !justifiedLatenessDates.has(lateness.fecha),
-        ).length;
+        const vacationDates = vacationDatesByEmployee.get(employee.id_empleado) ?? new Set<string>();
+        lateCount = detectEmployeeLateness(
+          schedule,
+          firstEntryByDate,
+          rangeStart,
+          latenessRangeEnd,
+          latenessSettings,
+          vacationDates,
+        ).filter((lateness) => !justifiedLatenessDates.has(lateness.fecha)).length;
 
         const justifiedAbsenceDates = new Set(
           (absenceJustificationsByEmployee.get(employee.id_empleado) ?? []).map((row) => row.fecha),
         );
         const checkInDates = (checkInDatesByEmployee.get(employee.id_empleado) ?? []).map((row) => row.fecha);
-        absenceCount = detectEmployeeAbsences(schedule, checkInDates, rangeStart, absenceRangeEndExclusive).filter(
-          (absence) => !justifiedAbsenceDates.has(absence.fecha),
-        ).length;
+        absenceCount = detectEmployeeAbsences(
+          schedule,
+          checkInDates,
+          rangeStart,
+          absenceRangeEndExclusive,
+          vacationDates,
+        ).filter((absence) => !justifiedAbsenceDates.has(absence.fecha)).length;
       }
 
       allRows.push({
@@ -578,13 +605,21 @@ export async function getAttendanceBonusPage(
     // Una frecuencia sin fila no tiene bono, igual que una con status = 0.
     const activeSetting = periodSetting && periodSetting.updated_at !== null && periodSetting.status ? periodSetting : null;
 
-    const [employees, scheduleByEmployee, checkInDateRows, absenceJustificationRows] = await Promise.all([
+    const [employees, scheduleByEmployee, checkInDateRows, absenceJustificationRows, vacationBlockRows] = await Promise.all([
       loadReviewedEmployees(id_sucursal, period),
       loadScheduleByEmployee(id_sucursal, period),
       // Sin bono nadie se evalúa: no hace falta leer checadas ni justificaciones.
       activeSetting ? loadCheckInDays(id_sucursal, period) : Promise.resolve([]),
       activeSetting ? loadJustifications("absence", id_sucursal, period) : Promise.resolve([]),
+      // Spec 77: los días de vacaciones no son falta.
+      activeSetting ? loadVacationBlocks(id_sucursal, period) : Promise.resolve([]),
     ]);
+
+    const vacationDatesByEmployee = buildVacationDatesByEmployee(
+      vacationBlockRows,
+      period.fecha_inicio,
+      period.fecha_fin,
+    );
 
     const checkInDatesByEmployee = groupByEmployee(checkInDateRows);
     const absenceJustificationsByEmployee = groupByEmployee(absenceJustificationRows);
@@ -611,9 +646,13 @@ export async function getAttendanceBonusPage(
           (absenceJustificationsByEmployee.get(employee.id_empleado) ?? []).map((row) => row.fecha),
         );
         const checkInDates = (checkInDatesByEmployee.get(employee.id_empleado) ?? []).map((row) => row.fecha);
-        absenceCount = detectEmployeeAbsences(schedule, checkInDates, rangeStart, absenceRangeEndExclusive).filter(
-          (absence) => !justifiedAbsenceDates.has(absence.fecha),
-        ).length;
+        absenceCount = detectEmployeeAbsences(
+          schedule,
+          checkInDates,
+          rangeStart,
+          absenceRangeEndExclusive,
+          vacationDatesByEmployee.get(employee.id_empleado),
+        ).filter((absence) => !justifiedAbsenceDates.has(absence.fecha)).length;
       }
 
       allRows.push({
