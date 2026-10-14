@@ -9,6 +9,7 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { getEmployeeVacations, getEmployeeWorkingWeekdays } from "./actions";
 import VacationCurrentYearCard from "./componentes/VacationCurrentYearCard";
 import VacationHistoryTable from "./componentes/VacationHistoryTable";
+import VacationBlockModal from "./componentes/VacationBlockModal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -71,7 +72,25 @@ export default async function EmployeeVacationsPage({ params }: Props) {
 
       {currentEntitlement ? (
         <>
-          <VacationCurrentYearCard entitlement={currentEntitlement} today={today} />
+          <VacationCurrentYearCard
+            entitlement={currentEntitlement}
+            today={today}
+            actions={
+              currentEntitlement.status === "pendiente" ? (
+                <VacationBlockModal
+                  id_empleado={id_empleado}
+                  id_vacation_entitlement={currentEntitlement.id_vacation_entitlement}
+                  employeeName={employee.nombre_completo}
+                  servicioYear={currentEntitlement.anio_servicio}
+                  entitledDays={currentEntitlement.dias_derecho}
+                  anniversaryDate={currentEntitlement.fecha_aniversario}
+                  requestDeadline={currentEntitlement.fecha_limite_solicitud}
+                  nextAnniversaryDate={currentEntitlement.fecha_siguiente_aniversario}
+                  workingWeekdays={workingWeekdays}
+                />
+              ) : undefined
+            }
+          />
           <VacationHistoryTable entitlements={entitlements} />
         </>
       ) : (

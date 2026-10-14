@@ -336,13 +336,13 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 **Captura**
 
 - [x] Con horario Lun–Sáb y fecha de inicio en lunes, 12 días dan como `fecha_fin` el sábado de la segunda semana: se salta un solo domingo.
-- [ ] La fecha de fin que guarda el servidor es la que calcula él, aunque el cliente mande otra.
-- [ ] Capturar es posible hasta el día de `fecha_limite_solicitud` inclusive; un día después devuelve `{ ok: false }`.
-- [ ] Un bloque que empieza antes del límite y termina en el segundo semestre se guarda; uno cuya `fecha_fin` cae en o después del siguiente aniversario es rechazado.
-- [ ] Se puede capturar un bloque con fechas pasadas dentro del año de derecho.
-- [ ] Un empleado sin horario no puede capturar: el botón está deshabilitado con el aviso, y la acción devuelve `{ ok: false }`.
-- [ ] Un segundo intento de captura sobre un año que ya tiene bloque devuelve `{ ok: false }`, también en concurrencia (0 filas afectadas).
-- [ ] Cada captura deja una fila `'C'` en la bitácora con las fechas nuevas, el usuario y la fecha y hora.
+- [x] La fecha de fin que guarda el servidor es la que calcula él, aunque el cliente mande otra.
+- [x] Capturar es posible hasta el día de `fecha_limite_solicitud` inclusive; un día después devuelve `{ ok: false }`.
+- [x] Un bloque que empieza antes del límite y termina en el segundo semestre se guarda; uno cuya `fecha_fin` cae en o después del siguiente aniversario es rechazado.
+- [x] Se puede capturar un bloque con fechas pasadas dentro del año de derecho.
+- [x] Un empleado sin horario no puede capturar: el botón está deshabilitado con el aviso, y la acción devuelve `{ ok: false }`.
+- [x] Un segundo intento de captura sobre un año que ya tiene bloque devuelve `{ ok: false }`, también en concurrencia (0 filas afectadas).
+- [x] Cada captura deja una fila `'C'` en la bitácora con las fechas nuevas, el usuario y la fecha y hora.
 
 **Reprogramar y cancelar**
 

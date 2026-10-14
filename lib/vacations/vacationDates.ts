@@ -111,3 +111,15 @@ export const daysBetween = (fromDate: string, toDate: string): number => {
       millisecondsPerDay,
   );
 };
+
+/** Primer día laborable posterior a `date` (fecha de regreso tras el último día de vacaciones). */
+export const getNextWorkingDate = (date: string, workingIsoWeekdays: number[]): string | null => {
+  const workingWeekdays = new Set(workingIsoWeekdays);
+  if (workingWeekdays.size === 0) return null;
+  let candidate = addDays(date, 1);
+  for (let scanned = 0; scanned < 7; scanned++) {
+    if (workingWeekdays.has(getIsoWeekday(candidate))) return candidate;
+    candidate = addDays(candidate, 1);
+  }
+  return null;
+};
