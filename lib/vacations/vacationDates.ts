@@ -100,3 +100,14 @@ export const getNextAnniversary = (hireDate: string, today: string): string => {
   }
   return anniversary;
 };
+
+/** Días naturales de `fromDate` a `toDate` (negativo si `toDate` es anterior). */
+export const daysBetween = (fromDate: string, toDate: string): number => {
+  const from = parseIsoDate(fromDate);
+  const to = parseIsoDate(toDate);
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  return Math.round(
+    (Date.UTC(to.year, to.month - 1, to.day) - Date.UTC(from.year, from.month - 1, from.day)) /
+      millisecondsPerDay,
+  );
+};

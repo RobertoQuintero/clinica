@@ -318,24 +318,24 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Base de datos**
 
-- [ ] Existen las tres tablas; `RH.vacation_days_by_seniority` tiene 14 filas y correr el script de siembra otra vez no agrega ninguna.
-- [ ] El catálogo devuelve 12 días para el año 1, 20 para el 5, 22 para el 6 y el 10, 24 para el 11 y 32 para el 31.
-- [ ] Un `INSERT`/`UPDATE` con el bloque a medio llenar, `dias_tomados > dias_derecho`, `fecha_fin ≥ fecha_siguiente_aniversario` o `dias_pagados ≠ dias_derecho − dias_tomados` es rechazado por un `CHECK`.
-- [ ] Una fila de bitácora `'R'`, `'X'` o `'V'` sin motivo es rechazada por `CK_vacation_entitlement_log_motivo`.
+- [x] Existen las tres tablas; `RH.vacation_days_by_seniority` tiene 14 filas y correr el script de siembra otra vez no agrega ninguna.
+- [x] El catálogo devuelve 12 días para el año 1, 20 para el 5, 22 para el 6 y el 10, 24 para el 11 y 32 para el 31.
+- [x] Un `INSERT`/`UPDATE` con el bloque a medio llenar, `dias_tomados > dias_derecho`, `fecha_fin ≥ fecha_siguiente_aniversario` o `dias_pagados ≠ dias_derecho − dias_tomados` es rechazado por un `CHECK`.
+- [x] Una fila de bitácora `'R'`, `'X'` o `'V'` sin motivo es rechazada por `CK_vacation_entitlement_log_motivo`.
 
 **Generación**
 
 - [ ] Un empleado activo con `fecha_ingreso` 2019-03-10 obtiene, al abrir el listado el 2026-10-14, **una sola** fila: `anio_servicio = 7`, aniversario 2026-03-10, límite 2026-09-10, siguiente aniversario 2027-03-10, `dias_derecho = 22`.
-- [ ] Abrir el listado o el expediente varias veces no duplica filas.
+- [x] Abrir el listado o el expediente varias veces no duplica filas.
 - [ ] Un empleado con `fecha_ingreso` 2016-02-29 tiene aniversario 2026-02-28.
-- [ ] Un empleado con menos de un año no tiene filas, y su pestaña muestra "Primer derecho: {fecha del primer aniversario}".
+- [x] Un empleado con menos de un año no tiene filas, y su pestaña muestra "Primer derecho: {fecha del primer aniversario}".
 - [ ] Un empleado con `activo = 0` no recibe años nuevos, pero su pestaña sigue mostrando los existentes.
 - [ ] Si un empleado ya tiene el año 7 y hoy cumplió el 8 y el 9 sin que nadie abriera la pantalla, al abrirla se generan el 8 y el 9.
 - [ ] Cambiar `fecha_ingreso`, puesto, sucursal o salario no modifica ninguna fila existente de `RH.vacation_entitlements`.
 
 **Captura**
 
-- [ ] Con horario Lun–Sáb y fecha de inicio en lunes, 12 días dan como `fecha_fin` el sábado de la segunda semana: se salta un solo domingo.
+- [x] Con horario Lun–Sáb y fecha de inicio en lunes, 12 días dan como `fecha_fin` el sábado de la segunda semana: se salta un solo domingo.
 - [ ] La fecha de fin que guarda el servidor es la que calcula él, aunque el cliente mande otra.
 - [ ] Capturar es posible hasta el día de `fecha_limite_solicitud` inclusive; un día después devuelve `{ ok: false }`.
 - [ ] Un bloque que empieza antes del límite y termina en el segundo semestre se guarda; uno cuya `fecha_fin` cae en o después del siguiente aniversario es rechazado.
@@ -353,8 +353,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Estatus y pago**
 
-- [ ] `getVacationStatus` devuelve, para cada caso del Alcance, el estatus esperado: `pendiente`, `programada`, `en_curso`, `tomada`, `por_pagar` (sin bloque y vencido, o bloque parcial terminado) y `pagada`.
-- [ ] Un bloque de 8 de 12 días que termina ayer deja el año en `por_pagar` con 4 días; antes de terminar, el estatus es `programada` o `en_curso`, sin días por pagar.
+- [x] `getVacationStatus` devuelve, para cada caso del Alcance, el estatus esperado: `pendiente`, `programada`, `en_curso`, `tomada`, `por_pagar` (sin bloque y vencido, o bloque parcial terminado) y `pagada`.
+- [x] Un bloque de 8 de 12 días que termina ayer deja el año en `por_pagar` con 4 días; antes de terminar, el estatus es `programada` o `en_curso`, sin días por pagar.
 - [ ] "Marcar como pagadas" solo aparece y solo funciona en `por_pagar`; guarda `dias_pagados` calculado por el servidor, registra `'P'` y el año queda `pagada`.
 - [ ] Revertir el pago exige motivo, pone el pago en `NULL`, registra `'V'` y el año vuelve a `por_pagar`.
 
