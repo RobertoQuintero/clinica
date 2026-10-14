@@ -1,4 +1,10 @@
-import type { IVacationEntitlement, VacationStatus } from "@/interfaces/vacation";
+import type {
+  IVacationBadgeSummary,
+  IVacationEntitlement,
+  VacationStatus,
+} from "@/interfaces/vacation";
+import { daysBetween } from "./vacationDates";
+import { getVacationStatusLabel } from "./vacationFormatting";
 
 /** Campos mínimos para derivar el estatus (el listado no trae bitácora ni el snapshot completo). */
 export type VacationStatusInput = Pick<
@@ -38,4 +44,29 @@ export const getDaysToPay = (
 ): number => {
   if (getVacationStatus(entitlement, today) !== "por_pagar") return 0;
   return entitlement.dias_derecho - (entitlement.dias_tomados ?? 0);
+};
+
+/** Días o menos para la fecha límite en que el badge `pendiente` pasa a ámbar. */
+const URGENT_DEADLINE_DAYS = 30;
+
+/** Campos de la fila del año vigente que hacen falta para pintar el badge. */
+export type VacationBadgeInput = VacationStatusInput & Pick<IVacationEntitlement, "dias_pagados">;
+
+/** Estatus, texto y urgencia del badge del año vigente (expediente y listado comparten esta lógica). */
+export const getVacationBadgeSummary = (
+  entitlement: VacationBadgeInput,
+  today: string,
+): IVacationBadgeSummary => {
+  const status = getVacationStatus(entitlement, today);
+  const daysToDeadline = daysBetween(today, entitlement.fecha_limite_solicitud);
+  return {
+    status,
+    label: getVacationStatusLabel({
+      status,
+      dias_por_pagar: getDaysToPay(entitlement, today),
+      dias_tomados: entitlement.dias_tomados,
+      dias_pagados: entitlement.dias_pagados,
+    }),
+    isUrgent: status === "pendiente" && daysToDeadline >= 0 && daysToDeadline <= URGENT_DEADLINE_DAYS,
+  };
 };

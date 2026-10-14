@@ -361,7 +361,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 **UI**
 
 - [ ] La pestaña "Vacaciones" aparece en el expediente; la tarjeta del año vigente y el historial con su bitácora se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
-- [ ] El badge del header está en ámbar en `pendiente` con 30 días o menos para el límite, en rojo en `por_pagar`, y no aparece si el empleado no tiene año vigente.
+- [x] El badge del header está en ámbar en `pendiente` con 30 días o menos para el límite, en rojo en `por_pagar`, y no aparece si el empleado no tiene año vigente.
 - [ ] El listado muestra el badge por fila, y la tarjeta "Vacaciones pendientes" cuenta los empleados con año vigente en `pendiente` o `por_pagar`.
 - [ ] Solo `VacationBlockModal`, `VacationReasonModal` y `MarkVacationPaidModal` (y sus botones) llevan `"use client"`; la página, la tarjeta, el historial y el badge son Server Components.
 - [ ] Ninguna fecha viaja como `Date`: todas las lecturas usan `CONVERT(varchar(…), …, 120)` y ningún helper hace `new Date(string)` sobre un valor crudo.

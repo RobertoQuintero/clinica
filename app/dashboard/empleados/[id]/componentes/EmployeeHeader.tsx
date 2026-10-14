@@ -1,14 +1,18 @@
 import { IEmployeeRecord } from "@/interfaces/employee";
+import type { IVacationBadgeSummary } from "@/interfaces/vacation";
 import { dayFirst } from "@/utils/date_helpper";
 import { IEmployeeCatalogs } from "../../actions";
 import EmployeeAvatar from "../../componentes/EmployeeAvatar";
 import EmployeeStatusBadge from "../../componentes/EmployeeStatusBadge";
+import VacationStatusBadge from "../../componentes/VacationStatusBadge";
 import EmployeeActions from "./EmployeeActions";
 import EmployeeFiscalStatusBadge from "./EmployeeFiscalStatusBadge";
 
 interface Props {
   employee: IEmployeeRecord;
   catalogs: IEmployeeCatalogs;
+  /** Estatus de vacaciones del año vigente; `null` si el empleado aún no tiene año. */
+  vacation: IVacationBadgeSummary | null;
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -20,7 +24,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function EmployeeHeader({ employee, catalogs }: Props) {
+export default function EmployeeHeader({ employee, catalogs, vacation }: Props) {
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6 shadow-sm">
       <div className="flex flex-col lg:flex-row gap-8">
@@ -39,6 +43,13 @@ export default function EmployeeHeader({ employee, catalogs }: Props) {
                 </h1>
                 <EmployeeStatusBadge activo={employee.activo} />
                 <EmployeeFiscalStatusBadge employee={employee} />
+                {vacation && (
+                  <VacationStatusBadge
+                    status={vacation.status}
+                    label={`Vacaciones: ${vacation.label}`}
+                    isUrgent={vacation.isUrgent}
+                  />
+                )}
               </div>
               <p className="text-sm font-semibold text-[#0051d5] dark:text-blue-400">
                 {employee.nombre_puesto}

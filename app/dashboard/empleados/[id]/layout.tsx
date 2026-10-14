@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getEmployeeById, getEmployeeCatalogs } from "../actions";
+import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
+import { getCurrentVacationStatus } from "./vacaciones/actions";
 import EmployeeHeader from "./componentes/EmployeeHeader";
 import EmployeeTabs from "./componentes/EmployeeTabs";
 
@@ -21,6 +23,10 @@ export default async function EmployeeDetailLayout({ params, children }: Props) 
 
   if (!employee) notFound();
 
+  // Genera los años que falten antes de leer el estatus; si falla, el badge usa lo que ya existe.
+  await syncVacationEntitlements(employee.id_empresa, id_empleado);
+  const vacation = await getCurrentVacationStatus(id_empleado);
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -34,7 +40,7 @@ export default async function EmployeeDetailLayout({ params, children }: Props) 
         <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Expediente del empleado</h2>
       </div>
 
-      <EmployeeHeader employee={employee} catalogs={catalogs} />
+      <EmployeeHeader employee={employee} catalogs={catalogs} vacation={vacation} />
 
       <EmployeeTabs id_empleado={id_empleado} />
 

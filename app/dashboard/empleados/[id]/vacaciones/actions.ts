@@ -3,13 +3,18 @@
 import db from "@/database/connection";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import {
+  IVacationBadgeSummary,
   IVacationEntitlement,
   IVacationEntitlementView,
   IVacationLogEntry,
 } from "@/interfaces/vacation";
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { calculateVacationEndDate } from "@/lib/vacations/vacationDates";
-import { getDaysToPay, getVacationStatus } from "@/lib/vacations/vacationStatus";
+import {
+  getDaysToPay,
+  getVacationBadgeSummary,
+  getVacationStatus,
+} from "@/lib/vacations/vacationStatus";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import {
@@ -554,4 +559,27 @@ export async function revertVacationPayment(input: unknown): Promise<ActionResul
   } catch {
     return { ok: false, message: "Error al revertir el pago de vacaciones" };
   }
+}
+
+/** Estatus del año vigente (el de mayor `anio_servicio`) para el badge del expediente. `null` si no hay año. */
+export async function getCurrentVacationStatus(
+  id_empleado: number
+): Promise<IVacationBadgeSummary | null> {
+  const [currentEntitlement] = (await db.queryParams(
+    `SELECT TOP 1
+            [dias_derecho],
+            CONVERT(varchar(10), [fecha_limite_solicitud], 120) AS fecha_limite_solicitud,
+            CONVERT(varchar(10), [fecha_inicio],           120) AS fecha_inicio,
+            CONVERT(varchar(10), [fecha_fin],              120) AS fecha_fin,
+            [dias_tomados],
+            CONVERT(varchar(10), [fecha_pago],             120) AS fecha_pago,
+            [dias_pagados]
+       FROM [CentroPodologico].[RH].[vacation_entitlements]
+      WHERE [id_empleado] = @id_empleado
+      ORDER BY [anio_servicio] DESC`,
+    { id_empleado }
+  )) as Parameters<typeof getVacationBadgeSummary>[0][];
+
+  if (!currentEntitlement) return null;
+  return getVacationBadgeSummary(currentEntitlement, addZeroToday(new Date()));
 }

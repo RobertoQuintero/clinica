@@ -43,3 +43,11 @@ export interface IVacationEntitlementView extends IVacationEntitlement {
   dias_por_pagar: number;          // dias_derecho - dias_tomados cuando aplica; 0 si no
   log:            IVacationLogEntry[];
 }
+
+/** Estatus del año vigente listo para pintar el badge (expediente y listado). */
+export interface IVacationBadgeSummary {
+  status:   VacationStatus;
+  label:    string;
+  /** `pendiente` con 30 días o menos para la fecha límite: el badge va en ámbar. */
+  isUrgent: boolean;
+}
