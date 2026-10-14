@@ -6,10 +6,11 @@ import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
 import { getNextAnniversary } from "@/lib/vacations/vacationDates";
 import { formatIsoDateForDisplay } from "@/lib/vacations/vacationFormatting";
 import { addZeroToday } from "@/utils/date_helpper";
-import { getEmployeeVacations, getEmployeeWorkingWeekdays } from "./actions";
+import { cancelVacationBlock, getEmployeeVacations, getEmployeeWorkingWeekdays } from "./actions";
 import VacationCurrentYearCard from "./componentes/VacationCurrentYearCard";
 import VacationHistoryTable from "./componentes/VacationHistoryTable";
 import VacationBlockModal from "./componentes/VacationBlockModal";
+import VacationReasonModal from "./componentes/VacationReasonModal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -34,6 +35,17 @@ export default async function EmployeeVacationsPage({ params }: Props) {
   const today = addZeroToday(new Date());
   const [currentEntitlement] = entitlements;
   const hasSchedule = workingWeekdays.length > 0;
+  const blockModalBaseProps = currentEntitlement && {
+    id_empleado,
+    id_vacation_entitlement: currentEntitlement.id_vacation_entitlement,
+    employeeName: employee.nombre_completo,
+    servicioYear: currentEntitlement.anio_servicio,
+    entitledDays: currentEntitlement.dias_derecho,
+    anniversaryDate: currentEntitlement.fecha_aniversario,
+    requestDeadline: currentEntitlement.fecha_limite_solicitud,
+    nextAnniversaryDate: currentEntitlement.fecha_siguiente_aniversario,
+    workingWeekdays,
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -78,16 +90,35 @@ export default async function EmployeeVacationsPage({ params }: Props) {
             actions={
               currentEntitlement.status === "pendiente" ? (
                 <VacationBlockModal
-                  id_empleado={id_empleado}
-                  id_vacation_entitlement={currentEntitlement.id_vacation_entitlement}
-                  employeeName={employee.nombre_completo}
-                  servicioYear={currentEntitlement.anio_servicio}
-                  entitledDays={currentEntitlement.dias_derecho}
-                  anniversaryDate={currentEntitlement.fecha_aniversario}
-                  requestDeadline={currentEntitlement.fecha_limite_solicitud}
-                  nextAnniversaryDate={currentEntitlement.fecha_siguiente_aniversario}
-                  workingWeekdays={workingWeekdays}
+                  mode="schedule"
+                  {...blockModalBaseProps}
                 />
+              ) : currentEntitlement.status === "programada" ? (
+                <>
+                  <VacationBlockModal
+                    mode="reschedule"
+                    {...blockModalBaseProps}
+                    currentStartDate={currentEntitlement.fecha_inicio ?? undefined}
+                    currentDaysTaken={currentEntitlement.dias_tomados ?? undefined}
+                  />
+                  <VacationReasonModal
+                    id_empleado={id_empleado}
+                    id_vacation_entitlement={currentEntitlement.id_vacation_entitlement}
+                    employeeName={employee.nombre_completo}
+                    action={cancelVacationBlock}
+                    triggerLabel="Cancelar bloque"
+                    title="Cancelar vacaciones"
+                    description="El bloque se elimina y el año vuelve a quedar sin vacaciones capturadas. Si ya pasó la fecha límite de solicitud, no se podrá volver a capturar."
+                    confirmLabel="Cancelar bloque"
+                    summaryItems={[
+                      {
+                        label: "Bloque",
+                        value: `${formatIsoDateForDisplay(currentEntitlement.fecha_inicio)} al ${formatIsoDateForDisplay(currentEntitlement.fecha_fin)}`,
+                      },
+                      { label: "Días", value: String(currentEntitlement.dias_tomados ?? 0) },
+                    ]}
+                  />
+                </>
               ) : undefined
             }
           />

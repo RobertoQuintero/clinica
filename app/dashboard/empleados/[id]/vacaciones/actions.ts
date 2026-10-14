@@ -12,7 +12,11 @@ import { calculateVacationEndDate } from "@/lib/vacations/vacationDates";
 import { getDaysToPay, getVacationStatus } from "@/lib/vacations/vacationStatus";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
-import { scheduleVacationBlockSchema } from "./schemas";
+import {
+  cancelVacationBlockSchema,
+  rescheduleVacationBlockSchema,
+  scheduleVacationBlockSchema,
+} from "./schemas";
 
 type ActionResult<T> =
   | { ok: true; data: T }
@@ -233,5 +237,181 @@ export async function scheduleVacationBlock(input: unknown): Promise<ActionResul
     return { ok: true, data: null };
   } catch {
     return { ok: false, message: "Error al capturar las vacaciones" };
+  }
+}
+
+/**
+ * Reprograma un bloque que aún no empieza (spec 76). Mismas reglas de fechas que la captura,
+ * salvo la fecha límite: se puede reprogramar después de ella porque la solicitud fue a tiempo.
+ * `solicitado_at` no cambia. Las fechas anteriores salen de `OUTPUT DELETED` para que la bitácora
+ * refleje exactamente lo que se sobrescribió.
+ */
+export async function rescheduleVacationBlock(input: unknown): Promise<ActionResult<null>> {
+  try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
+    const parsed = rescheduleVacationBlockSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const { id_empleado, id_vacation_entitlement, fecha_inicio, dias_tomados, motivo } = parsed.data;
+
+    const employee = await getEmployeeById(id_empleado);
+    if (!employee) return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+
+    const [entitlement] = (await db.queryParams(
+      `SELECT [dias_derecho],
+              CONVERT(varchar(10), [fecha_aniversario],           120) AS fecha_aniversario,
+              CONVERT(varchar(10), [fecha_siguiente_aniversario], 120) AS fecha_siguiente_aniversario
+         FROM [CentroPodologico].[RH].[vacation_entitlements]
+        WHERE [id_vacation_entitlement] = @id_vacation_entitlement
+          AND [id_empleado] = @id_empleado`,
+      { id_vacation_entitlement, id_empleado }
+    )) as { dias_derecho: number; fecha_aniversario: string; fecha_siguiente_aniversario: string }[];
+    if (!entitlement) return { ok: false, message: "El año de vacaciones no existe" };
+
+    if (dias_tomados > entitlement.dias_derecho) {
+      return { ok: false, message: `El empleado solo tiene ${entitlement.dias_derecho} días de derecho` };
+    }
+    if (fecha_inicio < entitlement.fecha_aniversario) {
+      return { ok: false, message: "El bloque no puede empezar antes del aniversario" };
+    }
+
+    const workingWeekdays = await getEmployeeWorkingWeekdays(id_empleado);
+    if (workingWeekdays.length === 0) {
+      return { ok: false, message: "Sin horario definido: captura el horario del empleado primero" };
+    }
+
+    const fecha_fin = calculateVacationEndDate(fecha_inicio, dias_tomados, workingWeekdays);
+    if (!fecha_fin) return { ok: false, message: "No se pudo calcular la fecha de fin" };
+    if (fecha_fin >= entitlement.fecha_siguiente_aniversario) {
+      return {
+        ok: false,
+        message: "El bloque terminaría en el siguiente año de servicio; las vacaciones no son acumulativas",
+      };
+    }
+
+    const today = addZeroToday(new Date());
+    const changedAt = buildDate(new Date());
+    const wasSaved = await db.transaction(async (tx) => {
+      const previousRows = (await tx.queryParams(
+        `UPDATE [CentroPodologico].[RH].[vacation_entitlements]
+            SET [fecha_inicio] = @fecha_inicio,
+                [fecha_fin]    = @fecha_fin,
+                [dias_tomados] = @dias_tomados
+         OUTPUT CONVERT(varchar(10), DELETED.[fecha_inicio], 120) AS fecha_inicio_anterior,
+                CONVERT(varchar(10), DELETED.[fecha_fin],    120) AS fecha_fin_anterior,
+                DELETED.[dias_tomados]                            AS dias_tomados_anterior
+          WHERE [id_vacation_entitlement] = @id_vacation_entitlement
+            AND [id_empleado] = @id_empleado
+            AND [fecha_inicio] IS NOT NULL
+            AND [fecha_inicio] > @today
+            AND [fecha_pago] IS NULL`,
+        { id_vacation_entitlement, id_empleado, fecha_inicio, fecha_fin, dias_tomados, today }
+      )) as { fecha_inicio_anterior: string; fecha_fin_anterior: string; dias_tomados_anterior: number }[];
+      if (previousRows.length === 0) return false;
+
+      const [previous] = previousRows;
+      await tx.queryParams(
+        `INSERT INTO [CentroPodologico].[RH].[vacation_entitlement_log]
+           ([id_vacation_entitlement], [accion],
+            [fecha_inicio_anterior], [fecha_fin_anterior], [dias_tomados_anterior],
+            [fecha_inicio_nueva], [fecha_fin_nueva], [dias_tomados_nueva],
+            [motivo], [created_by], [created_at])
+         VALUES
+           (@id_vacation_entitlement, 'R',
+            @fecha_inicio_anterior, @fecha_fin_anterior, @dias_tomados_anterior,
+            @fecha_inicio, @fecha_fin, @dias_tomados,
+            @motivo, @id_user, @created_at)`,
+        {
+          id_vacation_entitlement,
+          ...previous,
+          fecha_inicio,
+          fecha_fin,
+          dias_tomados,
+          motivo,
+          id_user: access.data.id_user,
+          created_at: changedAt,
+        }
+      );
+      return true;
+    });
+    if (!wasSaved) {
+      return { ok: false, message: "El bloque ya empezó, fue cancelado o ya tiene un pago registrado" };
+    }
+
+    revalidateVacationViews(id_empleado);
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, message: "Error al reprogramar las vacaciones" };
+  }
+}
+
+/** Cancela un bloque que aún no empieza: lo deja en NULL y registra `'X'` con motivo (spec 76). */
+export async function cancelVacationBlock(input: unknown): Promise<ActionResult<null>> {
+  try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
+    const parsed = cancelVacationBlockSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const { id_empleado, id_vacation_entitlement, motivo } = parsed.data;
+
+    const employee = await getEmployeeById(id_empleado);
+    if (!employee) return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+
+    const today = addZeroToday(new Date());
+    const changedAt = buildDate(new Date());
+    const wasCancelled = await db.transaction(async (tx) => {
+      const previousRows = (await tx.queryParams(
+        `UPDATE [CentroPodologico].[RH].[vacation_entitlements]
+            SET [fecha_inicio]  = NULL,
+                [fecha_fin]     = NULL,
+                [dias_tomados]  = NULL,
+                [solicitado_by] = NULL,
+                [solicitado_at] = NULL
+         OUTPUT CONVERT(varchar(10), DELETED.[fecha_inicio], 120) AS fecha_inicio_anterior,
+                CONVERT(varchar(10), DELETED.[fecha_fin],    120) AS fecha_fin_anterior,
+                DELETED.[dias_tomados]                            AS dias_tomados_anterior
+          WHERE [id_vacation_entitlement] = @id_vacation_entitlement
+            AND [id_empleado] = @id_empleado
+            AND [fecha_inicio] IS NOT NULL
+            AND [fecha_inicio] > @today
+            AND [fecha_pago] IS NULL`,
+        { id_vacation_entitlement, id_empleado, today }
+      )) as { fecha_inicio_anterior: string; fecha_fin_anterior: string; dias_tomados_anterior: number }[];
+      if (previousRows.length === 0) return false;
+
+      const [previous] = previousRows;
+      await tx.queryParams(
+        `INSERT INTO [CentroPodologico].[RH].[vacation_entitlement_log]
+           ([id_vacation_entitlement], [accion],
+            [fecha_inicio_anterior], [fecha_fin_anterior], [dias_tomados_anterior],
+            [motivo], [created_by], [created_at])
+         VALUES
+           (@id_vacation_entitlement, 'X',
+            @fecha_inicio_anterior, @fecha_fin_anterior, @dias_tomados_anterior,
+            @motivo, @id_user, @created_at)`,
+        {
+          id_vacation_entitlement,
+          ...previous,
+          motivo,
+          id_user: access.data.id_user,
+          created_at: changedAt,
+        }
+      );
+      return true;
+    });
+    if (!wasCancelled) {
+      return { ok: false, message: "El bloque ya empezó, ya fue cancelado o ya tiene un pago registrado" };
+    }
+
+    revalidateVacationViews(id_empleado);
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, message: "Error al cancelar las vacaciones" };
   }
 }

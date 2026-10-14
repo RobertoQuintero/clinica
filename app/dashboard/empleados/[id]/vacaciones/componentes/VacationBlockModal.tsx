@@ -2,15 +2,18 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus } from "lucide-react";
+import { CalendarClock, CalendarPlus } from "lucide-react";
 import JustificationModalFrame, {
   JUSTIFICATION_FIELD_CLASSES,
+  JUSTIFICATION_MAX_COMMENT_LENGTH,
 } from "@/app/dashboard/nomina/componentes/JustificationModalFrame";
 import { calculateVacationEndDate, getNextWorkingDate } from "@/lib/vacations/vacationDates";
 import { formatIsoDateForDisplay } from "@/lib/vacations/vacationFormatting";
-import { scheduleVacationBlock } from "../actions";
+import { rescheduleVacationBlock, scheduleVacationBlock } from "../actions";
 
 interface Props {
+  /** `schedule` captura el bloque; `reschedule` mueve uno que aún no empieza y exige motivo. */
+  mode: "schedule" | "reschedule";
   id_empleado: number;
   id_vacation_entitlement: number;
   employeeName: string;
@@ -20,6 +23,9 @@ interface Props {
   requestDeadline: string;
   nextAnniversaryDate: string;
   workingWeekdays: number[];
+  /** Solo en `reschedule`: el bloque vigente, como valor inicial del formulario. */
+  currentStartDate?: string;
+  currentDaysTaken?: number;
 }
 
 interface ModalProps extends Props {
@@ -27,6 +33,7 @@ interface ModalProps extends Props {
 }
 
 function VacationBlockForm({
+  mode,
   id_empleado,
   id_vacation_entitlement,
   employeeName,
@@ -36,11 +43,15 @@ function VacationBlockForm({
   requestDeadline,
   nextAnniversaryDate,
   workingWeekdays,
+  currentStartDate,
+  currentDaysTaken,
   onClose,
 }: ModalProps) {
   const router = useRouter();
-  const [startDate, setStartDate] = useState("");
-  const [daysTaken, setDaysTaken] = useState(String(entitledDays));
+  const isReschedule = mode === "reschedule";
+  const [startDate, setStartDate] = useState(currentStartDate ?? "");
+  const [daysTaken, setDaysTaken] = useState(String(currentDaysTaken ?? entitledDays));
+  const [reasonText, setReasonText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -59,19 +70,31 @@ function VacationBlockForm({
 
   const exceedsServiceYear = endDate !== null && endDate >= nextAnniversaryDate;
   const startsBeforeAnniversary = startDate !== "" && startDate < anniversaryDate;
+  const isReasonMissing = isReschedule && reasonText.trim() === "";
+  const isUnchanged =
+    isReschedule && startDate === currentStartDate && parsedDaysTaken === currentDaysTaken;
   const canSave =
-    startDate !== "" && isDaysTakenValid && endDate !== null && !exceedsServiceYear && !startsBeforeAnniversary;
+    startDate !== "" &&
+    isDaysTakenValid &&
+    endDate !== null &&
+    !exceedsServiceYear &&
+    !startsBeforeAnniversary &&
+    !isReasonMissing &&
+    !isUnchanged;
 
   async function saveBlock() {
     setErrorMessage(null);
     setIsSaving(true);
     try {
-      const result = await scheduleVacationBlock({
+      const payload = {
         id_empleado,
         id_vacation_entitlement,
         fecha_inicio: startDate,
         dias_tomados: parsedDaysTaken,
-      });
+      };
+      const result = isReschedule
+        ? await rescheduleVacationBlock({ ...payload, motivo: reasonText.trim() })
+        : await scheduleVacationBlock(payload);
       if (!result.ok) {
         setErrorMessage(result.message);
         return;
@@ -88,8 +111,8 @@ function VacationBlockForm({
   return (
     <JustificationModalFrame
       titleId="vacation-block-modal-title"
-      title="Capturar vacaciones"
-      icon={<CalendarPlus size={18} />}
+      title={isReschedule ? "Reprogramar vacaciones" : "Capturar vacaciones"}
+      icon={isReschedule ? <CalendarClock size={18} /> : <CalendarPlus size={18} />}
       employeeName={employeeName}
       summaryItems={[
         { label: "Año de servicio", value: String(servicioYear) },
@@ -101,8 +124,9 @@ function VacationBlockForm({
       onClose={onClose}
     >
       <p className="text-sm text-[#44474f] dark:text-zinc-400">
-        Un solo bloque continuo. Solo cuentan los días laborables del horario; los días de descanso
-        se saltan. Los días que no se tomen quedan por pagar.
+        {isReschedule
+          ? "Solo se puede mover un bloque que aún no empieza. La fecha límite de solicitud ya no aplica: la solicitud se hizo a tiempo."
+          : "Un solo bloque continuo. Solo cuentan los días laborables del horario; los días de descanso se saltan. Los días que no se tomen quedan por pagar."}
       </p>
 
       {errorMessage && (
@@ -171,6 +195,20 @@ function VacationBlockForm({
         </p>
       )}
 
+      {isReschedule && (
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">
+          Motivo de la reprogramación
+          <textarea
+            rows={3}
+            maxLength={JUSTIFICATION_MAX_COMMENT_LENGTH}
+            value={reasonText}
+            onChange={(event) => setReasonText(event.target.value)}
+            disabled={isSaving}
+            className={`${JUSTIFICATION_FIELD_CLASSES} resize-none`}
+          />
+        </label>
+      )}
+
       <div className="flex justify-end gap-3">
         <button
           type="button"
@@ -186,17 +224,18 @@ function VacationBlockForm({
           disabled={isSaving || !canSave}
           className="rounded-lg bg-[#0051d5] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0051d5]/90 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {isSaving ? "Guardando…" : "Capturar vacaciones"}
+          {isSaving ? "Guardando…" : isReschedule ? "Reprogramar" : "Capturar vacaciones"}
         </button>
       </div>
     </JustificationModalFrame>
   );
 }
 
-/** Botón "Capturar vacaciones" del año vigente; abre el modal de captura del bloque único. */
+/** Botón del año vigente que abre el modal de captura o de reprogramación del bloque único. */
 export default function VacationBlockModal(props: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const closeModal = useCallback(() => setIsOpen(false), []);
+  const isReschedule = props.mode === "reschedule";
   const hasNoSchedule = props.workingWeekdays.length === 0;
 
   return (
@@ -206,10 +245,14 @@ export default function VacationBlockModal(props: Props) {
         onClick={() => setIsOpen(true)}
         disabled={hasNoSchedule}
         title={hasNoSchedule ? "Sin horario definido" : undefined}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0051d5]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+        className={
+          isReschedule
+            ? "inline-flex items-center gap-1.5 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 px-4 py-2 text-sm font-semibold text-[#44474f] dark:text-zinc-300 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            : "inline-flex items-center gap-1.5 rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0051d5]/90 disabled:opacity-60 disabled:cursor-not-allowed"
+        }
       >
-        <CalendarPlus size={16} aria-hidden />
-        Capturar vacaciones
+        {isReschedule ? <CalendarClock size={16} aria-hidden /> : <CalendarPlus size={16} aria-hidden />}
+        {isReschedule ? "Reprogramar" : "Capturar vacaciones"}
       </button>
       {isOpen && <VacationBlockForm {...props} onClose={closeModal} />}
     </>

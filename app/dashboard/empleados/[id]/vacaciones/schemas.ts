@@ -27,3 +27,22 @@ export const scheduleVacationBlockSchema = z.object({
 });
 
 export type ScheduleVacationBlockInput = z.infer<typeof scheduleVacationBlockSchema>;
+
+const requiredReason = z
+  .string()
+  .trim()
+  .min(1, "El motivo es obligatorio")
+  .max(500, "El motivo no puede pasar de 500 caracteres");
+
+export const rescheduleVacationBlockSchema = scheduleVacationBlockSchema.extend({
+  motivo: requiredReason,
+});
+
+export const cancelVacationBlockSchema = z.object({
+  id_empleado:             z.number().int().positive(),
+  id_vacation_entitlement: z.number().int().positive(),
+  motivo:                  requiredReason,
+});
+
+export type RescheduleVacationBlockInput = z.infer<typeof rescheduleVacationBlockSchema>;
+export type CancelVacationBlockInput = z.infer<typeof cancelVacationBlockSchema>;

@@ -346,10 +346,10 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Reprogramar y cancelar**
 
-- [ ] Reprogramar o cancelar un bloque con `fecha_inicio ≤ hoy` devuelve `{ ok: false }` y la UI no ofrece la acción.
-- [ ] Reprogramar después de `fecha_limite_solicitud` funciona si el bloque aún no empieza, y `solicitado_at` no cambia.
-- [ ] La reprogramación deja una fila `'R'` con las fechas y los días anteriores y nuevos, y el motivo; sin motivo es rechazada.
-- [ ] Cancelar deja el bloque en `NULL`, registra `'X'` con motivo, y el año queda `pendiente` (antes del límite) o `por_pagar` (después).
+- [x] Reprogramar o cancelar un bloque con `fecha_inicio ≤ hoy` devuelve `{ ok: false }` y la UI no ofrece la acción.
+- [x] Reprogramar después de `fecha_limite_solicitud` funciona si el bloque aún no empieza, y `solicitado_at` no cambia.
+- [x] La reprogramación deja una fila `'R'` con las fechas y los días anteriores y nuevos, y el motivo; sin motivo es rechazada.
+- [x] Cancelar deja el bloque en `NULL`, registra `'X'` con motivo, y el año queda `pendiente` (antes del límite) o `por_pagar` (después).
 
 **Estatus y pago**
 
