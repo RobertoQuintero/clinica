@@ -1096,6 +1096,110 @@ CREATE TABLE [RH].[empleado_horarios](
 ) ON [PRIMARY]
 GO
 
+-------------------- VACACIONES (spec 76) ---------------------
+-- Catálogo LFT (reforma 2023): días de vacaciones por año de servicio. Sin pantalla de edición.
+-- La BD no impide traslapes de rangos; los controla el script de siembra.
+CREATE TABLE [RH].[vacation_days_by_seniority](
+    [id_vacation_days] [int] IDENTITY(1,1) NOT NULL,
+    [anio_desde]       [int] NOT NULL,
+    [anio_hasta]       [int] NOT NULL,
+    [dias]             [int] NOT NULL,
+ CONSTRAINT [PK_vacation_days_by_seniority] PRIMARY KEY CLUSTERED ([id_vacation_days] ASC),
+ CONSTRAINT [UQ_vacation_days_by_seniority_desde] UNIQUE ([anio_desde]),
+ CONSTRAINT [CK_vacation_days_by_seniority_rango] CHECK ([anio_desde] >= 1 AND [anio_hasta] >= [anio_desde]),
+ CONSTRAINT [CK_vacation_days_by_seniority_dias]  CHECK ([dias] > 0)
+) ON [PRIMARY]
+GO
+
+-- Siembra idempotente (14 rangos). 46–50 = 38 (patrón +2 cada 5 años; decisión del usuario).
+INSERT INTO [RH].[vacation_days_by_seniority] ([anio_desde], [anio_hasta], [dias])
+SELECT v.anio_desde, v.anio_hasta, v.dias
+FROM (VALUES
+    (1, 1, 12), (2, 2, 14), (3, 3, 16), (4, 4, 18), (5, 5, 20),
+    (6, 10, 22), (11, 15, 24), (16, 20, 26), (21, 25, 28), (26, 30, 30),
+    (31, 35, 32), (36, 40, 34), (41, 45, 36), (46, 50, 38)
+) AS v(anio_desde, anio_hasta, dias)
+WHERE NOT EXISTS (
+    SELECT 1 FROM [RH].[vacation_days_by_seniority] c WHERE c.[anio_desde] = v.anio_desde
+)
+GO
+
+-- Un año de derecho por empleado y aniversario. dias_derecho y fechas son snapshot.
+CREATE TABLE [RH].[vacation_entitlements](
+    [id_vacation_entitlement]     [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]                 [int]           NOT NULL,
+    [anio_servicio]               [int]           NOT NULL,   -- 1 = primer aniversario
+    [fecha_aniversario]           [date]          NOT NULL,   -- DATEADD(YEAR, anio_servicio, fecha_ingreso)
+    [fecha_limite_solicitud]      [date]          NOT NULL,   -- DATEADD(MONTH, 6, fecha_aniversario)
+    [fecha_siguiente_aniversario] [date]          NOT NULL,   -- DATEADD(YEAR, anio_servicio + 1, fecha_ingreso)
+    [dias_derecho]                [int]           NOT NULL,   -- snapshot del catálogo
+    -- Bloque único (todo NULL o todo lleno)
+    [fecha_inicio]                [date]          NULL,
+    [fecha_fin]                   [date]          NULL,       -- último día de vacaciones, calculado con el horario
+    [dias_tomados]                [int]           NULL,
+    [solicitado_by]               [int]           NULL,
+    [solicitado_at]               [datetime2](0)  NULL,       -- captura original; NO cambia al reprogramar
+    -- Pago de días sobrantes (todo NULL o todo lleno)
+    [fecha_pago]                  [date]          NULL,
+    [dias_pagados]                [int]           NULL,
+    [comentario_pago]             [nvarchar](500) NULL,
+    [pagado_by]                   [int]           NULL,
+    [pagado_at]                   [datetime2](0)  NULL,
+    [created_at]                  [datetime2](0)  NOT NULL,   -- buildDate(new Date())
+ CONSTRAINT [PK_vacation_entitlements] PRIMARY KEY CLUSTERED ([id_vacation_entitlement] ASC),
+ CONSTRAINT [UQ_vacation_entitlements_empleado_anio] UNIQUE ([id_empleado], [anio_servicio]),
+ CONSTRAINT [FK_vacation_entitlements_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_vacation_entitlements_ventana] CHECK (
+     [anio_servicio] >= 1 AND [dias_derecho] > 0
+     AND [fecha_limite_solicitud] > [fecha_aniversario]
+     AND [fecha_siguiente_aniversario] > [fecha_limite_solicitud]),
+ -- IS NOT NULL explícito: un CHECK que da UNKNOWN pasa.
+ CONSTRAINT [CK_vacation_entitlements_bloque] CHECK (
+     ([fecha_inicio] IS NULL AND [fecha_fin] IS NULL AND [dias_tomados] IS NULL
+          AND [solicitado_by] IS NULL AND [solicitado_at] IS NULL)
+  OR ([fecha_inicio] IS NOT NULL AND [fecha_fin] IS NOT NULL AND [dias_tomados] IS NOT NULL
+          AND [solicitado_by] IS NOT NULL AND [solicitado_at] IS NOT NULL
+          AND [dias_tomados] BETWEEN 1 AND [dias_derecho]
+          AND [fecha_inicio] >= [fecha_aniversario]
+          AND [fecha_fin] >= [fecha_inicio]
+          AND [fecha_fin] < [fecha_siguiente_aniversario])),
+ CONSTRAINT [CK_vacation_entitlements_pago] CHECK (
+     ([fecha_pago] IS NULL AND [dias_pagados] IS NULL AND [pagado_by] IS NULL AND [pagado_at] IS NULL)
+  OR ([fecha_pago] IS NOT NULL AND [dias_pagados] IS NOT NULL AND [pagado_by] IS NOT NULL AND [pagado_at] IS NOT NULL
+          AND [dias_pagados] = [dias_derecho] - ISNULL([dias_tomados], 0)
+          AND [dias_pagados] > 0))
+) ON [PRIMARY]
+GO
+
+-- Bitácora: una fila por acción sobre un año de derecho. Sin FK de created_by a dbo.users.
+CREATE TABLE [RH].[vacation_entitlement_log](
+    [id_log]                  [int] IDENTITY(1,1) NOT NULL,
+    [id_vacation_entitlement] [int]           NOT NULL,
+    [accion]                  [char](1)       NOT NULL,   -- 'C' captura | 'R' reprogramación | 'X' cancelación | 'P' pago | 'V' reversión de pago
+    [fecha_inicio_anterior]   [date]          NULL,
+    [fecha_fin_anterior]      [date]          NULL,
+    [dias_tomados_anterior]   [int]           NULL,
+    [fecha_inicio_nueva]      [date]          NULL,
+    [fecha_fin_nueva]         [date]          NULL,
+    [dias_tomados_nueva]      [int]           NULL,
+    [fecha_pago]              [date]          NULL,       -- 'P' y 'V'
+    [dias_pagados]            [int]           NULL,       -- 'P' y 'V'
+    [motivo]                  [nvarchar](500) NULL,       -- obligatorio en 'R', 'X', 'V'; comentario en 'P'
+    [created_by]              [int]           NOT NULL,
+    [created_at]              [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_vacation_entitlement_log] PRIMARY KEY CLUSTERED ([id_log] ASC),
+ CONSTRAINT [FK_vacation_entitlement_log_entitlement] FOREIGN KEY ([id_vacation_entitlement])
+     REFERENCES [RH].[vacation_entitlements] ([id_vacation_entitlement]),
+ CONSTRAINT [CK_vacation_entitlement_log_accion] CHECK ([accion] IN ('C','R','X','P','V')),
+ CONSTRAINT [CK_vacation_entitlement_log_motivo] CHECK (
+     [accion] IN ('C','P') OR ([motivo] IS NOT NULL AND LEN(LTRIM(RTRIM([motivo]))) > 0))
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_vacation_entitlement_log_entitlement]
+    ON [RH].[vacation_entitlement_log] ([id_vacation_entitlement], [created_at] DESC)
+GO
+
 -- Un renglón por checada (entrada o salida), tal como la reporta el dispositivo.
 CREATE TABLE [RH].[asistencias](
     [id_asistencia]        [int] IDENTITY(1,1) NOT NULL,

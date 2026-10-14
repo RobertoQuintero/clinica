@@ -11,7 +11,9 @@ import {
 import { IBank, IDepartment, IPosition, IShift, IPaymentPeriod } from "@/interfaces/rh_catalogs";
 import { ISucursal } from "@/interfaces/sucursal";
 import { getSucursalesForUser } from "@/app/dashboard/sucursales/actions";
-import { toDBString, buildDate } from "@/utils/date_helpper";
+import { toDBString, buildDate, addZeroToday } from "@/utils/date_helpper";
+import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
+import { getVacationBadgeSummary, type VacationBadgeInput } from "@/lib/vacations/vacationStatus";
 import { parseEmployeeInput } from "./schemas";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -132,14 +134,39 @@ export async function getEmployees(): Promise<IEmployeeListItem[]> {
   const { ids, placeholders, params } = buildSucursalInParams(sucursales_string);
   if (ids.length === 0) return [];
 
+  // Genera los años de vacaciones que falten (spec 76) antes de leer el año vigente de cada fila.
+  await syncVacationEntitlements(id_empresa);
+
   const data = (await db.queryParams(
     `SELECT ${EMPLOYEE_SELECT_COLUMNS},
-            pp.[description] AS nombre_periodo_pago
+            pp.[description] AS nombre_periodo_pago,
+            vac.[id_vacation_entitlement] AS vac_id_vacation_entitlement,
+            vac.[dias_derecho]            AS vac_dias_derecho,
+            vac.[fecha_limite_solicitud]  AS vac_fecha_limite_solicitud,
+            vac.[fecha_inicio]            AS vac_fecha_inicio,
+            vac.[fecha_fin]               AS vac_fecha_fin,
+            vac.[dias_tomados]            AS vac_dias_tomados,
+            vac.[fecha_pago]              AS vac_fecha_pago,
+            vac.[dias_pagados]            AS vac_dias_pagados
        FROM [CentroPodologico].[RH].[empleados] e
        JOIN [CentroPodologico].[RH].[departamentos] d ON d.[id_department] = e.[id_department]
        JOIN [CentroPodologico].[RH].[puestos] p ON p.[id_puesto] = e.[id_puesto]
        JOIN [CentroPodologico].[dbo].[sucursales] s ON s.[id_sucursal] = e.[id_sucursal]
        LEFT JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.[id_payment_period] = e.[id_periodo_pago]
+       OUTER APPLY (
+            SELECT TOP 1
+                   v.[id_vacation_entitlement],
+                   v.[dias_derecho],
+                   CONVERT(varchar(10), v.[fecha_limite_solicitud], 120) AS fecha_limite_solicitud,
+                   CONVERT(varchar(10), v.[fecha_inicio],           120) AS fecha_inicio,
+                   CONVERT(varchar(10), v.[fecha_fin],              120) AS fecha_fin,
+                   v.[dias_tomados],
+                   CONVERT(varchar(10), v.[fecha_pago],             120) AS fecha_pago,
+                   v.[dias_pagados]
+              FROM [CentroPodologico].[RH].[vacation_entitlements] v
+             WHERE v.[id_empleado] = e.[id_empleado]
+             ORDER BY v.[anio_servicio] DESC
+       ) vac
       WHERE e.[status] = 1
         AND e.[id_empresa] = @id_empresa
         AND e.[id_sucursal] IN (${placeholders})
@@ -150,12 +177,50 @@ export async function getEmployees(): Promise<IEmployeeListItem[]> {
     nombre_puesto: string;
     nombre_sucursal: string;
     nombre_periodo_pago: string | null;
+    vac_id_vacation_entitlement: number | null;
+    vac_dias_derecho: number | null;
+    vac_fecha_limite_solicitud: string | null;
+    vac_fecha_inicio: string | null;
+    vac_fecha_fin: string | null;
+    vac_dias_tomados: number | null;
+    vac_fecha_pago: string | null;
+    vac_dias_pagados: number | null;
   })[];
 
-  return data.map((row) => ({
-    ...row,
-    nombre_completo: buildFullName(row.nombre, row.apellido_paterno, row.apellido_materno),
-  }));
+  const today = addZeroToday(new Date());
+  return data.map((row) => {
+    const {
+      vac_id_vacation_entitlement,
+      vac_dias_derecho,
+      vac_fecha_limite_solicitud,
+      vac_fecha_inicio,
+      vac_fecha_fin,
+      vac_dias_tomados,
+      vac_fecha_pago,
+      vac_dias_pagados,
+      ...employee
+    } = row;
+
+    // Sin fila en el OUTER APPLY el empleado aún no tiene año de derecho: sin badge.
+    const currentYear: VacationBadgeInput | null =
+      vac_id_vacation_entitlement === null
+        ? null
+        : {
+            dias_derecho: vac_dias_derecho as number,
+            fecha_limite_solicitud: vac_fecha_limite_solicitud as string,
+            fecha_inicio: vac_fecha_inicio,
+            fecha_fin: vac_fecha_fin,
+            dias_tomados: vac_dias_tomados,
+            fecha_pago: vac_fecha_pago,
+            dias_pagados: vac_dias_pagados,
+          };
+
+    return {
+      ...employee,
+      nombre_completo: buildFullName(row.nombre, row.apellido_paterno, row.apellido_materno),
+      vacation: currentYear ? getVacationBadgeSummary(currentYear, today) : null,
+    };
+  });
 }
 
 /** Expediente completo de un empleado. `null` si no pertenece a la empresa o a una sucursal del usuario. */

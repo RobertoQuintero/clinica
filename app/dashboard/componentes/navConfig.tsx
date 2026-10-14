@@ -132,6 +132,6 @@ export const NAV_LINKS: NavLink[] = [
       },
     ],
   },
-  // { href: "/dashboard/facturacion", label: "Facturación", icon: Receipt, minRole: 0, excludeRoles: [2, 3, 5] },
+  { href: "/dashboard/facturacion", label: "Facturación", icon: Receipt, minRole: 0, excludeRoles: [2, 3, 5] },
   { href: "/dashboard/usuarios", label: "Usuarios", icon: UserCog, minRole: 0, excludeRoles: [2, 3, 5, 6] },
 ];
