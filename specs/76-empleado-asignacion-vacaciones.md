@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [25 — Empleados: alta, listado y detalle](25-empleados-alta-listado-detalle.md): `RH.empleados.fecha_ingreso` y `activo`, el expediente con pestañas (`empleados/[id]/layout.tsx`, `EmployeeTabs`, `EmployeeHeader`), `EmployeesTable` y `EmployeeSummaryCards`.
   - [59 — Empleados: horario semanal estructurado](59-empleado-horario-semanal.md): `RH.empleado_horarios`. Con él se calcula la fecha de regreso saltando los días de descanso; sin horario no se pueden capturar vacaciones.
@@ -360,16 +360,16 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **UI**
 
-- [ ] La pestaña "Vacaciones" aparece en el expediente; la tarjeta del año vigente y el historial con su bitácora se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
+- [x] La pestaña "Vacaciones" aparece en el expediente; la tarjeta del año vigente y el historial con su bitácora se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
 - [x] El badge del header está en ámbar en `pendiente` con 30 días o menos para el límite, en rojo en `por_pagar`, y no aparece si el empleado no tiene año vigente.
 - [x] El listado muestra el badge por fila, y la tarjeta "Vacaciones pendientes" cuenta los empleados con año vigente en `pendiente` o `por_pagar`.
-- [ ] Solo `VacationBlockModal`, `VacationReasonModal` y `MarkVacationPaidModal` (y sus botones) llevan `"use client"`; la página, la tarjeta, el historial y el badge son Server Components.
-- [ ] Ninguna fecha viaja como `Date`: todas las lecturas usan `CONVERT(varchar(…), …, 120)` y ningún helper hace `new Date(string)` sobre un valor crudo.
+- [x] Solo `VacationBlockModal`, `VacationReasonModal` y `MarkVacationPaidModal` (y sus botones) llevan `"use client"`; la página, la tarjeta, el historial y el badge son Server Components.
+- [x] Ninguna fecha viaja como `Date`: todas las lecturas usan `CONVERT(varchar(…), …, 120)` y ningún helper hace `new Date(string)` sobre un valor crudo.
 
 **General**
 
-- [ ] `npm run build` y `npm run lint` pasan sin errores nuevos.
-- [ ] `docs/rh-empleados.md` tiene la sección "Vacaciones (spec 76)".
+- [x] `npm run build` y `npm run lint` pasan sin errores nuevos.
+- [x] `docs/rh-empleados.md` tiene la sección "Vacaciones (spec 76)".
 
 ## Decisiones tomadas y descartadas
 
