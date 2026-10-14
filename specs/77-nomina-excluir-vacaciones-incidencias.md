@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [62 — Control de faltas](62-nomina-control-faltas.md): `#absences`, `absenceDetection.ts`, `isAbsenceRecalculationNeeded`, la pantalla Faltas y sus escrituras.
   - [63 — Control de retardos](63-nomina-control-retardos.md): `#lateness`, `latenessDetection.ts`, `isLatenessRecalculationNeeded` y las escrituras de Retardos.
@@ -181,30 +181,30 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Cálculo**
 
-- [ ] Un podólogo con horario Lun–Sáb, sin checadas y con un bloque de vacaciones del lunes al sábado dentro de un periodo semanal termina con `dias_falta = 0`. Su `importe_salario` es igual al de un periodo sin faltas, y `period_employee_absences` no tiene filas suyas para esos días.
-- [ ] En el mismo caso, en el renglón `'F'`, `dias_falta = 0`.
-- [ ] Un día de vacaciones con una checada `entrada` 40 minutos tarde no genera fila en `period_employee_lateness` y no suma a `dias_retardo`.
-- [ ] Un podólogo de vacaciones el periodo completo queda en `bono_asistencia_resultado = 'C'` y `bono_puntualidad_resultado = 'C'`, con el monto configurado, cuando se cumplen las demás condiciones (configuración activa, `fecha_ingreso <= fecha_inicio`, con horario).
-- [ ] Un podólogo con 3 días de vacaciones y 1 falta injustificada fuera del bloque, en el mismo periodo, queda con `dias_falta = 1` y pierde el bono de asistencia (`bono_asistencia_faltas = 1`).
-- [ ] Los días de vacaciones pagados en efectivo (año `pagada` sin bloque) **no** se excluyen: un día sin checada sigue siendo falta.
-- [ ] Después de cancelar un bloque, sus días vuelven a detectarse como faltas al recalcular. Después de reprogramarlo, solo se excluyen las fechas nuevas.
-- [ ] Recalcular un periodo ya calculado en el que ningún empleado tiene vacaciones produce un snapshot idéntico al anterior (comparado dentro de una transacción revertida).
+- [x] Un podólogo con horario Lun–Sáb, sin checadas y con un bloque de vacaciones del lunes al sábado dentro de un periodo semanal termina con `dias_falta = 0`. Su `importe_salario` es igual al de un periodo sin faltas, y `period_employee_absences` no tiene filas suyas para esos días.
+- [x] En el mismo caso, en el renglón `'F'`, `dias_falta = 0`.
+- [x] Un día de vacaciones con una checada `entrada` 40 minutos tarde no genera fila en `period_employee_lateness` y no suma a `dias_retardo`.
+- [x] Un podólogo de vacaciones el periodo completo queda en `bono_asistencia_resultado = 'C'` y `bono_puntualidad_resultado = 'C'`, con el monto configurado, cuando se cumplen las demás condiciones (configuración activa, `fecha_ingreso <= fecha_inicio`, con horario).
+- [x] Un podólogo con 3 días de vacaciones y 1 falta injustificada fuera del bloque, en el mismo periodo, queda con `dias_falta = 1` y pierde el bono de asistencia (`bono_asistencia_faltas = 1`).
+- [x] Los días de vacaciones pagados en efectivo (año `pagada` sin bloque) **no** se excluyen: un día sin checada sigue siendo falta.
+- [x] Después de cancelar un bloque, sus días vuelven a detectarse como faltas al recalcular. Después de reprogramarlo, solo se excluyen las fechas nuevas.
+- [x] Recalcular un periodo ya calculado en el que ningún empleado tiene vacaciones produce un snapshot idéntico al anterior (comparado dentro de una transacción revertida).
 
 **Avisos "Recalcula"**
 
-- [ ] En un periodo en estatus 2, capturar un bloque que cubre una falta ya descontada hace aparecer el aviso en Faltas, en Procesar y en la pestaña Asistencia de Bonos. Al recalcular, desaparece.
-- [ ] Capturar un bloque que cubre un retardo ya descontado hace aparecer el aviso en Retardos y en Procesar.
+- [x] En un periodo en estatus 2, capturar un bloque que cubre una falta ya descontada hace aparecer el aviso en Faltas, en Procesar y en la pestaña Asistencia de Bonos. Al recalcular, desaparece.
+- [x] Capturar un bloque que cubre un retardo ya descontado hace aparecer el aviso en Retardos y en Procesar.
 - [x] Capturar un bloque que no toca ningún día del periodo no hace aparecer ningún aviso.
 
 **Pantallas**
 
 - [x] En Faltas, un día de vacaciones con horario y sin checada aparece con el badge "Vacaciones", sin botones de justificar, "No aplica" ni limpiar, y sin "Descontada en".
-- [ ] Un día de vacaciones con una justificación "No aplica" previa se muestra como "Vacaciones", no como "No aplica".
+- [x] Un día de vacaciones con una justificación "No aplica" previa se muestra como "Vacaciones", no como "No aplica".
 - [x] `?estado=vacaciones` muestra solo esas filas. La tarjeta "Días de vacaciones" cuenta todo el periodo y no cambia con los filtros ni con la búsqueda.
 - [x] Las tarjetas "Injustificadas", "Justificadas" y "No aplica" ya no cuentan días de vacaciones.
 - [x] En Retardos, un día de vacaciones con entrada tarde no aparece en la lista ni en las tarjetas.
-- [ ] En Bonos, los conteos de retardos, faltas e incidencias y el resultado de cada empleado coinciden con lo que guarda el cálculo para el mismo periodo.
-- [ ] La tarjeta y el badge nuevos se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
+- [x] En Bonos, los conteos de retardos, faltas e incidencias y el resultado de cada empleado coinciden con lo que guarda el cálculo para el mismo periodo.
+- [x] La tarjeta y el badge nuevos se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
 
 **Escrituras**
 
@@ -215,8 +215,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 - [x] `NOT_ON_VACATION_CONDITION` es la única definición SQL de la regla: los seis lugares la importan y ninguno la reescribe.
 - [x] Ninguna fecha viaja como `Date`: `loadVacationBlocks` usa `CONVERT(varchar(10), …, 120)` y los helpers comparan strings.
-- [ ] `npm run build` y `npm run lint` pasan sin errores nuevos.
-- [ ] `docs/nomina.md` tiene la sección "Exclusión de vacaciones (spec 77)", y ya no recomienda marcar vacaciones como "No aplica".
+- [x] `npm run build` y `npm run lint` pasan sin errores nuevos.
+- [x] `docs/nomina.md` tiene la sección "Exclusión de vacaciones (spec 77)", y ya no recomienda marcar vacaciones como "No aplica".
 
 ## Decisiones tomadas y descartadas
 
