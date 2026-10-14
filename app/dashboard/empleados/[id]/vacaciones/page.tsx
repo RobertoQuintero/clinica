@@ -6,11 +6,17 @@ import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
 import { getNextAnniversary } from "@/lib/vacations/vacationDates";
 import { formatIsoDateForDisplay } from "@/lib/vacations/vacationFormatting";
 import { addZeroToday } from "@/utils/date_helpper";
-import { cancelVacationBlock, getEmployeeVacations, getEmployeeWorkingWeekdays } from "./actions";
+import {
+  cancelVacationBlock,
+  getEmployeeVacations,
+  getEmployeeWorkingWeekdays,
+  revertVacationPayment,
+} from "./actions";
 import VacationCurrentYearCard from "./componentes/VacationCurrentYearCard";
 import VacationHistoryTable from "./componentes/VacationHistoryTable";
 import VacationBlockModal from "./componentes/VacationBlockModal";
 import VacationReasonModal from "./componentes/VacationReasonModal";
+import MarkVacationPaidModal from "./componentes/MarkVacationPaidModal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -119,6 +125,33 @@ export default async function EmployeeVacationsPage({ params }: Props) {
                     ]}
                   />
                 </>
+              ) : currentEntitlement.status === "por_pagar" ? (
+                <MarkVacationPaidModal
+                  id_empleado={id_empleado}
+                  id_vacation_entitlement={currentEntitlement.id_vacation_entitlement}
+                  employeeName={employee.nombre_completo}
+                  daysToPay={currentEntitlement.dias_por_pagar}
+                  defaultPaymentDate={today}
+                  summaryItems={[
+                    { label: "Año de servicio", value: String(currentEntitlement.anio_servicio) },
+                    { label: "Días por pagar", value: String(currentEntitlement.dias_por_pagar) },
+                  ]}
+                />
+              ) : currentEntitlement.status === "pagada" ? (
+                <VacationReasonModal
+                  id_empleado={id_empleado}
+                  id_vacation_entitlement={currentEntitlement.id_vacation_entitlement}
+                  employeeName={employee.nombre_completo}
+                  action={revertVacationPayment}
+                  triggerLabel="Revertir pago"
+                  title="Revertir pago"
+                  description="El pago registrado se elimina y el año vuelve a quedar por pagar."
+                  confirmLabel="Revertir pago"
+                  summaryItems={[
+                    { label: "Fecha de pago", value: formatIsoDateForDisplay(currentEntitlement.fecha_pago) },
+                    { label: "Días pagados", value: String(currentEntitlement.dias_pagados ?? 0) },
+                  ]}
+                />
               ) : undefined
             }
           />

@@ -14,7 +14,9 @@ import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import {
   cancelVacationBlockSchema,
+  markVacationDaysPaidSchema,
   rescheduleVacationBlockSchema,
+  revertVacationPaymentSchema,
   scheduleVacationBlockSchema,
 } from "./schemas";
 
@@ -413,5 +415,143 @@ export async function cancelVacationBlock(input: unknown): Promise<ActionResult<
     return { ok: true, data: null };
   } catch {
     return { ok: false, message: "Error al cancelar las vacaciones" };
+  }
+}
+
+/**
+ * Marca como pagados los días sobrantes de un año en `por_pagar` (spec 76). `dias_pagados` lo calcula
+ * la base de datos (derecho − tomados); el estatus se repite en el `WHERE`: bloque terminado con días
+ * sobrantes o, sin bloque, fecha límite vencida, y sin pago previo.
+ */
+export async function markVacationDaysPaid(input: unknown): Promise<ActionResult<null>> {
+  try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
+    const parsed = markVacationDaysPaidSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const { id_empleado, id_vacation_entitlement, fecha_pago, comentario } = parsed.data;
+
+    const employee = await getEmployeeById(id_empleado);
+    if (!employee) return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+
+    const today = addZeroToday(new Date());
+    const paidAt = buildDate(new Date());
+    const wasPaid = await db.transaction(async (tx) => {
+      const paidRows = (await tx.queryParams(
+        `UPDATE [CentroPodologico].[RH].[vacation_entitlements]
+            SET [fecha_pago]      = @fecha_pago,
+                [dias_pagados]    = [dias_derecho] - ISNULL([dias_tomados], 0),
+                [comentario_pago] = @comentario,
+                [pagado_by]       = @id_user,
+                [pagado_at]       = @pagado_at
+         OUTPUT INSERTED.[dias_pagados] AS dias_pagados
+          WHERE [id_vacation_entitlement] = @id_vacation_entitlement
+            AND [id_empleado] = @id_empleado
+            AND [fecha_pago] IS NULL
+            AND [dias_derecho] - ISNULL([dias_tomados], 0) > 0
+            AND (   ([fecha_fin] IS NOT NULL AND [fecha_fin] < @today)
+                 OR ([fecha_inicio] IS NULL AND [fecha_limite_solicitud] < @today))`,
+        {
+          id_vacation_entitlement,
+          id_empleado,
+          fecha_pago,
+          comentario: comentario ? comentario : null,
+          id_user: access.data.id_user,
+          pagado_at: paidAt,
+          today,
+        }
+      )) as { dias_pagados: number }[];
+      if (paidRows.length === 0) return false;
+
+      await tx.queryParams(
+        `INSERT INTO [CentroPodologico].[RH].[vacation_entitlement_log]
+           ([id_vacation_entitlement], [accion], [fecha_pago], [dias_pagados],
+            [motivo], [created_by], [created_at])
+         VALUES
+           (@id_vacation_entitlement, 'P', @fecha_pago, @dias_pagados,
+            @comentario, @id_user, @created_at)`,
+        {
+          id_vacation_entitlement,
+          fecha_pago,
+          dias_pagados: paidRows[0].dias_pagados,
+          comentario: comentario ? comentario : null,
+          id_user: access.data.id_user,
+          created_at: paidAt,
+        }
+      );
+      return true;
+    });
+    if (!wasPaid) {
+      return { ok: false, message: "El año no está por pagar o ya tiene un pago registrado" };
+    }
+
+    revalidateVacationViews(id_empleado);
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, message: "Error al registrar el pago de vacaciones" };
+  }
+}
+
+/** Revierte el pago de un año: deja el pago en NULL y registra `'V'` con motivo (spec 76). */
+export async function revertVacationPayment(input: unknown): Promise<ActionResult<null>> {
+  try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
+    const parsed = revertVacationPaymentSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const { id_empleado, id_vacation_entitlement, motivo } = parsed.data;
+
+    const employee = await getEmployeeById(id_empleado);
+    if (!employee) return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+
+    const revertedAt = buildDate(new Date());
+    const wasReverted = await db.transaction(async (tx) => {
+      const previousRows = (await tx.queryParams(
+        `UPDATE [CentroPodologico].[RH].[vacation_entitlements]
+            SET [fecha_pago]      = NULL,
+                [dias_pagados]    = NULL,
+                [comentario_pago] = NULL,
+                [pagado_by]       = NULL,
+                [pagado_at]       = NULL
+         OUTPUT CONVERT(varchar(10), DELETED.[fecha_pago], 120) AS fecha_pago,
+                DELETED.[dias_pagados]                          AS dias_pagados
+          WHERE [id_vacation_entitlement] = @id_vacation_entitlement
+            AND [id_empleado] = @id_empleado
+            AND [fecha_pago] IS NOT NULL`,
+        { id_vacation_entitlement, id_empleado }
+      )) as { fecha_pago: string; dias_pagados: number }[];
+      if (previousRows.length === 0) return false;
+
+      await tx.queryParams(
+        `INSERT INTO [CentroPodologico].[RH].[vacation_entitlement_log]
+           ([id_vacation_entitlement], [accion], [fecha_pago], [dias_pagados],
+            [motivo], [created_by], [created_at])
+         VALUES
+           (@id_vacation_entitlement, 'V', @fecha_pago, @dias_pagados,
+            @motivo, @id_user, @created_at)`,
+        {
+          id_vacation_entitlement,
+          ...previousRows[0],
+          motivo,
+          id_user: access.data.id_user,
+          created_at: revertedAt,
+        }
+      );
+      return true;
+    });
+    if (!wasReverted) {
+      return { ok: false, message: "El año no tiene un pago registrado" };
+    }
+
+    revalidateVacationViews(id_empleado);
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, message: "Error al revertir el pago de vacaciones" };
   }
 }

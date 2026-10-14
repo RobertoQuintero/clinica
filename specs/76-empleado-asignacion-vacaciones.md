@@ -355,8 +355,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 - [x] `getVacationStatus` devuelve, para cada caso del Alcance, el estatus esperado: `pendiente`, `programada`, `en_curso`, `tomada`, `por_pagar` (sin bloque y vencido, o bloque parcial terminado) y `pagada`.
 - [x] Un bloque de 8 de 12 días que termina ayer deja el año en `por_pagar` con 4 días; antes de terminar, el estatus es `programada` o `en_curso`, sin días por pagar.
-- [ ] "Marcar como pagadas" solo aparece y solo funciona en `por_pagar`; guarda `dias_pagados` calculado por el servidor, registra `'P'` y el año queda `pagada`.
-- [ ] Revertir el pago exige motivo, pone el pago en `NULL`, registra `'V'` y el año vuelve a `por_pagar`.
+- [x] "Marcar como pagadas" solo aparece y solo funciona en `por_pagar`; guarda `dias_pagados` calculado por el servidor, registra `'P'` y el año queda `pagada`.
+- [x] Revertir el pago exige motivo, pone el pago en `NULL`, registra `'V'` y el año vuelve a `por_pagar`.
 
 **UI**
 

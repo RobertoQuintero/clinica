@@ -44,5 +44,21 @@ export const cancelVacationBlockSchema = z.object({
   motivo:                  requiredReason,
 });
 
+export const markVacationDaysPaidSchema = z.object({
+  id_empleado:             z.number().int().positive(),
+  id_vacation_entitlement: z.number().int().positive(),
+  fecha_pago:              isoDateString,
+  comentario:              z
+    .string()
+    .trim()
+    .max(500, "El comentario no puede pasar de 500 caracteres")
+    .optional(),
+});
+
+// Mismo payload que la cancelación: el pago se revierte con motivo obligatorio.
+export const revertVacationPaymentSchema = cancelVacationBlockSchema;
+
+export type MarkVacationDaysPaidInput = z.infer<typeof markVacationDaysPaidSchema>;
+export type RevertVacationPaymentInput = z.infer<typeof revertVacationPaymentSchema>;
 export type RescheduleVacationBlockInput = z.infer<typeof rescheduleVacationBlockSchema>;
 export type CancelVacationBlockInput = z.infer<typeof cancelVacationBlockSchema>;
