@@ -2,10 +2,11 @@ import type { IScheduleDay } from "@/interfaces/employee_schedule";
 import type { IPayrollPeriod } from "@/interfaces/payroll_period";
 
 /**
- * Sin fila en absence_justifications = "unjustified". "vacation" (spec 77) es un día de vacaciones que habría
- * sido falta: solo lectura, y manda sobre cualquier justificación previa.
+ * Sin fila en absence_justifications = "unjustified". "vacation" (spec 77) y "economic_day" (spec 80) son días con
+ * goce que habrían sido falta: solo lectura, y mandan sobre cualquier justificación previa.
+ * Si coinciden, "vacation" gana a "economic_day".
  */
-export type AbsenceStatus = "unjustified" | "justified" | "not_applicable" | "vacation";
+export type AbsenceStatus = "unjustified" | "justified" | "not_applicable" | "vacation" | "economic_day";
 
 /** Resultado del helper puro para un empleado y un día detectado como falta. */
 export interface IAbsenceDetection {
@@ -42,7 +43,7 @@ export interface IAbsencePage {
   canDecide:                boolean;           // periodo en estatus 1 o 2
   rows:                     IAbsenceDayRow[];  // ya filtradas y paginadas
   totalRows:                number;
-  summary: { unjustifiedDays: number; justifiedDays: number; notApplicableDays: number; vacationDays: number };  // sin filtros
+  summary: { unjustifiedDays: number; justifiedDays: number; notApplicableDays: number; vacationDays: number; economicDays: number };  // sin filtros
   employeesWithoutSchedule: { id_empleado: number; nombre_completo: string }[];
   recalculationNeeded:      boolean;           // solo puede ser true en estatus 2
 }

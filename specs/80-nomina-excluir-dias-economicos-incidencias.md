@@ -252,11 +252,11 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Pantallas**
 
-- [ ] En Faltas, un día económico con horario y sin checada aparece con el badge "Día económico". No tiene botones de justificar, "No aplica" ni limpiar, ni "Descontada en".
-- [ ] Un día económico con una justificación "No aplica" previa se muestra como "Día económico".
-- [ ] `?estado=dia-economico` muestra solo esas filas.
-- [ ] La tarjeta "Días económicos" cuenta todo el periodo y no cambia con los filtros ni con la búsqueda.
-- [ ] Las tarjetas "Injustificadas", "Justificadas", "No aplica" y "Días de vacaciones" no cuentan días económicos.
+- [x] En Faltas, un día económico con horario y sin checada aparece con el badge "Día económico". No tiene botones de justificar, "No aplica" ni limpiar, ni "Descontada en".
+- [x] Un día económico con una justificación "No aplica" previa se muestra como "Día económico".
+- [x] `?estado=dia-economico` muestra solo esas filas.
+- [x] La tarjeta "Días económicos" cuenta todo el periodo y no cambia con los filtros ni con la búsqueda.
+- [x] Las tarjetas "Injustificadas", "Justificadas", "No aplica" y "Días de vacaciones" no cuentan días económicos.
 - [x] En Retardos, un día económico con entrada tarde no aparece en la lista ni en las tarjetas.
 - [x] En Bonos (puntualidad y asistencia), los conteos de retardos, faltas e incidencias y el resultado de cada empleado coinciden con lo que guarda el cálculo para el mismo periodo.
 - [ ] La tarjeta, el badge y la opción del filtro nuevos se ven correctamente en modo claro y oscuro, y a 375 px de ancho.

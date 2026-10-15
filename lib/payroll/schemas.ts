@@ -144,7 +144,7 @@ export type ClearOvertimeDecisionSchemaInput = z.infer<typeof clearOvertimeDecis
 
 export const absencePageFiltersSchema = z.object({
   idPeriod: z.number().int().positive().nullable(),
-  status: z.enum(["all", "unjustified", "justified", "not_applicable", "vacation"]),
+  status: z.enum(["all", "unjustified", "justified", "not_applicable", "vacation", "economic_day"]),
   search: z.string(),
   page: z.number().int().positive(),
 });
