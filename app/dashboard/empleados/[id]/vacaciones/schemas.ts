@@ -38,6 +38,11 @@ export const rescheduleVacationBlockSchema = scheduleVacationBlockSchema.extend(
   motivo: requiredReason,
 });
 
+export const payrollPeriodForDateSchema = z.object({
+  id_empleado: z.number().int().positive(),
+  fecha:       isoDateString,
+});
+
 export const cancelVacationBlockSchema = z.object({
   id_empleado:             z.number().int().positive(),
   id_vacation_entitlement: z.number().int().positive(),
