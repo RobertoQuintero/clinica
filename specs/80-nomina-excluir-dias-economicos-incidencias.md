@@ -259,12 +259,12 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [x] Las tarjetas "Injustificadas", "Justificadas", "No aplica" y "Días de vacaciones" no cuentan días económicos.
 - [x] En Retardos, un día económico con entrada tarde no aparece en la lista ni en las tarjetas.
 - [x] En Bonos (puntualidad y asistencia), los conteos de retardos, faltas e incidencias y el resultado de cada empleado coinciden con lo que guarda el cálculo para el mismo periodo.
-- [ ] La tarjeta, el badge y la opción del filtro nuevos se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
+- [x] La tarjeta, el badge y la opción del filtro nuevos se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
 
 **Escrituras**
 
-- [ ] `justifyAbsence`, `markAbsenceNotApplicable`, `justifyLateness` y `markLatenessNotApplicable` sobre un día económico activo devuelven `{ ok: false, message: "Ese día es un día económico del empleado; no requiere justificación." }` y no escriben nada.
-- [ ] Sobre un día económico **cancelado**, esas mismas acciones funcionan normalmente.
+- [x] `justifyAbsence`, `markAbsenceNotApplicable`, `justifyLateness` y `markLatenessNotApplicable` sobre un día económico activo devuelven `{ ok: false, message: "Ese día es un día económico del empleado; no requiere justificación." }` y no escriben nada.
+- [x] Sobre un día económico **cancelado**, esas mismas acciones funcionan normalmente.
 - [ ] `clearAbsenceJustification` sobre un día económico con una justificación vieja la borra con éxito.
 
 **General**

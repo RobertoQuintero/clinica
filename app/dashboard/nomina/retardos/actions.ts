@@ -26,6 +26,7 @@ import {
 import {
   JustificationWriteCheck,
   upsertJustification,
+  validateDayIsNotOnEconomicDay,
   validateDayIsNotOnVacation,
   validateJustificationTarget,
 } from "@/lib/payroll/justificationWrites";
@@ -433,6 +434,8 @@ export async function justifyLateness(input: unknown): Promise<ActionResult<null
       if (!target.ok) return target;
       const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
       if (!vacation.ok) return vacation;
+      const economicDay = await validateDayIsNotOnEconomicDay(transaction, id_empleado, fecha);
+      if (!economicDay.ok) return economicDay;
       const day = await validateDayIsLateness(transaction, id_empresa, id_empleado, fecha);
       if (!day.ok) return day;
 
@@ -481,6 +484,8 @@ export async function markLatenessNotApplicable(input: unknown): Promise<ActionR
       if (!target.ok) return target;
       const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
       if (!vacation.ok) return vacation;
+      const economicDay = await validateDayIsNotOnEconomicDay(transaction, id_empleado, fecha);
+      if (!economicDay.ok) return economicDay;
       const day = await validateDayIsLateness(transaction, id_empresa, id_empleado, fecha);
       if (!day.ok) return day;
 

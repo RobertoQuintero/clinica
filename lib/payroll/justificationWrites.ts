@@ -94,6 +94,29 @@ export async function validateDayIsNotOnVacation(
   return { ok: true };
 }
 
+/**
+ * Spec 80: un día económico activo ya está excluido de faltas y retardos, así que justificarlo o marcarlo
+ * "No aplica" no tendría efecto. Limpiar una justificación vieja no pasa por aquí.
+ */
+export async function validateDayIsNotOnEconomicDay(
+  transaction: ITransactionClient,
+  idEmpleado: number,
+  fecha: string,
+): Promise<JustificationWriteCheck> {
+  const economicDayRows = await transaction.queryParams(
+    `SELECT TOP 1 1 AS on_economic_day
+       FROM [CentroPodologico].[RH].[economic_days]
+      WHERE [id_empleado] = @id_empleado
+        AND [cancelado_at] IS NULL
+        AND [fecha] = CAST(@fecha AS date)`,
+    { id_empleado: idEmpleado, fecha },
+  );
+  if (economicDayRows.length > 0) {
+    return { ok: false, message: "Ese día es un día económico del empleado; no requiere justificación." };
+  }
+  return { ok: true };
+}
+
 /** Inserta o reemplaza la justificación del día; el UNIQUE (id_empleado, fecha) garantiza una sola fila. */
 export async function upsertJustification(
   transaction: ITransactionClient,
