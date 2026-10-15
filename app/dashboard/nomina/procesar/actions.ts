@@ -28,6 +28,7 @@ import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBo
 import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
 import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
+import { isVacationPayRecalculationNeeded } from "@/lib/payroll/vacationPayRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -237,6 +238,7 @@ export async function getPayrollProcessPage(
       shiftExtensionBonusRecalculationNeeded: false,
       isrRecalculationNeeded: false,
       exemptionRecalculationNeeded: false,
+      vacationPayRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -265,6 +267,7 @@ export async function getPayrollProcessPage(
       shiftExtensionBonusRecalculationNeeded,
       isrRecalculationNeeded,
       exemptionRecalculationNeeded,
+      vacationPayRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -373,6 +376,7 @@ export async function getPayrollProcessPage(
       isShiftExtensionBonusRecalculationNeeded(period.id_period),
       isIsrRecalculationNeeded(period.id_period),
       isExemptionRecalculationNeeded(period.id_period),
+      isVacationPayRecalculationNeeded(period.id_period),
     ]);
 
     const totalPercepciones = roundToCents(
@@ -455,6 +459,7 @@ export async function getPayrollProcessPage(
         shiftExtensionBonusRecalculationNeeded,
         isrRecalculationNeeded,
         exemptionRecalculationNeeded,
+        vacationPayRecalculationNeeded,
       },
     };
   } catch (error) {
