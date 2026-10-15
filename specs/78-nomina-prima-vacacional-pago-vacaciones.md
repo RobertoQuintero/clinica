@@ -291,8 +291,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 **Cálculo de la prima**
 
 - [ ] Caso: un empleado con `salario_diario` 315.04, `dias_derecho = 12` y un bloque de 12 días que inicia dentro del periodo. Al calcular, la fila `'O'` tiene `dias_prima_vacacional = 12` e `importe_prima_vacacional = 945.12`.
-- [ ] La fila `'F'` del mismo empleado calcula la prima con su `salario_diario_fiscal`.
-- [ ] Con un bloque parcial (8 de 12 días), la prima del periodo de `fecha_inicio` se calcula sobre los 12 días.
+- [x] La fila `'F'` del mismo empleado calcula la prima con su `salario_diario_fiscal`.
+- [x] Con un bloque parcial (8 de 12 días), la prima del periodo de `fecha_inicio` se calcula sobre los 12 días.
 - [ ] Un año sin bloque y con `fecha_pago` dentro del periodo paga en ese periodo la prima (12 días) y las vacaciones pagadas.
 - [ ] Un año sin bloque y sin `fecha_pago` no genera prima en ningún periodo.
 - [ ] Un bloque que inicia en el periodo A y termina en el periodo B paga la prima solo en A.
@@ -301,14 +301,14 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 **Cálculo de las vacaciones pagadas**
 
 - [ ] Un año con `dias_pagados = 4` y `fecha_pago` dentro del periodo genera en `'O'` `dias_vacaciones_pagadas = 4` e `importe_vacaciones_pagadas = 1260.16` (con salario 315.04).
-- [ ] Un bloque de 8 días en el periodo A y un pago de 4 días con `fecha_pago` en el periodo C dejan la prima en A y los 4 días en C.
+- [x] Un bloque de 8 días en el periodo A y un pago de 4 días con `fecha_pago` en el periodo C dejan la prima en A y los 4 días en C.
 - [ ] Un año marcado como pagado con una `fecha_pago` que ningún periodo contiene no se paga en ningún periodo.
 
 **Candado y recálculo**
 
-- [ ] Una prima pagada en el periodo A no se paga otra vez en un periodo B que también cubre su fecha de evento (por ejemplo, otra frecuencia): B la excluye y sus demás conceptos se calculan normal.
-- [ ] "Recalcular" un periodo borra y vuelve a generar su desglose. "Revertir" lo borra y libera el candado.
-- [ ] Recalcular un periodo sin vacaciones en su rango deja todas las columnas del snapshot anteriores a esta spec iguales al cálculo previo.
+- [x] Una prima pagada en el periodo A no se paga otra vez en un periodo B que también cubre su fecha de evento (por ejemplo, otra frecuencia): B la excluye y sus demás conceptos se calculan normal.
+- [x] "Recalcular" un periodo borra y vuelve a generar su desglose. "Revertir" lo borra y libera el candado.
+- [x] Recalcular un periodo sin vacaciones en su rango deja todas las columnas del snapshot anteriores a esta spec iguales al cálculo previo.
 - [ ] En un periodo en estatus 2 que ya pagó una prima, aparece el aviso "Hay vacaciones o primas que no coinciden con el último cálculo. Recalcula la nómina." en estos casos:
   - cancelar el bloque;
   - reprogramarlo fuera del rango;
