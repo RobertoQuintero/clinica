@@ -12,7 +12,7 @@ import {
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
-import { registerEconomicDaySchema } from "./schemas";
+import { cancelEconomicDaySchema, registerEconomicDaySchema } from "./schemas";
 
 type ActionResult<T> =
   | { ok: true; data: T }
@@ -132,5 +132,59 @@ export async function registerEconomicDay(input: unknown): Promise<ActionResult<
     return { ok: true, data: null };
   } catch {
     return { ok: false, message: "Error al registrar el día económico" };
+  }
+}
+
+/**
+ * Cancela un día económico activo del año en curso (spec 79), pasado o futuro. No borra: llena las
+ * columnas de cancelación y el día vuelve al saldo. Los años anteriores son de solo lectura; la
+ * condición de año y de estado va en el `UPDATE … WHERE`, así una cancelación repetida afecta 0 filas.
+ */
+export async function cancelEconomicDay(input: unknown): Promise<ActionResult<null>> {
+  try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
+    const parsed = cancelEconomicDaySchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const { id_economic_day, id_empleado, motivo } = parsed.data;
+
+    const employee = await getEmployeeById(id_empleado);
+    if (!employee) return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+    if (!employee.activo) return { ok: false, message: "El empleado está inactivo" };
+
+    const today = addZeroToday(new Date());
+    const { start, endExclusive } = getCalendarYearRange(Number(today.slice(0, 4)));
+    const cancelledRows = await db.queryParams(
+      `UPDATE [CentroPodologico].[RH].[economic_days]
+          SET [cancelado_by]       = @id_user,
+              [cancelado_at]       = @cancelado_at,
+              [motivo_cancelacion] = @motivo
+       OUTPUT INSERTED.[id_economic_day]
+        WHERE [id_economic_day] = @id_economic_day
+          AND [id_empleado] = @id_empleado
+          AND [cancelado_at] IS NULL
+          AND [fecha] >= @year_start
+          AND [fecha] <  @year_end`,
+      {
+        id_economic_day,
+        id_empleado,
+        motivo,
+        id_user: access.data.id_user,
+        cancelado_at: buildDate(new Date()),
+        year_start: start,
+        year_end: endExclusive,
+      }
+    );
+    if (cancelledRows.length === 0) {
+      return { ok: false, message: "El día no existe, ya está cancelado o no es del año en curso" };
+    }
+
+    revalidateEconomicDayViews(id_empleado);
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, message: "Error al cancelar el día económico" };
   }
 }

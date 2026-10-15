@@ -1,15 +1,19 @@
 import type { ReactNode } from "react";
 import type { IEconomicDaysYear } from "@/interfaces/economic_day";
 import { ECONOMIC_DAYS_PER_YEAR } from "@/lib/economicDays/economicDayRules";
+import { formatEconomicDayDate } from "@/lib/economicDays/economicDayFormatting";
+import CancelEconomicDayModal from "./CancelEconomicDayModal";
 import EconomicDayRow from "./EconomicDayRow";
 
 interface Props {
   yearSummary: IEconomicDaysYear;
   /** Botón "Registrar día económico"; el padre decide si va deshabilitado. */
   registerAction?: ReactNode;
+  /** Si se informa, cada día activo muestra "Cancelar"; se omite con el empleado inactivo. */
+  cancellation?: { id_empleado: number; employeeName: string };
 }
 
-export default function EconomicDaysCurrentYearCard({ yearSummary, registerAction }: Props) {
+export default function EconomicDaysCurrentYearCard({ yearSummary, registerAction, cancellation }: Props) {
   return (
     <section
       aria-label={`Días económicos ${yearSummary.year}`}
@@ -32,7 +36,20 @@ export default function EconomicDaysCurrentYearCard({ yearSummary, registerActio
       ) : (
         <ul className="divide-y divide-[#c4c6d0] dark:divide-zinc-700">
           {yearSummary.days.map((economicDay) => (
-            <EconomicDayRow key={economicDay.id_economic_day} economicDay={economicDay} />
+            <EconomicDayRow
+              key={economicDay.id_economic_day}
+              economicDay={economicDay}
+              actions={
+                cancellation && economicDay.cancelado_at === null ? (
+                  <CancelEconomicDayModal
+                    id_economic_day={economicDay.id_economic_day}
+                    id_empleado={cancellation.id_empleado}
+                    employeeName={cancellation.employeeName}
+                    dateLabel={formatEconomicDayDate(economicDay.fecha)}
+                  />
+                ) : undefined
+              }
+            />
           ))}
         </ul>
       )}

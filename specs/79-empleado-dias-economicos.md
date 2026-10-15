@@ -217,7 +217,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [x] Un empleado sin días registrados en 2026 muestra "Usados 0 de 3 · Disponibles 3".
 - [x] Un empleado con días en 2025 los muestra en el historial, dentro de un `<details>` "2025", sin botones de acción.
 - [ ] Un empleado sin horario muestra el aviso "Sin horario definido" con el enlace a Horario, y el botón "Registrar día económico" está deshabilitado. (aviso y enlace verificados; el botón se deshabilita con 0 disponibles; no hay un empleado activo sin horario para probar el caso sin horario)
-- [ ] Un empleado inactivo muestra su historial, pero ni "Registrar" ni "Cancelar". (historial verificado; faltan los botones, paso 5)
+- [ ] Un empleado inactivo muestra su historial, pero ni "Registrar" ni "Cancelar". (historial verificado; Registrar y Cancelar se omiten por código y las actions rechazan la escritura; sin día activo en un inactivo para verlo en pantalla)
 - [x] La pestaña Vacaciones sigue mostrando su aviso "Sin horario definido" igual que antes, ahora con el componente compartido.
 
 **Registrar**
@@ -235,10 +235,10 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Cancelar**
 
-- [ ] Cancelar un día activo con motivo lo deja como "Cancelado", con motivo, quién y cuándo, y devuelve el día al saldo.
-- [ ] Cancelar sin motivo devuelve un error de validación.
-- [ ] Cancelar un día de 2025, llamando a la action directamente, devuelve `{ ok: false }`.
-- [ ] Después de cancelar 2026-10-21, se puede volver a registrar esa misma fecha.
+- [x] Cancelar un día activo con motivo lo deja como "Cancelado", con motivo, quién y cuándo, y devuelve el día al saldo.
+- [x] Cancelar sin motivo devuelve un error de validación.
+- [x] Cancelar un día de 2025, llamando a la action directamente, devuelve `{ ok: false }`.
+- [x] Después de cancelar 2026-10-21, se puede volver a registrar esa misma fecha.
 
 **Validación inversa en vacaciones**
 

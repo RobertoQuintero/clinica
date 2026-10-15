@@ -48,6 +48,9 @@ export default async function EmployeeEconomicDaysPage({ params }: Props) {
 
       <EconomicDaysCurrentYearCard
         yearSummary={currentYearSummary}
+        cancellation={
+          employee.activo ? { id_empleado, employeeName: employee.nombre_completo } : undefined
+        }
         registerAction={
           employee.activo ? (
             <RegisterEconomicDayModal

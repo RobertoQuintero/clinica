@@ -20,3 +20,11 @@ export const registerEconomicDaySchema = z.object({
 });
 
 export type RegisterEconomicDayInput = z.infer<typeof registerEconomicDaySchema>;
+
+export const cancelEconomicDaySchema = z.object({
+  id_economic_day: z.number().int().positive(),
+  id_empleado:     z.number().int().positive(),
+  motivo:          requiredReason,
+});
+
+export type CancelEconomicDayInput = z.infer<typeof cancelEconomicDaySchema>;
