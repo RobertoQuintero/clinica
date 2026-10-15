@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [53 — Cálculo de salario](53-nomina-calculo-salario.md): `calculatePayrollPeriod`, `payroll.period_employees` y su snapshot de `salario_diario` / `salario_diario_fiscal`.
   - [54 — Detalle por empleado](54-nomina-detalle-percepciones-empleado.md): `buildPerceptionLines` y `PayrollPerceptionsCard`.
@@ -284,48 +284,48 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 - [x] Existen las 4 columnas nuevas en `payroll.period_employees`, con default 0, y la tabla `payroll.period_employee_vacations` con su índice.
 - [x] Correr dos veces el script de siembra deja una sola fila `id_perception = 14` (`001`, "Vacaciones pagadas", `'N'`).
-- [ ] El script termina con `THROW 50078` si la `id 7` no es `021` / `'U'`, o si la 14 está ocupada por otra percepción.
+- [x] El script termina con `THROW 50078` si la `id 7` no es `021` / `'U'`, o si la 14 está ocupada por otra percepción.
 - [x] El `CHECK` rechaza un `INSERT` con `concepto` fuera de `'P'`/`'D'`, con `tipo_nomina` fuera de `'O'`/`'F'` o con `dias = 0`.
 - [x] El `UNIQUE` rechaza un segundo `INSERT` con el mismo `(id_vacation_entitlement, concepto, tipo_nomina)`.
 
 **Cálculo de la prima**
 
-- [ ] Caso: un empleado con `salario_diario` 315.04, `dias_derecho = 12` y un bloque de 12 días que inicia dentro del periodo. Al calcular, la fila `'O'` tiene `dias_prima_vacacional = 12` e `importe_prima_vacacional = 945.12`.
+- [x] Caso: un empleado con `salario_diario` 315.04, `dias_derecho = 12` y un bloque de 12 días que inicia dentro del periodo. Al calcular, la fila `'O'` tiene `dias_prima_vacacional = 12` e `importe_prima_vacacional = 945.12`.
 - [x] La fila `'F'` del mismo empleado calcula la prima con su `salario_diario_fiscal`.
 - [x] Con un bloque parcial (8 de 12 días), la prima del periodo de `fecha_inicio` se calcula sobre los 12 días.
-- [ ] Un año sin bloque y con `fecha_pago` dentro del periodo paga en ese periodo la prima (12 días) y las vacaciones pagadas.
-- [ ] Un año sin bloque y sin `fecha_pago` no genera prima en ningún periodo.
-- [ ] Un bloque que inicia en el periodo A y termina en el periodo B paga la prima solo en A.
-- [ ] Un empleado sin `salario_diario_fiscal` recibe la prima solo en `'O'`, y el concepto queda sin pagar y sin candado en `'F'`.
+- [x] Un año sin bloque y con `fecha_pago` dentro del periodo paga en ese periodo la prima (12 días) y las vacaciones pagadas.
+- [x] Un año sin bloque y sin `fecha_pago` no genera prima en ningún periodo.
+- [x] Un bloque que inicia en el periodo A y termina en el periodo B paga la prima solo en A.
+- [x] Un empleado sin `salario_diario_fiscal` recibe la prima solo en `'O'`, y el concepto queda sin pagar y sin candado en `'F'`.
 
 **Cálculo de las vacaciones pagadas**
 
-- [ ] Un año con `dias_pagados = 4` y `fecha_pago` dentro del periodo genera en `'O'` `dias_vacaciones_pagadas = 4` e `importe_vacaciones_pagadas = 1260.16` (con salario 315.04).
+- [x] Un año con `dias_pagados = 4` y `fecha_pago` dentro del periodo genera en `'O'` `dias_vacaciones_pagadas = 4` e `importe_vacaciones_pagadas = 1260.16` (con salario 315.04).
 - [x] Un bloque de 8 días en el periodo A y un pago de 4 días con `fecha_pago` en el periodo C dejan la prima en A y los 4 días en C.
-- [ ] Un año marcado como pagado con una `fecha_pago` que ningún periodo contiene no se paga en ningún periodo.
+- [x] Un año marcado como pagado con una `fecha_pago` que ningún periodo contiene no se paga en ningún periodo.
 
 **Candado y recálculo**
 
 - [x] Una prima pagada en el periodo A no se paga otra vez en un periodo B que también cubre su fecha de evento (por ejemplo, otra frecuencia): B la excluye y sus demás conceptos se calculan normal.
 - [x] "Recalcular" un periodo borra y vuelve a generar su desglose. "Revertir" lo borra y libera el candado.
 - [x] Recalcular un periodo sin vacaciones en su rango deja todas las columnas del snapshot anteriores a esta spec iguales al cálculo previo.
-- [ ] En un periodo en estatus 2 que ya pagó una prima, aparece el aviso "Hay vacaciones o primas que no coinciden con el último cálculo. Recalcula la nómina." en estos casos:
+- [x] En un periodo en estatus 2 que ya pagó una prima, aparece el aviso "Hay vacaciones o primas que no coinciden con el último cálculo. Recalcula la nómina." en estos casos:
   - cancelar el bloque;
   - reprogramarlo fuera del rango;
   - revertir el pago de los días;
   - capturar un bloque nuevo cuya `fecha_inicio` cae en el rango.
 
   Después de "Recalcular" el aviso desaparece.
-- [ ] Las acciones de la spec 76 (cancelar, reprogramar, revertir pago) siguen funcionando aunque un periodo calculado haya pagado el concepto.
+- [x] Las acciones de la spec 76 (cancelar, reprogramar, revertir pago) siguen funcionando aunque un periodo calculado haya pagado el concepto.
 
 **Fiscal**
 
 - [x] Cuando la prima es mayor que cero, la fila `'F'` tiene un renglón `id_perception = 7` en `period_employee_perceptions` con `tipo_limite_exencion = 'U'` y `periodicidad_limite = 'A'`.
 - [x] Una prima menor que el tope anual queda 100% exenta.
-- [ ] Una segunda prima en el mismo año de `fecha_fin` (por ejemplo, otro año de derecho) solo exenta lo que falta del tope de 15 UMA.
+- [x] Una segunda prima en el mismo año de `fecha_fin` (por ejemplo, otro año de derecho) solo exenta lo que falta del tope de 15 UMA.
 - [x] Las vacaciones pagadas generan un renglón `id_perception = 14`, 100% gravado.
 - [x] La base del ISR (`isr_base_gravable`) aumenta exactamente en la suma de lo gravado de los renglones 7 y 14.
-- [ ] Una prima en un periodo fiscal no semanal se guarda en `'C'`: la periodicidad `'A'` no cae en `unsupported_frequency`.
+- [x] Una prima en un periodo fiscal no semanal se guarda en `'C'`: la periodicidad `'A'` no cae en `unsupported_frequency`.
 
 **UI**
 
@@ -334,19 +334,19 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
   - el texto secundario es "Prima $X · N días $Y" y omite la parte en 0;
   - "Total percepciones", el pie y la tarjeta de resumen la incluyen y no cambian con los filtros de puesto o búsqueda.
 - [x] El Detalle muestra "Prima vacacional" ("12 días × $315.04 × 25%") y "Vacaciones pagadas" ("4 días × $315.04"), cada una omitida en 0. En fiscal, cada una muestra su gravado, su exento y la regla aplicada.
-- [ ] La pestaña Vacaciones muestra por año, en la tarjeta y en el historial:
+- [x] La pestaña Vacaciones muestra por año, en la tarjeta y en el historial:
   - "Prima: Pagada en {código}", "Pendiente" o "—";
   - "Días: Pagados en {código}" o "Marcados, sin nómina calculada".
 - [x] Un bloque retroactivo cuyo periodo no existe muestra "Prima: Pendiente".
-- [ ] El modal "Marcar como pagadas" muestra "Se pagará en {código}" cuando un periodo de la sucursal y la frecuencia del empleado contiene la fecha, y el aviso ámbar "Ningún periodo contiene esta fecha" cuando no. En los dos casos se puede guardar.
-- [ ] No se agrega `"use client"` a ningún componente nuevo ni modificado, salvo `MarkVacationPaidModal`, que ya lo era.
-- [ ] Todo se ve correctamente en modo claro y oscuro, y a 375 px de ancho.
-- [ ] Ninguna fecha viaja como `Date`: las lecturas usan `CONVERT(varchar(10), …, 120)`.
+- [x] El modal "Marcar como pagadas" muestra "Se pagará en {código}" cuando un periodo de la sucursal y la frecuencia del empleado contiene la fecha, y el aviso ámbar "Ningún periodo contiene esta fecha" cuando no. En los dos casos se puede guardar.
+- [x] No se agrega `"use client"` a ningún componente nuevo ni modificado, salvo `MarkVacationPaidModal`, que ya lo era.
+- [x] Todo se ve correctamente en modo claro y oscuro, y a 375 px de ancho.
+- [x] Ninguna fecha viaja como `Date`: las lecturas usan `CONVERT(varchar(10), …, 120)`.
 
 **General**
 
-- [ ] `npm run build` y `npm run lint` pasan sin errores nuevos.
-- [ ] `docs/nomina.md` tiene la sección "Vacaciones y prima vacacional (spec 78)", y `docs/rh-empleados.md` tiene su sección "Vacaciones" actualizada.
+- [x] `npm run build` y `npm run lint` pasan sin errores nuevos.
+- [x] `docs/nomina.md` tiene la sección "Vacaciones y prima vacacional (spec 78)", y `docs/rh-empleados.md` tiene su sección "Vacaciones" actualizada.
 
 ## Decisiones tomadas y descartadas
 

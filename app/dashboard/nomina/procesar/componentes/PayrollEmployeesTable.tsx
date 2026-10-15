@@ -80,7 +80,7 @@ export default function PayrollEmployeesTable({
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <caption className="sr-only">Sueldos de la nómina {PAYROLL_TYPE[payrollType].label.toLowerCase()}</caption>
           <thead className="bg-[#eff4ff] dark:bg-zinc-800 border-b border-[#c4c6d0] dark:border-zinc-700 text-xs uppercase tracking-wider text-[#44474f] dark:text-zinc-400">
