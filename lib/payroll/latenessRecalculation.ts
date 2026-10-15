@@ -5,7 +5,7 @@ import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
-import { NOT_ON_VACATION_CONDITION } from "@/lib/payroll/vacationExclusionSql";
+import { NOT_ON_PAID_LEAVE_CONDITION } from "@/lib/payroll/paidLeaveExclusionSql";
 import { addZeroToday } from "@/utils/date_helpper";
 
 /**
@@ -62,7 +62,7 @@ export async function isLatenessRecalculationNeeded(idPeriod: number): Promise<b
                                      CAST(CONVERT(varchar(8), first_entry.[llegada], 108) AS time(0))) / 60 AS minutos) late
         WHERE ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
           AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
-          AND ${NOT_ON_VACATION_CONDITION}
+          AND ${NOT_ON_PAID_LEAVE_CONDITION}
           AND d.[fecha] >= e.[fecha_ingreso]
           AND d.[fecha] <= @today
           AND first_entry.[llegada] IS NOT NULL
