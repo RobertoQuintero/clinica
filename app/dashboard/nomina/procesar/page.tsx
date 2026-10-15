@@ -149,6 +149,10 @@ export default async function ProcesarNominaPage({
             recalculationNeeded={result.data.exemptionRecalculationNeeded}
             message="Hay percepciones cuyo exento no coincide con el catálogo, la UMA o lo exentado en periodos anteriores. Recalcula la nómina."
           />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.vacationPayRecalculationNeeded}
+            message="Hay vacaciones o primas que no coinciden con el último cálculo. Recalcula la nómina."
+          />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"

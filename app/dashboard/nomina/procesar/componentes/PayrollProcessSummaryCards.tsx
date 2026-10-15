@@ -92,7 +92,8 @@ export default function PayrollProcessSummaryCards({
           {formatPayrollCurrency(totals.importeComision)} + onicomicosis{" "}
           {formatPayrollCurrency(totals.importeComisionTratamientos)} + ventas{" "}
           {formatPayrollCurrency(totals.importeComisionProductos)} + horas extra{" "}
-          {formatPayrollCurrency(totals.importeHorasExtra)} + bono puntualidad{" "}
+          {formatPayrollCurrency(totals.importeHorasExtra)} + vacaciones{" "}
+          {formatPayrollCurrency(totals.importeVacaciones)} + bono puntualidad{" "}
           {formatPayrollCurrency(totals.importeBonoPuntualidad)} + bono asistencia{" "}
           {formatPayrollCurrency(totals.importeBonoAsistencia)} + bono extensión{" "}
           {formatPayrollCurrency(totals.importeBonoExtension)}

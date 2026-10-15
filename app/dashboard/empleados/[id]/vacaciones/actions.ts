@@ -7,7 +7,9 @@ import {
   IVacationEntitlement,
   IVacationEntitlementView,
   IVacationLogEntry,
+  IVacationPayrollPayment,
 } from "@/interfaces/vacation";
+import { getVacationPremiumStatus } from "@/lib/payroll/vacationPay";
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { calculateVacationEndDate } from "@/lib/vacations/vacationDates";
 import {
@@ -20,6 +22,7 @@ import { revalidatePath } from "next/cache";
 import {
   cancelVacationBlockSchema,
   markVacationDaysPaidSchema,
+  payrollPeriodForDateSchema,
   rescheduleVacationBlockSchema,
   revertVacationPaymentSchema,
   scheduleVacationBlockSchema,
@@ -96,13 +99,78 @@ export async function getEmployeeVacations(
     logByEntitlement.set(id_vacation_entitlement, entries);
   }
 
+  // Spec 78: lo que la nómina ya pagó de cada año (prima y días), con el código del periodo que lo tomó.
+  const payrollPaymentRows = (await db.queryParams(
+    `SELECT pev.[id_vacation_entitlement], pev.[concepto], pev.[tipo_nomina], p.[id_period], p.[codigo] AS codigo_periodo
+       FROM [CentroPodologico].[payroll].[period_employee_vacations] pev
+       JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.[id_period_employee] = pev.[id_period_employee]
+       JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pe.[id_period]
+       JOIN [CentroPodologico].[RH].[vacation_entitlements] ve ON ve.[id_vacation_entitlement] = pev.[id_vacation_entitlement]
+      WHERE ve.[id_empleado] = @id_empleado
+      ORDER BY p.[fecha_inicio], pev.[tipo_nomina]`,
+    { id_empleado }
+  )) as (IVacationPayrollPayment & { id_vacation_entitlement: number })[];
+
+  const paymentsByEntitlement = new Map<number, IVacationPayrollPayment[]>();
+  for (const { id_vacation_entitlement, ...payment } of payrollPaymentRows) {
+    const payments = paymentsByEntitlement.get(id_vacation_entitlement) ?? [];
+    payments.push({ ...payment, id_period: Number(payment.id_period) });
+    paymentsByEntitlement.set(id_vacation_entitlement, payments);
+  }
+
   const today = addZeroToday(new Date());
-  return entitlements.map((entitlement) => ({
-    ...entitlement,
-    status: getVacationStatus(entitlement, today),
-    dias_por_pagar: getDaysToPay(entitlement, today),
-    log: logByEntitlement.get(entitlement.id_vacation_entitlement) ?? [],
-  }));
+  return entitlements.map((entitlement) => {
+    const payrollPayments = paymentsByEntitlement.get(entitlement.id_vacation_entitlement) ?? [];
+    return {
+      ...entitlement,
+      status: getVacationStatus(entitlement, today),
+      dias_por_pagar: getDaysToPay(entitlement, today),
+      log: logByEntitlement.get(entitlement.id_vacation_entitlement) ?? [],
+      payroll_payments: payrollPayments,
+      premium_status: getVacationPremiumStatus(entitlement, payrollPayments),
+      paid_days_in_payroll: payrollPayments.some((payment) => payment.concepto === "D"),
+    };
+  });
+}
+
+/**
+ * Spec 78: periodo de nómina de la sucursal y la frecuencia de pago del empleado que contiene `fecha`; es el que
+ * pagaría los días no disfrutados con esa fecha de pago. `data` es `null` si ningún periodo la contiene.
+ * Es una lectura que depende del cliente (cambia con el input del modal), por eso es una server action.
+ */
+export async function getPayrollPeriodForDate(
+  input: unknown
+): Promise<ActionResult<{ id_period: number; codigo: string } | null>> {
+  try {
+    const parsed = payrollPeriodForDateSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const { id_empleado, fecha } = parsed.data;
+
+    // getEmployeeById valida empresa y sucursales del usuario; sin acceso no se expone nada.
+    const employee = await getEmployeeById(id_empleado);
+    if (!employee) return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+    if (employee.id_periodo_pago === null) return { ok: true, data: null };
+
+    const rows = (await db.queryParams(
+      `SELECT TOP 1 [id_period], [codigo]
+         FROM [CentroPodologico].[payroll].[periods]
+        WHERE [id_sucursal] = @id_sucursal
+          AND [id_payment_period] = @id_payment_period
+          AND CAST(@fecha AS date) BETWEEN [fecha_inicio] AND [fecha_fin]
+        ORDER BY [fecha_inicio]`,
+      { id_sucursal: employee.id_sucursal, id_payment_period: employee.id_periodo_pago, fecha }
+    )) as { id_period: number; codigo: string }[];
+
+    return {
+      ok: true,
+      data: rows[0] ? { id_period: Number(rows[0].id_period), codigo: rows[0].codigo } : null,
+    };
+  } catch (error) {
+    console.error("getPayrollPeriodForDate", error);
+    return { ok: false, message: "No se pudo consultar el periodo de nómina" };
+  }
 }
 
 /** Días ISO (1 = lunes … 7 = domingo) con fila en el horario del empleado. Vacío = sin horario. */

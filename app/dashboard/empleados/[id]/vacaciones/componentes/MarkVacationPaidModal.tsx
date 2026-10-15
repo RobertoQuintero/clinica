@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banknote } from "lucide-react";
 import JustificationModalFrame, {
@@ -8,7 +8,7 @@ import JustificationModalFrame, {
   JUSTIFICATION_MAX_COMMENT_LENGTH,
 } from "@/app/dashboard/nomina/componentes/JustificationModalFrame";
 import type { IJustificationSummaryItem } from "@/app/dashboard/nomina/componentes/justificationTypes";
-import { markVacationDaysPaid } from "../actions";
+import { getPayrollPeriodForDate, markVacationDaysPaid } from "../actions";
 
 interface Props {
   id_empleado: number;
@@ -39,6 +39,23 @@ function MarkVacationPaidForm({
   const [commentText, setCommentText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Spec 78: periodo que pagaría con la fecha elegida. undefined = consultando o sin fecha; null = ningún periodo.
+  const [payrollPeriodCode, setPayrollPeriodCode] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!paymentDate) return;
+    let isCurrent = true;
+    getPayrollPeriodForDate({ id_empleado, fecha: paymentDate })
+      .then((result) => {
+        if (isCurrent) setPayrollPeriodCode(result.ok ? (result.data?.codigo ?? null) : undefined);
+      })
+      .catch(() => {
+        if (isCurrent) setPayrollPeriodCode(undefined);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [id_empleado, paymentDate]);
 
   async function savePayment() {
     if (!paymentDate) {
@@ -79,7 +96,7 @@ function MarkVacationPaidForm({
     >
       <p className="text-sm text-[#44474f] dark:text-zinc-400">
         Se registra el pago de {daysToPay} {daysToPay === 1 ? "día" : "días"} de vacaciones no
-        disfrutadas. Esto solo deja constancia: el importe no se calcula en nómina.
+        disfrutadas. El importe se paga en la nómina del periodo que contenga la fecha de pago.
       </p>
 
       {errorMessage && (
@@ -99,6 +116,21 @@ function MarkVacationPaidForm({
           className={JUSTIFICATION_FIELD_CLASSES}
         />
       </label>
+
+      {paymentDate && payrollPeriodCode !== undefined && (
+        <p
+          role="status"
+          className={
+            payrollPeriodCode === null
+              ? "rounded-md bg-amber-50 dark:bg-amber-900/30 px-4 py-2 text-sm text-amber-800 dark:text-amber-300"
+              : "rounded-md bg-[#eff4ff] dark:bg-zinc-800 px-4 py-2 text-sm text-[#0b1c30] dark:text-zinc-100"
+          }
+        >
+          {payrollPeriodCode === null
+            ? "Ningún periodo contiene esta fecha"
+            : `Se pagará en ${payrollPeriodCode}`}
+        </p>
+      )}
 
       <label className="flex flex-col gap-1.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">
         Comentario (opcional)

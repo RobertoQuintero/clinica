@@ -2516,6 +2516,81 @@ ALTER TABLE [CentroPodologico].[payroll].[period_employee_overtime]
     ADD CONSTRAINT [UQ_period_employee_overtime_empleado_fecha_tipo] UNIQUE ([id_empleado], [fecha], [tipo_nomina])
 GO
 
+-- Spec 78: totales de prima vacacional y vacaciones pagadas en el snapshot del periodo.
+-- Los snapshots anteriores quedan en 0 hasta que se recalculen.
+ALTER TABLE [CentroPodologico].[payroll].[period_employees]
+    ADD [dias_prima_vacacional]      [int]           NOT NULL CONSTRAINT [DF_period_employees_prima_vac_dias]    DEFAULT (0),
+        [importe_prima_vacacional]   [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_prima_vac_importe] DEFAULT (0),
+        [dias_vacaciones_pagadas]    [int]           NOT NULL CONSTRAINT [DF_period_employees_vac_pag_dias]      DEFAULT (0),
+        [importe_vacaciones_pagadas] [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_vac_pag_importe]   DEFAULT (0)
+GO
+
+ALTER TABLE [CentroPodologico].[payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_vacaciones] CHECK (
+        [dias_prima_vacacional] >= 0 AND [importe_prima_vacacional] >= 0
+        AND [dias_vacaciones_pagadas] >= 0 AND [importe_vacaciones_pagadas] >= 0)
+GO
+
+-- Spec 78: prima vacacional y vacaciones pagadas por renglón de nómina y año de derecho.
+-- UNIQUE (id_vacation_entitlement, concepto, tipo_nomina) impide pagar dos veces el mismo concepto en el mismo tipo.
+CREATE TABLE [CentroPodologico].[payroll].[period_employee_vacations](
+    [id_period_employee_vacation] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee]      [int]           NOT NULL,
+    [id_vacation_entitlement] [int]           NOT NULL,
+    [tipo_nomina]             [char](1)       NOT NULL,   -- 'O' | 'F', copiado de period_employees (lo necesita el UNIQUE)
+    [concepto]                [char](1)       NOT NULL,   -- 'P' prima vacacional | 'D' días no disfrutados pagados
+    [fecha_evento]            [date]          NOT NULL,   -- congelada: fecha_inicio del bloque o fecha_pago
+    [dias]                    [int]           NOT NULL,   -- 'P': dias_derecho | 'D': dias_pagados (congelados)
+    [importe]                 [decimal](12,2) NOT NULL,   -- 'P': ROUND(dias × salario × 25 / 100, 2) | 'D': ROUND(dias × salario, 2)
+ CONSTRAINT [PK_period_employee_vacations] PRIMARY KEY CLUSTERED ([id_period_employee_vacation] ASC),
+ CONSTRAINT [UQ_period_employee_vacations_entitlement_concepto_tipo]
+     UNIQUE ([id_vacation_entitlement], [concepto], [tipo_nomina]),
+ CONSTRAINT [FK_period_employee_vacations_period_employee] FOREIGN KEY ([id_period_employee])
+     REFERENCES [CentroPodologico].[payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [FK_period_employee_vacations_entitlement] FOREIGN KEY ([id_vacation_entitlement])
+     REFERENCES [CentroPodologico].[RH].[vacation_entitlements] ([id_vacation_entitlement]),
+ CONSTRAINT [CK_period_employee_vacations_valores] CHECK (
+     [tipo_nomina] IN ('O','F') AND [concepto] IN ('P','D')
+     AND [dias] > 0 AND [importe] >= 0)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_period_employee_vacations_period_employee]
+    ON [CentroPodologico].[payroll].[period_employee_vacations] ([id_period_employee])
+GO
+
+-- Spec 78: percepción 14 "Vacaciones pagadas" (001, 'N', 100% gravada). Idempotente.
+-- Solo datos: copia is_billed y status de la 1. @id_gravado = id de "Gravado" en cat_taxed_exempt.
+SET XACT_ABORT ON;
+BEGIN TRAN;
+
+DECLARE @id_gravado smallint = 1;
+
+-- La 7 tiene que ser la prima vacacional; si no, nada de esto aplica.
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions]
+                WHERE [id_perception] = 7 AND [clave_sat] = '021' AND [tipo_limite_exencion] = 'U')
+    THROW 50078, 'La percepción 7 no es la prima vacacional (021, U). Revisa el catálogo antes de seguir.', 1;
+
+-- El 14 está libre o ya es la de vacaciones pagadas (segunda corrida); nunca se pisa otra fila.
+IF EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions]
+            WHERE [id_perception] = 14
+              AND NOT ([clave_sat] = '001' AND [description] = 'Vacaciones pagadas'))
+    THROW 50078, 'id_perception 14 ya está ocupado por otra percepción. Decide el id a mano.', 1;
+
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions] WHERE [id_perception] = 14)
+    INSERT INTO [CentroPodologico].[payroll].[perceptions]
+           ([id_perception], [clave_sat], [description], [id_taxed_exempt], [exempt_limit],
+            [is_billed], [status],
+            [tipo_limite_exencion], [umas_limite], [porcentaje_exento], [periodicidad_limite])
+    SELECT 14, '001', 'Vacaciones pagadas', @id_gravado, NULL,
+           salary.[is_billed], salary.[status],
+           'N', NULL, NULL, NULL
+      FROM [CentroPodologico].[payroll].[perceptions] salary
+     WHERE salary.[id_perception] = 1;
+
+COMMIT;
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------

@@ -28,6 +28,7 @@ import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBo
 import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
 import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
+import { isVacationPayRecalculationNeeded } from "@/lib/payroll/vacationPayRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -59,8 +60,11 @@ import {
   ISR_DEDUCTION_ID,
   OVERTIME_DOUBLE_PERCEPTION_ID,
   OVERTIME_TRIPLE_PERCEPTION_ID,
+  PAID_VACATION_PERCEPTION_ID,
   PERCEPTION_LINE_KEY_BY_ID,
   SALARY_PERCEPTION_ID,
+  VACATION_PREMIUM_PERCEPTION_ID,
+  VACATION_PREMIUM_PERCENT,
 } from "@/lib/payroll/constants";
 import { describePerceptionExemption } from "@/lib/payroll/exemptionCalculation";
 import {
@@ -71,6 +75,7 @@ import {
 } from "@/lib/payroll/exemptionSql";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { NOT_ON_VACATION_CONDITION } from "@/lib/payroll/vacationExclusionSql";
+import { VACATION_PAY_EVENTS_SQL } from "@/lib/payroll/vacationPaySql";
 import { getCommissionTiers } from "../comisiones/actions";
 import {
   calculatePayrollPeriodSchema,
@@ -220,7 +225,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
       isrNotCalculated: [],
       puestoOptions: [],
       excludedEmployees: [],
@@ -233,6 +238,7 @@ export async function getPayrollProcessPage(
       shiftExtensionBonusRecalculationNeeded: false,
       isrRecalculationNeeded: false,
       exemptionRecalculationNeeded: false,
+      vacationPayRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -261,6 +267,7 @@ export async function getPayrollProcessPage(
       shiftExtensionBonusRecalculationNeeded,
       isrRecalculationNeeded,
       exemptionRecalculationNeeded,
+      vacationPayRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -279,18 +286,22 @@ export async function getPayrollProcessPage(
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
                 pe.bono_extension_asignado, pe.bono_extension_dias,
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
+                pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
+                pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
-                  + pe.importe_bono_extension AS total_percepciones,
+                  + pe.importe_bono_extension
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas AS total_percepciones,
                 pe.isr_estado, CAST(pe.isr_retenido AS float) AS isr_retenido,
                 CAST(deductions.total AS float) AS total_deducciones,
                 CAST(pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
-                  + pe.importe_bono_extension - deductions.total AS float) AS neto,
+                  + pe.importe_bono_extension
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas - deductions.total AS float) AS neto,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -312,6 +323,7 @@ export async function getPayrollProcessPage(
                 CAST(ISNULL(SUM(importe_bono_puntualidad), 0) AS float) AS importe_bono_puntualidad,
                 CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia,
                 CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension,
+                CAST(ISNULL(SUM(importe_prima_vacacional + importe_vacaciones_pagadas), 0) AS float) AS importe_vacaciones,
                 CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
                 CAST(ISNULL(SUM(deductions.total), 0) AS float) AS total_deducciones
            FROM [CentroPodologico].[payroll].[period_employees] pe
@@ -369,6 +381,7 @@ export async function getPayrollProcessPage(
       isShiftExtensionBonusRecalculationNeeded(period.id_period),
       isIsrRecalculationNeeded(period.id_period),
       isExemptionRecalculationNeeded(period.id_period),
+      isVacationPayRecalculationNeeded(period.id_period),
     ]);
 
     const totalPercepciones = roundToCents(
@@ -379,7 +392,8 @@ export async function getPayrollProcessPage(
         Number(totals[0]?.importe_horas_extra ?? 0) +
         Number(totals[0]?.importe_bono_puntualidad ?? 0) +
         Number(totals[0]?.importe_bono_asistencia ?? 0) +
-        Number(totals[0]?.importe_bono_extension ?? 0),
+        Number(totals[0]?.importe_bono_extension ?? 0) +
+        Number(totals[0]?.importe_vacaciones ?? 0),
     );
 
     return {
@@ -413,6 +427,10 @@ export async function getPayrollProcessPage(
           bono_extension_asignado: Boolean(row.bono_extension_asignado),
           bono_extension_dias: Number(row.bono_extension_dias),
           importe_bono_extension: Number(row.importe_bono_extension),
+          dias_prima_vacacional: Number(row.dias_prima_vacacional),
+          importe_prima_vacacional: Number(row.importe_prima_vacacional),
+          dias_vacaciones_pagadas: Number(row.dias_vacaciones_pagadas),
+          importe_vacaciones_pagadas: Number(row.importe_vacaciones_pagadas),
           total_percepciones: Number(row.total_percepciones),
           isr_retenido: row.isr_retenido === null ? null : Number(row.isr_retenido),
           total_deducciones: Number(row.total_deducciones),
@@ -428,6 +446,7 @@ export async function getPayrollProcessPage(
           importeBonoPuntualidad: Number(totals[0]?.importe_bono_puntualidad ?? 0),
           importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
           importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
+          importeVacaciones: Number(totals[0]?.importe_vacaciones ?? 0),
           totalPercepciones,
           importeIsr: Number(totals[0]?.importe_isr ?? 0),
           totalNeto: roundToCents(totalPercepciones - Number(totals[0]?.total_deducciones ?? 0)),
@@ -450,6 +469,7 @@ export async function getPayrollProcessPage(
         shiftExtensionBonusRecalculationNeeded,
         isrRecalculationNeeded,
         exemptionRecalculationNeeded,
+        vacationPayRecalculationNeeded,
       },
     };
   } catch (error) {
@@ -528,6 +548,8 @@ export async function getPayrollEmployeeDetail(
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
                 pe.bono_extension_asignado, pe.bono_extension_dias,
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
+                pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
+                pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
                 pe.isr_estado, pe.isr_motivo,
                 CAST(pe.isr_base_gravable AS float)             AS isr_base_gravable,
                 pe.isr_ejercicio_tarifa,
@@ -681,6 +703,7 @@ export async function getPayrollEmployeeDetail(
       fecha_ingreso: employeeRow.fecha_ingreso,
     };
 
+    // Spec 78: el snapshot trae la prima y las vacaciones pagadas; buildPerceptionLines las vuelve líneas.
     const snapshotRow = snapshotRows[0];
     const snapshot: IPayrollEmployeeSnapshot | null = snapshotRow
       ? {
@@ -714,6 +737,10 @@ export async function getPayrollEmployeeDetail(
           bono_extension_asignado: Boolean(snapshotRow.bono_extension_asignado),
           bono_extension_dias: Number(snapshotRow.bono_extension_dias),
           importe_bono_extension: Number(snapshotRow.importe_bono_extension),
+          dias_prima_vacacional: Number(snapshotRow.dias_prima_vacacional),
+          importe_prima_vacacional: Number(snapshotRow.importe_prima_vacacional),
+          dias_vacaciones_pagadas: Number(snapshotRow.dias_vacaciones_pagadas),
+          importe_vacaciones_pagadas: Number(snapshotRow.importe_vacaciones_pagadas),
           isr_estado: snapshotRow.isr_estado,
           isr_motivo: snapshotRow.isr_motivo ?? null,
           isr_base_gravable: toNullableNumber(snapshotRow.isr_base_gravable),
@@ -846,6 +873,7 @@ const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_l
 const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha_tipo";
 const ABSENCE_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_absences_empleado_fecha_tipo";
 const LATENESS_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_lateness_empleado_fecha_tipo";
+const VACATION_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_vacations_entitlement_concepto_tipo";
 
 /** Traduce los errores de SQL Server de calcular/revertir nómina a un mensaje en español. */
 function describePayrollCalculationError(error: unknown): string {
@@ -870,6 +898,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(LATENESS_ALREADY_DISCOUNTED_CONSTRAINT)) {
     return "Otro cálculo tomó algunos de estos retardos al mismo tiempo. Intenta de nuevo.";
+  }
+  if (sqlError.message?.includes(VACATION_ALREADY_PAID_CONSTRAINT)) {
+    return "Otro cálculo tomó la prima o las vacaciones de este empleado al mismo tiempo. Intenta de nuevo.";
   }
   if (sqlError.number === 2627 || sqlError.number === 2601 || sqlError.number === 1205) {
     return "Otro usuario modificó la nómina al mismo tiempo. Intenta de nuevo";
@@ -896,6 +927,8 @@ function revalidatePayrollPaths() {
  * Restan días pagados en las dos nóminas ('O' y 'F'); `dias` guarda los días netos.
  * Los retardos injustificados (spec 63) también: `lib/payroll/latenessDetection.ts` los espeja y, si divergen, manda este SQL.
  * Descuentan sueldo base en las dos nóminas sin tocar `dias`: `importe_salario = salario × (dias − dias_retardo)`.
+ * La prima vacacional y los días no disfrutados pagados (spec 78) también, en las dos nóminas con el salario de cada tipo:
+ * `lib/payroll/vacationPay.ts` los espeja y, si divergen, manda este SQL. Los eventos salen de `VACATION_PAY_EVENTS_SQL`.
  * El ISR de la nómina fiscal (spec 70) también, solo para las filas 'F': `lib/payroll/isrCalculation.ts` lo espeja y, si
  * divergen, manda este SQL. Escribe la fila ISR de `period_employee_deductions`, que el cascade borra al recalcular o revertir.
  * Solo la nómina operativa ('O') comisiona y paga horas extra; las filas 'F' quedan en 0. `cancelada` es nullable y
@@ -1023,6 +1056,27 @@ export async function calculatePayrollPeriod(
          INTO #overtime_days
          FROM split_days sd;
 
+       -- Spec 78: prima vacacional y días no disfrutados pagados cuyo evento cae en el rango, por tipo de nómina
+       -- ('O' con salario_diario, 'F' con salario_diario_fiscal; un tipo con salario 0 no genera filas). Se excluyen,
+       -- antes de calcular, los conceptos que otro periodo ya pagó en ese tipo (el DELETE de arriba ya liberó los de este).
+       -- lib/payroll/vacationPay.ts lo espeja y, si divergen, manda este SQL.
+       SELECT ev.[id_empleado], salary.[tipo_nomina], ev.[id_vacation_entitlement], ev.[concepto], ev.[fecha_evento],
+              CAST(ev.[dias] AS int) AS dias,
+              CAST(CASE WHEN ev.[concepto] = 'P'
+                        THEN ROUND(ev.[dias] * salary.[salario_diario] * ${VACATION_PREMIUM_PERCENT} / 100, 2)
+                        ELSE ROUND(ev.[dias] * salary.[salario_diario], 2) END AS decimal(12,2)) AS importe
+         INTO #vacation_pay
+         FROM (${VACATION_PAY_EVENTS_SQL}
+              ) ev
+         JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = ev.[id_empleado]
+        CROSS APPLY (VALUES ('O', e.[salario_diario]), ('F', e.[salario_diario_fiscal]))
+                    AS salary ([tipo_nomina], [salario_diario])
+        WHERE salary.[salario_diario] > 0
+          AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_vacations] pev
+                           WHERE pev.[id_vacation_entitlement] = ev.[id_vacation_entitlement]
+                             AND pev.[concepto] = ev.[concepto]
+                             AND pev.[tipo_nomina] = salary.[tipo_nomina]);
+
        -- Spec 62: faltas injustificadas del periodo. Un día es falta si el empleado con control de faltas (usuario
        -- podólogo activo) tiene horario ese día de la semana ISO, el día es anterior a hoy y no es anterior a su fecha de ingreso,
        -- y no hay ninguna checada ni justificación. Hoy llega como parámetro: nunca se usa GETDATE().
@@ -1113,6 +1167,7 @@ export async function calculatePayrollPeriod(
           ${PUNCTUALITY_BONUS_INSERT_COLUMNS_SQL},
           ${ATTENDANCE_BONUS_INSERT_COLUMNS_SQL},
           ${SHIFT_EXTENSION_BONUS_INSERT_COLUMNS_SQL},
+          dias_prima_vacacional, importe_prima_vacacional, dias_vacaciones_pagadas, importe_vacaciones_pagadas,
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, net.dias, absences.dias_falta,
               lateness_days.dias_retardo, lateness_days.dias_retardo_sin_tope,
@@ -1129,6 +1184,7 @@ export async function calculatePayrollPeriod(
               ${PUNCTUALITY_BONUS_SELECT_SQL},
               ${ATTENDANCE_BONUS_SELECT_SQL},
               ${SHIFT_EXTENSION_BONUS_SELECT_SQL},
+              vacation.dias_prima, vacation.importe_prima, vacation.dias_pagadas, vacation.importe_pagadas,
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
          LEFT JOIN [CentroPodologico].[payroll].[treatment_commission_settings] treatment_settings
@@ -1227,13 +1283,23 @@ export async function calculatePayrollPeriod(
                  SUM(od.[importe_dobles]) AS importe_dobles, SUM(od.[importe_triples]) AS importe_triples
             FROM #overtime_days od
            WHERE od.[id_empleado] = e.[id_empleado] AND od.[tipo_nomina] = salary.tipo_nomina
-        ) AS overtime${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
+        ) AS overtime
+        -- Spec 78: totales del periodo; pueden sumar conceptos de más de un año de derecho.
+        OUTER APPLY (
+          SELECT ISNULL(SUM(CASE WHEN vp.[concepto] = 'P' THEN vp.[dias] END), 0)    AS dias_prima,
+                 ISNULL(SUM(CASE WHEN vp.[concepto] = 'P' THEN vp.[importe] END), 0) AS importe_prima,
+                 ISNULL(SUM(CASE WHEN vp.[concepto] = 'D' THEN vp.[dias] END), 0)    AS dias_pagadas,
+                 ISNULL(SUM(CASE WHEN vp.[concepto] = 'D' THEN vp.[importe] END), 0) AS importe_pagadas
+            FROM #vacation_pay vp
+           WHERE vp.[id_empleado] = e.[id_empleado] AND vp.[tipo_nomina] = salary.tipo_nomina
+        ) AS vacation${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
 
        -- Spec 73: percepciones de los renglones 'F' con su gravado y exento. Cada spec de percepción fiscal nueva
        -- agrega su UNION ALL a #fiscal_perception_lines (id_perception, importe y, solo en periodicidad 'E', eventos).
-       -- Hoy el sueldo y las horas extra dobles y triples (spec 75). Va después del snapshot (de ahí salen los importes)
+       -- Hoy el sueldo, las horas extra dobles y triples (spec 75), la prima vacacional y las vacaciones pagadas (spec 78).
+       -- Va después del snapshot (de ahí salen los importes)
        -- y antes del ISR, que suma lo gravado.
        CREATE TABLE #fiscal_perception_lines (
          id_period_employee int NOT NULL,
@@ -1252,7 +1318,15 @@ export async function calculatePayrollPeriod(
        UNION ALL
        SELECT pe.[id_period_employee], ${OVERTIME_TRIPLE_PERCEPTION_ID}, pe.[importe_horas_extra_triples], NULL
          FROM [CentroPodologico].[payroll].[period_employees] pe
-        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_horas_extra_triples] > 0;
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_horas_extra_triples] > 0
+       UNION ALL
+       SELECT pe.[id_period_employee], ${VACATION_PREMIUM_PERCEPTION_ID}, pe.[importe_prima_vacacional], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_prima_vacacional] > 0
+       UNION ALL
+       SELECT pe.[id_period_employee], ${PAID_VACATION_PERCEPTION_ID}, pe.[importe_vacaciones_pagadas], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_vacaciones_pagadas] > 0;
 
        ${EXEMPTION_PARAMETERS_SQL}
 
@@ -1309,6 +1383,17 @@ export async function calculatePayrollPeriod(
          FROM #overtime_days od
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period] = @id_period AND pe.[id_empleado] = od.[id_empleado] AND pe.[tipo_nomina] = od.[tipo_nomina];
+
+       -- Spec 78: desglose y candado de la prima y los días pagados, por tipo de nómina: cada concepto se une al renglón
+       -- de su tipo. El UNIQUE (entitlement, concepto, tipo) impide pagarlo dos veces; Recalcular y Revertir lo liberan
+       -- con el DELETE de period_employees (ON DELETE CASCADE).
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_vacations]
+         (id_period_employee, id_vacation_entitlement, tipo_nomina, concepto, fecha_evento, dias, importe)
+       SELECT pe.[id_period_employee], vp.[id_vacation_entitlement], vp.[tipo_nomina], vp.[concepto],
+              vp.[fecha_evento], vp.[dias], vp.[importe]
+         FROM #vacation_pay vp
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period] = @id_period AND pe.[id_empleado] = vp.[id_empleado] AND pe.[tipo_nomina] = vp.[tipo_nomina];
 
        -- Spec 62: desglose y candado de faltas. Cada falta se descuenta una vez por tipo de nómina ('O' y 'F'): se
        -- omiten las que otro periodo ya descontó para ese mismo tipo (el mismo criterio que cuenta dias_falta arriba).

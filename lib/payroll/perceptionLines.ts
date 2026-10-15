@@ -8,6 +8,7 @@ import { describeProductSalesCommission } from "@/lib/payroll/productSalesCommis
 import { describeShiftExtensionBonus } from "@/lib/payroll/shiftExtensionBonus";
 import { describePunctualityBonus } from "@/lib/payroll/punctualityBonus";
 import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
+import { VACATION_PREMIUM_PERCENT } from "@/lib/payroll/constants";
 
 /** "2026-09-22" -> "22/09/2026". Opera sobre el string, sin pasar por `Date`. */
 function formatDayMonthYear(dateString: string): string {
@@ -69,7 +70,7 @@ function describeCommission(
  * "Comisión por venta de productos", "Horas extra dobles", "Horas extra triples" y "Bono de puntualidad"
  * (spec 64: se muestra con 'C' y con 'P', este último con $0 y el motivo; con 'N' se omite) y
  * "Bono por extensión de jornada" (spec 68: solo si está asignado y el importe es mayor que 0; la vista fiscal
- * nunca lo trae asignado).
+ * nunca lo trae asignado) y, spec 78, "Prima vacacional" y "Vacaciones pagadas" (cada una omitida con importe 0).
  * Los conceptos futuros se agregan aquí.
  * Las fechas son "YYYY-MM-DD" y se comparan como strings.
  */
@@ -104,6 +105,10 @@ export function buildPerceptionLines(
     | "bono_extension_asignado"
     | "bono_extension_dias"
     | "importe_bono_extension"
+    | "dias_prima_vacacional"
+    | "importe_prima_vacacional"
+    | "dias_vacaciones_pagadas"
+    | "importe_vacaciones_pagadas"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -169,6 +174,27 @@ export function buildPerceptionLines(
       description: describeOvertimeHours(snapshot.horas_extra_triples, snapshot.salario_diario, 3),
       note: null,
       amount: snapshot.importe_horas_extra_triples,
+    });
+  }
+
+  // Spec 78: los días y el salario salen del snapshot; el importe es siempre el guardado.
+  if (snapshot.importe_prima_vacacional > 0) {
+    lines.push({
+      key: "prima_vacacional",
+      label: "Prima vacacional",
+      description: `${formatDays(snapshot.dias_prima_vacacional)} × ${formatPayrollCurrency(snapshot.salario_diario)} × ${VACATION_PREMIUM_PERCENT}%`,
+      note: null,
+      amount: snapshot.importe_prima_vacacional,
+    });
+  }
+
+  if (snapshot.importe_vacaciones_pagadas > 0) {
+    lines.push({
+      key: "vacaciones_pagadas",
+      label: "Vacaciones pagadas",
+      description: `${formatDays(snapshot.dias_vacaciones_pagadas)} × ${formatPayrollCurrency(snapshot.salario_diario)}`,
+      note: null,
+      amount: snapshot.importe_vacaciones_pagadas,
     });
   }
 
