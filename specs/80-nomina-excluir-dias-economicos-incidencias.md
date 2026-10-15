@@ -236,19 +236,19 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [x] Un día económico con una checada `entrada` 40 minutos tarde no genera fila en `period_employee_lateness` y no suma a `dias_retardo`.
 - [x] Un podólogo cuya única falta del periodo es un día económico queda en `bono_asistencia_resultado = 'C'`, con el monto configurado, cuando se cumplen las demás condiciones.
 - [x] Un podólogo cuyo único retardo del periodo cae en un día económico queda en `bono_puntualidad_resultado = 'C'`, con el monto configurado, cuando se cumplen las demás condiciones.
-- [ ] Un podólogo con 1 día económico y 1 falta injustificada en otro día queda con `dias_falta = 1` y pierde el bono de asistencia (`bono_asistencia_faltas = 1`).
+- [x] Un podólogo con 1 día económico y 1 falta injustificada en otro día queda con `dias_falta = 1` y pierde el bono de asistencia (`bono_asistencia_faltas = 1`).
 - [x] Un día económico **cancelado** sin checada vuelve a ser falta al recalcular.
-- [ ] Cancelar un día y registrar otra fecha excluye solo la fecha nueva.
+- [x] Cancelar un día y registrar otra fecha excluye solo la fecha nueva.
 - [x] Un día económico no cambia `bono_extension_dias` ni `importe_bono_extension` (spec 68).
 - [x] Recalcular un periodo ya calculado sin días económicos produce un snapshot idéntico al anterior, salvo `calculated_at` y `calculated_by`. Se compara dentro de una transacción revertida.
-- [ ] Los casos de vacaciones de la spec 77 siguen dando el mismo resultado: un bloque de vacaciones sigue excluyendo sus días.
+- [x] Los casos de vacaciones de la spec 77 siguen dando el mismo resultado: un bloque de vacaciones sigue excluyendo sus días.
 
 **Avisos "Recalcula"**
 
 - [x] En un periodo en estatus 2, registrar un día económico sobre una falta ya descontada hace aparecer el aviso en Faltas, en Procesar y en la pestaña Asistencia de Bonos. Al recalcular, desaparece.
-- [ ] Registrar un día económico sobre un retardo ya descontado hace aparecer el aviso en Retardos y en Procesar.
+- [x] Registrar un día económico sobre un retardo ya descontado hace aparecer el aviso en Retardos y en Procesar.
 - [x] Cancelar ese día económico después de recalcular hace que el aviso vuelva a aparecer.
-- [ ] Registrar un día económico fuera de las fechas del periodo no hace aparecer ningún aviso.
+- [x] Registrar un día económico fuera de las fechas del periodo no hace aparecer ningún aviso.
 
 **Pantallas**
 
@@ -272,8 +272,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [x] `NOT_ON_ECONOMIC_DAY_CONDITION` y `NOT_ON_PAID_LEAVE_CONDITION` son las únicas definiciones SQL de la regla: los seis lugares importan `NOT_ON_PAID_LEAVE_CONDITION`, ninguno la reescribe y ninguno importa `NOT_ON_VACATION_CONDITION`.
 - [x] Ninguna fecha viaja como `Date`: `loadEconomicDays` usa `CONVERT(varchar(10), …, 120)` y los helpers comparan strings.
 - [ ] `npm run build` y `npm run lint` pasan sin errores nuevos.
-- [ ] `docs/nomina.md` tiene la sección "Exclusión de días económicos (spec 80)".
-- [ ] `docs/rh-empleados.md` ya no menciona que el día económico cuenta como falta.
+- [x] `docsnomina.md` tiene la sección "Exclusión de días económicos (spec 80)".
+- [x] `docsrh-empleados.md` ya no menciona que el día económico cuenta como falta.
 
 ## Decisiones tomadas y descartadas
 

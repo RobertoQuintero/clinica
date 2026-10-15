@@ -48,7 +48,8 @@
   - Previous years are read-only (a December day not captured in time cannot be regularized in January). An inactive employee shows the history, hides both actions, and the actions reject the write.
 - **Vacations cross-check**: `scheduleVacationBlock` and `rescheduleVacationBlock` reject a block whose `fecha_inicio..fecha_fin` contains an active economic day ("El bloque incluye un día económico registrado el {fecha}. Cancélalo primero."), using `findActiveEconomicDayInRange` / `ACTIVE_ECONOMIC_DAY_IN_RANGE_SQL` from `lib/economicDays/economicDaySql.ts`. The reverse is the check in `registerEconomicDay`, so an economic day is never spent on a vacation day.
 - **Shared UI**: `EmployeeWithoutScheduleNotice` (`empleados/[id]/componentes/`) is the "Sin horario definido" notice shared by Vacaciones and Días económicos.
-- **Known gaps**: **an economic day is still detected as an absence or lateness and can remove the attendance/punctuality bonuses** — it must be marked "No aplica" by hand in Faltas until the next spec excludes it (as spec 77 did for vacations). No biometric-device validation change, no request/approval flow for the employee, no half days, no proration or minimum seniority, no holiday catalog (a day can be spent on a holiday), and the schedule is validated only at capture time (a later schedule change does not revalidate the day; RH can cancel it).
+- **Payroll**: an active economic day is excluded from absences, lateness and both bonuses, and is paid as a worked day (spec 80, see `docs/nomina.md` "Exclusión de días económicos (spec 80)").
+- **Known gaps**: no biometric-device validation change, no request/approval flow for the employee, no half days, no proration or minimum seniority, no holiday catalog (a day can be spent on a holiday), and the schedule is validated only at capture time (a later schedule change does not revalidate the day; RH can cancel it).
 
 ## Datos fiscales (spec 71)
 
