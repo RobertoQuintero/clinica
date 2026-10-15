@@ -13,6 +13,7 @@ const TABS = (id_empleado: number) => [
   { href: `/dashboard/empleados/${id_empleado}/asistencia`, label: "Asistencia" },
   { href: `/dashboard/empleados/${id_empleado}/horario`, label: "Horario" },
   { href: `/dashboard/empleados/${id_empleado}/vacaciones`, label: "Vacaciones" },
+  { href: `/dashboard/empleados/${id_empleado}/dias-economicos`, label: "Días económicos" },
   { href: `/dashboard/empleados/${id_empleado}/usuarios`, label: "Usuarios" },
 ];
 

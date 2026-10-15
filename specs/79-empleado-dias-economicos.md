@@ -206,19 +206,19 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Base de datos**
 
-- [ ] `RH.economic_days` existe y su DDL está en `queries.txt`, bloque `RECURSOS HUMANOS(EMPLEADOS)`.
-- [ ] Un `INSERT` con `motivo` vacío o de solo espacios falla por `CK_economic_days_motivo`.
-- [ ] Un `UPDATE` que llena `cancelado_at` sin `motivo_cancelacion` falla por `CK_economic_days_cancelacion`.
-- [ ] Dos filas activas del mismo empleado en la misma fecha chocan con `UX_economic_days_empleado_fecha_activo`. Si la primera está cancelada, la segunda se inserta.
+- [x] `RH.economic_days` existe y su DDL está en `queries.txt`, bloque `RECURSOS HUMANOS(EMPLEADOS)`.
+- [x] Un `INSERT` con `motivo` vacío o de solo espacios falla por `CK_economic_days_motivo`.
+- [x] Un `UPDATE` que llena `cancelado_at` sin `motivo_cancelacion` falla por `CK_economic_days_cancelacion`.
+- [x] Dos filas activas del mismo empleado en la misma fecha chocan con `UX_economic_days_empleado_fecha_activo`. Si la primera está cancelada, la segunda se inserta.
 
 **Pestaña**
 
-- [ ] El expediente muestra la pestaña "Días económicos" después de "Vacaciones".
-- [ ] Un empleado sin días registrados en 2026 muestra "Usados 0 de 3 · Disponibles 3".
-- [ ] Un empleado con días en 2025 los muestra en el historial, dentro de un `<details>` "2025", sin botones de acción.
-- [ ] Un empleado sin horario muestra el aviso "Sin horario definido" con el enlace a Horario, y el botón "Registrar día económico" está deshabilitado.
-- [ ] Un empleado inactivo muestra su historial, pero ni "Registrar" ni "Cancelar".
-- [ ] La pestaña Vacaciones sigue mostrando su aviso "Sin horario definido" igual que antes, ahora con el componente compartido.
+- [x] El expediente muestra la pestaña "Días económicos" después de "Vacaciones".
+- [x] Un empleado sin días registrados en 2026 muestra "Usados 0 de 3 · Disponibles 3".
+- [x] Un empleado con días en 2025 los muestra en el historial, dentro de un `<details>` "2025", sin botones de acción.
+- [ ] Un empleado sin horario muestra el aviso "Sin horario definido" con el enlace a Horario, y el botón "Registrar día económico" está deshabilitado. (aviso y enlace verificados; falta el botón, paso 5)
+- [ ] Un empleado inactivo muestra su historial, pero ni "Registrar" ni "Cancelar". (historial verificado; faltan los botones, paso 5)
+- [x] La pestaña Vacaciones sigue mostrando su aviso "Sin horario definido" igual que antes, ahora con el componente compartido.
 
 **Registrar**
 
