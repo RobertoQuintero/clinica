@@ -233,13 +233,13 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
   - queda con `dias_falta = 0` en `'O'` y en `'F'`;
   - su `importe_salario` es igual al de un periodo sin faltas;
   - `period_employee_absences` no tiene fila suya para ese día.
-- [ ] Un día económico con una checada `entrada` 40 minutos tarde no genera fila en `period_employee_lateness` y no suma a `dias_retardo`.
+- [x] Un día económico con una checada `entrada` 40 minutos tarde no genera fila en `period_employee_lateness` y no suma a `dias_retardo`.
 - [x] Un podólogo cuya única falta del periodo es un día económico queda en `bono_asistencia_resultado = 'C'`, con el monto configurado, cuando se cumplen las demás condiciones.
-- [ ] Un podólogo cuyo único retardo del periodo cae en un día económico queda en `bono_puntualidad_resultado = 'C'`, con el monto configurado, cuando se cumplen las demás condiciones.
+- [x] Un podólogo cuyo único retardo del periodo cae en un día económico queda en `bono_puntualidad_resultado = 'C'`, con el monto configurado, cuando se cumplen las demás condiciones.
 - [ ] Un podólogo con 1 día económico y 1 falta injustificada en otro día queda con `dias_falta = 1` y pierde el bono de asistencia (`bono_asistencia_faltas = 1`).
 - [x] Un día económico **cancelado** sin checada vuelve a ser falta al recalcular.
 - [ ] Cancelar un día y registrar otra fecha excluye solo la fecha nueva.
-- [ ] Un día económico no cambia `bono_extension_dias` ni `importe_bono_extension` (spec 68).
+- [x] Un día económico no cambia `bono_extension_dias` ni `importe_bono_extension` (spec 68).
 - [x] Recalcular un periodo ya calculado sin días económicos produce un snapshot idéntico al anterior, salvo `calculated_at` y `calculated_by`. Se compara dentro de una transacción revertida.
 - [ ] Los casos de vacaciones de la spec 77 siguen dando el mismo resultado: un bloque de vacaciones sigue excluyendo sus días.
 
@@ -257,8 +257,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [ ] `?estado=dia-economico` muestra solo esas filas.
 - [ ] La tarjeta "Días económicos" cuenta todo el periodo y no cambia con los filtros ni con la búsqueda.
 - [ ] Las tarjetas "Injustificadas", "Justificadas", "No aplica" y "Días de vacaciones" no cuentan días económicos.
-- [ ] En Retardos, un día económico con entrada tarde no aparece en la lista ni en las tarjetas.
-- [ ] En Bonos (puntualidad y asistencia), los conteos de retardos, faltas e incidencias y el resultado de cada empleado coinciden con lo que guarda el cálculo para el mismo periodo.
+- [x] En Retardos, un día económico con entrada tarde no aparece en la lista ni en las tarjetas.
+- [x] En Bonos (puntualidad y asistencia), los conteos de retardos, faltas e incidencias y el resultado de cada empleado coinciden con lo que guarda el cálculo para el mismo periodo.
 - [ ] La tarjeta, el badge y la opción del filtro nuevos se ven correctamente en modo claro y oscuro, y a 375 px de ancho.
 
 **Escrituras**
