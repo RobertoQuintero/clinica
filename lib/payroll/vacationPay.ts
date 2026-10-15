@@ -1,5 +1,6 @@
 import type { IVacationEntitlement, IVacationPayrollPayment, VacationPremiumStatus } from "@/interfaces/vacation";
 import { VACATION_PREMIUM_PERCENT } from "@/lib/payroll/constants";
+import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 
 // El dinero va en centavos enteros para no arrastrar error de flotantes; el redondeo es mitad hacia arriba como el ROUND de SQL.
 const CENTS_PER_PESO = 100;
@@ -24,6 +25,15 @@ export function calculateVacationPremiumAmount(entitledDays: number, dailySalary
 export function calculatePaidVacationAmount(paidDays: number, dailySalary: number): number {
   const dailySalaryCents = Math.round(dailySalary * CENTS_PER_PESO);
   return (paidDays * dailySalaryCents) / CENTS_PER_PESO;
+}
+
+/** "Prima $945.12 · 4 días $1,260.16": solo las partes con importe; null si no hay prima ni días pagados. */
+export function describeVacationPaySplit(premiumAmount: number, paidDays: number, paidAmount: number): string | null {
+  const parts = [
+    premiumAmount > 0 ? `Prima ${formatPayrollCurrency(premiumAmount)}` : null,
+    paidDays > 0 ? `${paidDays} ${paidDays === 1 ? "día" : "días"} ${formatPayrollCurrency(paidAmount)}` : null,
+  ].filter((part) => part !== null);
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 /** "pagada" si algún periodo ya pagó la prima, "pendiente" si ya tiene fecha de evento y nadie la pagó, "sin_evento" si no. */

@@ -5,6 +5,7 @@ import type { IsrStatus } from "@/interfaces/payroll_isr";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
+import { describeVacationPaySplit } from "@/lib/payroll/vacationPay";
 
 interface Props {
   rows: IPayrollEmployeeRow[];
@@ -75,7 +76,7 @@ export default function PayrollEmployeesTable({
   const detailFilters = { idPeriod, payrollType, idPuesto, search };
   // Spec 70: solo la nómina fiscal lleva deducciones (ISR) y neto.
   const showsDeductions = payrollType === "F";
-  const columnCount = showsDeductions ? 16 : 14;
+  const columnCount = showsDeductions ? 17 : 15;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
@@ -93,6 +94,7 @@ export default function PayrollEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold text-right">Com. onicomicosis</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Com. Ventas</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Horas extra</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Vacaciones</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono punt.</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono asist.</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono ext.</th>
@@ -179,6 +181,14 @@ export default function PayrollEmployeesTable({
                       countLabel={describeOvertimeHoursSplit(employeeRow.horas_extra_dobles, employeeRow.horas_extra_triples)}
                     />
                     <CommissionAmountCell
+                      amount={employeeRow.importe_prima_vacacional + employeeRow.importe_vacaciones_pagadas}
+                      countLabel={describeVacationPaySplit(
+                        employeeRow.importe_prima_vacacional,
+                        employeeRow.dias_vacaciones_pagadas,
+                        employeeRow.importe_vacaciones_pagadas,
+                      )}
+                    />
+                    <CommissionAmountCell
                       amount={employeeRow.importe_bono_puntualidad}
                       countLabel={employeeRow.bono_puntualidad_resultado === "P" ? "Perdido" : null}
                     />
@@ -247,6 +257,9 @@ export default function PayrollEmployeesTable({
               </td>
               <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeHorasExtra)}
+              </td>
+              <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                {formatPayrollCurrency(totals.importeVacaciones)}
               </td>
               <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeBonoPuntualidad)}

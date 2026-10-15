@@ -329,7 +329,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **UI**
 
-- [ ] Procesar muestra la columna "Vacaciones" después de "Horas extra", en operativa y fiscal:
+- [x] Procesar muestra la columna "Vacaciones" después de "Horas extra", en operativa y fiscal:
   - el importe es la suma de la prima y las vacaciones pagadas;
   - el texto secundario es "Prima $X · N días $Y" y omite la parte en 0;
   - "Total percepciones", el pie y la tarjeta de resumen la incluyen y no cambian con los filtros de puesto o búsqueda.

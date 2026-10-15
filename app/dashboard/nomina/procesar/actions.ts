@@ -286,18 +286,22 @@ export async function getPayrollProcessPage(
                 CAST(pe.importe_bono_asistencia AS float) AS importe_bono_asistencia,
                 pe.bono_extension_asignado, pe.bono_extension_dias,
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
+                pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
+                pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
-                  + pe.importe_bono_extension AS total_percepciones,
+                  + pe.importe_bono_extension
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas AS total_percepciones,
                 pe.isr_estado, CAST(pe.isr_retenido AS float) AS isr_retenido,
                 CAST(deductions.total AS float) AS total_deducciones,
                 CAST(pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
-                  + pe.importe_bono_extension - deductions.total AS float) AS neto,
+                  + pe.importe_bono_extension
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas - deductions.total AS float) AS neto,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -319,6 +323,7 @@ export async function getPayrollProcessPage(
                 CAST(ISNULL(SUM(importe_bono_puntualidad), 0) AS float) AS importe_bono_puntualidad,
                 CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia,
                 CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension,
+                CAST(ISNULL(SUM(importe_prima_vacacional + importe_vacaciones_pagadas), 0) AS float) AS importe_vacaciones,
                 CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
                 CAST(ISNULL(SUM(deductions.total), 0) AS float) AS total_deducciones
            FROM [CentroPodologico].[payroll].[period_employees] pe
@@ -387,7 +392,8 @@ export async function getPayrollProcessPage(
         Number(totals[0]?.importe_horas_extra ?? 0) +
         Number(totals[0]?.importe_bono_puntualidad ?? 0) +
         Number(totals[0]?.importe_bono_asistencia ?? 0) +
-        Number(totals[0]?.importe_bono_extension ?? 0),
+        Number(totals[0]?.importe_bono_extension ?? 0) +
+        Number(totals[0]?.importe_vacaciones ?? 0),
     );
 
     return {
@@ -421,6 +427,10 @@ export async function getPayrollProcessPage(
           bono_extension_asignado: Boolean(row.bono_extension_asignado),
           bono_extension_dias: Number(row.bono_extension_dias),
           importe_bono_extension: Number(row.importe_bono_extension),
+          dias_prima_vacacional: Number(row.dias_prima_vacacional),
+          importe_prima_vacacional: Number(row.importe_prima_vacacional),
+          dias_vacaciones_pagadas: Number(row.dias_vacaciones_pagadas),
+          importe_vacaciones_pagadas: Number(row.importe_vacaciones_pagadas),
           total_percepciones: Number(row.total_percepciones),
           isr_retenido: row.isr_retenido === null ? null : Number(row.isr_retenido),
           total_deducciones: Number(row.total_deducciones),
@@ -436,7 +446,7 @@ export async function getPayrollProcessPage(
           importeBonoPuntualidad: Number(totals[0]?.importe_bono_puntualidad ?? 0),
           importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
           importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
-          importeVacaciones: 0, // spec 78 paso 6 lo calcula del snapshot
+          importeVacaciones: Number(totals[0]?.importe_vacaciones ?? 0),
           totalPercepciones,
           importeIsr: Number(totals[0]?.importe_isr ?? 0),
           totalNeto: roundToCents(totalPercepciones - Number(totals[0]?.total_deducciones ?? 0)),
