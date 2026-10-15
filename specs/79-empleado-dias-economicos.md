@@ -216,22 +216,22 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [x] El expediente muestra la pestaña "Días económicos" después de "Vacaciones".
 - [x] Un empleado sin días registrados en 2026 muestra "Usados 0 de 3 · Disponibles 3".
 - [x] Un empleado con días en 2025 los muestra en el historial, dentro de un `<details>` "2025", sin botones de acción.
-- [ ] Un empleado sin horario muestra el aviso "Sin horario definido" con el enlace a Horario, y el botón "Registrar día económico" está deshabilitado. (aviso y enlace verificados; falta el botón, paso 5)
+- [ ] Un empleado sin horario muestra el aviso "Sin horario definido" con el enlace a Horario, y el botón "Registrar día económico" está deshabilitado. (aviso y enlace verificados; el botón se deshabilita con 0 disponibles; no hay un empleado activo sin horario para probar el caso sin horario)
 - [ ] Un empleado inactivo muestra su historial, pero ni "Registrar" ni "Cancelar". (historial verificado; faltan los botones, paso 5)
 - [x] La pestaña Vacaciones sigue mostrando su aviso "Sin horario definido" igual que antes, ahora con el componente compartido.
 
 **Registrar**
 
-- [ ] Registrar el miércoles 2026-10-21 con motivo, para un empleado con horario L–V, agrega la fila como "Registrado" y el saldo pasa a "Usados 1 de 3 · Disponibles 2".
-- [ ] Registrar una fecha pasada del año en curso, como 2026-03-04, se acepta.
-- [ ] Registrar el domingo 2026-10-18, para un empleado con horario L–V, devuelve `{ ok: false }` con un mensaje de día no laborable. El modal además lo avisa antes de guardar.
-- [ ] Registrar 2025-12-15 o 2027-01-05 devuelve `{ ok: false }`.
-- [ ] Registrar sin motivo devuelve un error de validación y no guarda nada.
-- [ ] Registrar una fecha dentro de un bloque de vacaciones capturado devuelve `{ ok: false }` con "Ese día está dentro de las vacaciones del empleado".
-- [ ] Registrar dos veces la misma fecha activa devuelve `{ ok: false }` en la segunda.
-- [ ] Con 3 días activos en 2026, el botón se deshabilita y llamar a la action directamente devuelve `{ ok: false }`.
-- [ ] Dos llamadas simultáneas a `registerEconomicDay` con 2 días ya usados dejan exactamente 3 activos: una devuelve `ok: true` y la otra `ok: false`.
-- [ ] Llamar a `registerEconomicDay` para un empleado inactivo, o con un usuario sin rol 1 ni 4, devuelve `{ ok: false }`.
+- [x] Registrar el miércoles 2026-10-21 con motivo, para un empleado con horario L–V, agrega la fila como "Registrado" y el saldo pasa a "Usados 1 de 3 · Disponibles 2".
+- [x] Registrar una fecha pasada del año en curso, como 2026-03-04, se acepta.
+- [x] Registrar el domingo 2026-10-18, para un empleado con horario L–V, devuelve `{ ok: false }` con un mensaje de día no laborable. El modal además lo avisa antes de guardar.
+- [x] Registrar 2025-12-15 o 2027-01-05 devuelve `{ ok: false }`.
+- [x] Registrar sin motivo devuelve un error de validación y no guarda nada.
+- [x] Registrar una fecha dentro de un bloque de vacaciones capturado devuelve `{ ok: false }` con "Ese día está dentro de las vacaciones del empleado".
+- [x] Registrar dos veces la misma fecha activa devuelve `{ ok: false }` en la segunda.
+- [x] Con 3 días activos en 2026, el botón se deshabilita y llamar a la action directamente devuelve `{ ok: false }`.
+- [x] Dos llamadas simultáneas a `registerEconomicDay` con 2 días ya usados dejan exactamente 3 activos: una devuelve `ok: true` y la otra `ok: false`.
+- [ ] Llamar a `registerEconomicDay` para un empleado inactivo, o con un usuario sin rol 1 ni 4, devuelve `{ ok: false }`. (empleado inactivo verificado; falta probar con un usuario sin rol 1 ni 4)
 
 **Cancelar**
 

@@ -7,6 +7,7 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { getEmployeeEconomicDays } from "./actions";
 import EconomicDaysCurrentYearCard from "./componentes/EconomicDaysCurrentYearCard";
 import EconomicDaysHistory from "./componentes/EconomicDaysHistory";
+import RegisterEconomicDayModal from "./componentes/RegisterEconomicDayModal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -45,7 +46,24 @@ export default async function EmployeeEconomicDaysPage({ params }: Props) {
         />
       )}
 
-      <EconomicDaysCurrentYearCard yearSummary={currentYearSummary} />
+      <EconomicDaysCurrentYearCard
+        yearSummary={currentYearSummary}
+        registerAction={
+          employee.activo ? (
+            <RegisterEconomicDayModal
+              id_empleado={id_empleado}
+              employeeName={employee.nombre_completo}
+              currentYear={currentYear}
+              availableDays={currentYearSummary.availableDays}
+              workingWeekdays={workingWeekdays}
+              isDisabled={!hasSchedule || currentYearSummary.availableDays === 0}
+              disabledReason={
+                !hasSchedule ? "Sin horario definido" : "No quedan días económicos disponibles"
+              }
+            />
+          ) : undefined
+        }
+      />
       <EconomicDaysHistory previousYears={previousYears} />
     </div>
   );
