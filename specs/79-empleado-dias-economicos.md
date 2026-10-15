@@ -242,9 +242,9 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Validación inversa en vacaciones**
 
-- [ ] Capturar un bloque de vacaciones que incluya un día económico activo devuelve `{ ok: false }` con "El bloque incluye un día económico registrado el {fecha}. Cancélalo primero."
-- [ ] Reprogramar un bloque hacia un rango con un día económico activo devuelve el mismo error.
-- [ ] Un día económico cancelado dentro del rango no bloquea la captura de vacaciones.
+- [ ] Capturar un bloque de vacaciones que incluya un día económico activo devuelve `{ ok: false }` con "El bloque incluye un día económico registrado el {fecha}. Cancélalo primero." (no probado en vivo: los años de derecho existentes ya pasaron su fecha límite de solicitud; la captura usa el mismo helper que la reprogramación)
+- [x] Reprogramar un bloque hacia un rango con un día económico activo devuelve el mismo error.
+- [x] Un día económico cancelado dentro del rango no bloquea la captura de vacaciones. (verificado en la reprogramación; la captura usa el mismo helper)
 
 **Calidad**
 
