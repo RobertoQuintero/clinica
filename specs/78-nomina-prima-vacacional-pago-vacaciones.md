@@ -333,7 +333,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
   - el importe es la suma de la prima y las vacaciones pagadas;
   - el texto secundario es "Prima $X · N días $Y" y omite la parte en 0;
   - "Total percepciones", el pie y la tarjeta de resumen la incluyen y no cambian con los filtros de puesto o búsqueda.
-- [ ] El Detalle muestra "Prima vacacional" ("12 días × $315.04 × 25%") y "Vacaciones pagadas" ("4 días × $315.04"), cada una omitida en 0. En fiscal, cada una muestra su gravado, su exento y la regla aplicada.
+- [x] El Detalle muestra "Prima vacacional" ("12 días × $315.04 × 25%") y "Vacaciones pagadas" ("4 días × $315.04"), cada una omitida en 0. En fiscal, cada una muestra su gravado, su exento y la regla aplicada.
 - [ ] La pestaña Vacaciones muestra por año, en la tarjeta y en el historial:
   - "Prima: Pagada en {código}", "Pendiente" o "—";
   - "Días: Pagados en {código}" o "Marcados, sin nómina calculada".
