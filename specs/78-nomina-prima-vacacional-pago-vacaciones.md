@@ -282,11 +282,11 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Base de datos**
 
-- [ ] Existen las 4 columnas nuevas en `payroll.period_employees`, con default 0, y la tabla `payroll.period_employee_vacations` con su índice.
-- [ ] Correr dos veces el script de siembra deja una sola fila `id_perception = 14` (`001`, "Vacaciones pagadas", `'N'`).
+- [x] Existen las 4 columnas nuevas en `payroll.period_employees`, con default 0, y la tabla `payroll.period_employee_vacations` con su índice.
+- [x] Correr dos veces el script de siembra deja una sola fila `id_perception = 14` (`001`, "Vacaciones pagadas", `'N'`).
 - [ ] El script termina con `THROW 50078` si la `id 7` no es `021` / `'U'`, o si la 14 está ocupada por otra percepción.
-- [ ] El `CHECK` rechaza un `INSERT` con `concepto` fuera de `'P'`/`'D'`, con `tipo_nomina` fuera de `'O'`/`'F'` o con `dias = 0`.
-- [ ] El `UNIQUE` rechaza un segundo `INSERT` con el mismo `(id_vacation_entitlement, concepto, tipo_nomina)`.
+- [x] El `CHECK` rechaza un `INSERT` con `concepto` fuera de `'P'`/`'D'`, con `tipo_nomina` fuera de `'O'`/`'F'` o con `dias = 0`.
+- [x] El `UNIQUE` rechaza un segundo `INSERT` con el mismo `(id_vacation_entitlement, concepto, tipo_nomina)`.
 
 **Cálculo de la prima**
 

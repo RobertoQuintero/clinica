@@ -220,7 +220,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
       isrNotCalculated: [],
       puestoOptions: [],
       excludedEmployees: [],
@@ -428,6 +428,7 @@ export async function getPayrollProcessPage(
           importeBonoPuntualidad: Number(totals[0]?.importe_bono_puntualidad ?? 0),
           importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
           importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
+          importeVacaciones: 0, // spec 78 paso 6 lo calcula del snapshot
           totalPercepciones,
           importeIsr: Number(totals[0]?.importe_isr ?? 0),
           totalNeto: roundToCents(totalPercepciones - Number(totals[0]?.total_deducciones ?? 0)),
@@ -714,6 +715,11 @@ export async function getPayrollEmployeeDetail(
           bono_extension_asignado: Boolean(snapshotRow.bono_extension_asignado),
           bono_extension_dias: Number(snapshotRow.bono_extension_dias),
           importe_bono_extension: Number(snapshotRow.importe_bono_extension),
+          // spec 78 paso 7 los lee del snapshot; mientras tanto el SELECT no los trae.
+          dias_prima_vacacional: Number(snapshotRow.dias_prima_vacacional ?? 0),
+          importe_prima_vacacional: Number(snapshotRow.importe_prima_vacacional ?? 0),
+          dias_vacaciones_pagadas: Number(snapshotRow.dias_vacaciones_pagadas ?? 0),
+          importe_vacaciones_pagadas: Number(snapshotRow.importe_vacaciones_pagadas ?? 0),
           isr_estado: snapshotRow.isr_estado,
           isr_motivo: snapshotRow.isr_motivo ?? null,
           isr_base_gravable: toNullableNumber(snapshotRow.isr_base_gravable),

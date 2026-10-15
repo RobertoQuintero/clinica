@@ -8,6 +8,7 @@ import {
   IVacationEntitlementView,
   IVacationLogEntry,
 } from "@/interfaces/vacation";
+import { getVacationPremiumStatus } from "@/lib/payroll/vacationPay";
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { calculateVacationEndDate } from "@/lib/vacations/vacationDates";
 import {
@@ -102,6 +103,10 @@ export async function getEmployeeVacations(
     status: getVacationStatus(entitlement, today),
     dias_por_pagar: getDaysToPay(entitlement, today),
     log: logByEntitlement.get(entitlement.id_vacation_entitlement) ?? [],
+    // spec 78 paso 8 lee period_employee_vacations; mientras tanto no hay pagos de nómina.
+    payroll_payments: [],
+    premium_status: getVacationPremiumStatus(entitlement, []),
+    paid_days_in_payroll: false,
   }));
 }
 

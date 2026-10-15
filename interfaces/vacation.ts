@@ -37,11 +37,25 @@ export interface IVacationLogEntry {
   created_at:            string;
 }
 
+export type VacationPayConcept = "P" | "D";
+export type VacationPremiumStatus = "pagada" | "pendiente" | "sin_evento";
+
+/** Un concepto pagado por la nómina para un año de derecho (lectura de period_employee_vacations + periods). */
+export interface IVacationPayrollPayment {
+  concepto:       VacationPayConcept;
+  tipo_nomina:    "O" | "F";
+  id_period:      number;
+  codigo_periodo: string;   // "NOM-2026-S38"
+}
+
 /** Año de derecho + estatus derivado + bitácora, para la pestaña y el badge. */
 export interface IVacationEntitlementView extends IVacationEntitlement {
   status:         VacationStatus;
   dias_por_pagar: number;          // dias_derecho - dias_tomados cuando aplica; 0 si no
   log:            IVacationLogEntry[];
+  payroll_payments:     IVacationPayrollPayment[];   // spec 78
+  premium_status:       VacationPremiumStatus;
+  paid_days_in_payroll: boolean;                     // dias_pagados ya entró a algún periodo calculado
 }
 
 /** Estatus del año vigente listo para pintar el badge (expediente y listado). */

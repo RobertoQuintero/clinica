@@ -64,12 +64,18 @@ export const SALARY_PERCEPTION_ID = 1;
 // las dobles llevan exención ('M' 50%, 5 UMA por semana) y las triples son 100% gravadas ('N').
 export const OVERTIME_DOUBLE_PERCEPTION_ID = 5;
 export const OVERTIME_TRIPLE_PERCEPTION_ID = 13;
+// Spec 78: prima vacacional (ya existía en el catálogo) y días no disfrutados pagados.
+export const VACATION_PREMIUM_PERCEPTION_ID = 7;    // 021, 'U' 15 UMA por año
+export const PAID_VACATION_PERCEPTION_ID    = 14;   // 001, 'N' 100% gravada
+export const VACATION_PREMIUM_PERCENT       = 25;   // LFT art. 80
 // id_perception -> clave de la línea de buildPerceptionLines que lo representa en el Detalle.
 // Cada spec de percepción nueva agrega su entrada.
 export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = {
   [SALARY_PERCEPTION_ID]:          "sueldo_base",
   [OVERTIME_DOUBLE_PERCEPTION_ID]: "horas_extra_dobles",
   [OVERTIME_TRIPLE_PERCEPTION_ID]: "horas_extra_triples",
+  [VACATION_PREMIUM_PERCEPTION_ID]: "prima_vacacional",
+  [PAID_VACATION_PERCEPTION_ID]:    "vacaciones_pagadas",
 };
 export const EXEMPTION_SKIP_REASON_LABELS: Record<ExemptionSkipReason, string> = {
   missing_uma:           "No hay UMA diaria vigente al fin del periodo",
