@@ -45,6 +45,11 @@ const STATUS_BADGES: Record<AbsenceStatus, { label: string; classes: string }> =
     classes:
       "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
   },
+  economic_day: {
+    label: "Día económico",
+    classes:
+      "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
+  },
 };
 
 /** Resumen del día para el encabezado de los modales de justificación. */
@@ -99,8 +104,11 @@ export default function AbsenceDaysTable({
             ) : (
               rows.map((dayRow) => {
                 const badge = STATUS_BADGES[dayRow.status];
-                // Spec 77: una fila de vacaciones es de solo lectura y no tiene acciones.
-                const justifiableDay = dayRow.status === "vacation" ? null : { ...dayRow, status: dayRow.status };
+                // Specs 77 y 80: las filas de vacaciones y de día económico son de solo lectura y no tienen acciones.
+                const justifiableDay =
+                  dayRow.status === "vacation" || dayRow.status === "economic_day"
+                    ? null
+                    : { ...dayRow, status: dayRow.status };
                 return (
                   <tr
                     key={`${dayRow.id_empleado}-${dayRow.fecha}`}

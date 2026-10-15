@@ -56,6 +56,11 @@ export interface IVacationBlockRow {
   fecha_fin:    string;   // "YYYY-MM-DD"
 }
 
+export interface IEconomicDayRow {
+  id_empleado: number;
+  fecha:       string;   // "YYYY-MM-DD"
+}
+
 export type IncidentJustificationKind ="absence" | "lateness";
 
 const JUSTIFICATION_TABLE_BY_KIND: Record<IncidentJustificationKind, string> = {
@@ -218,4 +223,21 @@ export async function loadVacationBlocks(
     buildPeriodParams(idSucursal, period),
   );
   return rows as IVacationBlockRow[];
+}
+
+/** Spec 80: días económicos activos de los empleados con control dentro del periodo. */
+export async function loadEconomicDays(
+  idSucursal: number,
+  period: IIncidentPeriodRange,
+): Promise<IEconomicDayRow[]> {
+  const rows = await db.queryParams(
+    `SELECT ed.[id_empleado], CONVERT(varchar(10), ed.[fecha], 120) AS fecha
+       FROM [CentroPodologico].[RH].[economic_days] ed
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = ed.id_empleado
+      WHERE ${REVIEWED_EMPLOYEE_CONDITIONS}
+        AND ed.[cancelado_at] IS NULL
+        AND ed.[fecha] BETWEEN CAST(@fecha_inicio AS date) AND CAST(@fecha_fin AS date)`,
+    buildPeriodParams(idSucursal, period),
+  );
+  return rows as IEconomicDayRow[];
 }

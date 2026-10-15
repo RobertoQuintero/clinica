@@ -25,7 +25,7 @@ export function nextDate(fecha: string): string {
  * - `rangeStart` = max(fecha_inicio, fecha_ingreso).
  * - `rangeEndExclusive` = min(fecha_fin + 1, hoy): el día de hoy y los futuros nunca son falta.
  * - `checadaDates` = fechas "YYYY-MM-DD" que tienen al menos una checada.
- * - `vacationDates` (spec 77) = fechas de vacaciones que nunca son falta; vacío = sin exclusión.
+ * - `paidLeaveDates` (specs 77 y 80) = fechas con goce (vacaciones y días económicos) que nunca son falta; vacío = sin exclusión.
  * Todas las fechas son strings y se comparan como strings.
  */
 export function detectEmployeeAbsences(
@@ -33,7 +33,7 @@ export function detectEmployeeAbsences(
   checadaDates: Iterable<string>,
   rangeStart: string,
   rangeEndExclusive: string,
-  vacationDates: ReadonlySet<string> = new Set<string>(),
+  paidLeaveDates: ReadonlySet<string> = new Set<string>(),
 ): IAbsenceDetection[] {
   if (schedules.length === 0) return [];
 
@@ -43,7 +43,7 @@ export function detectEmployeeAbsences(
 
   for (let fecha = rangeStart; fecha < rangeEndExclusive; fecha = nextDate(fecha)) {
     const scheduledDay = scheduleByWeekday.get(weekdayOfDate(fecha));
-    if (scheduledDay && !datesWithCheckIn.has(fecha) && !vacationDates.has(fecha)) {
+    if (scheduledDay && !datesWithCheckIn.has(fecha) && !paidLeaveDates.has(fecha)) {
       absences.push({ fecha, scheduledDay });
     }
   }

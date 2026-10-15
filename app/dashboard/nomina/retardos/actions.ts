@@ -17,6 +17,7 @@ import { LATENESS_PAGE_SIZE, PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY } from "@/lib/p
 import {
   loadDiscountedDays,
   loadFirstEntries,
+  loadEconomicDays,
   loadVacationBlocks,
   loadJustifications,
   loadReviewedEmployees,
@@ -25,6 +26,7 @@ import {
 import {
   JustificationWriteCheck,
   upsertJustification,
+  validateDayIsNotOnEconomicDay,
   validateDayIsNotOnVacation,
   validateJustificationTarget,
 } from "@/lib/payroll/justificationWrites";
@@ -37,7 +39,7 @@ import {
 import { buildDiscountedCodesByDay, groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
-import { buildVacationDatesByEmployee } from "@/lib/payroll/vacationExclusion";
+import { buildPaidLeaveDatesByEmployee } from "@/lib/payroll/paidLeaveExclusion";
 import {
   clearLatenessJustificationSchema,
   justifyLatenessSchema,
@@ -209,7 +211,7 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
 
     const periodTiers = settings.tiers.filter((tier) => tier.id_payment_period === period.id_payment_period);
 
-    const [employees, scheduleByEmployee, firstEntryRows, justificationRows, discountedRows, vacationBlockRows] =
+    const [employees, scheduleByEmployee, firstEntryRows, justificationRows, discountedRows, vacationBlockRows, economicDayRows] =
       await Promise.all([
         loadReviewedEmployees(id_sucursal, period),
         loadScheduleByEmployee(id_sucursal, period),
@@ -218,10 +220,13 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
         loadDiscountedDays("lateness", id_sucursal, period),
         // Spec 77: los días de vacaciones no son retardo y no aparecen en la pantalla.
         loadVacationBlocks(id_sucursal, period),
+        // Spec 80: los días económicos tampoco.
+        loadEconomicDays(id_sucursal, period),
       ]);
 
-    const vacationDatesByEmployee = buildVacationDatesByEmployee(
+    const paidLeaveDatesByEmployee = buildPaidLeaveDatesByEmployee(
       vacationBlockRows,
+      economicDayRows,
       period.fecha_inicio,
       period.fecha_fin,
     );
@@ -265,7 +270,7 @@ export async function getLatenessPage(filters: ILatenessFilters): Promise<Action
         rangeStart,
         rangeEndInclusive,
         settings,
-        vacationDatesByEmployee.get(employee.id_empleado),
+        paidLeaveDatesByEmployee.get(employee.id_empleado),
       ).map((lateness) => {
         const justification = justificationsByDate.get(lateness.fecha);
         return {
@@ -429,6 +434,8 @@ export async function justifyLateness(input: unknown): Promise<ActionResult<null
       if (!target.ok) return target;
       const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
       if (!vacation.ok) return vacation;
+      const economicDay = await validateDayIsNotOnEconomicDay(transaction, id_empleado, fecha);
+      if (!economicDay.ok) return economicDay;
       const day = await validateDayIsLateness(transaction, id_empresa, id_empleado, fecha);
       if (!day.ok) return day;
 
@@ -477,6 +484,8 @@ export async function markLatenessNotApplicable(input: unknown): Promise<ActionR
       if (!target.ok) return target;
       const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
       if (!vacation.ok) return vacation;
+      const economicDay = await validateDayIsNotOnEconomicDay(transaction, id_empleado, fecha);
+      if (!economicDay.ok) return economicDay;
       const day = await validateDayIsLateness(transaction, id_empresa, id_empleado, fecha);
       if (!day.ok) return day;
 

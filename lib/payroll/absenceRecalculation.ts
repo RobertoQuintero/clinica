@@ -5,7 +5,7 @@ import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
-import { NOT_ON_VACATION_CONDITION } from "@/lib/payroll/vacationExclusionSql";
+import { NOT_ON_PAID_LEAVE_CONDITION } from "@/lib/payroll/paidLeaveExclusionSql";
 import { addZeroToday } from "@/utils/date_helpper";
 
 /**
@@ -46,7 +46,7 @@ export async function isAbsenceRecalculationNeeded(idPeriod: number): Promise<bo
         CROSS JOIN period_days d
         WHERE ${ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS}
           AND ${ABSENCE_CONTROLLED_EMPLOYEE_CONDITION}
-          AND ${NOT_ON_VACATION_CONDITION}
+          AND ${NOT_ON_PAID_LEAVE_CONDITION}
           AND d.[fecha] >= e.[fecha_ingreso]
           AND d.[fecha] <  @today
           AND EXISTS (SELECT 1 FROM [CentroPodologico].[RH].[empleado_horarios] h

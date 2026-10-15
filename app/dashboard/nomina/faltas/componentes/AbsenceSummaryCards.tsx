@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CircleCheckBig, CircleSlash, Plane, UserX } from "lucide-react";
+import { CalendarHeart, CircleCheckBig, CircleSlash, Plane, UserX } from "lucide-react";
 import type { IAbsencePage } from "@/interfaces/payroll_absence";
 
 interface Props {
@@ -28,7 +28,7 @@ const HINT_CLASSES = "text-xs text-[#44474f] dark:text-zinc-400";
 /** Totales de todo el periodo: no cambian con el filtro de estado ni con la búsqueda. */
 export default function AbsenceSummaryCards({ summary }: Props) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
       <SummaryCard icon={<UserX size={20} />} label="Injustificadas">
         <span className={VALUE_CLASSES}>{summary.unjustifiedDays}</span>
         <span className={HINT_CLASSES}>Se descuentan al calcular la nómina</span>
@@ -44,6 +44,10 @@ export default function AbsenceSummaryCards({ summary }: Props) {
       <SummaryCard icon={<Plane size={20} />} label="Días de vacaciones">
         <span className={VALUE_CLASSES}>{summary.vacationDays}</span>
         <span className={HINT_CLASSES}>Dentro de un bloque, no son falta</span>
+      </SummaryCard>
+      <SummaryCard icon={<CalendarHeart size={20} />} label="Días económicos">
+        <span className={VALUE_CLASSES}>{summary.economicDays}</span>
+        <span className={HINT_CLASSES}>Con goce, no son falta</span>
       </SummaryCard>
     </div>
   );

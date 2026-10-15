@@ -1,11 +1,12 @@
 "use server";
 
 import db, { ITransactionClient } from "@/database/connection";
-import { AbsenceStatus, IAbsenceDayRow, IAbsenceFilters, IAbsencePage } from "@/interfaces/payroll_absence";
+import { AbsenceStatus, IAbsenceDayRow, IAbsenceDetection, IAbsenceFilters, IAbsencePage } from "@/interfaces/payroll_absence";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import {
   JustificationWriteCheck,
   upsertJustification,
+  validateDayIsNotOnEconomicDay,
   validateDayIsNotOnVacation,
   validateJustificationTarget,
 } from "@/lib/payroll/justificationWrites";
@@ -13,16 +14,19 @@ import { detectEmployeeAbsences, nextDate } from "@/lib/payroll/absenceDetection
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { ABSENCE_PAGE_SIZE } from "@/lib/payroll/constants";
 import {
+  IReviewedEmployeeRow,
   loadCheckInDays,
   loadDiscountedDays,
   loadJustifications,
   loadReviewedEmployees,
   loadScheduleByEmployee,
+  loadEconomicDays,
   loadVacationBlocks,
 } from "@/lib/payroll/incidentSources";
 import { buildDiscountedCodesByDay, groupByEmployee, normalizeSearchText } from "@/lib/payroll/listHelpers";
 import { weekdayOfDate } from "@/lib/payroll/overtimeDetection";
 import { resolvePeriod } from "@/lib/payroll/period";
+import { buildEconomicDayDatesByEmployee } from "@/lib/payroll/paidLeaveExclusion";
 import { buildVacationDatesByEmployee } from "@/lib/payroll/vacationExclusion";
 import {
   absencePageFiltersSchema,
@@ -34,6 +38,27 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
 const ABSENCES_PATH = "/dashboard/nomina/faltas";
+
+/** Fila de solo lectura de un día con goce (vacaciones o día económico) que habría sido falta: sin archivo ni descuento. */
+function buildPaidLeaveAbsenceRow(
+  absence: IAbsenceDetection,
+  employee: IReviewedEmployeeRow,
+  status: Extract<AbsenceStatus, "vacation" | "economic_day">,
+): IAbsenceDayRow {
+  return {
+    ...absence,
+    id_empleado: employee.id_empleado,
+    codigo_empleado: employee.codigo_empleado,
+    nombre_completo: employee.nombre_completo,
+    status,
+    url: null,
+    mime_type: null,
+    comentario: null,
+    decided_by_name: null,
+    decided_at: null,
+    discountedInPeriodCodes: [],
+  };
+}
 
 /**
  * Lista de faltas de un periodo (spec 62): detección en vivo por empleado con control de faltas, unida con
@@ -73,13 +98,13 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
       canDecide: false,
       rows: [],
       totalRows: 0,
-      summary: { unjustifiedDays: 0, justifiedDays: 0, notApplicableDays: 0, vacationDays: 0 },
+      summary: { unjustifiedDays: 0, justifiedDays: 0, notApplicableDays: 0, vacationDays: 0, economicDays: 0 },
       employeesWithoutSchedule: [],
       recalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
-    const [employees, scheduleByEmployee, checkInDateRows, justificationRows, discountedRows, vacationBlockRows] =
+    const [employees, scheduleByEmployee, checkInDateRows, justificationRows, discountedRows, vacationBlockRows, economicDayRows] =
       await Promise.all([
         loadReviewedEmployees(id_sucursal, period),
         loadScheduleByEmployee(id_sucursal, period),
@@ -87,6 +112,8 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
         loadJustifications("absence", id_sucursal, period),
         loadDiscountedDays("absence", id_sucursal, period),
         loadVacationBlocks(id_sucursal, period),
+        // Spec 80: los días económicos se separan igual que las vacaciones.
+        loadEconomicDays(id_sucursal, period),
       ]);
 
     const vacationDatesByEmployee = buildVacationDatesByEmployee(
@@ -94,6 +121,8 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
       period.fecha_inicio,
       period.fecha_fin,
     );
+
+    const economicDayDatesByEmployee = buildEconomicDayDatesByEmployee(economicDayRows);
 
     const checkInDatesByEmployee = groupByEmployee(checkInDateRows);
     const justificationsByEmployee = groupByEmployee(justificationRows);
@@ -127,24 +156,17 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
       );
 
       const vacationDates = vacationDatesByEmployee.get(employee.id_empleado);
+      const economicDayDates = economicDayDatesByEmployee.get(employee.id_empleado);
 
-      // Spec 77: se detecta SIN exclusión y se separan las fechas de vacaciones; así se obtiene exactamente
-      // "lo que habría sido falta" sin duplicar la regla. Las vacaciones mandan sobre cualquier justificación.
+      // Specs 77 y 80: se detecta SIN exclusión y se separan las fechas con goce; así se obtiene exactamente
+      // "lo que habría sido falta" sin duplicar la regla. Orden: vacaciones → día económico → justificación.
       for (const absence of detectEmployeeAbsences(schedule, checkInDates, rangeStart, rangeEndExclusive)) {
         if (vacationDates?.has(absence.fecha)) {
-          allRows.push({
-            ...absence,
-            id_empleado: employee.id_empleado,
-            codigo_empleado: employee.codigo_empleado,
-            nombre_completo: employee.nombre_completo,
-            status: "vacation",
-            url: null,
-            mime_type: null,
-            comentario: null,
-            decided_by_name: null,
-            decided_at: null,
-            discountedInPeriodCodes: [],
-          });
+          allRows.push(buildPaidLeaveAbsenceRow(absence, employee, "vacation"));
+          continue;
+        }
+        if (economicDayDates?.has(absence.fecha)) {
+          allRows.push(buildPaidLeaveAbsenceRow(absence, employee, "economic_day"));
           continue;
         }
 
@@ -176,6 +198,7 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
       justifiedDays: allRows.filter((row) => row.status === "justified").length,
       notApplicableDays: allRows.filter((row) => row.status === "not_applicable").length,
       vacationDays: allRows.filter((row) => row.status === "vacation").length,
+      economicDays: allRows.filter((row) => row.status === "economic_day").length,
     };
 
     const search = normalizeSearchText(rawSearch.trim());
@@ -270,6 +293,8 @@ export async function justifyAbsence(input: unknown): Promise<ActionResult<null>
       if (!target.ok) return target;
       const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
       if (!vacation.ok) return vacation;
+      const economicDay = await validateDayIsNotOnEconomicDay(transaction, id_empleado, fecha);
+      if (!economicDay.ok) return economicDay;
       const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
       if (!day.ok) return day;
 
@@ -318,6 +343,8 @@ export async function markAbsenceNotApplicable(input: unknown): Promise<ActionRe
       if (!target.ok) return target;
       const vacation = await validateDayIsNotOnVacation(transaction, id_empleado, fecha);
       if (!vacation.ok) return vacation;
+      const economicDay = await validateDayIsNotOnEconomicDay(transaction, id_empleado, fecha);
+      if (!economicDay.ok) return economicDay;
       const day = await validateDayIsAbsence(transaction, id_empleado, fecha);
       if (!day.ok) return day;
 
