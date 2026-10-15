@@ -3,7 +3,7 @@ import sql,{config} from"mssql";
 
 /** Cliente con la misma firma que DB.queryParams, pero atado a una transacción. */
 export interface ITransactionClient {
-  queryParams(consult: string, params: Record<string, unknown>): Promise<any[]>;
+  queryParams: DB["queryParams"];
 }
 
 const dbSettings:config = {

@@ -1,8 +1,7 @@
 "use client";
 
 import { IServicio } from "@/interfaces/servicio";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { getServicios, saveServicio, copiarServicios } from "./actions";
@@ -16,7 +15,6 @@ const EMPTY: FormData = { id_servicio: 0, nombre: "", descripcion: "", id_sucurs
 export default function ServiciosPage() {
   const { user }                  = useAuth();
   const { selectedId }            = useSucursal();
-  const router                    = useRouter();
   const [servicios, setServicios] = useState<IServicio[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -39,7 +37,7 @@ export default function ServiciosPage() {
   const readOnly  = user?.id_role === 2 || user?.id_role === 3;
   const canCopy   = user?.id_role === 4 && !loading && servicios.length === 0;
 
-  const fetchServicios = async () => {
+  const fetchServicios = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getServicios(selectedId);
@@ -47,9 +45,9 @@ export default function ServiciosPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedId]);
 
-  useEffect(() => { fetchServicios(); }, [selectedId]);
+  useEffect(() => { fetchServicios(); }, [fetchServicios]);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: selectedId });

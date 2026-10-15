@@ -3,7 +3,7 @@
 import { ISupplier } from "@/interfaces/supplier";
 import { IPhoneCode } from "@/interfaces/phone_code";
 import { useEffect, useState } from "react";
-import { Search, Plus } from "lucide-react";
+import { Search } from "lucide-react";
 import { getSuppliers, saveSupplier } from "./actions";
 import { getPhoneCodes } from "@/app/dashboard/pacientes/actions";
 import SupplierRow from "./componentes/SupplierRow";

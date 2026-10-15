@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+/**
+ * Cloud name de Cloudinary: lo que sigue al "@" en CLOUDINARY_URL
+ * (cloudinary://<api_key>:<api_secret>@<cloud_name>). La key y el secret nunca se copian.
+ * `remotePatterns` se fija en `next build` / `next dev`: si cambia la cuenta de
+ * Cloudinary hay que volver a construir.
+ */
+const cloudinaryCloudName = process.env.CLOUDINARY_URL?.split("@")[1]?.trim();
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   // Permite abrir el dev server a través de un Dev Tunnel de VS Code.
@@ -23,6 +31,16 @@ const nextConfig: NextConfig = {
         hostname: "storage.googleapis.com",
         pathname: "/cdn.facturapi.io/**",
       },
+      // Fotos de tratamientos subidas por app/api/upload (spec 81).
+      ...(cloudinaryCloudName
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: "res.cloudinary.com",
+              pathname: `/${cloudinaryCloudName}/**`,
+            },
+          ]
+        : []),
     ],
   },
 };

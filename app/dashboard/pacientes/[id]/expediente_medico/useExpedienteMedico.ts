@@ -2,7 +2,7 @@ import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IPaciente } from "@/interfaces/paciente";
 import { addZeroToday } from "@/utils/date_helpper";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAntecedentes, getPacienteById, saveAntecedente } from "./actions";
 
 export const BOOL_LABELS: Record<string, string> = {
@@ -78,12 +78,12 @@ export function useExpedienteMedico() {
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState<string | null>(null);
 
-  const fetchPaciente = async () => {
+  const fetchPaciente = useCallback(async () => {
     const paciente = await getPacienteById(id_paciente);
     if (paciente) setPaciente(paciente);
-  };
+  }, [id_paciente]);
 
-  const fetchAntecedentes = async () => {
+  const fetchAntecedentes = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getAntecedentes(id_paciente);
@@ -91,12 +91,12 @@ export function useExpedienteMedico() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id_paciente]);
 
   useEffect(() => {
     fetchPaciente();
     fetchAntecedentes();
-  }, [id_paciente]);
+  }, [fetchPaciente, fetchAntecedentes]);
 
   const openNew = () => {
     const latest = antecedentes.length

@@ -3,8 +3,6 @@
 import { IArchivo } from "@/interfaces/archivos";
 import { IConsulta } from "@/interfaces/consulta";
 import { IMetodoPago } from "@/interfaces/metodo_pago";
-import { IOnicocriptosisDetalle } from "@/interfaces/onicocriptosis_detalle";
-import { IOnicomicosisDetalle } from "@/interfaces/onicomicosis_detalle";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPago } from "@/interfaces/pago";
 import { IPatologiaUngueal } from "@/interfaces/patologia_ungueal";
@@ -62,8 +60,6 @@ export default function ConsultaPage() {
   const [patologia,  setPatologia ] = useState<IPatologiaUngueal | null>(null);
   const [proceso,    setProceso   ] = useState<IProceso | null>(null);
   const [metodosPago, setMetodosPago] = useState<IMetodoPago[]>([]);
-  const [onicocriptosisDetalle, setOnicocriptosisDetalle] = useState<IOnicocriptosisDetalle[]>([]);
-  const [onicomicosisDetalle, setOnicomicosisDetalle] = useState<IOnicomicosisDetalle[]>([]);
 
   // valoracion form
   const VALORACION_DEFAULTS: IValoracionPiel = {
@@ -149,11 +145,9 @@ id_usuario_elimino: null,
       setArchivos(data.archivos);
       setPagos(data.pagos);
       setProceso(data.proceso);
-      setOnicocriptosisDetalle(data.onicocriptosisDetalle);
       if (data.onicocriptosisDetalle.length > 0) {
         setOnicocriptosisForm(detalleRowsToFormState(data.onicocriptosisDetalle));
       }
-      setOnicomicosisDetalle(data.onicomicosisDetalle);
       if (data.onicomicosisDetalle.length > 0) {
         setOnicomicosisForm(detalleRowsToFormStateOnicomicosis(data.onicomicosisDetalle));
       }
@@ -223,14 +217,12 @@ id_usuario_elimino: null,
         formStateToDetalleRows(onicocriptosisForm),
       );
       if (!onicoResult.ok) throw new Error(onicoResult.data);
-      setOnicocriptosisDetalle(onicoResult.data);
 
       const onicomicosisResult = await saveOnicomicosisDetalle(
         id_consulta,
         formStateToDetalleRowsOnicomicosis(onicomicosisForm),
       );
       if (!onicomicosisResult.ok) throw new Error(onicomicosisResult.data);
-      setOnicomicosisDetalle(onicomicosisResult.data);
 
       // mark step complete and advance
       const procResult = await updateProcesoField(id_consulta, "patologia_ungueal", 1);
@@ -507,7 +499,6 @@ id_usuario_elimino: null,
               locked={locked}
               onContinuar={() => handleContinuar("servicios", "productos")}
               onTotalChange={setTotalServicios}
-              is_onicomicosis={!!consulta?.is_onicomicosis}
             />
           )}
           {activeTab === "fotos_valoracion" && (
@@ -546,8 +537,6 @@ id_usuario_elimino: null,
           )}
           {activeTab === "pagar"      && (
             <TabPagar
-              costoTotal={totalGeneral}
-              onCostoTotalChange={setTotalServicios}
               totalPagado={totalPagado}
               saldo={saldo}
               pagos={pagos}
@@ -565,7 +554,6 @@ id_usuario_elimino: null,
               deletingPagoId={deletingPagoId}
               canEdit={user?.id_role === 1 || user?.id_role === 4}
               onEditarPago={handleEditarPago}
-              is_onicomicosis={!!consulta?.is_onicomicosis}
             />
           )}
         </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 
 interface Archivo {
@@ -49,10 +50,13 @@ export default function ImageSliderModal({ open, archivos, slideIndex, onClose, 
           style={{ minHeight: 320 }}
         >
           <a href={archivos[slideIndex].ruta} target="_blank" rel="noopener noreferrer">
-            <img
+            <Image
               src={archivos[slideIndex].ruta}
               alt={archivos[slideIndex].categoria}
-              className="max-h-[60vh] max-w-full rounded-lg object-contain"
+              width={1200}
+              height={1200}
+              sizes="(max-width: 672px) 100vw, 672px"
+              className="h-auto max-h-[60vh] w-auto max-w-full rounded-lg object-contain"
             />
           </a>
         </div>

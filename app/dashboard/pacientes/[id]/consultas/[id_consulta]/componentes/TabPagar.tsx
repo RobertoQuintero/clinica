@@ -5,8 +5,6 @@ import React from "react";
 import PagoFila from "./PagoFila";
 
 interface Props {
-  costoTotal:         number;
-  onCostoTotalChange: (val: number) => void;
   totalPagado:        number;
   saldo:              number;
   pagos:              IPago[];
@@ -24,12 +22,9 @@ interface Props {
   deletingPagoId:     number | null;
   canEdit:            boolean;
   onEditarPago:       (id_pago: number, data: EditarPagoData) => Promise<void>;
-  is_onicomicosis?:   boolean;
 }
 
 export default function TabPagar({
-  costoTotal,
-  onCostoTotalChange,
   totalPagado,
   saldo,
   pagos,
@@ -47,7 +42,6 @@ export default function TabPagar({
   deletingPagoId,
   canEdit,
   onEditarPago,
-  is_onicomicosis = false,
 }: Props) {
   const [mpSearch,   setMpSearch  ] = React.useState("");
   const [mpOpen,     setMpOpen    ] = React.useState(false);
@@ -77,7 +71,7 @@ export default function TabPagar({
     if (saldo > 0) {
       onPagoFormChange((f) => ({ ...f, monto: saldo }));
     }
-  }, [saldo]);
+  }, [saldo, onPagoFormChange]);
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import {
@@ -19,7 +19,6 @@ type DecisionState = Record<number, { decision: StockCountDecision | null; revie
 
 export default function CountReviewPage() {
   const params = useParams();
-  const router = useRouter();
   const id_stock_count = Number(params.id);
 
   const [review, setReview] = useState<IStockCountReview | null>(null);

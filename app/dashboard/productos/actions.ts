@@ -340,8 +340,7 @@ export async function saveProduct(
 
     revalidatePath("/dashboard/productos");
     return { ok: true };
-  } catch(error) {
-    
+  } catch {
     return { ok: false, message: "Error al guardar el producto" };
   }
 }

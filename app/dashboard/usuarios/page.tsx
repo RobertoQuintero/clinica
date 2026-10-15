@@ -5,7 +5,7 @@ import { useSucursal } from "@/contexts/SucursalContext";
 import { IRole } from "@/interfaces/roles";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUserListItem } from "@/interfaces/user";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsuarioFila from "./componentes/UsuarioFila";
 import UsuarioModal from "./componentes/UsuarioModal";
@@ -64,7 +64,7 @@ export default function UsuariosPage() {
     }
   }, [user, router]);
 
-  const fetchUsuarios = async () => {
+  const fetchUsuarios = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -73,24 +73,24 @@ export default function UsuariosPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const fetchRoles = async () => {
     const data = await getRoles();
     setRoles(data);
   };
 
-  const fetchSucursales = async () => {
+  const fetchSucursales = useCallback(async () => {
     if (!user) return;
     const data = await getSucursalesActivas();
     setSucursales(data);
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchUsuarios();
     fetchRoles();
     fetchSucursales();
-  }, [user, selectedId]);
+  }, [fetchUsuarios, fetchSucursales, selectedId]);
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });

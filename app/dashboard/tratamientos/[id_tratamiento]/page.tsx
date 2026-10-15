@@ -391,8 +391,6 @@ export default function TratamientoDetallePage({ params }: Props) {
           nombre_paciente={detalle.nombre_paciente}
           nombre_podologo={detalle.nombre_usuario}
           nombre_especialista={detalle.nombre_especialista}
-          whatsapp={detalle.whatsapp ?? null}
-          phone_code={detalle.phone_code ?? null}
           id_stage={detalle.id_stage}
           id_role={user?.id_role || 0}
         />

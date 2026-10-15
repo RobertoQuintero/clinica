@@ -34,7 +34,6 @@ import {
 type ServicioStat = IEstadisticasData["servicios"][number];
 type ProductoStat = IEstadisticasData["productos"][number];
 type MetodoPagoStat = IEstadisticasData["metodos_pago"][number];
-type VentaMensualStat = IEstadisticasData["ventas_mensuales"][number];
 type EstadisticasData = Omit<IEstadisticasData, "ok">;
 
 const PIE_COLORS = [

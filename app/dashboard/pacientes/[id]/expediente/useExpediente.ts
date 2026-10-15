@@ -17,7 +17,7 @@ import {
   cancelarConsulta as cancelarConsultaAction,
 } from "./actions";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const buildEmpty = (
   id_paciente: number,
@@ -71,10 +71,10 @@ export function useExpediente() {
   const [saving,             setSaving            ] = useState(false);
   const [error,              setError             ] = useState<string | null>(null);
 
-  const fetchPaciente = async () => {
+  const fetchPaciente = useCallback(async () => {
     const data = await getPacienteById(id_paciente);
     if (data) setPaciente(data);
-  };
+  }, [id_paciente]);
 
   const fetchPodologos = async () => {
     const data = await getPodologos();
@@ -86,7 +86,7 @@ export function useExpediente() {
     setSucursales(data);
   };
 
-  const fetchLatestAntecedente = async () => {
+  const fetchLatestAntecedente = useCallback(async () => {
     const data = await getAntecedentesByPaciente(id_paciente);
     if (data.length) {
       const sorted = [...data].sort(
@@ -95,9 +95,9 @@ export function useExpediente() {
       );
       setLatestAntecedente(sorted[0]);
     }
-  };
+  }, [id_paciente]);
 
-  const fetchConsultas = async () => {
+  const fetchConsultas = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getConsultasByPaciente(id_paciente);
@@ -105,7 +105,7 @@ export function useExpediente() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id_paciente]);
 
   useEffect(() => {
     if (user) {
@@ -115,7 +115,7 @@ export function useExpediente() {
       fetchPodologos();
       fetchSucursales();
     }
-  }, [user, id_paciente]);
+  }, [user, id_paciente, fetchPaciente, fetchConsultas, fetchLatestAntecedente]);
 
   const openNew = async () => {
     if (!user) return;
@@ -156,7 +156,7 @@ export function useExpediente() {
     setError(null);
     try {
       const isNew = form.id_consulta === 0;
-      let submitForm = { ...form };
+      const submitForm = { ...form };
       if (isNew) {
         const date = buildDate(new Date());
         submitForm.fecha = date;

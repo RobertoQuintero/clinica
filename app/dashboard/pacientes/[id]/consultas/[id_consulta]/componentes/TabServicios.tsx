@@ -15,12 +15,11 @@ interface Props {
   locked?:       boolean;
   onContinuar?:  () => void;
   onTotalChange?: (total: number) => void;
-  is_onicomicosis?: boolean;
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
 
-export default function TabServicios({ id_consulta, locked, onContinuar, onTotalChange, is_onicomicosis }: Props) {
+export default function TabServicios({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
   const [servicios,         setServicios        ] = useState<ServicioConOpciones[]>([]);
   const [consultaServicios, setConsultaServicios] = useState<IConsultaServicio[]>([]);
   const [loading,           setLoading          ] = useState(true);

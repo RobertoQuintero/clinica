@@ -155,7 +155,7 @@ export default function SucursalesPage() {
             <thead className="bg-zinc-100 dark:bg-zinc-800">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">ID</th>
-                {(["nombre","estado","ciudad", "direccion", "telefono" ] as SortKey[]).map((key, i) => (
+                {(["nombre","estado","ciudad", "direccion", "telefono" ] as SortKey[]).map((key) => (
                   <React.Fragment key={key}>
                     {/* {i === 1 && (
                       <th className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap">

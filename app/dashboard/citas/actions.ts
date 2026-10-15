@@ -146,7 +146,7 @@ export async function saveCita(
       id_servicio_opcion,
     } = form;
 
-    const commonParams: any = {
+    const commonParams: Record<string, unknown> = {
       id_paciente,
       id_podologo,
       fecha_inicio:       toDBString(String(fecha_inicio       ?? "")),

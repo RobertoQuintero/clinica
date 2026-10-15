@@ -1,7 +1,6 @@
 "use server";
 
 import db from "@/database/connection";
-import { IAuthUser } from "@/interfaces/auth";
 import {
   IAttendanceDayState,
   IAttendanceEvent,
@@ -15,8 +14,6 @@ import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import { buildDate } from "@/utils/date_helpper";
 import { summarizeAttendanceEvents } from "./attendancePairing";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 
 const ATTENDANCE_PAGE_SIZE = 15;
 
@@ -32,19 +29,10 @@ function expandMonthToDateRange(mes: string): { firstDay: string; lastDay: strin
   };
 }
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
 type ActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; message: string };
-
-async function getActiveUser(): Promise<IAuthUser> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
-  if (!token) throw new Error("No autenticado");
-  const { payload } = await jwtVerify(token, JWT_SECRET);
-  return payload as unknown as IAuthUser;
-}
 
 /** Checadores activos de cualquier sucursal, para el <select> del alta de identificador.
  *  No se filtra por sucursal del empleado: un empleado puede fichar en un checador de otra

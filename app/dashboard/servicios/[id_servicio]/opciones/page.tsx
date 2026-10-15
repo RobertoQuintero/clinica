@@ -1,7 +1,7 @@
 "use client";
 
 import { IServicioOpcion } from "@/interfaces/servicio_opcion";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,7 +50,7 @@ export default function OpcionesServicioPage({ params }: Props) {
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [servicio, data] = await Promise.all([
@@ -62,9 +62,9 @@ export default function OpcionesServicioPage({ params }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id_servicio]);
 
-  useEffect(() => { fetchData(); }, [id_servicio]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const openNew = () => {
     setForm(makeEmpty(id_servicio));

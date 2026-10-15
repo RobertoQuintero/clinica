@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/database/connection";
+import db, { ITransactionClient } from "@/database/connection";
 import { applyStockMovement } from "@/lib/inventory/stock";
 import { IAuthUser } from "@/interfaces/auth";
 import { StockCountDecision, StockCountStatus, StockCountType } from "@/interfaces/stock_count";
@@ -380,7 +380,7 @@ export interface ICountProgressLine {
  * devuelve su estado. Ownership compartido por todas las funciones de captura.
  */
 async function assertStockCountOwnership(
-  tx: { queryParams(consult: string, params: Record<string, unknown>): Promise<any[]> },
+  tx: ITransactionClient,
   id_stock_count: number,
   id_sucursal: number,
   id_empresa: number

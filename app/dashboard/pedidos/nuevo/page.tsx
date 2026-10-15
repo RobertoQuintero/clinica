@@ -26,7 +26,7 @@ type TabKey = "sugeridos" | "todos" | "plantillas";
 
 export default function NuevoPedidoPage() {
   const { selectedId } = useSucursal();
-  const { lines, isProductInCart, mergeLines } = usePurchaseCart();
+  const { isProductInCart, mergeLines } = usePurchaseCart();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -120,7 +120,7 @@ export default function NuevoPedidoPage() {
       if (aChecked === bChecked) return 0;
       return aChecked ? -1 : 1;
     });
-  }, [products, activeTab, search, categoryFilter, supplierFilter, lines, isProductInCart]);
+  }, [products, activeTab, search, categoryFilter, supplierFilter, isProductInCart]);
 
   return (
     <div className="flex flex-col gap-5">
