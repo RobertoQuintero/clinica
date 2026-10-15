@@ -320,11 +320,11 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Fiscal**
 
-- [ ] Cuando la prima es mayor que cero, la fila `'F'` tiene un renglón `id_perception = 7` en `period_employee_perceptions` con `tipo_limite_exencion = 'U'` y `periodicidad_limite = 'A'`.
-- [ ] Una prima menor que el tope anual queda 100% exenta.
+- [x] Cuando la prima es mayor que cero, la fila `'F'` tiene un renglón `id_perception = 7` en `period_employee_perceptions` con `tipo_limite_exencion = 'U'` y `periodicidad_limite = 'A'`.
+- [x] Una prima menor que el tope anual queda 100% exenta.
 - [ ] Una segunda prima en el mismo año de `fecha_fin` (por ejemplo, otro año de derecho) solo exenta lo que falta del tope de 15 UMA.
-- [ ] Las vacaciones pagadas generan un renglón `id_perception = 14`, 100% gravado.
-- [ ] La base del ISR (`isr_base_gravable`) aumenta exactamente en la suma de lo gravado de los renglones 7 y 14.
+- [x] Las vacaciones pagadas generan un renglón `id_perception = 14`, 100% gravado.
+- [x] La base del ISR (`isr_base_gravable`) aumenta exactamente en la suma de lo gravado de los renglones 7 y 14.
 - [ ] Una prima en un periodo fiscal no semanal se guarda en `'C'`: la periodicidad `'A'` no cae en `unsupported_frequency`.
 
 **UI**

@@ -59,8 +59,10 @@ import {
   ISR_DEDUCTION_ID,
   OVERTIME_DOUBLE_PERCEPTION_ID,
   OVERTIME_TRIPLE_PERCEPTION_ID,
+  PAID_VACATION_PERCEPTION_ID,
   PERCEPTION_LINE_KEY_BY_ID,
   SALARY_PERCEPTION_ID,
+  VACATION_PREMIUM_PERCEPTION_ID,
   VACATION_PREMIUM_PERCENT,
 } from "@/lib/payroll/constants";
 import { describePerceptionExemption } from "@/lib/payroll/exemptionCalculation";
@@ -1279,7 +1281,8 @@ export async function calculatePayrollPeriod(
 
        -- Spec 73: percepciones de los renglones 'F' con su gravado y exento. Cada spec de percepción fiscal nueva
        -- agrega su UNION ALL a #fiscal_perception_lines (id_perception, importe y, solo en periodicidad 'E', eventos).
-       -- Hoy el sueldo y las horas extra dobles y triples (spec 75). Va después del snapshot (de ahí salen los importes)
+       -- Hoy el sueldo, las horas extra dobles y triples (spec 75), la prima vacacional y las vacaciones pagadas (spec 78).
+       -- Va después del snapshot (de ahí salen los importes)
        -- y antes del ISR, que suma lo gravado.
        CREATE TABLE #fiscal_perception_lines (
          id_period_employee int NOT NULL,
@@ -1298,7 +1301,15 @@ export async function calculatePayrollPeriod(
        UNION ALL
        SELECT pe.[id_period_employee], ${OVERTIME_TRIPLE_PERCEPTION_ID}, pe.[importe_horas_extra_triples], NULL
          FROM [CentroPodologico].[payroll].[period_employees] pe
-        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_horas_extra_triples] > 0;
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_horas_extra_triples] > 0
+       UNION ALL
+       SELECT pe.[id_period_employee], ${VACATION_PREMIUM_PERCEPTION_ID}, pe.[importe_prima_vacacional], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_prima_vacacional] > 0
+       UNION ALL
+       SELECT pe.[id_period_employee], ${PAID_VACATION_PERCEPTION_ID}, pe.[importe_vacaciones_pagadas], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_vacaciones_pagadas] > 0;
 
        ${EXEMPTION_PARAMETERS_SQL}
 
