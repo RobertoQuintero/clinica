@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [25 — Empleados: alta, listado y detalle](25-empleados-alta-listado-detalle.md): `RH.empleados.activo`, el expediente con pestañas (`empleados/[id]/layout.tsx`, `EmployeeTabs`).
   - [59 — Empleados: horario semanal estructurado](59-empleado-horario-semanal.md): `RH.empleado_horarios`. Un día económico solo puede caer en un día laborable del horario actual; sin horario no se puede capturar.
@@ -216,8 +216,8 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [x] El expediente muestra la pestaña "Días económicos" después de "Vacaciones".
 - [x] Un empleado sin días registrados en 2026 muestra "Usados 0 de 3 · Disponibles 3".
 - [x] Un empleado con días en 2025 los muestra en el historial, dentro de un `<details>` "2025", sin botones de acción.
-- [ ] Un empleado sin horario muestra el aviso "Sin horario definido" con el enlace a Horario, y el botón "Registrar día económico" está deshabilitado. (aviso y enlace verificados; el botón se deshabilita con 0 disponibles; no hay un empleado activo sin horario para probar el caso sin horario)
-- [ ] Un empleado inactivo muestra su historial, pero ni "Registrar" ni "Cancelar". (historial verificado; Registrar y Cancelar se omiten por código y las actions rechazan la escritura; sin día activo en un inactivo para verlo en pantalla)
+- [x] Un empleado sin horario muestra el aviso "Sin horario definido" con el enlace a Horario, y el botón "Registrar día económico" está deshabilitado.
+- [x] Un empleado inactivo muestra su historial, pero ni "Registrar" ni "Cancelar".
 - [x] La pestaña Vacaciones sigue mostrando su aviso "Sin horario definido" igual que antes, ahora con el componente compartido.
 
 **Registrar**
@@ -242,14 +242,14 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 **Validación inversa en vacaciones**
 
-- [ ] Capturar un bloque de vacaciones que incluya un día económico activo devuelve `{ ok: false }` con "El bloque incluye un día económico registrado el {fecha}. Cancélalo primero." (no probado en vivo: los años de derecho existentes ya pasaron su fecha límite de solicitud; la captura usa el mismo helper que la reprogramación)
+- [x] Capturar un bloque de vacaciones que incluya un día económico activo devuelve `{ ok: false }` con "El bloque incluye un día económico registrado el {fecha}. Cancélalo primero."
 - [x] Reprogramar un bloque hacia un rango con un día económico activo devuelve el mismo error.
 - [x] Un día económico cancelado dentro del rango no bloquea la captura de vacaciones. (verificado en la reprogramación; la captura usa el mismo helper)
 
 **Calidad**
 
-- [ ] `npm run build` termina sin errores.
-- [ ] Ninguna fecha de este flujo viaja como `Date`: las lecturas usan `CONVERT(…, 120)` y las escrituras usan `buildDate(new Date())` y strings `"YYYY-MM-DD"`.
+- [x] `npm run build` termina sin errores.
+- [x] Ninguna fecha de este flujo viaja como `Date`: las lecturas usan `CONVERT(…, 120)` y las escrituras usan `buildDate(new Date())` y strings `"YYYY-MM-DD"`.
 
 ## Decisiones
 
