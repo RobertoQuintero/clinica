@@ -31,7 +31,7 @@ export async function assertVacationAccess(): Promise<VacationAccessResult> {
   }
 
   if (!VACATION_ALLOWED_ROLE_IDS.includes(user.id_role)) {
-    return { ok: false, message: "No tienes permisos para administrar vacaciones" };
+    return { ok: false, message: "No tienes permisos para administrar RH" };
   }
   return { ok: true, data: { id_user: user.id_user } };
 }

@@ -10,6 +10,8 @@ import {
   IVacationPayrollPayment,
 } from "@/interfaces/vacation";
 import { getVacationPremiumStatus } from "@/lib/payroll/vacationPay";
+import { findActiveEconomicDayInRange } from "@/lib/economicDays/economicDaySql";
+import { formatIsoDateForDisplay } from "@/lib/vacations/vacationFormatting";
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { calculateVacationEndDate } from "@/lib/vacations/vacationDates";
 import {
@@ -258,6 +260,14 @@ export async function scheduleVacationBlock(input: unknown): Promise<ActionResul
       };
     }
 
+    const economicDayInBlock = await findActiveEconomicDayInRange(id_empleado, fecha_inicio, fecha_fin);
+    if (economicDayInBlock) {
+      return {
+        ok: false,
+        message: `El bloque incluye un día económico registrado el ${formatIsoDateForDisplay(economicDayInBlock)}. Cancélalo primero.`,
+      };
+    }
+
     const requestedAt = buildDate(new Date());
     const wasSaved = await db.transaction(async (tx) => {
       const updatedRows = await tx.queryParams(
@@ -364,6 +374,14 @@ export async function rescheduleVacationBlock(input: unknown): Promise<ActionRes
       return {
         ok: false,
         message: "El bloque terminaría en el siguiente año de servicio; las vacaciones no son acumulativas",
+      };
+    }
+
+    const economicDayInBlock = await findActiveEconomicDayInRange(id_empleado, fecha_inicio, fecha_fin);
+    if (economicDayInBlock) {
+      return {
+        ok: false,
+        message: `El bloque incluye un día económico registrado el ${formatIsoDateForDisplay(economicDayInBlock)}. Cancélalo primero.`,
       };
     }
 

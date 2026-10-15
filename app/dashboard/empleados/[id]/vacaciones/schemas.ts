@@ -6,7 +6,7 @@ import { z } from "zod";
  * que llega del cliente antes de tocar la BD. `fecha_fin` no se acepta: la calcula el servidor.
  */
 
-const isoDateString = z
+export const isoDateString = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
   .refine((value) => {

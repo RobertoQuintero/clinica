@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { TriangleAlert } from "lucide-react";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
+import EmployeeWithoutScheduleNotice from "@/app/dashboard/empleados/[id]/componentes/EmployeeWithoutScheduleNotice";
 import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
 import { getNextAnniversary } from "@/lib/vacations/vacationDates";
 import { formatIsoDateForDisplay } from "@/lib/vacations/vacationFormatting";
@@ -64,28 +63,10 @@ export default async function EmployeeVacationsPage({ params }: Props) {
       </div>
 
       {!hasSchedule && (
-        <section
-          aria-label="Sin horario definido"
-          className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 flex gap-3"
-        >
-          <TriangleAlert size={20} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-              Sin horario definido
-            </p>
-            <p className="text-sm text-amber-800 dark:text-amber-300/90 mt-0.5">
-              Sin horario no se puede capturar un bloque de vacaciones, porque la fecha de regreso
-              se calcula con los días laborables.{" "}
-              <Link
-                href={`/dashboard/empleados/${id_empleado}/horario`}
-                className="font-semibold underline underline-offset-2"
-              >
-                Captura el horario
-              </Link>
-              .
-            </p>
-          </div>
-        </section>
+        <EmployeeWithoutScheduleNotice
+          id_empleado={id_empleado}
+          blockedAction="capturar un bloque de vacaciones, porque la fecha de regreso se calcula con los días laborables"
+        />
       )}
 
       {currentEntitlement ? (
