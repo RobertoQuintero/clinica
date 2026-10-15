@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - [62 — Control de faltas](62-nomina-control-faltas.md) y [63 — Control de retardos](63-nomina-control-retardos.md): `#absences`, `#lateness`, `detectEmployeeAbsences`, `detectEmployeeLateness`, las pantallas Faltas y Retardos y sus escrituras.
   - [64 — Bono de puntualidad](64-nomina-bono-puntualidad.md) y [65 — Bono de asistencia](65-nomina-bono-asistencia.md): leen `#absences` y `#lateness` y tienen sus avisos "Recalcula".
@@ -271,7 +271,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 
 - [x] `NOT_ON_ECONOMIC_DAY_CONDITION` y `NOT_ON_PAID_LEAVE_CONDITION` son las únicas definiciones SQL de la regla: los seis lugares importan `NOT_ON_PAID_LEAVE_CONDITION`, ninguno la reescribe y ninguno importa `NOT_ON_VACATION_CONDITION`.
 - [x] Ninguna fecha viaja como `Date`: `loadEconomicDays` usa `CONVERT(varchar(10), …, 120)` y los helpers comparan strings.
-- [ ] `npm run build` y `npm run lint` pasan sin errores nuevos.
+- [x] `npm run build` y `npm run lint` pasan sin errores nuevos.
 - [x] `docsnomina.md` tiene la sección "Exclusión de días económicos (spec 80)".
 - [x] `docsrh-empleados.md` ya no menciona que el día económico cuenta como falta.
 
