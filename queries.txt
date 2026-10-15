@@ -1200,6 +1200,36 @@ CREATE NONCLUSTERED INDEX [IX_vacation_entitlement_log_entitlement]
     ON [RH].[vacation_entitlement_log] ([id_vacation_entitlement], [created_at] DESC)
 GO
 
+-------------------- DIAS ECONOMICOS (spec 79) ---------------------
+-- Spec 79: un día económico por fila. Cancelar no borra: llena las columnas de cancelación (la fila es la bitácora).
+CREATE TABLE [RH].[economic_days](
+    [id_economic_day]    [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]        [int]           NOT NULL,
+    [fecha]              [date]          NOT NULL,
+    [motivo]             [nvarchar](500) NOT NULL,
+    [created_by]         [int]           NOT NULL,
+    [created_at]         [datetime2](0)  NOT NULL,   -- buildDate(new Date())
+    -- Cancelación (todo NULL o todo lleno)
+    [cancelado_by]       [int]           NULL,
+    [cancelado_at]       [datetime2](0)  NULL,
+    [motivo_cancelacion] [nvarchar](500) NULL,
+ CONSTRAINT [PK_economic_days] PRIMARY KEY CLUSTERED ([id_economic_day] ASC),
+ CONSTRAINT [FK_economic_days_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_economic_days_motivo] CHECK (LEN(LTRIM(RTRIM([motivo]))) > 0),
+ CONSTRAINT [CK_economic_days_cancelacion] CHECK (
+     ([cancelado_by] IS NULL AND [cancelado_at] IS NULL AND [motivo_cancelacion] IS NULL)
+  OR ([cancelado_by] IS NOT NULL AND [cancelado_at] IS NOT NULL AND [motivo_cancelacion] IS NOT NULL
+          AND LEN(LTRIM(RTRIM([motivo_cancelacion]))) > 0))
+) ON [PRIMARY]
+GO
+
+-- Un solo día económico activo por empleado y fecha; también sirve para contar los usados del año.
+CREATE UNIQUE NONCLUSTERED INDEX [UX_economic_days_empleado_fecha_activo]
+    ON [RH].[economic_days] ([id_empleado], [fecha])
+    WHERE [cancelado_at] IS NULL
+GO
+
 -- Un renglón por checada (entrada o salida), tal como la reporta el dispositivo.
 CREATE TABLE [RH].[asistencias](
     [id_asistencia]        [int] IDENTITY(1,1) NOT NULL,
