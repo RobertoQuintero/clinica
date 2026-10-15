@@ -1,4 +1,9 @@
-import type { IVacationEntitlement, IVacationPayrollPayment, VacationPremiumStatus } from "@/interfaces/vacation";
+import type {
+  IVacationEntitlement,
+  IVacationPayrollPayment,
+  VacationPayConcept,
+  VacationPremiumStatus,
+} from "@/interfaces/vacation";
 import { VACATION_PREMIUM_PERCENT } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 
@@ -34,6 +39,15 @@ export function describeVacationPaySplit(premiumAmount: number, paidDays: number
     paidDays > 0 ? `${paidDays} ${paidDays === 1 ? "día" : "días"} ${formatPayrollCurrency(paidAmount)}` : null,
   ].filter((part) => part !== null);
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/** Códigos distintos de los periodos que pagaron el concepto ("NOM-2026-S02, NOM-2026-S03"); null si ninguno. */
+export function describePayrollPeriodCodes(
+  payments: IVacationPayrollPayment[],
+  concept: VacationPayConcept,
+): string | null {
+  const codes = [...new Set(payments.filter((payment) => payment.concepto === concept).map((payment) => payment.codigo_periodo))];
+  return codes.length > 0 ? codes.join(", ") : null;
 }
 
 /** "pagada" si algún periodo ya pagó la prima, "pendiente" si ya tiene fecha de evento y nadie la pagó, "sin_evento" si no. */

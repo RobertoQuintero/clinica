@@ -7,6 +7,7 @@ import {
   getVacationStatusLabel,
 } from "@/lib/vacations/vacationFormatting";
 import VacationStatusBadge from "@/app/dashboard/empleados/componentes/VacationStatusBadge";
+import VacationPayrollStatus from "./VacationPayrollStatus";
 
 interface Props {
   entitlement: IVacationEntitlementView;
@@ -112,6 +113,10 @@ export default function VacationCurrentYearCard({ entitlement, today, actions }:
           ) : (
             <span className="text-[#74777f] dark:text-zinc-500">Nada por pagar</span>
           )}
+        </DetailItem>
+
+        <DetailItem label="Nómina">
+          <VacationPayrollStatus entitlement={entitlement} />
         </DetailItem>
       </dl>
 

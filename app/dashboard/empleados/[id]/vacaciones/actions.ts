@@ -7,6 +7,7 @@ import {
   IVacationEntitlement,
   IVacationEntitlementView,
   IVacationLogEntry,
+  IVacationPayrollPayment,
 } from "@/interfaces/vacation";
 import { getVacationPremiumStatus } from "@/lib/payroll/vacationPay";
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
@@ -97,17 +98,38 @@ export async function getEmployeeVacations(
     logByEntitlement.set(id_vacation_entitlement, entries);
   }
 
+  // Spec 78: lo que la nómina ya pagó de cada año (prima y días), con el código del periodo que lo tomó.
+  const payrollPaymentRows = (await db.queryParams(
+    `SELECT pev.[id_vacation_entitlement], pev.[concepto], pev.[tipo_nomina], p.[id_period], p.[codigo] AS codigo_periodo
+       FROM [CentroPodologico].[payroll].[period_employee_vacations] pev
+       JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.[id_period_employee] = pev.[id_period_employee]
+       JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pe.[id_period]
+       JOIN [CentroPodologico].[RH].[vacation_entitlements] ve ON ve.[id_vacation_entitlement] = pev.[id_vacation_entitlement]
+      WHERE ve.[id_empleado] = @id_empleado
+      ORDER BY p.[fecha_inicio], pev.[tipo_nomina]`,
+    { id_empleado }
+  )) as (IVacationPayrollPayment & { id_vacation_entitlement: number })[];
+
+  const paymentsByEntitlement = new Map<number, IVacationPayrollPayment[]>();
+  for (const { id_vacation_entitlement, ...payment } of payrollPaymentRows) {
+    const payments = paymentsByEntitlement.get(id_vacation_entitlement) ?? [];
+    payments.push({ ...payment, id_period: Number(payment.id_period) });
+    paymentsByEntitlement.set(id_vacation_entitlement, payments);
+  }
+
   const today = addZeroToday(new Date());
-  return entitlements.map((entitlement) => ({
-    ...entitlement,
-    status: getVacationStatus(entitlement, today),
-    dias_por_pagar: getDaysToPay(entitlement, today),
-    log: logByEntitlement.get(entitlement.id_vacation_entitlement) ?? [],
-    // spec 78 paso 8 lee period_employee_vacations; mientras tanto no hay pagos de nómina.
-    payroll_payments: [],
-    premium_status: getVacationPremiumStatus(entitlement, []),
-    paid_days_in_payroll: false,
-  }));
+  return entitlements.map((entitlement) => {
+    const payrollPayments = paymentsByEntitlement.get(entitlement.id_vacation_entitlement) ?? [];
+    return {
+      ...entitlement,
+      status: getVacationStatus(entitlement, today),
+      dias_por_pagar: getDaysToPay(entitlement, today),
+      log: logByEntitlement.get(entitlement.id_vacation_entitlement) ?? [],
+      payroll_payments: payrollPayments,
+      premium_status: getVacationPremiumStatus(entitlement, payrollPayments),
+      paid_days_in_payroll: payrollPayments.some((payment) => payment.concepto === "D"),
+    };
+  });
 }
 
 /** Días ISO (1 = lunes … 7 = domingo) con fila en el horario del empleado. Vacío = sin horario. */

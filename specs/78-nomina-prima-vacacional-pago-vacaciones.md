@@ -337,7 +337,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional.
 - [ ] La pestaña Vacaciones muestra por año, en la tarjeta y en el historial:
   - "Prima: Pagada en {código}", "Pendiente" o "—";
   - "Días: Pagados en {código}" o "Marcados, sin nómina calculada".
-- [ ] Un bloque retroactivo cuyo periodo no existe muestra "Prima: Pendiente".
+- [x] Un bloque retroactivo cuyo periodo no existe muestra "Prima: Pendiente".
 - [ ] El modal "Marcar como pagadas" muestra "Se pagará en {código}" cuando un periodo de la sucursal y la frecuencia del empleado contiene la fecha, y el aviso ámbar "Ningún periodo contiene esta fecha" cuando no. En los dos casos se puede guardar.
 - [ ] No se agrega `"use client"` a ningún componente nuevo ni modificado, salvo `MarkVacationPaidModal`, que ya lo era.
 - [ ] Todo se ve correctamente en modo claro y oscuro, y a 375 px de ancho.

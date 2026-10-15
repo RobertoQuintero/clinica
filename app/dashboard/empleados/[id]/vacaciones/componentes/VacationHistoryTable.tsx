@@ -6,6 +6,7 @@ import {
   VACATION_LOG_ACTION_LABELS,
 } from "@/lib/vacations/vacationFormatting";
 import VacationStatusBadge from "@/app/dashboard/empleados/componentes/VacationStatusBadge";
+import VacationPayrollStatus from "./VacationPayrollStatus";
 
 interface Props {
   entitlements: IVacationEntitlementView[];
@@ -71,6 +72,12 @@ export default function VacationHistoryTable({ entitlements }: Props) {
               </summary>
 
               <div className="px-5 pb-4">
+                <div className="mb-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[#74777f] dark:text-zinc-500">
+                    Nómina
+                  </span>
+                  <VacationPayrollStatus entitlement={entitlement} />
+                </div>
                 {entitlement.log.length === 0 ? (
                   <p className="text-sm text-[#74777f] dark:text-zinc-500">
                     Sin movimientos registrados.
