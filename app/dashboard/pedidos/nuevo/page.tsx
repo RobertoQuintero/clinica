@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Search, PackageSearch, TriangleAlert, CheckCircle2 } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import {
   getSuggestedProducts,
@@ -30,13 +31,9 @@ export default function NuevoPedidoPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [products, setProducts]     = useState<ISuggestedProduct[]>([]);
-  const [summary, setSummary]       = useState<IPurchaseOrdersSummary | null>(null);
   const [categories, setCategories] = useState<IProductCategory[]>([]);
   const [units, setUnits]           = useState<IUnitMeasurement[]>([]);
   const [suppliers, setSuppliers]   = useState<ISupplier[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
 
   const [activeTab, setActiveTab]         = useState<TabKey>("sugeridos");
   const [search, setSearch]               = useState("");
@@ -73,26 +70,23 @@ export default function NuevoPedidoPage() {
     getSuppliers().then(setSuppliers);
   }, []);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setError(null);
+  // Se usa useAsyncData y no useActionData porque los dos resultados se desenvuelven por
+  // separado: si fallan los sugeridos, el resumen se sigue mostrando (y su error se ignora).
+  const branchOverview = useAsyncData(selectedId ? [selectedId] : null, () =>
     Promise.all([
-      getSuggestedProducts(selectedId),
-      getPurchaseOrdersSummary(selectedId),
-    ])
-      .then(([suggestedResult, summaryResult]) => {
-        if (suggestedResult.ok) {
-          setProducts(suggestedResult.data);
-        } else {
-          setError(suggestedResult.message);
-        }
-        if (summaryResult.ok) {
-          setSummary(summaryResult.data);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId]);
+      getSuggestedProducts(selectedId!),
+      getPurchaseOrdersSummary(selectedId!),
+    ]),
+  );
+  const [suggestedResult, summaryResult] = branchOverview.data ?? [];
+  const { loading } = branchOverview;
+  const error =
+    branchOverview.error ?? (suggestedResult && !suggestedResult.ok ? suggestedResult.message : null);
+  const summary: IPurchaseOrdersSummary | null = summaryResult?.ok ? summaryResult.data : null;
+  const products = useMemo<ISuggestedProduct[]>(
+    () => (suggestedResult?.ok ? suggestedResult.data : []),
+    [suggestedResult],
+  );
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((c) => [c.id_category, c.name])),

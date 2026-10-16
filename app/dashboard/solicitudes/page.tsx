@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
-import { IPurchaseRequestListItem } from "@/interfaces/purchase_request";
+import { useActionData } from "@/hooks/useActionData";
 import { getPendingPurchaseRequests } from "./actions";
 import PurchaseRequestRow from "./componentes/PurchaseRequestRow";
 
@@ -17,24 +16,10 @@ import PurchaseRequestRow from "./componentes/PurchaseRequestRow";
 export default function SolicitudesPage() {
   const { selectedId } = useSucursal();
 
-  const [requests, setRequests] = useState<IPurchaseRequestListItem[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setError(null);
-    getPendingPurchaseRequests(selectedId)
-      .then((result) => {
-        if (result.ok) {
-          setRequests(result.data);
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId]);
+  const { data, loading, error } = useActionData(selectedId ? [selectedId] : null, () =>
+    getPendingPurchaseRequests(selectedId!),
+  );
+  const requests = data ?? [];
 
   return (
     <div className="flex flex-col gap-5">

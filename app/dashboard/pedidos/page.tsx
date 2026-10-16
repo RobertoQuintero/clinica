@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
-import { getPurchaseOrders, IPurchaseOrderListItem } from "./actions";
+import { useActionData } from "@/hooks/useActionData";
+import { getPurchaseOrders } from "./actions";
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
 import { ISupplier } from "@/interfaces/supplier";
 import PurchaseOrderRow from "./componentes/PurchaseOrderRow";
@@ -22,10 +23,7 @@ export default function PedidosPage() {
   const { selectedId } = useSucursal();
   const searchParams = useSearchParams();
 
-  const [orders, setOrders]     = useState<IPurchaseOrderListItem[]>([]);
   const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter]     = useState("");
   const [supplierFilter, setSupplierFilter] = useState(searchParams.get("proveedor") ?? "");
@@ -36,26 +34,18 @@ export default function PedidosPage() {
     getSuppliers().then(setSuppliers);
   }, []);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setError(null);
-    getPurchaseOrders({
-      id_sucursal: selectedId,
-      id_status: statusFilter ? Number(statusFilter) : null,
-      id_supplier: supplierFilter ? Number(supplierFilter) : null,
-      date_from: dateFrom || null,
-      date_to: dateTo || null,
-    })
-      .then((result) => {
-        if (result.ok) {
-          setOrders(result.data);
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId, statusFilter, supplierFilter, dateFrom, dateTo]);
+  const { data, loading, error } = useActionData(
+    selectedId ? [selectedId, statusFilter, supplierFilter, dateFrom, dateTo] : null,
+    () =>
+      getPurchaseOrders({
+        id_sucursal: selectedId!,
+        id_status: statusFilter ? Number(statusFilter) : null,
+        id_supplier: supplierFilter ? Number(supplierFilter) : null,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
+      }),
+  );
+  const orders = data ?? [];
 
   return (
     <div className="flex flex-col gap-5">

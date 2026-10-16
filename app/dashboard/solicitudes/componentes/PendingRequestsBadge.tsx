@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
 import { getPendingRequestsCount } from "../actions";
 
 /** Roles que revisan solicitudes (mismo criterio que `REVIEWER_ROLE_IDS` en actions.ts). */
@@ -16,19 +16,13 @@ const REVIEWER_ROLE_IDS = [1, 4, 6];
 export default function PendingRequestsBadge() {
   const { user } = useAuth();
   const { selectedId } = useSucursal();
-  const [count, setCount] = useState(0);
-
   const canSeeCount = !!user && REVIEWER_ROLE_IDS.includes(user.id_role);
 
-  useEffect(() => {
-    if (!canSeeCount || !selectedId) {
-      setCount(0);
-      return;
-    }
-    getPendingRequestsCount(selectedId).then((result) => {
-      setCount(result.ok ? result.data : 0);
-    });
-  }, [canSeeCount, selectedId]);
+  // Un error o la carga en curso se muestran igual que "sin pendientes": sin badge.
+  const { data } = useActionData(canSeeCount && selectedId ? [selectedId] : null, () =>
+    getPendingRequestsCount(selectedId!),
+  );
+  const count = data ?? 0;
 
   if (!canSeeCount || count === 0) return null;
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSucursal } from "@/contexts/SucursalContext";
-import { getPendingReceptions, IPendingReception } from "./actions";
+import { useActionData } from "@/hooks/useActionData";
+import { getPendingReceptions } from "./actions";
 import OrderStatusBadge from "@/app/dashboard/componentes/OrderStatusBadge";
 import { dayFirst } from "@/utils/date_helpper";
 
@@ -16,24 +16,10 @@ export default function RecepcionesPage() {
   const router = useRouter();
   const { selectedId } = useSucursal();
 
-  const [receptions, setReceptions] = useState<IPendingReception[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setError(null);
-    getPendingReceptions(selectedId)
-      .then((result) => {
-        if (result.ok) {
-          setReceptions(result.data);
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId]);
+  const { data, loading, error } = useActionData(selectedId ? [selectedId] : null, () =>
+    getPendingReceptions(selectedId!),
+  );
+  const receptions = data ?? [];
 
   return (
     <div className="flex flex-col gap-5">

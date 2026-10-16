@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getStockCounts, IStockCountListItem } from "../actions";
+import { useActionData } from "@/hooks/useActionData";
+import { getStockCounts } from "../actions";
 import StockCountRow from "./StockCountRow";
 
 const SUPERVISOR_ROLE_IDS = [1, 4];
@@ -13,24 +13,10 @@ export default function StockCountsTable() {
   const { user } = useAuth();
   const isSupervisor = user ? SUPERVISOR_ROLE_IDS.includes(user.id_role) : false;
 
-  const [counts, setCounts] = useState<IStockCountListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setError(null);
-    getStockCounts(selectedId)
-      .then((result) => {
-        if (result.ok) {
-          setCounts(result.data);
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId]);
+  const { data, loading, error } = useActionData(selectedId ? [selectedId] : null, () =>
+    getStockCounts(selectedId!),
+  );
+  const counts = data ?? [];
 
   if (loading) {
     return <p className="text-[#44474f] dark:text-zinc-400">Cargando…</p>;
