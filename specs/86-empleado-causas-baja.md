@@ -251,10 +251,10 @@ export const TERMINATION_NOTES_MAX_LENGTH = 500;
 ## Criterios de aceptación
 
 **Base de datos**
-- [ ] `RH.cat_causas_baja` tiene exactamente 10 filas, `'1'` a `'9'` y `'A'`, y correr la siembra otra vez no duplica nada.
-- [ ] Insertar una segunda baja vigente para el mismo empleado falla por `UX_employee_terminations_empleado_vigente`.
-- [ ] Insertar una baja anulada a medias (por ejemplo, `anulado_at` sin `motivo_anulacion`) falla por `CK_employee_terminations_anulacion`.
-- [ ] Insertar dos empleados con el mismo `id_empleado_anterior` falla por `UX_empleados_empleado_anterior`.
+- [x] `RH.cat_causas_baja` tiene exactamente 10 filas, `'1'` a `'9'` y `'A'`, y correr la siembra otra vez no duplica nada.
+- [x] Insertar una segunda baja vigente para el mismo empleado falla por `UX_employee_terminations_empleado_vigente`.
+- [x] Insertar una baja anulada a medias (por ejemplo, `anulado_at` sin `motivo_anulacion`) falla por `CK_employee_terminations_anulacion`.
+- [x] Insertar dos empleados con el mismo `id_empleado_anterior` falla por `UX_empleados_empleado_anterior`.
 
 **Registrar la baja**
 - [ ] Un empleado activo ya no muestra el botón "Desactivar". En su lugar aparece "Dar de baja".

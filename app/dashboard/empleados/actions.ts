@@ -14,6 +14,7 @@ import { getSucursalesForUser } from "@/app/dashboard/sucursales/actions";
 import { toDBString, buildDate, addZeroToday } from "@/utils/date_helpper";
 import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
 import { getVacationBadgeSummary, type VacationBadgeInput } from "@/lib/vacations/vacationStatus";
+import { fetchEmployeeTerminations } from "@/lib/terminations/terminationQueries";
 import { parseEmployeeInput } from "./schemas";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -91,6 +92,7 @@ const EMPLOYEE_SELECT_COLUMNS = `
             e.[foto_url],
             CONVERT(varchar(10), e.[fecha_ingreso], 120) AS fecha_ingreso,
             e.[id_supervisor],
+            e.[id_empleado_anterior],
             e.[whatsapp],
             e.[email],
             e.[rfc],
@@ -147,7 +149,8 @@ export async function getEmployees(): Promise<IEmployeeListItem[]> {
             vac.[fecha_fin]               AS vac_fecha_fin,
             vac.[dias_tomados]            AS vac_dias_tomados,
             vac.[fecha_pago]              AS vac_fecha_pago,
-            vac.[dias_pagados]            AS vac_dias_pagados
+            vac.[dias_pagados]            AS vac_dias_pagados,
+            term.[fecha_baja]             AS fecha_baja
        FROM [CentroPodologico].[RH].[empleados] e
        JOIN [CentroPodologico].[RH].[departamentos] d ON d.[id_department] = e.[id_department]
        JOIN [CentroPodologico].[RH].[puestos] p ON p.[id_puesto] = e.[id_puesto]
@@ -167,6 +170,12 @@ export async function getEmployees(): Promise<IEmployeeListItem[]> {
              WHERE v.[id_empleado] = e.[id_empleado]
              ORDER BY v.[anio_servicio] DESC
        ) vac
+       OUTER APPLY (
+            SELECT TOP 1 CONVERT(varchar(10), et.[fecha_baja], 120) AS fecha_baja
+              FROM [CentroPodologico].[RH].[employee_terminations] et
+             WHERE et.[id_empleado] = e.[id_empleado]
+               AND et.[anulado_at] IS NULL
+       ) term
       WHERE e.[status] = 1
         AND e.[id_empresa] = @id_empresa
         AND e.[id_sucursal] IN (${placeholders})
@@ -177,6 +186,7 @@ export async function getEmployees(): Promise<IEmployeeListItem[]> {
     nombre_puesto: string;
     nombre_sucursal: string;
     nombre_periodo_pago: string | null;
+    fecha_baja: string | null;
     vac_id_vacation_entitlement: number | null;
     vac_dias_derecho: number | null;
     vac_fecha_limite_solicitud: string | null;
@@ -237,7 +247,10 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
             st.[state_key] AS clave_estado_sat,
             sup.[nombre] AS sup_nombre,
             sup.[apellido_paterno] AS sup_apellido_paterno,
-            sup.[apellido_materno] AS sup_apellido_materno
+            sup.[apellido_materno] AS sup_apellido_materno,
+            prev.[codigo_empleado] AS codigo_empleado_anterior,
+            rehire.[id_empleado]   AS reingreso_id_empleado,
+            rehire.[codigo_empleado] AS reingreso_codigo_empleado
        FROM [CentroPodologico].[RH].[empleados] e
        JOIN [CentroPodologico].[RH].[departamentos] d ON d.[id_department] = e.[id_department]
        JOIN [CentroPodologico].[RH].[puestos] p ON p.[id_puesto] = e.[id_puesto]
@@ -247,6 +260,8 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
        LEFT JOIN [CentroPodologico].[RH].[cat_bancos] b ON b.[clave] = e.[banco]
        LEFT JOIN [CentroPodologico].[dbo].[Cat_states] st ON st.[id_state] = s.[id_state]
        LEFT JOIN [CentroPodologico].[RH].[empleados] sup ON sup.[id_empleado] = e.[id_supervisor]
+       LEFT JOIN [CentroPodologico].[RH].[empleados] prev ON prev.[id_empleado] = e.[id_empleado_anterior]
+       LEFT JOIN [CentroPodologico].[RH].[empleados] rehire ON rehire.[id_empleado_anterior] = e.[id_empleado]
       WHERE e.[id_empleado] = @id_empleado
         AND e.[id_empresa] = @id_empresa
         AND e.[id_sucursal] IN (${placeholders})`,
@@ -262,12 +277,24 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
     sup_nombre: string | null;
     sup_apellido_paterno: string | null;
     sup_apellido_materno: string | null;
+    codigo_empleado_anterior: string | null;
+    reingreso_id_empleado: number | null;
+    reingreso_codigo_empleado: string | null;
   })[];
 
   const [row] = data;
   if (!row) return null;
 
-  const { sup_nombre, sup_apellido_paterno, sup_apellido_materno, ...employee } = row;
+  const {
+    sup_nombre,
+    sup_apellido_paterno,
+    sup_apellido_materno,
+    reingreso_id_empleado,
+    reingreso_codigo_empleado,
+    ...employee
+  } = row;
+  const activeTermination =
+    (await fetchEmployeeTerminations(id_empleado)).find((termination) => termination.anulado_at === null) ?? null;
 
   return {
     ...employee,
@@ -275,6 +302,11 @@ export async function getEmployeeById(id_empleado: number): Promise<IEmployeeRec
     nombre_supervisor: sup_nombre
       ? buildFullName(sup_nombre, sup_apellido_paterno, sup_apellido_materno)
       : null,
+    baja_vigente: activeTermination,
+    reingreso:
+      reingreso_id_empleado !== null && reingreso_codigo_empleado !== null
+        ? { id_empleado: reingreso_id_empleado, codigo_empleado: reingreso_codigo_empleado }
+        : null,
   };
 }
 
