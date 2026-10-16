@@ -2637,3 +2637,25 @@ CREATE TABLE [payroll].[other_payments](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
+
+-- Spec 85: productos cuyo id_supplier no existe en proveedores de su empresa
+SELECT p.[id_product], p.[name], p.[id_supplier]
+  FROM [CentroPodologico].[inventory].[Products] p
+ WHERE p.[id_supplier] IS NOT NULL
+   AND NOT EXISTS (
+         SELECT 1
+           FROM [CentroPodologico].[inventory].[proveedores] s
+          WHERE s.[id_proveedor] = p.[id_supplier]
+            AND s.[id_empresa]   = p.[id_empresa]
+       );
+
+UPDATE p
+   SET p.[id_supplier] = NULL
+  FROM [CentroPodologico].[inventory].[Products] p
+ WHERE p.[id_supplier] IS NOT NULL
+   AND NOT EXISTS (
+         SELECT 1
+           FROM [CentroPodologico].[inventory].[proveedores] s
+          WHERE s.[id_proveedor] = p.[id_supplier]
+            AND s.[id_empresa]   = p.[id_empresa]
+       );

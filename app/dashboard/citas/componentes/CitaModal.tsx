@@ -20,6 +20,11 @@ function splitDateTime(val: string): { date: string; time: string } {
   return { date: date ?? "", time: time ? time.slice(0, 5) : "" };
 }
 
+function patientLabel(idPaciente: ICita["id_paciente"], pacientes: IPaciente[]): string {
+  const paciente = pacientes.find((p) => p.id_paciente === Number(idPaciente));
+  return paciente ? `${paciente.nombre} ${paciente.apellido_paterno}` : "";
+}
+
 function joinDateTime(date: string, time: string): string {
   if (!date || !time) return "";
   return `${date}T${time}`;
@@ -38,14 +43,18 @@ interface Props {
 }
 
 export default function CitaModal({ form, pacientes, servicioOpciones, saving, error, lockPaciente = false, onChange, onSubmit, onClose }: Props) {
-  const [pacienteQuery, setPacienteQuery] = useState("");
+  const [pacienteQuery, setPacienteQuery] = useState(() => patientLabel(form.id_paciente, pacientes));
   const [showPacientes, setShowPacientes] = useState(false);
   const pacienteRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const p = pacientes.find((p) => p.id_paciente === Number(form.id_paciente));
-    setPacienteQuery(p ? `${p.nombre} ${p.apellido_paterno}` : "");
-  }, [form.id_paciente, pacientes]);
+  // El texto también lo escribe el usuario; solo se resincroniza cuando cambia el paciente o la lista.
+  const [previousPacienteId, setPreviousPacienteId] = useState(form.id_paciente);
+  const [previousPacientes, setPreviousPacientes] = useState(pacientes);
+  if (form.id_paciente !== previousPacienteId || pacientes !== previousPacientes) {
+    setPreviousPacienteId(form.id_paciente);
+    setPreviousPacientes(pacientes);
+    setPacienteQuery(patientLabel(form.id_paciente, pacientes));
+  }
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

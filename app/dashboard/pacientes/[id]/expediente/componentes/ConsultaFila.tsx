@@ -58,8 +58,7 @@ export default function ConsultaFila({
   const finalizada = Boolean(c.fecha_fin);
   const colSpan    = (hideCostoTotal ? 9 : 10) + (showDetalleColumn ? 1 : 0);
 
-  const [expanded, setExpanded] = useState(false);
-  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [expanded, setExpanded] = useState(expandAll ?? false);
   const [detalle, setDetalle] = useState<{
     patologia:             IPatologiaUngueal | null;
     valoracion:            IValoracionPiel  | null;
@@ -67,32 +66,28 @@ export default function ConsultaFila({
     onicocriptosisDetalle: IOnicocriptosisDetalle[];
   } | null>(null);
 
-  const fetchDetalle = async () => {
-    setLoadingDetalle(true);
-    try {
-      const data = await getPatologiaValoracionByConsulta(c.id_consulta);
-      setDetalle(data);
-    } finally {
-      setLoadingDetalle(false);
-    }
-  };
+  // "Expandir todo" / "Contraer todo" del padre: solo se aplica cuando cambia, para que
+  // la fila se pueda seguir abriendo y cerrando por su cuenta.
+  const [previousExpandAll, setPreviousExpandAll] = useState(expandAll);
+  if (expandAll !== previousExpandAll) {
+    setPreviousExpandAll(expandAll);
+    if (expandAll !== undefined) setExpanded(expandAll);
+  }
 
-  const toggleExpanded = async () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next && detalle === null && !loadingDetalle) {
-      await fetchDetalle();
-    }
-  };
-
+  // El detalle se pide una sola vez, la primera vez que la fila está expandida.
+  const loadingDetalle = expanded && detalle === null;
   useEffect(() => {
-    if (expandAll === undefined) return;
-    setExpanded(expandAll);
-    if (expandAll && detalle === null && !loadingDetalle) {
-      fetchDetalle();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandAll]);
+    if (!loadingDetalle) return;
+    let isStale = false;
+    getPatologiaValoracionByConsulta(c.id_consulta).then((data) => {
+      if (!isStale) setDetalle(data);
+    });
+    return () => {
+      isStale = true;
+    };
+  }, [loadingDetalle, c.id_consulta]);
+
+  const toggleExpanded = () => setExpanded(!expanded);
 
   const patologiasActivas  = detalle?.patologia  ? PATOLOGIAS.filter(([key]) => !!detalle.patologia![key]) : [];
   const condicionesActivas = detalle?.valoracion ? CONDITIONS.filter(([key]) => !!detalle.valoracion![key]) : [];

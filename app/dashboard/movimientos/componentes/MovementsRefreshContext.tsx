@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useCallback, ReactNode } from "rea
  * Puente cliente entre `RegisterMovementModal` y `StockMovementsTable` — ambos son
  * hojas cliente independientes bajo el Server Component `page.tsx` (spec 14), así
  * que no pueden compartir estado por props. Un registro exitoso incrementa
- * `refreshToken`; la tabla lo agrega a las dependencias de su `useEffect` de fetch.
+ * `refreshToken`; la tabla lo agrega a la key de su carga de movimientos.
  */
 interface MovementsRefreshContextValue {
   refreshToken: number;

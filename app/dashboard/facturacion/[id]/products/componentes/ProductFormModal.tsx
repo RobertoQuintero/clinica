@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import type { Product } from "facturapi";
 import { ISatProductSuggestion } from "@/interfaces/organization";
+import { useAsyncData } from "@/hooks/useAsyncData";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { createProductAction, updateProductAction } from "../actions";
 
 interface Props {
@@ -63,40 +65,26 @@ export default function ProductFormModal({ orgId, product, onClose, onSaved }: P
   const [error, setError] = useState<string | null>(null);
 
   const [satQuery, setSatQuery] = useState("");
-  const [satResults, setSatResults] = useState<ISatProductSuggestion[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
 
   // Buscador del catálogo SAT: con debounce y mínimo de 2 caracteres, para no consumir
-  // cuota de Facturapi por cada pulsación (ver Riesgos, spec 29). Cancela la búsqueda en
-  // curso si el usuario sigue escribiendo o el modal se cierra.
-  useEffect(() => {
-    const query = satQuery.trim();
-    if (query.length < SAT_SEARCH_MIN_LENGTH) {
-      setSatResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    setIsSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const url = `/api/facturacion/catalogs/products?orgId=${encodeURIComponent(orgId)}&q=${encodeURIComponent(query)}`;
-        const res = await fetch(url, { signal: controller.signal });
-        const json = await res.json();
-        setSatResults(res.ok && json.ok ? json.data : []);
-      } catch {
-        if (!controller.signal.aborted) setSatResults([]);
-      } finally {
-        if (!controller.signal.aborted) setIsSearching(false);
-      }
-    }, SAT_SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [satQuery, orgId]);
+  // cuota de Facturapi por cada pulsación (ver Riesgos, spec 29). El hook aborta la búsqueda
+  // en curso cuando cambia el término con debounce o cuando el modal se cierra.
+  const trimmedSatQuery = satQuery.trim();
+  const debouncedSatQuery = useDebouncedValue(trimmedSatQuery, SAT_SEARCH_DEBOUNCE_MS);
+  const hasSearchableSatQuery = trimmedSatQuery.length >= SAT_SEARCH_MIN_LENGTH;
+  const satSearch = useAsyncData(
+    debouncedSatQuery.length >= SAT_SEARCH_MIN_LENGTH ? [orgId, debouncedSatQuery] : null,
+    async (signal): Promise<ISatProductSuggestion[]> => {
+      const url = `/api/facturacion/catalogs/products?orgId=${encodeURIComponent(orgId)}&q=${encodeURIComponent(debouncedSatQuery)}`;
+      const res = await fetch(url, { signal });
+      const json = await res.json();
+      return res.ok && json.ok ? json.data : [];
+    },
+  );
+  // Con menos de 2 caracteres no hay resultados ni indicador, aunque el debounce no haya alcanzado al texto.
+  const satResults = hasSearchableSatQuery ? (satSearch.data ?? []) : [];
+  const isSearching =
+    hasSearchableSatQuery && (trimmedSatQuery !== debouncedSatQuery || satSearch.loading);
 
   const handleField = (field: keyof ProductFormState, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -104,7 +92,6 @@ export default function ProductFormModal({ orgId, product, onClose, onSaved }: P
 
   const selectSatProduct = (item: ISatProductSuggestion) => {
     setForm((prev) => ({ ...prev, product_key: item.key }));
-    setSatResults([]);
     setSatQuery("");
   };
 

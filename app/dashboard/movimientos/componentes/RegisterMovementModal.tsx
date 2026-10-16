@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Plus, TriangleAlert } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   getMovementTypes,
   getTransferDestinations,
@@ -10,7 +12,6 @@ import {
   searchProductsForMovement,
   IMovementProductOption,
   IMovementType,
-  ITransferDestination,
 } from "../actions";
 import { useMovementsRefresh } from "./MovementsRefreshContext";
 import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
@@ -23,6 +24,9 @@ const SELECTABLE_MOVEMENT_IDS = [2, MOVEMENT_SALIDA_POR_TRASPASO, 7, 8, 9,10];
 const MODAL_LABEL_OVERRIDES: Record<number, string> = {
   [MOVEMENT_SALIDA_POR_TRASPASO]: "Traspaso",
 };
+
+const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
+const PRODUCT_SEARCH_MIN_LENGTH = 2;
 
 const initialFormState = {
   id_movement: "" as number | "",
@@ -40,14 +44,11 @@ export default function RegisterMovementModal() {
   const [error, setError] = useState<string | null>(null);
 
   const [movementTypes, setMovementTypes] = useState<IMovementType[]>([]);
-  const [destinations, setDestinations] = useState<ITransferDestination[]>([]);
 
   const [form, setForm] = useState(initialFormState);
 
   const [productSearch, setProductSearch] = useState("");
-  const [productResults, setProductResults] = useState<IMovementProductOption[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<IMovementProductOption | null>(null);
-  const [searching, setSearching] = useState(false);
 
   const isTransfer = form.id_movement === MOVEMENT_SALIDA_POR_TRASPASO;
   const quantityNumber = Number(form.quantity) || 0;
@@ -64,36 +65,26 @@ export default function RegisterMovementModal() {
     });
   }, [open]);
 
-  useEffect(() => {
-    if (!isTransfer || !selectedId) {
-      setDestinations([]);
-      return;
-    }
-    getTransferDestinations(selectedId).then((result) => {
-      if (result.ok) setDestinations(result.data);
-    });
-  }, [isTransfer, selectedId]);
+  const transferDestinations = useActionData(isTransfer && selectedId ? [selectedId] : null, () =>
+    getTransferDestinations(selectedId),
+  );
+  const destinations = transferDestinations.data ?? [];
 
-  useEffect(() => {
-    if (!open || !selectedId || productSearch.trim().length < 2) {
-      setProductResults([]);
-      return;
-    }
-    setSearching(true);
-    const timeout = setTimeout(() => {
-      searchProductsForMovement(selectedId, productSearch.trim())
-        .then((result) => {
-          if (result.ok) setProductResults(result.data);
-        })
-        .finally(() => setSearching(false));
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [open, selectedId, productSearch]);
+  // El término con debounce es la key: con menos de 2 caracteres no se busca y no hay resultados.
+  const trimmedProductSearch = productSearch.trim();
+  const debouncedProductSearch = useDebouncedValue(trimmedProductSearch, PRODUCT_SEARCH_DEBOUNCE_MS);
+  const canSearchProducts =
+    open && !!selectedId && debouncedProductSearch.length >= PRODUCT_SEARCH_MIN_LENGTH;
+  const productSearchData = useActionData(
+    canSearchProducts ? [selectedId, debouncedProductSearch] : null,
+    () => searchProductsForMovement(selectedId, debouncedProductSearch),
+  );
+  const productResults = productSearchData.data ?? [];
+  const searching = trimmedProductSearch !== debouncedProductSearch || productSearchData.loading;
 
   function resetForm() {
     setForm(initialFormState);
     setProductSearch("");
-    setProductResults([]);
     setSelectedProduct(null);
     setError(null);
   }
@@ -106,7 +97,6 @@ export default function RegisterMovementModal() {
   function handleSelectProduct(product: IMovementProductOption) {
     setSelectedProduct(product);
     setProductSearch(product.name);
-    setProductResults([]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -218,7 +208,7 @@ export default function RegisterMovementModal() {
                   required
                   className="rounded-md border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#0051d5]"
                 />
-                {!selectedProduct && productSearch.trim().length >= 2 && (
+                {!selectedProduct && trimmedProductSearch.length >= PRODUCT_SEARCH_MIN_LENGTH && (
                   <div className="absolute top-full left-0 right-0 mt-1 z-10 max-h-48 overflow-y-auto rounded-md border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 shadow-lg">
                     {searching ? (
                       <p className="px-3 py-2 text-sm text-[#747780] dark:text-zinc-500">Buscando…</p>

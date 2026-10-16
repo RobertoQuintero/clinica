@@ -7,6 +7,19 @@ import { IAuthUser } from "@/interfaces/auth";
 import { toDateTimeLocal } from "@/utils/date_helpper";
 import { useEffect, useState } from "react";
 
+function podologoLabel(idPodologo: IConsulta["id_podologo"], podologos: IUser[]): string {
+  return podologos.find((p) => p.id_user === idPodologo)?.nombre ?? "";
+}
+
+function sucursalLabel(sucursal: ISucursal): string {
+  return sucursal.ciudad ?? sucursal.nombre;
+}
+
+function sucursalLabelById(idSucursal: IConsulta["id_sucursal"], sucursales: ISucursal[]): string {
+  const found = sucursales.find((s) => s.id_sucursal === idSucursal);
+  return found ? sucursalLabel(found) : "";
+}
+
 interface Props {
   form: IConsulta;
   saving: boolean;
@@ -24,26 +37,38 @@ interface Props {
 export default function ConsultaModal({ form, saving, error, podologos, sucursales, currentUser, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
   const isNew             = form.id_consulta === 0;
   const isFinalized       = !isNew && !!form.fecha_fin;
-  const isSucursalLocked  = isFinalized || currentUser?.id_role === 2;
-  const isPodologoLocked  = isFinalized || currentUser?.id_role === 2;
-  const [podologoInput, setPodologoInput] = useState("");
-  const [sucursalInput, setSucursalInput] = useState("");
+  const isPodologoRole    = currentUser?.id_role === 2;
+  const isSucursalLocked  = isFinalized || isPodologoRole;
+  const isPodologoLocked  = isFinalized || isPodologoRole;
+  const [podologoInput, setPodologoInput] = useState(() => podologoLabel(form.id_podologo, podologos));
+  const [sucursalInput, setSucursalInput] = useState(() => sucursalLabelById(form.id_sucursal, sucursales));
+  // Rol 2 (podólogo): el input está bloqueado y siempre muestra al usuario actual.
+  const podologoText = isPodologoRole ? currentUser?.nombre ?? "" : podologoInput;
 
-  useEffect(() => {
-    if (currentUser?.id_role === 2) {
-      setPodologoInput(currentUser.nombre ?? "");
-      onPodologoChange(currentUser.id_user);
-    } else {
-      const found = podologos.find((p) => p.id_user === form.id_podologo);
-      setPodologoInput(found?.nombre ?? "");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.id_podologo, podologos]);
+  // Los textos también los escribe el usuario; solo se resincronizan cuando cambia la prop de origen.
+  const [previousPodologoId, setPreviousPodologoId] = useState(form.id_podologo);
+  const [previousPodologos, setPreviousPodologos] = useState(podologos);
+  if (form.id_podologo !== previousPodologoId || podologos !== previousPodologos) {
+    setPreviousPodologoId(form.id_podologo);
+    setPreviousPodologos(podologos);
+    if (!isPodologoRole) setPodologoInput(podologoLabel(form.id_podologo, podologos));
+  }
 
+  const [previousSucursalId, setPreviousSucursalId] = useState(form.id_sucursal);
+  const [previousSucursales, setPreviousSucursales] = useState(sucursales);
+  if (form.id_sucursal !== previousSucursalId || sucursales !== previousSucursales) {
+    setPreviousSucursalId(form.id_sucursal);
+    setPreviousSucursales(sucursales);
+    setSucursalInput(sucursalLabelById(form.id_sucursal, sucursales));
+  }
+
+  // Rol 2: la consulta siempre queda a nombre del usuario actual. La guarda evita volver a
+  // avisar al padre una vez que el formulario ya lo tiene asignado.
+  const currentUserId = currentUser?.id_user;
   useEffect(() => {
-    const found = sucursales.find((s) => s.id_sucursal === form.id_sucursal);
-    setSucursalInput(found ? (found.ciudad ?? found.nombre) : "");
-  }, [form.id_sucursal, sucursales]);
+    if (!isPodologoRole || currentUserId === undefined) return;
+    if (form.id_podologo !== currentUserId) onPodologoChange(currentUserId);
+  }, [isPodologoRole, currentUserId, form.id_podologo, onPodologoChange]);
 
   const handlePodologoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -51,8 +76,6 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
     const found = podologos.find((p) => p.nombre === val);
     if (found) onPodologoChange(found.id_user);
   };
-
-  const sucursalLabel = (s: ISucursal) => s.ciudad ?? s.nombre;
 
   const handleSucursalInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -141,7 +164,7 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
             <input
               type="text"
               list={isPodologoLocked ? undefined : "podologos-list"}
-              value={podologoInput}
+              value={podologoText}
               onChange={isPodologoLocked ? undefined : handlePodologoInput}
               placeholder={form.id_sucursal ? "Buscar podólogo…" : "Selecciona una sucursal primero"}
               disabled={!isPodologoLocked && !form.id_sucursal}

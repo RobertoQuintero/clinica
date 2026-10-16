@@ -12,12 +12,12 @@ import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
 import { getPacientes, getServicioOpciones, saveCita } from "@/app/dashboard/citas/actions";
 import {
   ConsultaProductoExtended,
-  GeneralTabData,
   ServicioResumen,
   getGeneralTabData,
   updateConsultaBuzon,
 } from "../actions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAsyncData } from "@/hooks/useAsyncData";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,19 +91,28 @@ interface Props {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function TabGeneral({ consulta, paciente, valoracion, patologia, onServiciosTotalChange, onProductosTotalChange,pagado }: Props) {
-  const [antecedentes,    setAntecedentes   ] = useState<IAntecedenteMedico | null>(null);
-  const [serviciosUsados, setServiciosUsados] = useState<ServicioResumen[]>([]);
-  const [productos,       setProductos      ] = useState<ConsultaProductoExtended[]>([]);
-  const [nombrePodologo,  setNombrePodologo ] = useState<string | null>(null);
-  const [sucursalNombre,  setSucursalNombre ] = useState<string | null>(null);
-  const [sucursalCiudad,  setSucursalCiudad ] = useState<string | null>(null);
-  const [patologiaUrls,      setPatologiaUrls     ] = useState<Record<string, string>>({});
-  const [pagoWebId,          setPagoWebId         ] = useState<string | null>(null);
-  const [phoneCode,          setPhoneCode         ] = useState<string | null>(null);
-  const [tratamientoExiste,  setTratamientoExiste ] = useState(false);
-  const [idTratamiento,      setIdTratamiento     ] = useState<number | null>(null);
-  const [citaExiste,         setCitaExiste        ] = useState(false);
-  const [loading,            setLoading           ] = useState(true);
+  const generalTabData = useAsyncData(
+    consulta
+      ? [consulta.id_consulta, consulta.id_paciente, consulta.id_podologo, consulta.id_sucursal]
+      : null,
+    () =>
+      getGeneralTabData(
+        consulta!.id_consulta,
+        consulta!.id_paciente,
+        consulta!.id_podologo,
+        consulta!.id_sucursal,
+      ),
+  );
+  const { loading } = generalTabData;
+  const antecedentes:      IAntecedenteMedico | null     = generalTabData.data?.antecedentes ?? null;
+  const serviciosUsados:   ServicioResumen[]             = generalTabData.data?.serviciosUsados ?? [];
+  const productos:         ConsultaProductoExtended[]    = generalTabData.data?.productos ?? [];
+  const nombrePodologo:    string | null                 = generalTabData.data?.nombrePodologo ?? null;
+  const sucursalNombre:    string | null                 = generalTabData.data?.sucursalNombre ?? null;
+  const sucursalCiudad:    string | null                 = generalTabData.data?.sucursalCiudad ?? null;
+  const patologiaUrls:     Record<string, string>        = generalTabData.data?.patologiaUrls ?? {};
+  const pagoWebId:         string | null                 = generalTabData.data?.pagoWebId ?? null;
+  const tratamientoExiste: boolean                       = generalTabData.data?.tratamientoExiste ?? false;
   const [exporting,       setExporting      ] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -115,31 +124,6 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
   const [citaError,       setCitaError      ] = useState<string | null>(null);
   const [citaListsLoaded, setCitaListsLoaded] = useState(false);
   const [citaCreada,      setCitaCreada     ] = useState(false);
-
-  useEffect(() => {
-    if (!consulta) return;
-    setLoading(true);
-    getGeneralTabData(
-      consulta.id_consulta,
-      consulta.id_paciente,
-      consulta.id_podologo,
-      consulta.id_sucursal,
-    ).then((d: GeneralTabData) => {
-      setAntecedentes(d.antecedentes);
-      setServiciosUsados(d.serviciosUsados);
-      setProductos(d.productos);
-      setNombrePodologo(d.nombrePodologo);
-      setSucursalNombre(d.sucursalNombre);
-      setSucursalCiudad(d.sucursalCiudad);
-      setPatologiaUrls(d.patologiaUrls);
-      setPagoWebId(d.pagoWebId);
-      setPhoneCode(d.phoneCode);
-      setTratamientoExiste(d.tratamientoExiste);
-      setIdTratamiento(d.idTratamiento);
-      setCitaExiste(d.citaExiste);
-      setLoading(false);
-    });
-  }, [consulta?.id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExportPDF = async () => {
     if (!contentRef.current) return;
@@ -226,6 +210,16 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     }
   };
 
+  const totalServicios = serviciosUsados.reduce((s, sv) => s + Number(sv.precio_aplicado), 0);
+  const totalProductos = productos
+    .filter((p) => p.status === "activo")
+    .reduce((s, p) => s + Number(p.precio) * Number(p.cantidad), 0);
+
+  useEffect(() => { onServiciosTotalChange?.(totalServicios); }, [totalServicios]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onProductosTotalChange?.(totalProductos); }, [totalProductos]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const {user}= useAuth()
+
   if (!paciente || !consulta) {
     return <p className="text-zinc-400 text-sm">No se encontró información.</p>;
   }
@@ -280,10 +274,6 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
       })
     : [];
 
-  const totalServicios = serviciosUsados.reduce((s, sv) => s + Number(sv.precio_aplicado), 0);
-  const totalProductos = productos
-    .filter((p) => p.status === "activo")
-    .reduce((s, p) => s + Number(p.precio) * Number(p.cantidad), 0);
   const totalGeneral   = totalServicios + totalProductos;
 
 
@@ -316,11 +306,6 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
 
   const onSendWhatsApp = async () => {
     if (!paciente?.whatsapp || loading) return;
-
-    // Strip non-digits; prepend the patient's country code if not already present
-    const digits = paciente.whatsapp.replace(/\D/g, "");
-    const code   = phoneCode ?? "52";
-    const phone  = digits.startsWith(code) ? digits : `${code}${digits}`;
 
     const lines: string[] = [
       "*RECIBO Y RESUMEN DE CONSULTA*",
@@ -445,16 +430,11 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
 
     // Abrimos el chat sin texto precargado: el mensaje ya quedó en el
     // portapapeles listo para pegarse directamente en la conversación.
-    const url = `https://wa.me/${phone}`;
-    // window.open(url, "_blank");
 
     if (!copied) {
       alert("No se pudo copiar el mensaje al portapapeles. Cópialo manualmente si es necesario.");
     }
   };
-
-  useEffect(() => { onServiciosTotalChange?.(totalServicios); }, [totalServicios]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { onProductosTotalChange?.(totalProductos); }, [totalProductos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openCrearCita = async () => {
     if (!consulta) return;
@@ -510,7 +490,6 @@ export default function TabGeneral({ consulta, paciente, valoracion, patologia, 
     }
   };
 
-  const {user}= useAuth()
     const date=new Date(paciente.created_at)
     date.setHours(date.getHours()+12)
 

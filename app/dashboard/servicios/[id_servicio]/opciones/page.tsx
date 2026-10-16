@@ -1,7 +1,8 @@
 "use client";
 
 import { IServicioOpcion } from "@/interfaces/servicio_opcion";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,9 +33,15 @@ export default function OpcionesServicioPage({ params }: Props) {
 
   const router = useRouter();
 
-  const [nombreServicio, setNombreServicio] = useState<string>("");
-  const [opciones, setOpciones]             = useState<IServicioOpcion[]>([]);
-  const [loading, setLoading]               = useState(true);
+  const { data, loading, reload: reloadOpciones } = useAsyncData([id_servicio], async () => {
+    const [servicio, opcionesServicio] = await Promise.all([
+      getServicio(id_servicio),
+      getOpcionesServicio(id_servicio),
+    ]);
+    return { nombreServicio: servicio?.nombre ?? String(id_servicio), opciones: opcionesServicio };
+  });
+  const nombreServicio: string             = data?.nombreServicio ?? "";
+  const opciones:       IServicioOpcion[]  = data?.opciones ?? [];
   const [showModal, setShowModal]           = useState(false);
   const [form, setForm]                     = useState<FormData>(makeEmpty(id_servicio));
   const [saving, setSaving]                 = useState(false);
@@ -49,22 +56,6 @@ export default function OpcionesServicioPage({ params }: Props) {
     if (sortKey === key) setSortAsc((prev) => !prev);
     else { setSortKey(key); setSortAsc(true); }
   };
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [servicio, data] = await Promise.all([
-        getServicio(id_servicio),
-        getOpcionesServicio(id_servicio),
-      ]);
-      setNombreServicio(servicio?.nombre ?? String(id_servicio));
-      setOpciones(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchData(); }, [id_servicio]);
 
   const openNew = () => {
     setForm(makeEmpty(id_servicio));
@@ -100,7 +91,7 @@ export default function OpcionesServicioPage({ params }: Props) {
       const res = await saveOpcionServicio(form);
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchData();
+      await reloadOpciones();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -207,7 +198,7 @@ export default function OpcionesServicioPage({ params }: Props) {
                     key={o.id_servicio_opcion}
                     opcion={o}
                     onEdit={openEdit}
-                    onDeleted={fetchData}
+                    onDeleted={reloadOpciones}
                     readOnly={readOnly}
                   />
                 ))

@@ -11,6 +11,7 @@ import UsuarioFila from "./componentes/UsuarioFila";
 import UsuarioModal from "./componentes/UsuarioModal";
 import CambiarPasswordModal from "./componentes/CambiarPasswordModal";
 import { getUsuarios, getRoles, getSucursalesActivas, saveUsuario, changePasswordUsuario } from "./actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { SucursalName } from "../componentes/SucursalName";
 
 const EMPTY: IUserListItem = {
@@ -35,10 +36,6 @@ export default function UsuariosPage() {
   const { user }                  = useAuth();
   const { selectedId }            = useSucursal();
   const router                    = useRouter();
-  const [usuarios, setUsuarios]   = useState<IUserListItem[]>([]);
-  const [roles, setRoles]         = useState<IRole[]>([]);
-  const [sucursales, setSucursales] = useState<ISucursal[]>([]);
-  const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]           = useState<IUserListItem>(EMPTY);
   const [saving, setSaving]       = useState(false);
@@ -64,33 +61,20 @@ export default function UsuariosPage() {
     }
   }, [user, router]);
 
-  const fetchUsuarios = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const data = await getUsuarios();
-      setUsuarios(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // La action toma la sucursal de la cookie; selectedId va en la key para recargar al cambiarla.
+  const usuariosData = useAsyncData(user ? [user.id_user, selectedId] : null, () => getUsuarios());
+  const { reload: reloadUsuarios } = usuariosData;
+  const usuarios: IUserListItem[] = usuariosData.data ?? [];
+  // Sin usuario autenticado todavía se muestra "Cargando", igual que antes.
+  const loading = !user || usuariosData.loading;
 
-  const fetchRoles = async () => {
-    const data = await getRoles();
-    setRoles(data);
-  };
-
-  const fetchSucursales = async () => {
-    if (!user) return;
-    const data = await getSucursalesActivas();
-    setSucursales(data);
-  };
-
-  useEffect(() => {
-    fetchUsuarios();
-    fetchRoles();
-    fetchSucursales();
-  }, [user, selectedId]);
+  // Catálogos del modal: se recargan al cambiar de sucursal, como antes; las sucursales solo con usuario.
+  const rolesData = useAsyncData([selectedId], () => getRoles());
+  const roles: IRole[] = rolesData.data ?? [];
+  const sucursalesData = useAsyncData(user ? [user.id_user, selectedId] : null, () =>
+    getSucursalesActivas(),
+  );
+  const sucursales: ISucursal[] = sucursalesData.data ?? [];
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: user!.id_sucursal, id_empresa: user!.id_empresa });
@@ -134,7 +118,7 @@ export default function UsuariosPage() {
     if (!res.ok) throw new Error(res.message ?? "Error al cambiar la contraseña");
     setShowPasswordModal(false);
     setPasswordUser(null);
-    await fetchUsuarios();
+    await reloadUsuarios();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -156,7 +140,7 @@ export default function UsuariosPage() {
       });
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchUsuarios();
+      await reloadUsuarios();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {

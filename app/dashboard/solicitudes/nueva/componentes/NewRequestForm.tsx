@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
 import { IRequestProduct } from "@/interfaces/purchase_request";
 import { IProductCategory } from "@/interfaces/product_category";
 import { IUnitMeasurement } from "@/interfaces/unit_measurement";
@@ -15,11 +16,8 @@ export default function NewRequestForm() {
   const { selectedId } = useSucursal();
   const router = useRouter();
 
-  const [products, setProducts]     = useState<IRequestProduct[]>([]);
   const [categories, setCategories] = useState<IProductCategory[]>([]);
   const [units, setUnits]           = useState<IUnitMeasurement[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [loadError, setLoadError]   = useState<string | null>(null);
 
   const [search, setSearch]                 = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -34,20 +32,14 @@ export default function NewRequestForm() {
     getUnitsMeasurement().then(setUnits);
   }, []);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setLoadError(null);
-    getProductsForRequest(selectedId)
-      .then((result) => {
-        if (result.ok) {
-          setProducts(result.data);
-        } else {
-          setLoadError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId]);
+  const requestProducts = useActionData(selectedId ? [selectedId] : null, () =>
+    getProductsForRequest(selectedId),
+  );
+  const { loading, error: loadError } = requestProducts;
+  const products = useMemo<IRequestProduct[]>(
+    () => requestProducts.data ?? [],
+    [requestProducts.data],
+  );
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((c) => [c.id_category, c.name])),

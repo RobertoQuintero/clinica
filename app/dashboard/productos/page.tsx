@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { getProducts, getCategories, getUnitsMeasurement, saveProduct } from "./actions";
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import ProductRow from "./componentes/ProductRow";
 import ProductModal, { ProductFormData } from "./componentes/ProductModal";
 
@@ -37,11 +38,9 @@ const EMPTY: ProductFormData = {
 };
 
 export default function ProductosPage() {
-  const [products, setProducts]           = useState<IProduct[]>([]);
   const [categories, setCategories]       = useState<IProductCategory[]>([]);
   const [unitsMeasurement, setUnitsMeasurement] = useState<IUnitMeasurement[]>([]);
   const [suppliers, setSuppliers]         = useState<ISupplier[]>([]);
-  const [loading, setLoading]             = useState(true);
   const [showModal, setShowModal]         = useState(false);
   const [form, setForm]                   = useState<ProductFormData>(EMPTY);
   const [saving, setSaving]               = useState(false);
@@ -50,18 +49,10 @@ export default function ProductosPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const data = await getProducts();
-      setProducts(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, loading, reload: reloadProducts } = useAsyncData([], () => getProducts());
+  const products: IProduct[] = data ?? [];
 
   useEffect(() => {
-    fetchProducts();
     getCategories().then(setCategories);
     getUnitsMeasurement().then(setUnitsMeasurement);
     getSuppliers().then(setSuppliers);
@@ -143,7 +134,7 @@ export default function ProductosPage() {
       const res = await saveProduct(form);
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchProducts();
+      await reloadProducts();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -248,7 +239,7 @@ export default function ProductosPage() {
                       supplierName={p.id_supplier ? supplierNameById.get(p.id_supplier) ?? "" : ""}
                       unitName={p.id_unit_measurement ? unitNameById.get(p.id_unit_measurement) ?? "" : ""}
                       onEdit={openEdit}
-                      onDeleted={fetchProducts}
+                      onDeleted={reloadProducts}
                     />
                   ))
                 )}

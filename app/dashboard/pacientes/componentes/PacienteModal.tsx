@@ -4,7 +4,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { IPaciente } from "@/interfaces/paciente";
 import { IPhoneCode } from "@/interfaces/phone_code";
 import { ISucursal } from "@/interfaces/sucursal";
-import { buildDateReverse } from "@/utils/date_helpper";
 
 interface Props {
   form: IPaciente;

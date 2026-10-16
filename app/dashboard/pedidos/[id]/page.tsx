@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, FileUp, Ban, PackageCheck } from "lucide-react";
 import { getPurchaseOrderById, cancelPurchaseOrder, IPurchaseOrderDetailView } from "../actions";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
 import OrderStatusBadge from "@/app/dashboard/componentes/OrderStatusBadge";
 import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
 import UploadInvoiceModal from "./componentes/UploadInvoiceModal";
@@ -26,33 +27,15 @@ export default function PurchaseOrderDetailPage() {
   const { sucursales } = useSucursal();
   const id_purchase_order = Number(params.id);
 
-  const [order, setOrder]   = useState<IPurchaseOrderDetailView | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState<string | null>(null);
+  const orderData = useActionData(id_purchase_order ? [id_purchase_order] : null, () =>
+    getPurchaseOrderById(id_purchase_order),
+  );
+  const { loading, error, reload: reloadOrder } = orderData;
+  const order: IPurchaseOrderDetailView | null = orderData.data ?? null;
   const [showUploadInvoice, setShowUploadInvoice] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-
-  const fetchOrder = () => {
-    setLoading(true);
-    setError(null);
-    return getPurchaseOrderById(id_purchase_order)
-      .then((result) => {
-        if (result.ok) {
-          setOrder(result.data);
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    if (!id_purchase_order) return;
-    fetchOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id_purchase_order]);
 
   const handleCancelOrder = async () => {
     setCancelling(true);
@@ -60,7 +43,7 @@ export default function PurchaseOrderDetailPage() {
     const result = await cancelPurchaseOrder(id_purchase_order);
     if (result.ok) {
       setShowCancelConfirm(false);
-      await fetchOrder();
+      await reloadOrder();
     } else {
       setCancelError(result.message);
     }
@@ -281,7 +264,7 @@ export default function PurchaseOrderDetailPage() {
         <UploadInvoiceModal
           id_purchase_order={id_purchase_order}
           onClose={() => setShowUploadInvoice(false)}
-          onUploaded={fetchOrder}
+          onUploaded={reloadOrder}
         />
       )}
 

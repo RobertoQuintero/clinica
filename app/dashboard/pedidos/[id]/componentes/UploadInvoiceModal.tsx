@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { FileUp, X } from "lucide-react";
 import { markOrderAsShipped } from "../../actions";
@@ -14,15 +15,14 @@ interface Props {
 const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9_.-]/g, "_");
 
 export default function UploadInvoiceModal({ id_purchase_order, onClose, onUploaded }: Props) {
-  const [mounted, setMounted]             = useState(false);
+  const isClient = useIsClient();
   const [file, setFile]                   = useState<File | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate]     = useState("");
   const [uploading, setUploading]         = useState(false);
   const [error, setError]                 = useState<string | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] ?? null;

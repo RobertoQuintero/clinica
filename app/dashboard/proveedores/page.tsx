@@ -3,9 +3,10 @@
 import { ISupplier } from "@/interfaces/supplier";
 import { IPhoneCode } from "@/interfaces/phone_code";
 import { useEffect, useState } from "react";
-import { Search, Plus } from "lucide-react";
+import { Search } from "lucide-react";
 import { getSuppliers, saveSupplier } from "./actions";
 import { getPhoneCodes } from "@/app/dashboard/pacientes/actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import SupplierRow from "./componentes/SupplierRow";
 import SupplierModal from "./componentes/SupplierModal";
 
@@ -32,27 +33,17 @@ const EMPTY: ISupplier = {
 };
 
 export default function ProveedoresPage() {
-  const [suppliers, setSuppliers]   = useState<ISupplier[]>([]);
   const [phoneCodes, setPhoneCodes] = useState<IPhoneCode[]>([]);
-  const [loading, setLoading]       = useState(true);
   const [showModal, setShowModal]   = useState(false);
   const [form, setForm]             = useState<ISupplier>(EMPTY);
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [search, setSearch]         = useState("");
 
-  const fetchSuppliers = async () => {
-    setLoading(true);
-    try {
-      const data = await getSuppliers();
-      setSuppliers(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, loading, reload: reloadSuppliers } = useAsyncData([], () => getSuppliers());
+  const suppliers: ISupplier[] = data ?? [];
 
   useEffect(() => {
-    fetchSuppliers();
     getPhoneCodes().then(setPhoneCodes);
   }, []);
 
@@ -91,7 +82,7 @@ export default function ProveedoresPage() {
       const res = await saveSupplier(form);
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchSuppliers();
+      await reloadSuppliers();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -165,7 +156,7 @@ export default function ProveedoresPage() {
                     key={s.id_proveedor}
                     supplier={s}
                     onEdit={openEdit}
-                    onDeleted={fetchSuppliers}
+                    onDeleted={reloadSuppliers}
                   />
                 ))
               )}

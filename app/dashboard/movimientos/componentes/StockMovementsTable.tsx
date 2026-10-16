@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Search } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
 import { addZeroToday } from "@/utils/date_helpper";
 import {
   getMovementsSummary,
   getMovementTypes,
   getStockMovements,
   IMovementType,
-  IStockMovementListItem,
   IStockMovementsSummary,
 } from "../actions";
 import StockMovementRow from "./StockMovementRow";
@@ -22,8 +22,6 @@ export default function StockMovementsTable() {
   const { selectedId } = useSucursal();
   const { refreshToken } = useMovementsRefresh();
 
-  const [movements, setMovements] = useState<IStockMovementListItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [movementTypes, setMovementTypes] = useState<IMovementType[]>([]);
   const [summary, setSummary] = useState<IStockMovementsSummary>({
@@ -36,8 +34,14 @@ export default function StockMovementsTable() {
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Cualquier cambio de filtro reinicia la página, salvo el cambio de página en sí.
+  // Se ajusta en el render para que el fetch salga una sola vez, ya con la página 1.
+  const filterKey = JSON.stringify([selectedId, search, movementFilter, dateFrom, dateTo]);
+  const [previousFilterKey, setPreviousFilterKey] = useState(filterKey);
+  if (filterKey !== previousFilterKey) {
+    setPreviousFilterKey(filterKey);
+    setPage(1);
+  }
 
   useEffect(() => {
     getMovementTypes().then((result) => {
@@ -52,34 +56,21 @@ export default function StockMovementsTable() {
     });
   }, [selectedId, refreshToken]);
 
-  useEffect(() => {
-    // Cualquier cambio de filtro reinicia la página, salvo el cambio de página en sí.
-    setPage(1);
-  }, [selectedId, search, movementFilter, dateFrom, dateTo]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setError(null);
-    getStockMovements({
-      id_sucursal: selectedId,
-      search: search.trim() || null,
-      id_movement: movementFilter ? Number(movementFilter) : null,
-      date_from: dateFrom || null,
-      date_to: dateTo || null,
-      page,
-      page_size: PAGE_SIZE,
-    })
-      .then((result) => {
-        if (result.ok) {
-          setMovements(result.data.items);
-          setTotal(result.data.total);
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId, search, movementFilter, dateFrom, dateTo, page, refreshToken]);
+  const { data, loading, error } = useActionData(
+    selectedId ? [selectedId, search, movementFilter, dateFrom, dateTo, page, refreshToken] : null,
+    () =>
+      getStockMovements({
+        id_sucursal: selectedId,
+        search: search.trim() || null,
+        id_movement: movementFilter ? Number(movementFilter) : null,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
+        page,
+        page_size: PAGE_SIZE,
+      }),
+  );
+  const movements = data?.items ?? [];
+  const total = data?.total ?? 0;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 

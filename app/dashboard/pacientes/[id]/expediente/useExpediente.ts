@@ -17,7 +17,8 @@ import {
   cancelarConsulta as cancelarConsultaAction,
 } from "./actions";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
 
 const buildEmpty = (
   id_paciente: number,
@@ -60,62 +61,38 @@ export function useExpediente() {
   const params         = useParams();
   const id_paciente    = Number(params.id);
 
-  const [consultas,          setConsultas         ] = useState<IConsulta[]>([]);
-  const [paciente,           setPaciente          ] = useState<IPaciente | null>(null);
-  const [latestAntecedente,  setLatestAntecedente ] = useState<IAntecedenteMedico | null>(null);
-  const [podologos,          setPodologos         ] = useState<IUser[]>([]);
-  const [sucursales,         setSucursales        ] = useState<ISucursal[]>([]);
-  const [loading,            setLoading           ] = useState(true);
+  // Podólogos filtrados por la sucursal elegida en el modal; mientras no se elija, la lista completa.
+  const [podologosForSucursal, setPodologosForSucursal] = useState<IUser[] | null>(null);
   const [showModal,          setShowModal         ] = useState(false);
   const [form,               setForm              ] = useState<IConsulta | null>(null);
   const [saving,             setSaving            ] = useState(false);
   const [error,              setError             ] = useState<string | null>(null);
 
-  const fetchPaciente = async () => {
-    const data = await getPacienteById(id_paciente);
-    if (data) setPaciente(data);
-  };
+  // Todas las cargas esperan al usuario y se repiten al cambiar de paciente, como antes.
+  const expedienteKey = user ? [user.id_user, id_paciente] : null;
 
-  const fetchPodologos = async () => {
-    const data = await getPodologos();
-    setPodologos(data);
-  };
+  const consultasData = useAsyncData(expedienteKey, () => getConsultasByPaciente(id_paciente));
+  const consultas: IConsulta[] = consultasData.data ?? [];
+  // Sin usuario autenticado todavía se muestra "Cargando", igual que antes.
+  const loading = !user || consultasData.loading;
+  const fetchConsultas = consultasData.reload;
 
-  const fetchSucursales = async () => {
-    const data = await getSucursalesActivas();
-    setSucursales(data);
-  };
+  const pacienteData = useAsyncData(expedienteKey, () => getPacienteById(id_paciente));
+  const paciente: IPaciente | null = pacienteData.data ?? null;
 
-  const fetchLatestAntecedente = async () => {
-    const data = await getAntecedentesByPaciente(id_paciente);
-    if (data.length) {
-      const sorted = [...data].sort(
+  const antecedentesData = useAsyncData(expedienteKey, () => getAntecedentesByPaciente(id_paciente));
+  const latestAntecedente: IAntecedenteMedico | null = antecedentesData.data?.length
+    ? [...antecedentesData.data].sort(
         (a: IAntecedenteMedico, b: IAntecedenteMedico) =>
           b.id_antecedente_medico - a.id_antecedente_medico
-      );
-      setLatestAntecedente(sorted[0]);
-    }
-  };
+      )[0]
+    : null;
 
-  const fetchConsultas = async () => {
-    setLoading(true);
-    try {
-      const data = await getConsultasByPaciente(id_paciente);
-      setConsultas(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const allPodologosData = useAsyncData(expedienteKey, () => getPodologos());
+  const podologos: IUser[] = podologosForSucursal ?? allPodologosData.data ?? [];
 
-  useEffect(() => {
-    if (user) {
-      fetchPaciente();
-      fetchConsultas();
-      fetchLatestAntecedente();
-      fetchPodologos();
-      fetchSucursales();
-    }
-  }, [user, id_paciente]);
+  const sucursalesData = useAsyncData(expedienteKey, () => getSucursalesActivas());
+  const sucursales: ISucursal[] = sucursalesData.data ?? [];
 
   const openNew = async () => {
     if (!user) return;
@@ -125,7 +102,7 @@ export function useExpediente() {
     setShowModal(true);
     if (id_sucursal_new) {
       const data = await getPodologosBySucursal(id_sucursal_new);
-      setPodologos(data);
+      setPodologosForSucursal(data);
     }
   };
 
@@ -146,7 +123,7 @@ export function useExpediente() {
   const handleSucursalChange = async (id_sucursal: number) => {
     setForm((prev) => prev ? { ...prev, id_sucursal, id_podologo: 0 } : prev);
     const data = await getPodologosBySucursal(id_sucursal);
-    setPodologos(data);
+    setPodologosForSucursal(data);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -156,7 +133,7 @@ export function useExpediente() {
     setError(null);
     try {
       const isNew = form.id_consulta === 0;
-      let submitForm = { ...form };
+      const submitForm = { ...form };
       if (isNew) {
         const date = buildDate(new Date());
         submitForm.fecha = date;

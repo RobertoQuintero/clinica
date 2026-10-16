@@ -5,8 +5,6 @@ import React from "react";
 import PagoFila from "./PagoFila";
 
 interface Props {
-  costoTotal:         number;
-  onCostoTotalChange: (val: number) => void;
   totalPagado:        number;
   saldo:              number;
   pagos:              IPago[];
@@ -24,12 +22,9 @@ interface Props {
   deletingPagoId:     number | null;
   canEdit:            boolean;
   onEditarPago:       (id_pago: number, data: EditarPagoData) => Promise<void>;
-  is_onicomicosis?:   boolean;
 }
 
 export default function TabPagar({
-  costoTotal,
-  onCostoTotalChange,
   totalPagado,
   saldo,
   pagos,
@@ -47,18 +42,26 @@ export default function TabPagar({
   deletingPagoId,
   canEdit,
   onEditarPago,
-  is_onicomicosis = false,
 }: Props) {
-  const [mpSearch,   setMpSearch  ] = React.useState("");
+  const [mpSearch,   setMpSearch  ] = React.useState(
+    () => metodoPagoOptions.find((m) => m.idMetodoPago === pagoForm.idMetodoPago)?.descripcion ?? "",
+  );
   const [mpOpen,     setMpOpen    ] = React.useState(false);
   const mpRef = React.useRef<HTMLDivElement>(null);
 
   // sync search label when pagoForm.idMetodoPago changes externally (e.g. reset)
-  React.useEffect(() => {
-    if (!pagoForm.idMetodoPago) { setMpSearch(""); return; }
-    const found = metodoPagoOptions.find((m) => m.idMetodoPago === pagoForm.idMetodoPago);
-    if (found) setMpSearch(found.descripcion);
-  }, [pagoForm.idMetodoPago, metodoPagoOptions]);
+  const [previousIdMetodoPago, setPreviousIdMetodoPago] = React.useState(pagoForm.idMetodoPago);
+  const [previousMetodoPagoOptions, setPreviousMetodoPagoOptions] = React.useState(metodoPagoOptions);
+  if (pagoForm.idMetodoPago !== previousIdMetodoPago || metodoPagoOptions !== previousMetodoPagoOptions) {
+    setPreviousIdMetodoPago(pagoForm.idMetodoPago);
+    setPreviousMetodoPagoOptions(metodoPagoOptions);
+    if (!pagoForm.idMetodoPago) {
+      setMpSearch("");
+    } else {
+      const found = metodoPagoOptions.find((m) => m.idMetodoPago === pagoForm.idMetodoPago);
+      if (found) setMpSearch(found.descripcion);
+    }
+  }
 
   // close dropdown on outside click
   React.useEffect(() => {
@@ -77,7 +80,7 @@ export default function TabPagar({
     if (saldo > 0) {
       onPagoFormChange((f) => ({ ...f, monto: saldo }));
     }
-  }, [saldo]);
+  }, [saldo, onPagoFormChange]);
 
   return (
     <div className="space-y-6">

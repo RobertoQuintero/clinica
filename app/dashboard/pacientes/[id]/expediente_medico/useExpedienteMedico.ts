@@ -2,8 +2,9 @@ import { IAntecedenteMedico } from "@/interfaces/antecedentes";
 import { IPaciente } from "@/interfaces/paciente";
 import { addZeroToday } from "@/utils/date_helpper";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getAntecedentes, getPacienteById, saveAntecedente } from "./actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 
 export const BOOL_LABELS: Record<string, string> = {
   alergia_anestesia:           "Alergia anestesia",
@@ -70,33 +71,17 @@ export function useExpedienteMedico() {
   const params      = useParams();
   const id_paciente = Number(params.id);
 
-  const [antecedentes, setAntecedentes] = useState<IAntecedenteMedico[]>([]);
-  const [paciente, setPaciente]         = useState<IPaciente | null>(null);
-  const [loading, setLoading]           = useState(true);
   const [showModal, setShowModal]       = useState(false);
   const [form, setForm]                 = useState<IAntecedenteMedico | null>(null);
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState<string | null>(null);
 
-  const fetchPaciente = async () => {
-    const paciente = await getPacienteById(id_paciente);
-    if (paciente) setPaciente(paciente);
-  };
+  const pacienteData = useAsyncData([id_paciente], () => getPacienteById(id_paciente));
+  const paciente: IPaciente | null = pacienteData.data ?? null;
 
-  const fetchAntecedentes = async () => {
-    setLoading(true);
-    try {
-      const data = await getAntecedentes(id_paciente);
-      setAntecedentes(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPaciente();
-    fetchAntecedentes();
-  }, [id_paciente]);
+  const antecedentesData = useAsyncData([id_paciente], () => getAntecedentes(id_paciente));
+  const { loading, reload: fetchAntecedentes } = antecedentesData;
+  const antecedentes: IAntecedenteMedico[] = antecedentesData.data ?? [];
 
   const openNew = () => {
     const latest = antecedentes.length

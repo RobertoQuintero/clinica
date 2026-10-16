@@ -5,13 +5,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getEnlaces } from "./actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import EnlaceFila from "./componentes/EnlaceFila";
 
 export default function EnlacesPage() {
   const { user }              = useAuth();
   const router                = useRouter();
-  const [enlaces, setEnlaces] = useState<IPatologiaUrl[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, reload: reloadEnlaces } = useAsyncData([], () => getEnlaces());
+  const enlaces: IPatologiaUrl[] = data ?? [];
   const [search, setSearch]   = useState("");
 
   type SortKey = "nombre";
@@ -26,18 +27,6 @@ export default function EnlacesPage() {
   useEffect(() => {
     if (user && user.id_role === 3) router.replace("/dashboard");
   }, [user, router]);
-
-  const fetchEnlaces = async () => {
-    setLoading(true);
-    try {
-      const data = await getEnlaces();
-      setEnlaces(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchEnlaces(); }, []);
 
   const enlacesFiltrados = enlaces
     .filter((e) => e.nombre_patologia.toLowerCase().includes(search.toLowerCase()))
@@ -97,7 +86,7 @@ export default function EnlacesPage() {
                   <EnlaceFila
                     key={e.id_patologia_url}
                     enlace={e}
-                    onSaved={fetchEnlaces}
+                    onSaved={reloadEnlaces}
                   />
                 ))
               )}

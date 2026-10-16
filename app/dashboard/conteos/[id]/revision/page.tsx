@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import {
@@ -14,18 +14,19 @@ import { StockCountDecision } from "@/interfaces/stock_count";
 import StockCountStatusBadge from "../../componentes/StockCountStatusBadge";
 import CountReviewTable from "./componentes/CountReviewTable";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
+import { useActionData } from "@/hooks/useActionData";
 
 type DecisionState = Record<number, { decision: StockCountDecision | null; reviewer_notes: string }>;
 
 export default function CountReviewPage() {
   const params = useParams();
-  const router = useRouter();
   const id_stock_count = Number(params.id);
 
-  const [review, setReview] = useState<IStockCountReview | null>(null);
+  const reviewKey = id_stock_count ? [id_stock_count] : null;
+  const reviewData = useActionData(reviewKey, () => getCountReview(id_stock_count));
+  const { loading, error: loadError, reload: reloadReview } = reviewData;
+  const review: IStockCountReview | null = reviewData.data ?? null;
   const [decisions, setDecisions] = useState<DecisionState>({});
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -35,30 +36,21 @@ export default function CountReviewPage() {
   const [closing, setClosing] = useState(false);
   const [closeError, setCloseError] = useState<string | null>(null);
 
-  const loadData = () => {
-    if (!id_stock_count) return;
-    setLoading(true);
-    setLoadError(null);
-    getCountReview(id_stock_count).then((result) => {
-      if (!result.ok) {
-        setLoadError(result.message);
-        setLoading(false);
-        return;
-      }
-      setReview(result.data);
-      const initial: DecisionState = {};
-      for (const line of result.data.lines) {
-        initial[line.id_stock_count_item] = {
-          decision: line.decision,
-          reviewer_notes: line.reviewer_notes ?? "",
-        };
-      }
-      setDecisions(initial);
-      setLoading(false);
-    });
-  };
-
-  useEffect(loadData, [id_stock_count]);
+  // Las decisiones son estado del usuario: se inicializan en el render solo cuando llega otro conteo,
+  // así una recarga no pisa lo capturado.
+  const serializedReviewKey = JSON.stringify(reviewKey);
+  const [decisionsInitializedForKey, setDecisionsInitializedForKey] = useState<string | null>(null);
+  if (review && decisionsInitializedForKey !== serializedReviewKey) {
+    setDecisionsInitializedForKey(serializedReviewKey);
+    const initial: DecisionState = {};
+    for (const line of review.lines) {
+      initial[line.id_stock_count_item] = {
+        decision: line.decision,
+        reviewer_notes: line.reviewer_notes ?? "",
+      };
+    }
+    setDecisions(initial);
+  }
 
   const readOnly = review ? review.header.status !== "pendiente_revision" : true;
   const allDecided =
@@ -116,7 +108,7 @@ export default function CountReviewPage() {
       return;
     }
     setShowCloseConfirm(false);
-    loadData();
+    reloadReview();
   };
 
   if (loading) {

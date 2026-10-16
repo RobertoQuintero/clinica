@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { IEmployeeUserListItem } from "@/interfaces/user";
@@ -15,16 +16,12 @@ interface Props {
  *  El filtrado es en el cliente: la lista ya viene acotada por empresa desde el servidor. */
 export default function LinkUserModal({ id_empleado, linkableUsers }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
   const [searchText, setSearchText] = useState("");
   const [linkingUserId, setLinkingUserId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   function closeModal() {
     setIsOpen(false);
@@ -77,7 +74,7 @@ export default function LinkUserModal({ id_empleado, linkableUsers }: Props) {
       </button>
 
       {isOpen &&
-        mounted &&
+        isClient &&
         createPortal(
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"

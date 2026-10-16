@@ -68,36 +68,16 @@ const buildRecetaMessage = (
   return lines.join("\n");
 };
 
-const buildWhatsAppUrl = (
-  receta:             { ruta: string; created_at: string },
-  whatsapp:           string | null,
-  phone_code:         string | null,
-  nombre_paciente:    string,
-  nombre_podologo:    string,
-  nombre_especialista: string,
-): string | null => {
-  if (!whatsapp) return null;
-  const digits = whatsapp.replace(/\D/g, "");
-  const code   = phone_code ?? "52";
-  const phone  = digits.startsWith(code) ? digits : `${code}${digits}`;
-
-  const message = buildRecetaMessage(receta, nombre_paciente, nombre_podologo, nombre_especialista);
-
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-};
-
 interface Props {
   id_tratamiento:     number;
   nombre_paciente:    string;
   nombre_podologo:    string;
   nombre_especialista: string;
-  whatsapp:           string | null;
-  phone_code:         string | null;
   id_stage:           number;
   id_role:            number;
 }
 
-export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nombre_podologo, nombre_especialista, whatsapp, phone_code, id_stage, id_role }: Props) {
+export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nombre_podologo, nombre_especialista, id_stage, id_role }: Props) {
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -291,7 +271,6 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
                   {recetas.map((r, idx) => {
-                    const waUrl = buildWhatsAppUrl(r, whatsapp, phone_code, nombre_paciente, nombre_podologo, nombre_especialista);
                     return (
                     <tr key={r.id_archivo} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                       <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">

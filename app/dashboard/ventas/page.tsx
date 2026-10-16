@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { addZeroToday } from "@/utils/date_helpper";
 import { getVentas, getMetodosPagos, getSaleProducts, saveVenta, VentaForm, ISaleProduct } from "./actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import VentaFila from "./componentes/VentaFila";
 import VentaModal from "./componentes/VentaModal";
 import { SucursalName } from "../componentes/SucursalName";
@@ -21,10 +22,8 @@ export default function VentasPage() {
   const { selectedId} = useSucursal();
   const today = addZeroToday(new Date());
 
-  const [ventas, setVentas]           = useState<IVenta[]>([]);
   const [productos, setProductos]     = useState<ISaleProduct[]>([]);
   const [metodos, setMetodos]         = useState<IMetodoPago[]>([]);
-  const [loading, setLoading]         = useState(true);
   const [fechaInicio, setFechaInicio] = useState(today);
   const [fechaFin, setFechaFin]       = useState(today);
   const [showModal, setShowModal]     = useState(false);
@@ -32,15 +31,12 @@ export default function VentasPage() {
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
-  const fetchVentas = async () => {
-    setLoading(true);
-    try {
-      const data = await getVentas(selectedId, fechaInicio, fechaFin);
-      setVentas(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Load ventas when filters change
+  const { data, loading, reload: reloadVentas } = useAsyncData(
+    [selectedId, fechaInicio, fechaFin],
+    () => getVentas(selectedId, fechaInicio, fechaFin),
+  );
+  const ventas: IVenta[] = data ?? [];
 
   // Load catalogues when sucursal changes
   useEffect(() => {
@@ -49,9 +45,6 @@ export default function VentasPage() {
       setMetodos(mets);
     });
   }, [selectedId]);
-
-  // Load ventas when filters change
-  useEffect(() => { fetchVentas(); }, [selectedId, fechaInicio, fechaFin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: selectedId });
@@ -121,7 +114,7 @@ export default function VentasPage() {
       const res = await saveVenta(form);
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchVentas();
+      await reloadVentas();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -209,7 +202,7 @@ export default function VentasPage() {
                   key={v.id_venta}
                   venta={v}
                   onEdit={openEdit}
-                  onDeleted={fetchVentas}
+                  onDeleted={reloadVentas}
                 />
               ))
             )}

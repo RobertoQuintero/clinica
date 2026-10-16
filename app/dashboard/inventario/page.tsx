@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import { IProductCategory } from "@/interfaces/product_category";
 import { getSuggestedProducts } from "@/app/dashboard/pedidos/actions";
@@ -12,10 +13,7 @@ import CurrentInventoryTable from "./componentes/CurrentInventoryTable";
 export default function InventarioPage() {
   const { selectedId } = useSucursal();
 
-  const [products, setProducts]     = useState<ISuggestedProduct[]>([]);
   const [categories, setCategories] = useState<IProductCategory[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
 
   const [search, setSearch]                 = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -24,20 +22,14 @@ export default function InventarioPage() {
     getCategories().then(setCategories);
   }, []);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    setLoading(true);
-    setError(null);
-    getSuggestedProducts(selectedId)
-      .then((result) => {
-        if (result.ok) {
-          setProducts(result.data);
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId]);
+  const suggestedProducts = useActionData(selectedId ? [selectedId] : null, () =>
+    getSuggestedProducts(selectedId),
+  );
+  const { loading, error } = suggestedProducts;
+  const products = useMemo<ISuggestedProduct[]>(
+    () => suggestedProducts.data ?? [],
+    [suggestedProducts.data],
+  );
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((c) => [c.id_category, c.name])),

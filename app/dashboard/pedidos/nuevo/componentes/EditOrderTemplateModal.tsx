@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { X, TriangleAlert } from "lucide-react";
 import {
@@ -19,36 +21,39 @@ interface Props {
 }
 
 export default function EditOrderTemplateModal({ id_purchase_order_template, onClose, onSaved }: Props) {
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const isClient = useIsClient();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [items, setItems] = useState<IPurchaseOrderTemplateItemDetail[]>([]);
-  const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
 
-  useEffect(() => setMounted(true), []);
-
-  useEffect(() => {
-    setLoading(true);
+  const templateKey = [id_purchase_order_template] as const;
+  const templateData = useAsyncData(templateKey, () =>
     Promise.all([
       getPurchaseOrderTemplateById(id_purchase_order_template),
       getSuppliers(),
-    ]).then(([templateResult, supplierList]) => {
-      setSuppliers(supplierList);
-      if (!templateResult.ok) {
-        setError(templateResult.message);
-        setLoading(false);
-        return;
-      }
+    ]),
+  );
+  const { loading } = templateData;
+  const suppliers: ISupplier[] = templateData.data?.[1] ?? [];
+
+  // name e items son estado del usuario: se llenan en el render solo cuando llega otra plantilla.
+  const serializedTemplateKey = JSON.stringify(templateKey);
+  const [formInitializedForKey, setFormInitializedForKey] = useState<string | null>(null);
+  if (templateData.data && formInitializedForKey !== serializedTemplateKey) {
+    const [templateResult] = templateData.data;
+    setFormInitializedForKey(serializedTemplateKey);
+    if (templateResult.ok) {
       setName(templateResult.data.template.name);
       setItems(templateResult.data.items);
-      setLoading(false);
-    });
-  }, [id_purchase_order_template]);
+    } else {
+      setError(templateResult.message);
+    }
+  }
+  const displayedError = error ?? templateData.error;
 
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   const setItemQuantity = (id_product: number, quantity: number) => {
     setItems((current) =>
@@ -224,9 +229,9 @@ export default function EditOrderTemplateModal({ id_purchase_order_template, onC
                 )}
               </div>
 
-              {error && (
+              {displayedError && (
                 <p className="rounded-md bg-red-50 dark:bg-red-900/30 px-3 py-2 text-sm text-[#ba1a1a] dark:text-red-400">
-                  {error}
+                  {displayedError}
                 </p>
               )}
             </div>

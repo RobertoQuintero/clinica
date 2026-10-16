@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { createPurchaseOrderTemplate } from "@/app/dashboard/pedidos/actions";
 import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
@@ -15,7 +16,7 @@ export default function SaveCartAsTemplateModal({ onClose, onSaved }: Props) {
   const { lines } = usePurchaseCart();
   const { selectedId } = useSucursal();
 
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,11 +24,10 @@ export default function SaveCartAsTemplateModal({ onClose, onSaved }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setMounted(true);
     setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

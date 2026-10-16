@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { cambiarPassword } from "@/app/dashboard/actions";
 
@@ -9,7 +10,7 @@ interface Props {
 }
 
 export default function CambiarPasswordModal({ onClose }: Props) {
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -23,11 +24,10 @@ export default function CambiarPasswordModal({ onClose }: Props) {
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setMounted(true);
     setTimeout(() => firstInputRef.current?.focus(), 50);
   }, []);
 
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));

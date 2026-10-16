@@ -10,6 +10,7 @@ import PacienteModal from "./componentes/PacienteModal";
 import { getPacientes, savePaciente, buscarPacientesExternos, buscarPacientesPorSucursal, getPhoneCodes, exportPacientesSucursal } from "./actions";
 import { SucursalName } from "../componentes/SucursalName";
 import { addZeroToday } from "@/utils/date_helpper";
+import { useAsyncData } from "@/hooks/useAsyncData";
 
 function slugifySucursalName(name: string): string {
   return name
@@ -52,9 +53,7 @@ export default function PacientesPage() {
   const canSeeWhatsapp = user?.id_role === 1 || user?.id_role === 4;
   const canExportExcel = user?.id_role === 1 || user?.id_role === 4;
   const { selectedId, sucursales } = useSucursal();
-  const [pacientes, setPacientes] = useState<IPaciente[]>([]);
   const [phoneCodes, setPhoneCodes] = useState<IPhoneCode[]>([]);
-  const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]           = useState<IPaciente>(EMPTY);
   const [saving, setSaving]       = useState(false);
@@ -89,15 +88,10 @@ export default function PacientesPage() {
     if (sortKey === key) setSortAsc((prev) => !prev);
     else { setSortKey(key); setSortAsc(true); }
   };
-  const fetchPacientes = async () => {
-    setLoading(true);
-    try {
-      const data = await getPacientes();
-      setPacientes(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // La action toma la sucursal de la cookie; selectedId va en la key para recargar al cambiarla.
+  const pacientesData = useAsyncData([selectedId], () => getPacientes());
+  const { loading, reload: reloadPacientes } = pacientesData;
+  const pacientes: IPaciente[] = pacientesData.data ?? [];
 
   const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
@@ -111,7 +105,6 @@ export default function PacientesPage() {
     }
   };
 
-  useEffect(() => { fetchPacientes(); }, [selectedId]);
   useEffect(() => { getPhoneCodes().then(setPhoneCodes); }, []);
 
   const openNew = () => {
@@ -143,7 +136,7 @@ export default function PacientesPage() {
       const result = await savePaciente(form);
       if (!result.ok) throw new Error(result.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchPacientes();
+      await reloadPacientes();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {

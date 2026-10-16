@@ -23,10 +23,13 @@ export default function SucursalModal({ form, states, saving, error, onChange, o
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Sync query label when form.id_state changes from outside (openEdit)
-  useEffect(() => {
-    const match = states.find((s) => s.id_state === form.id_state);
-    setQuery(match?.description ?? "");
-  }, [form.id_state, states]);
+  const [previousStateId, setPreviousStateId] = useState(form.id_state);
+  const [previousStates, setPreviousStates] = useState(states);
+  if (form.id_state !== previousStateId || states !== previousStates) {
+    setPreviousStateId(form.id_state);
+    setPreviousStates(states);
+    setQuery(selectedState?.description ?? "");
+  }
 
   const filtered = query.trim()
     ? states.filter((s) => s.description.toLowerCase().includes(query.toLowerCase()))

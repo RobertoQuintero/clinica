@@ -50,17 +50,14 @@ export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }
   const [open, setOpen]             = useState(true);
   const [modalOpen, setModalOpen]   = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [updating, setUpdating]     = useState(false);
 
   const { user } = useAuth();
 
   const canApprove = detalle.id_stage === 1 && (user?.id_role === 5 );
 
   const handleApprove = async () => {
-    setUpdating(true);
     await updateTratamientoStage(detalle.id_tratamiento, 2);
     onStageUpdated?.();
-    setUpdating(false);
   };
 
   return (

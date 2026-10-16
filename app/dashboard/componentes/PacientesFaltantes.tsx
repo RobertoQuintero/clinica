@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getPacientesFaltantes, IPacienteFaltante } from "../actions";
+import { useState } from "react";
+import { getPacientesFaltantes } from "../actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { useSucursal } from "@/contexts/SucursalContext";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,19 +17,15 @@ const fmtDate = (val: string | null) => {
 export default function PacientesFaltantes() {
   const { selectedId } = useSucursal();
   const { user } = useAuth();
-  const [pacientes, setPacientes] = useState<IPacienteFaltante[]>([]);
-  const [loading, setLoading]     = useState(true);
   const [dias, setDias]         = useState(90);
   const [inputDias, setInputDias] = useState(90);
 
-  useEffect(() => {
-    if (!dias || dias < 1) return;
-    setLoading(true);
-    getPacientesFaltantes(dias).then((data) => {
-      setPacientes(data);
-      setLoading(false);
-    });
-  }, [selectedId, dias]);
+  // La action toma la sucursal de la cookie; selectedId va en la key para recargar al cambiarla.
+  // Con dias < 1 no se carga y se muestra el estado vacío.
+  const { data, loading } = useAsyncData(dias >= 1 ? [selectedId, dias] : null, () =>
+    getPacientesFaltantes(dias),
+  );
+  const pacientes = data ?? [];
 
   if (loading) return <p className="text-sm text-zinc-400">Cargando...</p>;
 

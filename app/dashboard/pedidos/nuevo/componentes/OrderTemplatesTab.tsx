@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, Plus, TriangleAlert, X } from "lucide-react";
 import {
   getPurchaseOrderTemplates,
@@ -10,6 +10,7 @@ import {
 import { IPurchaseOrderTemplateListItem } from "@/interfaces/purchase_order_template";
 import { usePurchaseCart, IPurchaseCartLine } from "@/contexts/PurchaseCartContext";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
+import { useActionData } from "@/hooks/useActionData";
 import OrderTemplateCard from "./OrderTemplateCard";
 import EditOrderTemplateModal from "./EditOrderTemplateModal";
 
@@ -23,12 +24,15 @@ interface PreparedTemplateLines {
   omittedNames:  string[];
 }
 
+// Vacío estable: `filteredTemplates` se memoiza sobre la identidad de `templates`.
+const NO_TEMPLATES: IPurchaseOrderTemplateListItem[] = [];
+
 export default function OrderTemplatesTab({ onCreateNew }: Props) {
   const { lines: cartLines, replaceLines } = usePurchaseCart();
 
-  const [templates, setTemplates] = useState<IPurchaseOrderTemplateListItem[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
+  const templatesData = useActionData([], () => getPurchaseOrderTemplates());
+  const { loading, error, reload: reloadTemplates } = templatesData;
+  const templates: IPurchaseOrderTemplateListItem[] = templatesData.data ?? NO_TEMPLATES;
   const [search, setSearch]       = useState("");
 
   const [editingId, setEditingId]           = useState<number | null>(null);
@@ -39,23 +43,6 @@ export default function OrderTemplatesTab({ onCreateNew }: Props) {
   const [usingTemplateId, setUsingTemplateId] = useState<number | null>(null);
   const [pendingReplace, setPendingReplace]   = useState<PreparedTemplateLines | null>(null);
   const [notice, setNotice]                   = useState<string | null>(null);
-
-  const loadTemplates = () => {
-    setLoading(true);
-    setError(null);
-    getPurchaseOrderTemplates().then((result) => {
-      if (result.ok) {
-        setTemplates(result.data);
-      } else {
-        setError(result.message);
-      }
-      setLoading(false);
-    });
-  };
-
-  useEffect(() => {
-    loadTemplates();
-  }, []);
 
   const filteredTemplates = useMemo(() => {
     if (!search.trim()) return templates;
@@ -78,7 +65,7 @@ export default function OrderTemplatesTab({ onCreateNew }: Props) {
     }
 
     setDeletingTemplate(null);
-    loadTemplates();
+    reloadTemplates();
   };
 
   /** Resuelve las líneas de una plantilla contra el catálogo actual y separa las utilizables de las omitidas. */
@@ -226,7 +213,7 @@ export default function OrderTemplatesTab({ onCreateNew }: Props) {
           onClose={() => setEditingId(null)}
           onSaved={() => {
             setEditingId(null);
-            loadTemplates();
+            reloadTemplates();
           }}
         />
       )}

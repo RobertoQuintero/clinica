@@ -1,11 +1,11 @@
 "use client";
 
 import { IServicio } from "@/interfaces/servicio";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { getServicios, saveServicio, copiarServicios } from "./actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import ServicioFila from "./componentes/ServicioFila";
 import ServicioModal from "./componentes/ServicioModal";
 
@@ -16,9 +16,10 @@ const EMPTY: FormData = { id_servicio: 0, nombre: "", descripcion: "", id_sucurs
 export default function ServiciosPage() {
   const { user }                  = useAuth();
   const { selectedId }            = useSucursal();
-  const router                    = useRouter();
-  const [servicios, setServicios] = useState<IServicio[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const { data, loading, reload: reloadServicios } = useAsyncData([selectedId], () =>
+    getServicios(selectedId),
+  );
+  const servicios: IServicio[] = data ?? [];
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]           = useState<FormData>(EMPTY);
   const [saving, setSaving]       = useState(false);
@@ -39,18 +40,6 @@ export default function ServiciosPage() {
   const readOnly  = user?.id_role === 2 || user?.id_role === 3;
   const canCopy   = user?.id_role === 4 && !loading && servicios.length === 0;
 
-  const fetchServicios = async () => {
-    setLoading(true);
-    try {
-      const data = await getServicios(selectedId);
-      setServicios(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchServicios(); }, [selectedId]);
-
   const openNew = () => {
     setForm({ ...EMPTY, id_sucursal: selectedId });
     setError(null);
@@ -63,7 +52,7 @@ export default function ServiciosPage() {
     try {
       const res = await copiarServicios(selectedId);
       if (!res.ok) throw new Error(res.message ?? "Error al copiar");
-      await fetchServicios();
+      await reloadServicios();
     } catch (err: unknown) {
       setCopyError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -89,7 +78,7 @@ export default function ServiciosPage() {
       const res = await saveServicio(form);
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchServicios();
+      await reloadServicios();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -177,7 +166,7 @@ export default function ServiciosPage() {
                     key={s.id_servicio}
                     servicio={s}
                     onEdit={openEdit}
-                    onDeleted={fetchServicios}
+                    onDeleted={reloadServicios}
                     readOnly={readOnly}
                   />
                 ))

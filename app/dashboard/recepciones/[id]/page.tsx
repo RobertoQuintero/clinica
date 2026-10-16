@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { useActionData } from "@/hooks/useActionData";
 import {
   getReceptionDetail,
   confirmReception,
@@ -18,34 +19,28 @@ export default function ReceptionCapturePage() {
   const router = useRouter();
   const id_purchase_order = Number(params.id);
 
-  const [detail, setDetail]   = useState<IReceptionDetail | null>(null);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [notes, setNotes]     = useState("");
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id_purchase_order) return;
-    setLoading(true);
-    setLoadError(null);
-    getReceptionDetail(id_purchase_order)
-      .then((result) => {
-        if (result.ok) {
-          setDetail(result.data);
-          // Por defecto se propone recibir todo lo pendiente; el usuario ajusta si llegó parcial.
-          const initialQuantities: Record<number, number> = {};
-          for (const item of result.data.items) {
-            initialQuantities[item.id_purchase_order_item] = item.quantity_pending;
-          }
-          setQuantities(initialQuantities);
-        } else {
-          setLoadError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [id_purchase_order]);
+  const receptionKey = id_purchase_order ? [id_purchase_order] : null;
+  const receptionData = useActionData(receptionKey, () => getReceptionDetail(id_purchase_order));
+  const { loading, error: loadError } = receptionData;
+  const detail: IReceptionDetail | null = receptionData.data ?? null;
+
+  // Las cantidades son estado del usuario: se inicializan en el render solo cuando llega otra orden.
+  // Por defecto se propone recibir todo lo pendiente; el usuario ajusta si llegó parcial.
+  const serializedReceptionKey = JSON.stringify(receptionKey);
+  const [quantitiesInitializedForKey, setQuantitiesInitializedForKey] = useState<string | null>(null);
+  if (detail && quantitiesInitializedForKey !== serializedReceptionKey) {
+    setQuantitiesInitializedForKey(serializedReceptionKey);
+    const initialQuantities: Record<number, number> = {};
+    for (const item of detail.items) {
+      initialQuantities[item.id_purchase_order_item] = item.quantity_pending;
+    }
+    setQuantities(initialQuantities);
+  }
 
   const summary = useMemo(() => {
     if (!detail) return { total: 0, completed: 0, withDifference: 0 };

@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   getConsultaProductos,
   getProductosCatalogo,
   ConsultaProductoExtended,
 } from "../actions";
 import { ISaleProduct } from "@/app/dashboard/ventas/actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import AddProductoForm from "./AddProductoForm";
 import ProductoRow from "./ProductoRow";
+
+// Vacíos estables: el effect que reporta el total depende de la identidad de `productos`.
+const NO_PRODUCTOS: ConsultaProductoExtended[] = [];
+const NO_CATALOGO: ISaleProduct[] = [];
 
 interface Props {
   id_consulta:   number;
@@ -20,29 +25,22 @@ interface Props {
 const HEADERS = ["Producto", "Cantidad", "Precio unit.", "Subtotal", ""];
 
 export default function TabProductos({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
-  const [productos, setProductos] = useState<ConsultaProductoExtended[]>([]);
-  const [catalogo,  setCatalogo ] = useState<ISaleProduct[]>([]);
-  const [loading,   setLoading  ] = useState(true);
-  const [error,     setError    ] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    Promise.all([
+  const productosData = useAsyncData([id_consulta], async () => {
+    const [productos, catalogo] = await Promise.all([
       getConsultaProductos(id_consulta),
       getProductosCatalogo(id_consulta),
-    ]).then(([cp, cat]) => {
-      if (cancelled) return;
-      setProductos(cp);
-      setCatalogo(cat);
-      setLoading(false);
-    }).catch(() => {
-      if (cancelled) return;
-      setError("Error al cargar los productos");
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [id_consulta]);
+    ]);
+    return { productos, catalogo };
+  });
+  const { loading, mutate: mutateProductosData } = productosData;
+  const productos: ConsultaProductoExtended[] = productosData.data?.productos ?? NO_PRODUCTOS;
+  const catalogo:  ISaleProduct[]             = productosData.data?.catalogo ?? NO_CATALOGO;
+  const error = productosData.error ? "Error al cargar los productos" : null;
+
+  // Altas, ediciones y bajas ya guardadas en el servidor: se reflejan localmente sin recargar.
+  const updateProductos = (
+    updater: (current: ConsultaProductoExtended[]) => ConsultaProductoExtended[],
+  ) => mutateProductosData((current) => ({ ...current, productos: updater(current.productos) }));
 
   const total = productos
     .filter((p) => p.status === "activo")
@@ -66,7 +64,7 @@ export default function TabProductos({ id_consulta, locked, onContinuar, onTotal
         <AddProductoForm
           id_consulta={id_consulta}
           catalogo={catalogo}
-          onAdd={(p) => setProductos((prev) => [...prev, p])}
+          onAdd={(p) => updateProductos((prev) => [...prev, p])}
         />
       )}
 
@@ -91,12 +89,12 @@ export default function TabProductos({ id_consulta, locked, onContinuar, onTotal
                     key={p.id_consulta_producto}
                     producto={p}
                     onUpdate={(updated) =>
-                      setProductos((prev) =>
+                      updateProductos((prev) =>
                         prev.map((x) => x.id_consulta_producto === updated.id_consulta_producto ? updated : x)
                       )
                     }
                     onDelete={(id) =>
-                      setProductos((prev) => prev.filter((x) => x.id_consulta_producto !== id))
+                      updateProductos((prev) => prev.filter((x) => x.id_consulta_producto !== id))
                     }
                   />
                 ))}

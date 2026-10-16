@@ -1,18 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-
-function useIsLargeScreen() {
-  const [isLarge, setIsLarge] = useState(false);
-  const check = useCallback(() => setIsLarge(window.matchMedia("(min-width: 1024px)").matches), []);
-  useEffect(() => {
-    check();
-    const mq = window.matchMedia("(min-width: 1024px)");
-    mq.addEventListener("change", check);
-    return () => mq.removeEventListener("change", check);
-  }, [check]);
-  return isLarge;
-}
+import { useEffect, useState, useRef, useMemo } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { addZeroToday } from "@/utils/date_helpper";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { getEstadisticas, getEstadisticasMultiple, IEstadisticasData } from "@/app/dashboard/actions";
@@ -34,8 +24,14 @@ import {
 type ServicioStat = IEstadisticasData["servicios"][number];
 type ProductoStat = IEstadisticasData["productos"][number];
 type MetodoPagoStat = IEstadisticasData["metodos_pago"][number];
-type VentaMensualStat = IEstadisticasData["ventas_mensuales"][number];
 type EstadisticasData = Omit<IEstadisticasData, "ok">;
+
+/** Filtros con los que se pidieron los datos; `sucursalIds: null` = todas las sucursales (modo global). */
+interface AppliedStatsFilters {
+  fechaInicio: string;
+  fechaFin: string;
+  sucursalIds: number[] | null;
+}
 
 const PIE_COLORS = [
   "#587CD6",
@@ -242,14 +238,18 @@ export default function EstadisticasCharts() {
   const { user } = useAuth();
   const isGlobal = user?.id_role === 4;
   const { sucursales, selectedId } = useSucursal();
-  const [fechaInicio, setFechaInicio] = useState(getFirstDayOfMonth());
-  const [fechaFin, setFechaFin] = useState(addZeroToday(new Date()));
-  const [data, setData] = useState<EstadisticasData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [initialRange] = useState(() => ({ fechaInicio: getFirstDayOfMonth(), fechaFin: addZeroToday(new Date()) }));
+  const [fechaInicio, setFechaInicio] = useState(initialRange.fechaInicio);
+  const [fechaFin, setFechaFin] = useState(initialRange.fechaFin);
   const [metricaProductos, setMetricaProductos] = useState<"cantidad" | "ingresos">("cantidad");
-  const [selectedSucursalIds, setSelectedSucursalIds] = useState<number[]>([]);
-  const globalInitialized = useRef(false);
-  const isLargeScreen = useIsLargeScreen();
+  // Selección de sucursales del modo global; `null` = el usuario aún no la toca y se derivan todas.
+  const [editedSucursalIds, setEditedSucursalIds] = useState<number[] | null>(null);
+  // Filtros que ya se aplicaron con el botón: escribir fechas o marcar sucursales no recarga.
+  const [appliedFilters, setAppliedFilters] = useState<AppliedStatsFilters>(() => ({
+    ...initialRange,
+    sucursalIds: null,
+  }));
+  const isLargeScreen = useMediaQuery("(min-width: 1024px)");
 
   const sucursalesByEstado = useMemo(() => {
     const map: Record<string, ISucursal[]> = {};
@@ -261,69 +261,53 @@ export default function EstadisticasCharts() {
     return map;
   }, [sucursales]);
 
-  const fetchData = async (inicio: string, fin: string, sucursalId: number) => {
-    setLoading(true);
-    try {
-      const result = await getEstadisticas(inicio, fin, sucursalId);
-      if (result.ok) setData(result);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const fetchDataMulti = async (inicio: string, fin: string, ids: number[]) => {
-    if (ids.length === 0) { setData(null); return; }
-    setLoading(true);
-    try {
-      const result = await getEstadisticasMultiple(inicio, fin, ids);
-      if (result.ok) setData(result);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Modo global: arranca con todas las sucursales (derivado) hasta que el usuario edite o aplique otra selección.
+  const allSucursalIds = sucursales.map(s => s.id_sucursal);
+  const selectedSucursalIds = editedSucursalIds ?? allSucursalIds;
+  const appliedSucursalIds = appliedFilters.sucursalIds ?? allSucursalIds;
 
-  // Non-global: react to branch switch
-  useEffect(() => {
-    if (!isGlobal) fetchData(fechaInicio, fechaFin, selectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
-
-  // Global: initialize once when sucursales loads
-  useEffect(() => {
-    if (isGlobal && sucursales.length > 0 && !globalInitialized.current) {
-      globalInitialized.current = true;
-      const allIds = sucursales.map(s => s.id_sucursal);
-      setSelectedSucursalIds(allIds);
-      fetchDataMulti(fechaInicio, fechaFin, allIds);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGlobal, sucursales]);
+  // Modo no global: la sucursal sale del contexto, así que cambiarla recarga con las fechas aplicadas.
+  // Modo global: sin sucursales aplicadas no se carga nada (estado vacío).
+  const statsKey = isGlobal
+    ? appliedSucursalIds.length > 0
+      ? ["multiple", appliedFilters.fechaInicio, appliedFilters.fechaFin, appliedSucursalIds.join(",")]
+      : null
+    : ["single", appliedFilters.fechaInicio, appliedFilters.fechaFin, selectedId];
+  const statsData = useAsyncData(statsKey, () =>
+    isGlobal
+      ? getEstadisticasMultiple(appliedFilters.fechaInicio, appliedFilters.fechaFin, appliedSucursalIds)
+      : getEstadisticas(appliedFilters.fechaInicio, appliedFilters.fechaFin, selectedId),
+  );
+  const { loading } = statsData;
+  const data: EstadisticasData | null = statsData.data?.ok ? statsData.data : null;
 
   const handleAplicar = () => {
-    if (isGlobal) {
-      fetchDataMulti(fechaInicio, fechaFin, selectedSucursalIds);
-    } else {
-      fetchData(fechaInicio, fechaFin, selectedId);
-    }
+    const nextSucursalIds = isGlobal ? selectedSucursalIds : appliedFilters.sucursalIds;
+    // Aplicar filtros que dan la misma key vuelve a pedir los datos, como antes.
+    const keepsSameKey =
+      fechaInicio === appliedFilters.fechaInicio &&
+      fechaFin === appliedFilters.fechaFin &&
+      (!isGlobal || selectedSucursalIds.join(",") === appliedSucursalIds.join(","));
+    setAppliedFilters({ fechaInicio, fechaFin, sucursalIds: nextSucursalIds });
+    if (keepsSameKey) statsData.reload();
   };
 
   const toggleSucursal = (id: number) => {
-    setSelectedSucursalIds(prev =>
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-    );
+    setEditedSucursalIds(prev => {
+      const current = prev ?? allSucursalIds;
+      return current.includes(id) ? current.filter(s => s !== id) : [...current, id];
+    });
   };
 
   const toggleEstado = (sucList: ISucursal[]) => {
     const ids = sucList.map(s => s.id_sucursal);
     const allChecked = ids.every(id => selectedSucursalIds.includes(id));
-    if (allChecked) {
-      setSelectedSucursalIds(prev => prev.filter(id => !ids.includes(id)));
-    } else {
-      setSelectedSucursalIds(prev => [...new Set([...prev, ...ids])]);
-    }
+    setEditedSucursalIds(prev => {
+      const current = prev ?? allSucursalIds;
+      return allChecked
+        ? current.filter(id => !ids.includes(id))
+        : [...new Set([...current, ...ids])];
+    });
   };
 
   const productosOrdenados = data
@@ -407,13 +391,13 @@ export default function EstadisticasCharts() {
             </h4>
             <div className="flex gap-3">
               <button
-                onClick={() => setSelectedSucursalIds(sucursales.map(s => s.id_sucursal))}
+                onClick={() => setEditedSucursalIds(allSucursalIds)}
                 className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 Todas
               </button>
               <button
-                onClick={() => setSelectedSucursalIds([])}
+                onClick={() => setEditedSucursalIds([])}
                 className="text-xs text-zinc-400 dark:text-zinc-500 hover:underline"
               >
                 Ninguna

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { rejectPurchaseRequest } from "../actions";
@@ -13,13 +14,12 @@ interface Props {
 
 /** Motivo obligatorio: no se puede enviar sin texto (criterio de aceptación de la spec 48). */
 export default function RejectRequestModal({ id_purchase_request, onClose, onRejected }: Props) {
-  const [mounted, setMounted]     = useState(false);
+  const isClient = useIsClient();
   const [reason, setReason]       = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   const handleSubmit = async () => {
     if (!reason.trim()) {

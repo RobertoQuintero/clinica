@@ -23,6 +23,14 @@ const nextConfig: NextConfig = {
         hostname: "storage.googleapis.com",
         pathname: "/cdn.facturapi.io/**",
       },
+      // Fotos de tratamientos subidas por app/api/upload (spec 81, spec 83). Se acepta
+      // cualquier cuenta (`*` = cloud name) porque hay fotos guardadas en más de una; solo
+      // `image/upload`, para que `image/fetch` no vuelva el optimizador un proxy abierto.
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/*/image/upload/**",
+      },
     ],
   },
 };
