@@ -39,6 +39,7 @@ import {
   ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
+import { CHRISTMAS_BONUS_SNAPSHOT_SQL } from "@/lib/payroll/christmasBonusSql";
 import {
   ATTENDANCE_BONUS_APPLY_SQL,
   ATTENDANCE_BONUS_INSERT_COLUMNS_SQL,
@@ -914,6 +915,57 @@ function revalidatePayrollPaths() {
 }
 
 /**
+ * Calcular y Recalcular un periodo extraordinario (spec 87): en un solo batch con el periodo leído con
+ * UPDLOCK/HOLDLOCK borra el snapshot, inserta el aguinaldo de cada empleado elegible y deja el periodo en estatus 2.
+ * Revertir funciona igual que en un ordinario gracias al cascade de `period_employees`.
+ */
+async function calculateExtraordinaryPayrollPeriod(
+  idPeriod: number,
+  idSucursal: number,
+  idUser: number,
+): Promise<ActionResult<{ operativa: number; fiscal: number }>> {
+  try {
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @id_payment_period smallint, @fecha_inicio date, @fecha_fin date;
+       SELECT @id_payment_period = id_payment_period,
+              @fecha_inicio      = fecha_inicio,
+              @fecha_fin         = fecha_fin
+         FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status IN (1, 2) AND tipo_periodo = 'E';
+       IF @id_payment_period IS NULL
+         THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
+
+       DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
+       ${CHRISTMAS_BONUS_SNAPSHOT_SQL}
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))
+        WHERE id_period = @id_period;
+
+       COMMIT;
+
+       SELECT ISNULL(SUM(CASE WHEN tipo_nomina = 'O' THEN 1 ELSE 0 END), 0) AS operativa,
+              ISNULL(SUM(CASE WHEN tipo_nomina = 'F' THEN 1 ELSE 0 END), 0) AS fiscal
+         FROM [CentroPodologico].[payroll].[period_employees]
+        WHERE id_period = @id_period;`,
+      { id_period: idPeriod, id_sucursal: idSucursal, calculated_by: idUser, calculated_at: buildDate(new Date()) },
+    );
+
+    revalidatePayrollPaths();
+    return {
+      ok: true,
+      data: { operativa: Number(rows[0]?.operativa ?? 0), fiscal: Number(rows[0]?.fiscal ?? 0) },
+    };
+  } catch (error) {
+    console.error("calculateExtraordinaryPayrollPeriod", error);
+    return { ok: false, message: describePayrollCalculationError(error) };
+  }
+}
+
+/**
  * Calcular (estatus 1) y Recalcular (estatus 2): en un solo batch con bloqueo reemplaza el
  * snapshot del periodo (filas 'O' y 'F') y deja el periodo en estatus 2 (En cálculo).
  * La regla de elegibilidad y de días vive aquí; `lib/payroll/salaryCalculation.ts` la espeja.
@@ -947,14 +999,14 @@ export async function calculatePayrollPeriod(
   }
 
   try {
-    // Spec 87, paso 4: el periodo extraordinario ya se puede crear, pero su cálculo llega en el paso 5.
+    // Spec 87: el periodo extraordinario (aguinaldo) tiene su propio cálculo; el resto del batch es del ordinario.
     const periodTypeRows = await db.queryParams(
       `SELECT tipo_periodo FROM [CentroPodologico].[payroll].[periods]
         WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
       { id_period: parsed.data.id_period, id_sucursal },
     );
     if (periodTypeRows[0]?.tipo_periodo === "E") {
-      return { ok: false, message: "El cálculo del aguinaldo aún no está disponible" };
+      return calculateExtraordinaryPayrollPeriod(parsed.data.id_period, id_sucursal, id_user);
     }
 
     const rows = await db.queryParams(

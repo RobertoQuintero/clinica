@@ -2722,6 +2722,16 @@ ALTER TABLE [payroll].[period_employees] ADD
         [dias_aguinaldo] BETWEEN 0 AND 366 AND [importe_aguinaldo] >= 0);
 GO
 
+-- Spec 87 (paso 5): las filas de un periodo 'E' llevan dias = 0 (el aguinaldo no es sueldo del periodo), así que
+-- CK_period_employees_montos ya no puede exigir dias > 0 a todas. Las filas ordinarias siguen exigiéndolo; una fila con
+-- dias = 0 solo es válida si es de aguinaldo (importe_salario = 0 y dias_aguinaldo > 0).
+ALTER TABLE [payroll].[period_employees] DROP CONSTRAINT [CK_period_employees_montos]
+GO
+ALTER TABLE [payroll].[period_employees] ADD CONSTRAINT [CK_period_employees_montos] CHECK (
+    [salario_diario] > 0 AND [importe_salario] >= 0
+    AND ([dias] > 0 OR ([dias] = 0 AND [importe_salario] = 0 AND [dias_aguinaldo] > 0)))
+GO
+
 -- Spec 87: ISR art. 174 RLISR. Una fila por fila 'F' de un periodo E. Las columnas isr_* de la
 -- spec 70 se quedan en 'X' en esas filas; esta tabla es la fuente de su ISR.
 CREATE TABLE [payroll].[period_employee_isr_article174](

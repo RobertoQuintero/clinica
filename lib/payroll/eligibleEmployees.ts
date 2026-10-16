@@ -35,3 +35,13 @@ export const ABSENCE_CONTROLLED_EMPLOYEE_CONDITION = `EXISTS (
      WHERE u.[id_empleado] = e.[id_empleado]
        AND u.[id_role] IN (${ABSENCE_CONTROL_ROLE_IDS.join(", ")})
        AND u.[status] = 1)`;
+
+/**
+ * Empleados que entran al aguinaldo de un periodo extraordinario (spec 87): activos de la sucursal que ya habían
+ * ingresado al fin del año, de cualquier frecuencia de pago (incluso sin `id_periodo_pago`). El salario > 0 del tipo
+ * se evalúa por separado ('O' con salario_diario, 'F' con salario_diario_fiscal). Espera @id_sucursal y @fecha_fin.
+ */
+export const ELIGIBLE_CHRISTMAS_BONUS_EMPLOYEE_CONDITIONS = `
+  e.status = 1 AND e.activo = 1
+  AND e.id_sucursal = @id_sucursal
+  AND e.fecha_ingreso <= @fecha_fin`;
