@@ -5,6 +5,7 @@ import {
   CHRISTMAS_BONUS_DAYS,
   CHRISTMAS_BONUS_PERCEPTION_ID,
   CHRISTMAS_BONUS_YEAR_DAYS,
+  ISR_DEDUCTION_ID,
 } from "@/lib/payroll/constants";
 import {
   EXEMPTION_APPLY_SQL,
@@ -12,6 +13,12 @@ import {
   EXEMPTION_PARAMETERS_SQL,
   EXEMPTION_SELECT_SQL,
 } from "@/lib/payroll/exemptionSql";
+import {
+  ARTICLE_174_APPLY_SQL,
+  ARTICLE_174_INSERT_COLUMNS_SQL,
+  ARTICLE_174_PARAMETERS_SQL,
+  ARTICLE_174_SELECT_SQL,
+} from "@/lib/payroll/isrArticle174Sql";
 
 /**
  * Snapshot del aguinaldo de un periodo extraordinario (spec 87), para pegar en el batch de `calculatePayrollPeriod`
@@ -24,6 +31,9 @@ import {
  * - Días = fecha_fin − max(fecha_inicio, fecha_ingreso) + 1, sin descontar faltas.
  * - Importe = ROUND(salario × 15 × días / 365, 2); 365 fijo, también en año bisiesto.
  * - Las filas 'F' pasan su aguinaldo por el motor de gravado/exento de la spec 73 (exento hasta 30 UMA por año).
+ * - ISR art. 174 RLISR sobre el gravado de cada fila 'F' (sin subsidio): el desglose va en
+ *   `period_employee_isr_article174` (las columnas isr_* de la spec 70 se quedan en 'X') y el retenido, solo en filas
+ *   calculadas, como deducción ISR aunque sea 0. `lib/payroll/isrArticle174.ts` lo espeja y, si divergen, manda este SQL.
  */
 export const CHRISTMAS_BONUS_SNAPSHOT_SQL = `
        INSERT INTO [CentroPodologico].[payroll].[period_employees]
@@ -63,4 +73,19 @@ export const CHRISTMAS_BONUS_SNAPSHOT_SQL = `
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period_employee] = fl.[id_period_employee]
          JOIN [CentroPodologico].[payroll].[perceptions] exemption_rule
-           ON exemption_rule.[id_perception] = fl.[id_perception]${EXEMPTION_APPLY_SQL};`;
+           ON exemption_rule.[id_perception] = fl.[id_perception]${EXEMPTION_APPLY_SQL};
+
+       ${ARTICLE_174_PARAMETERS_SQL}
+
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_isr_article174] (${ARTICLE_174_INSERT_COLUMNS_SQL})
+       SELECT ${ARTICLE_174_SELECT_SQL}
+         FROM [CentroPodologico].[payroll].[period_employees] pe${ARTICLE_174_APPLY_SQL}
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F';
+
+       -- Una fila de deducción ISR por renglón 'F' calculado, aunque el retenido sea 0.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_deductions]
+         ([id_period_employee], [id_deduction], [importe])
+       SELECT a.[id_period_employee], ${ISR_DEDUCTION_ID}, a.[isr_retenido]
+         FROM [CentroPodologico].[payroll].[period_employee_isr_article174] a
+         JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.[id_period_employee] = a.[id_period_employee]
+        WHERE pe.[id_period] = @id_period AND a.[isr_estado] = 'C';`;
