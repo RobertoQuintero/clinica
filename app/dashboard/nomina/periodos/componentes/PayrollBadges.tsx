@@ -1,5 +1,5 @@
 import { PAYROLL_PERIOD_STATUS } from "@/lib/payroll/constants";
-import type { PayrollPeriodStatus } from "@/interfaces/payroll_period";
+import type { PayrollPeriodStatus, PayrollPeriodType } from "@/interfaces/payroll_period";
 
 const BADGE_BASE = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border";
 
@@ -15,7 +15,23 @@ export function PayrollStatusBadge({ status }: { status: PayrollPeriodStatus }) 
   return <span className={`${BADGE_BASE} ${STATUS_BADGE_STYLES[badge]}`}>{label}</span>;
 }
 
-export function PayrollFrequencyBadge({ description }: { description: string }) {
+/** Frecuencia del periodo; en uno extraordinario (aguinaldo) muestra "Extraordinaria" en lugar de la periodicidad 99. */
+export function PayrollFrequencyBadge({
+  description,
+  periodType = "O",
+}: {
+  description: string;
+  periodType?: PayrollPeriodType;
+}) {
+  if (periodType === "E") {
+    return (
+      <span
+        className={`${BADGE_BASE} bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800`}
+      >
+        Extraordinaria
+      </span>
+    );
+  }
   return (
     <span
       className={`${BADGE_BASE} bg-[#dbe1ff] text-[#00174b] border-transparent dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700`}

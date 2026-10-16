@@ -15,6 +15,7 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import type { IPeriodEmployeePerception } from "@/interfaces/payroll_exemption";
+import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
@@ -29,6 +30,7 @@ import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExt
 import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
 import { isVacationPayRecalculationNeeded } from "@/lib/payroll/vacationPayRecalculation";
+import { isChristmasBonusRecalculationNeeded } from "@/lib/payroll/christmasBonusRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -39,6 +41,7 @@ import {
   ELIGIBLE_OPERATIVE_EMPLOYEE_CONDITIONS,
 } from "@/lib/payroll/eligibleEmployees";
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
+import { CHRISTMAS_BONUS_SNAPSHOT_SQL } from "@/lib/payroll/christmasBonusSql";
 import {
   ATTENDANCE_BONUS_APPLY_SQL,
   ATTENDANCE_BONUS_INSERT_COLUMNS_SQL,
@@ -80,6 +83,7 @@ import { getCommissionTiers } from "../comisiones/actions";
 import {
   calculatePayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
+  payrollProcessFiltersSchema,
   revertPayrollCalculationSchema,
 } from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
@@ -199,11 +203,17 @@ function buildPayrollEmployeeConditions(filters: {
 }
 
 export async function getPayrollProcessPage(
-  filters: IPayrollProcessFilters,
+  input: IPayrollProcessFilters,
 ): Promise<ActionResult<IPayrollProcessPage>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
   const { id_sucursal } = access.data;
+
+  const parsedFilters = payrollProcessFiltersSchema.safeParse(input);
+  if (!parsedFilters.success) {
+    return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const filters = parsedFilters.data;
 
   try {
     const periodOptionsPromise = db.queryParams(
@@ -225,7 +235,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
       isrNotCalculated: [],
       puestoOptions: [],
       excludedEmployees: [],
@@ -239,6 +249,7 @@ export async function getPayrollProcessPage(
       isrRecalculationNeeded: false,
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
+      christmasBonusRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -248,6 +259,8 @@ export async function getPayrollProcessPage(
       idPuesto: filters.idPuesto,
       search: filters.search,
     });
+
+    const isOrdinaryPeriod = period.tipo_periodo === "O";
 
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
@@ -268,6 +281,7 @@ export async function getPayrollProcessPage(
       isrRecalculationNeeded,
       exemptionRecalculationNeeded,
       vacationPayRecalculationNeeded,
+      christmasBonusRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -288,27 +302,43 @@ export async function getPayrollProcessPage(
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
                 pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
+                pe.dias_aguinaldo, CAST(pe.importe_aguinaldo AS float) AS importe_aguinaldo,
+                CAST(taxes.gravado AS float) AS importe_gravado, CAST(taxes.exento AS float) AS importe_exento,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
-                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas AS total_percepciones,
-                pe.isr_estado, CAST(pe.isr_retenido AS float) AS isr_retenido,
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
+                  + pe.importe_aguinaldo AS total_percepciones,
+                -- Spec 87: en un periodo extraordinario el ISR vive en el desglose del art. 174, no en las columnas isr_*.
+                ISNULL(article174.isr_estado, pe.isr_estado) AS isr_estado,
+                CAST(CASE WHEN article174.id_period_employee IS NOT NULL THEN article174.isr_retenido
+                          ELSE pe.isr_retenido END AS float) AS isr_retenido,
                 CAST(deductions.total AS float) AS total_deducciones,
                 CAST(pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
-                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas - deductions.total AS float) AS neto,
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
+                  + pe.importe_aguinaldo - deductions.total AS float) AS neto,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
            JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
+           LEFT JOIN [CentroPodologico].[payroll].[period_employee_isr_article174] article174
+                  ON article174.id_period_employee = pe.id_period_employee
           CROSS APPLY (SELECT ISNULL(SUM(d.importe), 0) AS total
                          FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                         WHERE d.id_period_employee = pe.id_period_employee) AS deductions
+          -- Spec 87: gravado y exento del aguinaldo; null en operativa o si algún exento quedó sin calcular.
+          OUTER APPLY (SELECT CASE WHEN pe.tipo_nomina = 'F' AND MAX(CASE WHEN pep.exencion_estado = 'N' THEN 1 ELSE 0 END) = 0
+                                   THEN ISNULL(SUM(pep.importe_gravado), 0) END AS gravado,
+                              CASE WHEN pe.tipo_nomina = 'F' AND MAX(CASE WHEN pep.exencion_estado = 'N' THEN 1 ELSE 0 END) = 0
+                                   THEN ISNULL(SUM(pep.importe_exento), 0) END AS exento
+                         FROM [CentroPodologico].[payroll].[period_employee_perceptions] pep
+                        WHERE pep.id_period_employee = pe.id_period_employee) AS taxes
           WHERE ${rowConditions.join(" AND ")}
           ORDER BY ${PAYROLL_EMPLOYEE_ORDER_BY}`,
         rowParams,
@@ -324,6 +354,9 @@ export async function getPayrollProcessPage(
                 CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia,
                 CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension,
                 CAST(ISNULL(SUM(importe_prima_vacacional + importe_vacaciones_pagadas), 0) AS float) AS importe_vacaciones,
+                CAST(ISNULL(SUM(importe_aguinaldo), 0) AS float) AS importe_aguinaldo,
+                CAST(ISNULL(SUM(taxes.gravado), 0) AS float) AS importe_gravado,
+                CAST(ISNULL(SUM(taxes.exento), 0) AS float) AS importe_exento,
                 CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
                 CAST(ISNULL(SUM(deductions.total), 0) AS float) AS total_deducciones
            FROM [CentroPodologico].[payroll].[period_employees] pe
@@ -331,16 +364,28 @@ export async function getPayrollProcessPage(
                               ISNULL(SUM(CASE WHEN d.id_deduction = @isr_deduction_id THEN d.importe END), 0) AS isr
                          FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                         WHERE d.id_period_employee = pe.id_period_employee) AS deductions
+          CROSS APPLY (SELECT ISNULL(SUM(pep.importe_gravado), 0) AS gravado, ISNULL(SUM(pep.importe_exento), 0) AS exento
+                         FROM [CentroPodologico].[payroll].[period_employee_perceptions] pep
+                        WHERE pep.id_period_employee = pe.id_period_employee) AS taxes
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType, isr_deduction_id: ISR_DEDUCTION_ID },
       ),
       // Spec 70: renglones "ISR no calculado" por motivo, de todo el tipo (sin filtros de puesto ni búsqueda).
       db.queryParams(
-        `SELECT isr_motivo, COUNT(*) AS employees
-           FROM [CentroPodologico].[payroll].[period_employees]
-          WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina AND isr_estado = 'N'
-          GROUP BY isr_motivo
-          ORDER BY isr_motivo`,
+        `SELECT not_calculated.isr_motivo, COUNT(*) AS employees
+           FROM (
+             SELECT isr_motivo
+               FROM [CentroPodologico].[payroll].[period_employees]
+              WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina AND isr_estado = 'N'
+             UNION ALL
+             -- Spec 87: ISR art. 174 del aguinaldo de un periodo extraordinario.
+             SELECT a.isr_motivo
+               FROM [CentroPodologico].[payroll].[period_employee_isr_article174] a
+               JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = a.id_period_employee
+              WHERE pe.id_period = @id_period AND pe.tipo_nomina = @tipo_nomina AND a.isr_estado = 'N'
+           ) AS not_calculated
+          GROUP BY not_calculated.isr_motivo
+          ORDER BY not_calculated.isr_motivo`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
       ),
       db.queryParams(
@@ -357,7 +402,7 @@ export async function getPayrollProcessPage(
            FROM [CentroPodologico].[RH].[empleados] e
           WHERE e.status = 1 AND e.activo = 1
             AND e.id_sucursal = @id_sucursal
-            AND e.id_periodo_pago = @id_payment_period
+            ${period.tipo_periodo === "E" ? "" : "AND e.id_periodo_pago = @id_payment_period"}
             AND e.fecha_ingreso <= CAST(@fecha_fin AS date)
             AND (${salaryColumn} IS NULL OR ${salaryColumn} <= 0)
           ORDER BY e.apellido_paterno, e.apellido_materno, e.nombre, e.id_empleado`,
@@ -373,15 +418,18 @@ export async function getPayrollProcessPage(
           WHERE id_period = @id_period`,
         { id_period: period.id_period },
       ),
-      isOvertimeRecalculationNeeded(period.id_period),
-      isAbsenceRecalculationNeeded(period.id_period),
-      isLatenessRecalculationNeeded(period.id_period),
-      isPunctualityBonusRecalculationNeeded(period.id_period),
-      isAttendanceBonusRecalculationNeeded(period.id_period),
-      isShiftExtensionBonusRecalculationNeeded(period.id_period),
-      isIsrRecalculationNeeded(period.id_period),
+      // Spec 87: un periodo extraordinario no tiene horas extra, faltas, retardos, bonos, ISR de la spec 70 ni
+      // vacaciones; esos avisos compararían contra un cálculo que nunca los incluyó. El del exento sí le aplica.
+      isOrdinaryPeriod ? isOvertimeRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isAbsenceRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isLatenessRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isPunctualityBonusRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isAttendanceBonusRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isShiftExtensionBonusRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
       isExemptionRecalculationNeeded(period.id_period),
-      isVacationPayRecalculationNeeded(period.id_period),
+      isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? false : isChristmasBonusRecalculationNeeded(period.id_period),
     ]);
 
     const totalPercepciones = roundToCents(
@@ -393,7 +441,8 @@ export async function getPayrollProcessPage(
         Number(totals[0]?.importe_bono_puntualidad ?? 0) +
         Number(totals[0]?.importe_bono_asistencia ?? 0) +
         Number(totals[0]?.importe_bono_extension ?? 0) +
-        Number(totals[0]?.importe_vacaciones ?? 0),
+        Number(totals[0]?.importe_vacaciones ?? 0) +
+        Number(totals[0]?.importe_aguinaldo ?? 0),
     );
 
     return {
@@ -431,6 +480,10 @@ export async function getPayrollProcessPage(
           importe_prima_vacacional: Number(row.importe_prima_vacacional),
           dias_vacaciones_pagadas: Number(row.dias_vacaciones_pagadas),
           importe_vacaciones_pagadas: Number(row.importe_vacaciones_pagadas),
+          dias_aguinaldo: Number(row.dias_aguinaldo),
+          importe_aguinaldo: Number(row.importe_aguinaldo),
+          importe_gravado: toNullableNumber(row.importe_gravado),
+          importe_exento: toNullableNumber(row.importe_exento),
           total_percepciones: Number(row.total_percepciones),
           isr_retenido: row.isr_retenido === null ? null : Number(row.isr_retenido),
           total_deducciones: Number(row.total_deducciones),
@@ -447,11 +500,14 @@ export async function getPayrollProcessPage(
           importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
           importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
           importeVacaciones: Number(totals[0]?.importe_vacaciones ?? 0),
+          importeAguinaldo: Number(totals[0]?.importe_aguinaldo ?? 0),
+          importeGravado: Number(totals[0]?.importe_gravado ?? 0),
+          importeExento: Number(totals[0]?.importe_exento ?? 0),
           totalPercepciones,
           importeIsr: Number(totals[0]?.importe_isr ?? 0),
           totalNeto: roundToCents(totalPercepciones - Number(totals[0]?.total_deducciones ?? 0)),
         },
-        isrNotCalculated: (isrNotCalculatedRows as { isr_motivo: IsrSkipReason; employees: number }[]).map((row) => ({
+        isrNotCalculated: (isrNotCalculatedRows as { isr_motivo: IsrSkipReason | Article174SkipReason; employees: number }[]).map((row) => ({
           reason: row.isr_motivo,
           employees: Number(row.employees),
         })),
@@ -470,6 +526,7 @@ export async function getPayrollProcessPage(
         isrRecalculationNeeded,
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
+        christmasBonusRecalculationNeeded,
       },
     };
   } catch (error) {
@@ -516,6 +573,7 @@ export async function getPayrollEmployeeDetail(
       discountedAbsenceRows,
       discountedLatenessRows,
       storedPerceptionRows,
+      article174Rows,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -550,6 +608,7 @@ export async function getPayrollEmployeeDetail(
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
                 pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
+                pe.dias_aguinaldo, CAST(pe.importe_aguinaldo AS float) AS importe_aguinaldo,
                 pe.isr_estado, pe.isr_motivo,
                 CAST(pe.isr_base_gravable AS float)             AS isr_base_gravable,
                 pe.isr_ejercicio_tarifa,
@@ -688,6 +747,31 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Spec 87: desglose congelado del ISR art. 174 del aguinaldo (solo en el renglón fiscal de un periodo extraordinario).
+      payrollType === "F" && period.tipo_periodo === "E"
+        ? db.queryParams(
+            `SELECT a.isr_estado, a.isr_motivo,
+                    CAST(a.base_gravable AS float)             AS base_gravable,
+                    CAST(a.ingreso_ordinario_mensual AS float) AS ingreso_ordinario_mensual,
+                    CAST(a.parte_mensualizada AS float)        AS parte_mensualizada,
+                    a.ejercicio_tarifa,
+                    CAST(a.limite_inferior_ordinario AS float) AS limite_inferior_ordinario,
+                    CAST(a.cuota_fija_ordinario AS float)      AS cuota_fija_ordinario,
+                    CAST(a.porcentaje_ordinario AS float)      AS porcentaje_ordinario,
+                    CAST(a.isr_ordinario AS float)             AS isr_ordinario,
+                    CAST(a.limite_inferior_total AS float)     AS limite_inferior_total,
+                    CAST(a.cuota_fija_total AS float)          AS cuota_fija_total,
+                    CAST(a.porcentaje_total AS float)          AS porcentaje_total,
+                    CAST(a.isr_total AS float)                 AS isr_total,
+                    CAST(a.diferencia_isr AS float)            AS diferencia_isr,
+                    CAST(a.tasa AS float)                      AS tasa,
+                    CAST(a.isr_retenido AS float)              AS isr_retenido
+               FROM [CentroPodologico].[payroll].[period_employee_isr_article174] a
+               JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = a.id_period_employee
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'F'`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -741,6 +825,8 @@ export async function getPayrollEmployeeDetail(
           importe_prima_vacacional: Number(snapshotRow.importe_prima_vacacional),
           dias_vacaciones_pagadas: Number(snapshotRow.dias_vacaciones_pagadas),
           importe_vacaciones_pagadas: Number(snapshotRow.importe_vacaciones_pagadas),
+          dias_aguinaldo: Number(snapshotRow.dias_aguinaldo),
+          importe_aguinaldo: Number(snapshotRow.importe_aguinaldo),
           isr_estado: snapshotRow.isr_estado,
           isr_motivo: snapshotRow.isr_motivo ?? null,
           isr_base_gravable: toNullableNumber(snapshotRow.isr_base_gravable),
@@ -769,7 +855,7 @@ export async function getPayrollEmployeeDetail(
     const commissionTiers =
       snapshot && snapshot.importe_comision > 0 ? await getCommissionTiersOrEmpty() : [];
     const baseLines = snapshot
-      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers)
+      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers, period.tipo_periodo)
       : [];
     const perceptions = snapshot
       ? attachTaxBreakdown(baseLines, payrollType, storedPerceptionRows as IPeriodEmployeePerception[])
@@ -831,6 +917,29 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const article174Row = article174Rows[0] as Record<string, unknown> | undefined;
+    const article174: IArticle174IsrBreakdown | null = article174Row
+      ? {
+          isr_estado: article174Row.isr_estado as "C" | "N",
+          isr_motivo: (article174Row.isr_motivo as Article174SkipReason | null) ?? null,
+          base_gravable: toNullableNumber(article174Row.base_gravable),
+          ingreso_ordinario_mensual: toNullableNumber(article174Row.ingreso_ordinario_mensual),
+          parte_mensualizada: toNullableNumber(article174Row.parte_mensualizada),
+          ejercicio_tarifa: toNullableNumber(article174Row.ejercicio_tarifa),
+          limite_inferior_ordinario: toNullableNumber(article174Row.limite_inferior_ordinario),
+          cuota_fija_ordinario: toNullableNumber(article174Row.cuota_fija_ordinario),
+          porcentaje_ordinario: toNullableNumber(article174Row.porcentaje_ordinario),
+          isr_ordinario: toNullableNumber(article174Row.isr_ordinario),
+          limite_inferior_total: toNullableNumber(article174Row.limite_inferior_total),
+          cuota_fija_total: toNullableNumber(article174Row.cuota_fija_total),
+          porcentaje_total: toNullableNumber(article174Row.porcentaje_total),
+          isr_total: toNullableNumber(article174Row.isr_total),
+          diferencia_isr: toNullableNumber(article174Row.diferencia_isr),
+          tasa: toNullableNumber(article174Row.tasa),
+          isr_retenido: toNullableNumber(article174Row.isr_retenido),
+        }
+      : null;
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -844,6 +953,7 @@ export async function getPayrollEmployeeDetail(
         totalTaxed,
         totalExempt,
         totalDeductions,
+        article174,
         paidTreatments,
         soldProducts,
         overtimeDays,
@@ -914,6 +1024,57 @@ function revalidatePayrollPaths() {
 }
 
 /**
+ * Calcular y Recalcular un periodo extraordinario (spec 87): en un solo batch con el periodo leído con
+ * UPDLOCK/HOLDLOCK borra el snapshot, inserta el aguinaldo de cada empleado elegible y deja el periodo en estatus 2.
+ * Revertir funciona igual que en un ordinario gracias al cascade de `period_employees`.
+ */
+async function calculateExtraordinaryPayrollPeriod(
+  idPeriod: number,
+  idSucursal: number,
+  idUser: number,
+): Promise<ActionResult<{ operativa: number; fiscal: number }>> {
+  try {
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @id_payment_period smallint, @fecha_inicio date, @fecha_fin date;
+       SELECT @id_payment_period = id_payment_period,
+              @fecha_inicio      = fecha_inicio,
+              @fecha_fin         = fecha_fin
+         FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status IN (1, 2) AND tipo_periodo = 'E';
+       IF @id_payment_period IS NULL
+         THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
+
+       DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
+       ${CHRISTMAS_BONUS_SNAPSHOT_SQL}
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))
+        WHERE id_period = @id_period;
+
+       COMMIT;
+
+       SELECT ISNULL(SUM(CASE WHEN tipo_nomina = 'O' THEN 1 ELSE 0 END), 0) AS operativa,
+              ISNULL(SUM(CASE WHEN tipo_nomina = 'F' THEN 1 ELSE 0 END), 0) AS fiscal
+         FROM [CentroPodologico].[payroll].[period_employees]
+        WHERE id_period = @id_period;`,
+      { id_period: idPeriod, id_sucursal: idSucursal, calculated_by: idUser, calculated_at: buildDate(new Date()) },
+    );
+
+    revalidatePayrollPaths();
+    return {
+      ok: true,
+      data: { operativa: Number(rows[0]?.operativa ?? 0), fiscal: Number(rows[0]?.fiscal ?? 0) },
+    };
+  } catch (error) {
+    console.error("calculateExtraordinaryPayrollPeriod", error);
+    return { ok: false, message: describePayrollCalculationError(error) };
+  }
+}
+
+/**
  * Calcular (estatus 1) y Recalcular (estatus 2): en un solo batch con bloqueo reemplaza el
  * snapshot del periodo (filas 'O' y 'F') y deja el periodo en estatus 2 (En cálculo).
  * La regla de elegibilidad y de días vive aquí; `lib/payroll/salaryCalculation.ts` la espeja.
@@ -947,6 +1108,16 @@ export async function calculatePayrollPeriod(
   }
 
   try {
+    // Spec 87: el periodo extraordinario (aguinaldo) tiene su propio cálculo; el resto del batch es del ordinario.
+    const periodTypeRows = await db.queryParams(
+      `SELECT tipo_periodo FROM [CentroPodologico].[payroll].[periods]
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
+      { id_period: parsed.data.id_period, id_sucursal },
+    );
+    if (periodTypeRows[0]?.tipo_periodo === "E") {
+      return calculateExtraordinaryPayrollPeriod(parsed.data.id_period, id_sucursal, id_user);
+    }
+
     const rows = await db.queryParams(
       `SET XACT_ABORT ON;
        BEGIN TRAN;

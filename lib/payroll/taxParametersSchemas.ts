@@ -67,18 +67,28 @@ function validateUpperLimitAboveLower(
 
 const EXERCISE_YEAR_SCHEMA = z.number().int("El ejercicio no es válido").min(2000, "El ejercicio no es válido").max(2100, "El ejercicio no es válido");
 
-/** Alta de un tramo de la tarifa semanal en un ejercicio. */
+/** Clave SAT de la frecuencia de la tarifa: '02' semanal o '05' mensual (spec 87). Se resuelve a id en SQL. */
+const WITHHOLDING_FREQUENCY_SCHEMA = z.enum(["02", "05"], { error: "La frecuencia de la tarifa no es válida" });
+const withholdingFrequencyShape = { frecuencia: WITHHOLDING_FREQUENCY_SCHEMA };
+
+export const withholdingTableQuerySchema = z.object({
+  ejercicio: EXERCISE_YEAR_SCHEMA,
+  ...withholdingFrequencyShape,
+});
+
+/** Alta de un tramo de la tarifa de una frecuencia en un ejercicio. */
 export const createWithholdingBracketSchema = z
-  .object({ ejercicio: EXERCISE_YEAR_SCHEMA, ...withholdingBracketFieldsShape })
+  .object({ ejercicio: EXERCISE_YEAR_SCHEMA, ...withholdingFrequencyShape, ...withholdingBracketFieldsShape })
   .superRefine(validateUpperLimitAboveLower);
 
 /** Edición: el ejercicio y la frecuencia no cambian; se toman de la fila existente. */
 export const updateWithholdingBracketSchema = z
-  .object({ id_tarifa: z.number().int().positive("Tramo inválido"), ...withholdingBracketFieldsShape })
+  .object({ id_tarifa: z.number().int().positive("Tramo inválido"), ...withholdingFrequencyShape, ...withholdingBracketFieldsShape })
   .superRefine(validateUpperLimitAboveLower);
 
 export const deleteWithholdingBracketSchema = z.object({
   id_tarifa: z.number().int().positive("Tramo inválido"),
+  ...withholdingFrequencyShape,
 });
 
 const EXEMPTION_PERIODICITY_SCHEMA = z.enum(["D", "S", "M", "A", "E"], { error: "Elige la periodicidad del tope" });
@@ -129,4 +139,4 @@ export const savePerceptionSchema = z.discriminatedUnion("tipo_limite_exencion",
   }),
 ]);
 
-export const copyWithholdingTableSchema = z.object({ ejercicio_destino: EXERCISE_YEAR_SCHEMA });
+export const copyWithholdingTableSchema = z.object({ ejercicio_destino: EXERCISE_YEAR_SCHEMA, ...withholdingFrequencyShape });

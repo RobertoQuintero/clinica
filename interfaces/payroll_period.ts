@@ -1,5 +1,8 @@
 export type PayrollPeriodStatus = 1 | 2 | 3 | 4;
 
+// Spec 87: 'O' ordinaria (por frecuencia), 'E' extraordinaria (aguinaldo anual).
+export type PayrollPeriodType = "O" | "E";
+
 export interface IPayrollPeriod {
   id_period:          number;
   id_sucursal:        number;
@@ -12,6 +15,7 @@ export interface IPayrollPeriod {
   fecha_corte:        string;
   fecha_pago:         string;
   status:             PayrollPeriodStatus;
+  tipo_periodo:       PayrollPeriodType;
   created_by:         number;
   created_at:         string;   // "YYYY-MM-DD HH:mm:ss"
   updated_at:         string | null;

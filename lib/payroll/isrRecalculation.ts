@@ -15,7 +15,8 @@ const SNAPSHOT_DIFFERS_CONDITION = `EXISTS (
 
 /**
  * Aviso "Recalcula" del ISR (spec 70): ¿el ISR que saldría hoy ya no coincide con lo que congeló el último cálculo?
- * Solo aplica a periodos en estatus 2 (En cálculo); en cualquier otro estatus responde false.
+ * Solo aplica a periodos ordinarios en estatus 2 (En cálculo); en cualquier otro caso responde false. Un periodo
+ * extraordinario (spec 87) calcula su ISR por el art. 174, que tiene su propio aviso.
  * Recalcula el desglose de cada renglón 'F' con la tarifa y los parámetros de hoy, sobre la base y los días del
  * snapshot, y lo compara con lo guardado: estado, motivo, ejercicio, tramo, ISR causado, los 3 parámetros con su
  * vigencia, subsidio e ISR retenido. Así ve cambios de tarifa, de parámetros o de vigencia; `tablas_retencion` no tiene
@@ -30,7 +31,7 @@ export async function isIsrRecalculationNeeded(idPeriod: number): Promise<boolea
      SELECT @id_payment_period = id_payment_period,
             @fecha_fin         = fecha_fin
        FROM [CentroPodologico].[payroll].[periods]
-      WHERE id_period = @id_period AND status = 2;
+      WHERE id_period = @id_period AND status = 2 AND tipo_periodo = 'O';
      IF @id_payment_period IS NULL
      BEGIN
        SELECT 0 AS recalculation_needed;

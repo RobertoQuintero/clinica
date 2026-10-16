@@ -17,17 +17,16 @@ import {
   savePerceptionSchema,
   taxParameterSchema,
   updateWithholdingBracketSchema,
+  withholdingTableQuerySchema,
 } from "@/lib/payroll/taxParametersSchemas";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 import {
   BRACKET_ERROR_MARKERS,
-  RESOLVE_WEEKLY_FREQUENCY_SQL,
+  RESOLVE_FREQUENCY_SQL,
   VALIDATE_BRACKET_SQL,
 } from "./withholdingBracketSql";
 
-/** Clave SAT c_PeriodicidadPago de la frecuencia semanal: la única tarifa ISR que captura esta pantalla (spec 69). */
-const WEEKLY_FREQUENCY_SAT_KEY = "02";
 const TAX_PARAMETERS_PATH = "/dashboard/nomina/parametros-fiscales";
 const PARAMETER_NOT_FOUND_MARKER = "TAX_PARAMETER_NOT_FOUND";
 
@@ -58,10 +57,18 @@ export async function getTaxParametersPage(year: number): Promise<ActionResult<I
   }
 }
 
-/** Tramos de la tarifa ISR semanal del ejercicio, ordenados por límite inferior. */
-export async function getWithholdingTable(year: number): Promise<ActionResult<IWithholdingBracket[]>> {
+/**
+ * Tramos de la tarifa ISR del ejercicio y la frecuencia (clave SAT '02' semanal o '05' mensual, spec 87),
+ * ordenados por límite inferior.
+ */
+export async function getWithholdingTable(year: number, frequencySatKey: string): Promise<ActionResult<IWithholdingBracket[]>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
+
+  const parsed = withholdingTableQuerySchema.safeParse({ ejercicio: year, frecuencia: frequencySatKey });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
 
   try {
     const rows = await db.queryParams(
@@ -75,9 +82,9 @@ export async function getWithholdingTable(year: number): Promise<ActionResult<IW
          FROM [CentroPodologico].[payroll].[tablas_retencion] t
          JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = t.id_payment_period
         WHERE t.ejercicio = @year
-          AND pp.clave_sat = @weekly_sat_key
+          AND pp.clave_sat = @frequency_sat_key
         ORDER BY t.limite_inferior`,
-      { year, weekly_sat_key: WEEKLY_FREQUENCY_SAT_KEY },
+      { year: parsed.data.ejercicio, frequency_sat_key: parsed.data.frecuencia },
     );
     return { ok: true, data: rows as IWithholdingBracket[] };
   } catch (error) {
@@ -275,8 +282,8 @@ function describeBracketWriteError(error: unknown): string {
   if (message.includes(BRACKET_ERROR_MARKERS.notFound)) {
     return "El tramo ya no existe";
   }
-  if (message.includes(BRACKET_ERROR_MARKERS.weeklyFrequencyMissing)) {
-    return "No existe la frecuencia semanal en el catálogo";
+  if (message.includes(BRACKET_ERROR_MARKERS.frequencyMissing)) {
+    return "No existe la frecuencia de la tarifa en el catálogo";
   }
   if (sqlError.number === 2627 || sqlError.number === 2601) {
     return "Ya existe un tramo que empieza en ese límite inferior";
@@ -285,7 +292,7 @@ function describeBracketWriteError(error: unknown): string {
 }
 
 /**
- * Alta (sin `id_tarifa`) o edición (con `id_tarifa`) de un tramo de la tarifa semanal. Valida rangos, tramo abierto
+ * Alta (sin `id_tarifa`) o edición (con `id_tarifa`) de un tramo de la tarifa de la frecuencia indicada. Valida rangos, tramo abierto
  * único y traslapes dentro de la transacción. `id_tarifa` no es IDENTITY: el alta calcula MAX + 1 con UPDLOCK/HOLDLOCK.
  */
 export async function saveWithholdingBracket(input: unknown): Promise<ActionResult<null>> {
@@ -305,12 +312,12 @@ export async function saveWithholdingBracket(input: unknown): Promise<ActionResu
       await db.queryParams(
         `SET XACT_ABORT ON;
          BEGIN TRAN;
-         ${RESOLVE_WEEKLY_FREQUENCY_SQL}
+         ${RESOLVE_FREQUENCY_SQL}
 
          DECLARE @ejercicio int;
          SELECT @ejercicio = ejercicio
            FROM [CentroPodologico].[payroll].[tablas_retencion] WITH (UPDLOCK, HOLDLOCK)
-          WHERE id_tarifa = @id_tarifa AND id_payment_period = @weekly_id;
+          WHERE id_tarifa = @id_tarifa AND id_payment_period = @frequency_id;
          IF @ejercicio IS NULL
            THROW 50034, '${BRACKET_ERROR_MARKERS.notFound}', 1;
          ${VALIDATE_BRACKET_SQL}
@@ -322,7 +329,7 @@ export async function saveWithholdingBracket(input: unknown): Promise<ActionResu
 
          COMMIT;`,
         {
-          weekly_sat_key: WEEKLY_FREQUENCY_SAT_KEY,
+          frequency_sat_key: bracket.frecuencia,
           id_tarifa: bracket.id_tarifa,
           lower: bracket.limite_inferior,
           upper: bracket.limite_superior,
@@ -334,7 +341,7 @@ export async function saveWithholdingBracket(input: unknown): Promise<ActionResu
       await db.queryParams(
         `SET XACT_ABORT ON;
          BEGIN TRAN;
-         ${RESOLVE_WEEKLY_FREQUENCY_SQL}
+         ${RESOLVE_FREQUENCY_SQL}
 
          DECLARE @id_tarifa int = 0;
          ${VALIDATE_BRACKET_SQL}
@@ -346,11 +353,11 @@ export async function saveWithholdingBracket(input: unknown): Promise<ActionResu
          INSERT INTO [CentroPodologico].[payroll].[tablas_retencion]
            (id_tarifa, limite_inferior, limite_superior, cuota_fija, porcentaje_excedente,
             id_payment_period, status, ejercicio)
-         VALUES (@next_id, @lower, @upper, @fixed, @pct, @weekly_id, 1, @ejercicio);
+         VALUES (@next_id, @lower, @upper, @fixed, @pct, @frequency_id, 1, @ejercicio);
 
          COMMIT;`,
         {
-          weekly_sat_key: WEEKLY_FREQUENCY_SAT_KEY,
+          frequency_sat_key: bracket.frecuencia,
           ejercicio: bracket.ejercicio,
           lower: bracket.limite_inferior,
           upper: bracket.limite_superior,
@@ -383,8 +390,8 @@ export async function deleteWithholdingBracket(input: unknown): Promise<ActionRe
        OUTPUT deleted.id_tarifa
          FROM [CentroPodologico].[payroll].[tablas_retencion] t
          JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = t.id_payment_period
-        WHERE t.id_tarifa = @id_tarifa AND pp.clave_sat = @weekly_sat_key`,
-      { id_tarifa: parsed.data.id_tarifa, weekly_sat_key: WEEKLY_FREQUENCY_SAT_KEY },
+        WHERE t.id_tarifa = @id_tarifa AND pp.clave_sat = @frequency_sat_key`,
+      { id_tarifa: parsed.data.id_tarifa, frequency_sat_key: parsed.data.frecuencia },
     );
     if (deletedRows.length === 0) return { ok: false, message: "El tramo ya no existe" };
 
@@ -396,7 +403,7 @@ export async function deleteWithholdingBracket(input: unknown): Promise<ActionRe
   }
 }
 
-/** Copia los tramos semanales del ejercicio anterior al destino. Falla si el destino ya tiene tramos. */
+/** Copia los tramos de la frecuencia indicada del ejercicio anterior al destino. Falla si el destino ya tiene tramos. */
 export async function copyWithholdingTableFromPreviousYear(input: unknown): Promise<ActionResult<number>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
@@ -406,22 +413,23 @@ export async function copyWithholdingTableFromPreviousYear(input: unknown): Prom
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
   const targetYear = parsed.data.ejercicio_destino;
+  const frequencyLabel = parsed.data.frecuencia === "05" ? "mensual" : "semanal";
 
   try {
     const result = await db.queryParams(
       `SET XACT_ABORT ON;
        BEGIN TRAN;
-       ${RESOLVE_WEEKLY_FREQUENCY_SQL}
+       ${RESOLVE_FREQUENCY_SQL}
 
        IF EXISTS (
          SELECT 1 FROM [CentroPodologico].[payroll].[tablas_retencion] WITH (UPDLOCK, HOLDLOCK)
-          WHERE ejercicio = @target_year AND id_payment_period = @weekly_id
+          WHERE ejercicio = @target_year AND id_payment_period = @frequency_id
        )
          THROW 50035, '${BRACKET_ERROR_MARKERS.targetHasBrackets}', 1;
 
        IF NOT EXISTS (
          SELECT 1 FROM [CentroPodologico].[payroll].[tablas_retencion] WITH (UPDLOCK, HOLDLOCK)
-          WHERE ejercicio = @target_year - 1 AND id_payment_period = @weekly_id
+          WHERE ejercicio = @target_year - 1 AND id_payment_period = @frequency_id
        )
          THROW 50036, '${BRACKET_ERROR_MARKERS.sourceEmpty}', 1;
 
@@ -434,14 +442,14 @@ export async function copyWithholdingTableFromPreviousYear(input: unknown): Prom
           id_payment_period, status, ejercicio)
        SELECT @next_id + ROW_NUMBER() OVER (ORDER BY limite_inferior),
               limite_inferior, limite_superior, cuota_fija, porcentaje_excedente,
-              @weekly_id, 1, @target_year
+              @frequency_id, 1, @target_year
          FROM [CentroPodologico].[payroll].[tablas_retencion]
-        WHERE ejercicio = @target_year - 1 AND id_payment_period = @weekly_id;
+        WHERE ejercicio = @target_year - 1 AND id_payment_period = @frequency_id;
 
        DECLARE @copied_count int = @@ROWCOUNT;
        COMMIT;
        SELECT @copied_count AS copied_count;`,
-      { weekly_sat_key: WEEKLY_FREQUENCY_SAT_KEY, target_year: targetYear },
+      { frequency_sat_key: parsed.data.frecuencia, target_year: targetYear },
     );
 
     revalidatePath(TAX_PARAMETERS_PATH);
@@ -453,7 +461,7 @@ export async function copyWithholdingTableFromPreviousYear(input: unknown): Prom
       return { ok: false, message: `El ejercicio ${targetYear} ya tiene tramos. Elimínalos antes de copiar` };
     }
     if (message.includes(BRACKET_ERROR_MARKERS.sourceEmpty)) {
-      return { ok: false, message: `El ejercicio ${targetYear - 1} no tiene tarifa semanal que copiar` };
+      return { ok: false, message: `El ejercicio ${targetYear - 1} no tiene tarifa ${frequencyLabel} que copiar` };
     }
     return { ok: false, message: "No se pudo copiar la tarifa del ejercicio anterior" };
   }

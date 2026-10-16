@@ -2,6 +2,7 @@ import { TriangleAlert } from "lucide-react";
 import type { IWithholdingBracket } from "@/interfaces/payroll_tax_parameters";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { findWithholdingGaps } from "@/lib/payroll/taxParameters";
+import { WITHHOLDING_FREQUENCY_LABELS, type WithholdingFrequency } from "@/lib/payroll/taxParametersUrls";
 import PayrollEmptyState from "../../componentes/PayrollEmptyState";
 import DeleteWithholdingBracketButton from "./DeleteWithholdingBracketButton";
 import { EditWithholdingBracketButton } from "./WithholdingBracketModal";
@@ -9,6 +10,7 @@ import { EditWithholdingBracketButton } from "./WithholdingBracketModal";
 interface Props {
   brackets: IWithholdingBracket[];
   year: number;
+  frequency: WithholdingFrequency;
 }
 
 function formatBracketRange(bracket: IWithholdingBracket): string {
@@ -16,11 +18,11 @@ function formatBracketRange(bracket: IWithholdingBracket): string {
   return `${formatPayrollCurrency(bracket.limite_inferior)} ${bracket.limite_superior === null ? "" : "a "}${upperLimit}`;
 }
 
-export default function WithholdingBracketsTable({ brackets, year }: Props) {
+export default function WithholdingBracketsTable({ brackets, year, frequency }: Props) {
   if (brackets.length === 0) {
     return (
       <PayrollEmptyState
-        title={`Sin tarifa semanal del ISR para ${year}`}
+        title={`Sin tarifa ${WITHHOLDING_FREQUENCY_LABELS[frequency].toLowerCase()} del ISR para ${year}`}
         description="Captura los tramos del ejercicio, o cópialos del anterior, para que la nómina fiscal pueda calcular la retención."
       />
     );
@@ -78,9 +80,10 @@ export default function WithholdingBracketsTable({ brackets, year }: Props) {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-1">
-                      <EditWithholdingBracketButton bracket={bracket} brackets={brackets} year={year} />
+                      <EditWithholdingBracketButton bracket={bracket} brackets={brackets} year={year} frequency={frequency} />
                       <DeleteWithholdingBracketButton
                         idBracket={bracket.id_tarifa}
+                        frequency={frequency}
                         bracketLabel={formatBracketRange(bracket)}
                       />
                     </div>

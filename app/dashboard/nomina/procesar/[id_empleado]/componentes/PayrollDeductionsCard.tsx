@@ -3,6 +3,7 @@ import type { IIsrBreakdown } from "@/interfaces/payroll_isr";
 import { describeIsrSkipReason } from "@/lib/payroll/isrCalculation";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { formatPeriodDate } from "@/lib/payroll/periodFormat";
+import { PayrollCalculationRow } from "./PayrollCalculationRow";
 
 interface Props {
   isrBreakdown: IIsrBreakdown;
@@ -24,47 +25,18 @@ function describeEffectiveDate(effectiveDate: string | null): string {
   return effectiveDate ? `vigente desde el ${formatPeriodDate(effectiveDate)}` : "sin vigencia";
 }
 
-function CalculationRow({
-  label,
-  value,
-  emphasized = false,
-}: {
-  label: string;
-  value: string;
-  emphasized?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-baseline justify-between gap-4 py-1.5 ${
-        emphasized ? "mt-1 border-t border-[#e5e8f0] dark:border-zinc-700 pt-2.5" : ""
-      }`}
-    >
-      <dt className={`text-sm ${emphasized ? "font-semibold text-[#0b1c30] dark:text-zinc-100" : "text-[#44474f] dark:text-zinc-400"}`}>
-        {label}
-      </dt>
-      <dd
-        className={`text-sm text-right tabular-nums ${
-          emphasized ? "font-semibold text-[#0b1c30] dark:text-zinc-50" : "text-[#0b1c30] dark:text-zinc-200"
-        }`}
-      >
-        {value}
-      </dd>
-    </div>
-  );
-}
-
 /** Desglose del ISR calculado: base, tramo, causado, subsidio, retenido y la vigencia de cada dato usado. */
 function IsrCalculationDetail({ isrBreakdown }: { isrBreakdown: IIsrBreakdown }) {
   return (
     <div className="mt-3 rounded-lg bg-[#f8f9ff] dark:bg-zinc-800/50 px-4 py-3">
       <dl>
-        <CalculationRow label="Base gravable" value={formatPayrollCurrency(isrBreakdown.isr_base_gravable ?? 0)} />
+        <PayrollCalculationRow label="Base gravable" value={formatPayrollCurrency(isrBreakdown.isr_base_gravable ?? 0)} />
         <div className="py-1.5">
           <dt className="text-sm text-[#44474f] dark:text-zinc-400">Tramo</dt>
           <dd className="mt-0.5 text-sm tabular-nums text-[#0b1c30] dark:text-zinc-200">{describeBracket(isrBreakdown)}</dd>
         </div>
-        <CalculationRow label="ISR causado" value={formatPayrollCurrency(isrBreakdown.isr_causado ?? 0)} />
-        <CalculationRow
+        <PayrollCalculationRow label="ISR causado" value={formatPayrollCurrency(isrBreakdown.isr_causado ?? 0)} />
+        <PayrollCalculationRow
           label="Subsidio causado"
           value={
             isrBreakdown.subsidio_con_derecho
@@ -72,11 +44,11 @@ function IsrCalculationDetail({ isrBreakdown }: { isrBreakdown: IIsrBreakdown })
               : "Sin derecho: ingreso mayor al tope"
           }
         />
-        <CalculationRow
+        <PayrollCalculationRow
           label="Subsidio aplicado"
           value={`− ${formatPayrollCurrency(isrBreakdown.subsidio_aplicado ?? 0)}`}
         />
-        <CalculationRow label="ISR retenido" value={formatPayrollCurrency(isrBreakdown.isr_retenido ?? 0)} emphasized />
+        <PayrollCalculationRow label="ISR retenido" value={formatPayrollCurrency(isrBreakdown.isr_retenido ?? 0)} emphasized />
       </dl>
       <ul className="mt-3 flex flex-col gap-0.5 text-xs text-[#747780] dark:text-zinc-500">
         <li>Tarifa del ejercicio {isrBreakdown.isr_ejercicio_tarifa}</li>

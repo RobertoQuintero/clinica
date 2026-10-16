@@ -1,3 +1,5 @@
+import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
+import type { PayrollPeriodType } from "@/interfaces/payroll_period";
 import type { ExemptionSkipReason } from "@/interfaces/payroll_exemption";
 import type { IsrSkipReason } from "@/interfaces/payroll_isr";
 import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
@@ -68,6 +70,28 @@ export const OVERTIME_TRIPLE_PERCEPTION_ID = 13;
 export const VACATION_PREMIUM_PERCEPTION_ID = 7;    // 021, 'U' 15 UMA por año
 export const PAID_VACATION_PERCEPTION_ID    = 14;   // 001, 'N' 100% gravada
 export const VACATION_PREMIUM_PERCENT       = 25;   // LFT art. 80
+// Spec 87: aguinaldo anual en nómina extraordinaria.
+export const CHRISTMAS_BONUS_PERCEPTION_ID = 2;     // 002, 'U' 30 UMA por año (confirmado por el script de datos)
+export const CHRISTMAS_BONUS_DAYS = 15;
+export const CHRISTMAS_BONUS_YEAR_DAYS = 365;       // fijo, también en año bisiesto
+export const CHRISTMAS_BONUS_DEADLINE_MONTH_DAY = "12-20";
+export const CHRISTMAS_BONUS_WARNING_START_MONTH_DAY = "12-01";
+export const ARTICLE_174_MONTH_DAYS_FACTOR = 30.4;  // fijado por el art. 174 RLISR
+
+export const PAYROLL_PERIOD_TYPE_LABELS: Record<PayrollPeriodType, string> = {
+  O: "Ordinaria",
+  E: "Extraordinaria (aguinaldo)",
+};
+export const EXTRAORDINARY_PERIOD_SAT_KEY = "99";
+export const EXTRAORDINARY_PERIOD_CODE_LETTER = "E";
+export const MONTHLY_WITHHOLDING_SAT_KEY = "05";
+
+export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string> = {
+  no_monthly_withholding_table: "No hay tarifa mensual de ISR para el año",
+  income_in_gap:                "El ingreso cae en un hueco de la tarifa mensual",
+  exemption_not_calculated:     "No se pudo calcular el exento del aguinaldo",
+};
+
 // id_perception -> clave de la línea de buildPerceptionLines que lo representa en el Detalle.
 // Cada spec de percepción nueva agrega su entrada.
 export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = {
@@ -76,6 +100,7 @@ export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = {
   [OVERTIME_TRIPLE_PERCEPTION_ID]: "horas_extra_triples",
   [VACATION_PREMIUM_PERCEPTION_ID]: "prima_vacacional",
   [PAID_VACATION_PERCEPTION_ID]:    "vacaciones_pagadas",
+  [CHRISTMAS_BONUS_PERCEPTION_ID]:  "aguinaldo",
 };
 export const EXEMPTION_SKIP_REASON_LABELS: Record<ExemptionSkipReason, string> = {
   missing_uma:           "No hay UMA diaria vigente al fin del periodo",

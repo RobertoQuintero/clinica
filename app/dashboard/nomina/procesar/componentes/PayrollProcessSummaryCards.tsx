@@ -52,6 +52,8 @@ export default function PayrollProcessSummaryCards({
 }: Props) {
   // Spec 70: la vista fiscal agrega ISR y neto; con 6 tarjetas, 3 por fila.
   const showsDeductions = payrollType === "F";
+  // Spec 87: en un periodo extraordinario las percepciones son solo el aguinaldo y el ISR sale del art. 174.
+  const isExtraordinary = period.tipo_periodo === "E";
 
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${showsDeductions ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
@@ -61,7 +63,7 @@ export default function PayrollProcessSummaryCards({
         </span>
         <span className="mt-1 flex items-center gap-2 text-xs text-[#44474f] dark:text-zinc-400">
           {period.codigo}
-          <PayrollFrequencyBadge description={period.frecuencia_descripcion} />
+          <PayrollFrequencyBadge description={period.frecuencia_descripcion} periodType={period.tipo_periodo} />
         </span>
       </SummaryCard>
 
@@ -83,10 +85,17 @@ export default function PayrollProcessSummaryCards({
         </span>
       </SummaryCard>
 
-      <SummaryCard icon={<Banknote size={20} />} label="Total de percepciones">
+      <SummaryCard icon={<Banknote size={20} />} label={isExtraordinary ? "Total de aguinaldo" : "Total de percepciones"}>
         <span className="text-xl font-bold leading-tight text-[#0b1c30] dark:text-zinc-50 tabular-nums">
           {formatPayrollCurrency(totals.totalPercepciones)}
         </span>
+        {isExtraordinary ? (
+          <span className="text-xs text-[#44474f] dark:text-zinc-400 tabular-nums">
+            {showsDeductions
+              ? `Aguinaldo: gravado ${formatPayrollCurrency(totals.importeGravado)} + exento ${formatPayrollCurrency(totals.importeExento)}`
+              : "Aguinaldo del año, 15 días de salario diario"}
+          </span>
+        ) : (
         <span className="text-xs text-[#44474f] dark:text-zinc-400 tabular-nums">
           Sueldos {formatPayrollCurrency(totals.importeSalario)} + consultas{" "}
           {formatPayrollCurrency(totals.importeComision)} + onicomicosis{" "}
@@ -98,6 +107,7 @@ export default function PayrollProcessSummaryCards({
           {formatPayrollCurrency(totals.importeBonoAsistencia)} + bono extensión{" "}
           {formatPayrollCurrency(totals.importeBonoExtension)}
         </span>
+        )}
         <span className="text-xs text-[#44474f] dark:text-zinc-400">
           {lastCalculatedAt
             ? `Calculado el ${formatCalculatedAt(lastCalculatedAt)}`
@@ -114,7 +124,7 @@ export default function PayrollProcessSummaryCards({
               {formatPayrollCurrency(totals.importeIsr)}
             </span>
             <span className="text-xs text-[#44474f] dark:text-zinc-400">
-              Tarifa del periodo menos subsidio para el empleo
+              {isExtraordinary ? "Art. 174 RLISR sobre el gravado, sin subsidio" : "Tarifa del periodo menos subsidio para el empleo"}
             </span>
             {isrNotCalculatedEmployees > 0 && (
               <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">

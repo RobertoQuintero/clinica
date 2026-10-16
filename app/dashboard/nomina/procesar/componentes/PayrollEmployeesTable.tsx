@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import type { IPayrollEmployeeRow, IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
-import type { IsrStatus } from "@/interfaces/payroll_isr";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
 import { describeVacationPaySplit } from "@/lib/payroll/vacationPay";
+import { IsrAmountCell } from "./IsrAmountCell";
 
 interface Props {
   rows: IPayrollEmployeeRow[];
@@ -24,21 +24,6 @@ function CommissionAmountCell({ amount, countLabel }: { amount: number; countLab
     <td className="px-4 py-3.5 text-right tabular-nums">
       <span className="block text-sm text-[#0b1c30] dark:text-zinc-200">{formatPayrollCurrency(amount)}</span>
       {countLabel && <span className="block text-[11px] text-[#747780] dark:text-zinc-500">{countLabel}</span>}
-    </td>
-  );
-}
-
-/** ISR retenido del renglón (spec 70): el importe si se calculó, "No calculado" en 'N' y "—" en 'X'. */
-function IsrAmountCell({ isrStatus, isrWithheld }: { isrStatus: IsrStatus; isrWithheld: number | null }) {
-  return (
-    <td className="px-4 py-3.5 text-sm text-right tabular-nums whitespace-nowrap">
-      {isrStatus === "C" && isrWithheld !== null ? (
-        <span className="text-[#0b1c30] dark:text-zinc-200">{formatPayrollCurrency(isrWithheld)}</span>
-      ) : isrStatus === "N" ? (
-        <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">No calculado</span>
-      ) : (
-        <span className="text-[#747780] dark:text-zinc-500" title="Recalcula la nómina para ver el ISR">—</span>
-      )}
     </td>
   );
 }

@@ -10,11 +10,17 @@ import {
 } from "@/interfaces/payroll_period";
 import { ActionResult, assertPayrollAccess, PERIOD_ROW_SELECT } from "@/lib/payroll/access";
 import {
+  EXTRAORDINARY_PERIOD_CODE_LETTER,
+  EXTRAORDINARY_PERIOD_SAT_KEY,
   PAYROLL_FREQUENCY_LETTER_BY_SAT_KEY,
   PAYROLL_PERIODS_PAGE_SIZE,
 } from "@/lib/payroll/constants";
 import { suggestPeriodDates } from "@/lib/payroll/periodDates";
-import { createPayrollPeriodSchema, updatePayrollPeriodSchema } from "@/lib/payroll/schemas";
+import {
+  createPayrollPeriodSchema,
+  payrollPeriodsPageFiltersSchema,
+  updatePayrollPeriodSchema,
+} from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
@@ -52,11 +58,17 @@ function escapeLikePattern(text: string): string {
 }
 
 export async function getPayrollPeriodsPage(
-  filters: IPayrollPeriodFilters,
+  input: IPayrollPeriodFilters,
 ): Promise<ActionResult<IPayrollPeriodsPage>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
   const { id_sucursal } = access.data;
+
+  const parsedFilters = payrollPeriodsPageFiltersSchema.safeParse(input);
+  if (!parsedFilters.success) {
+    return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const filters = parsedFilters.data;
 
   try {
     const today = addZeroToday(new Date());
@@ -99,11 +111,13 @@ export async function getPayrollPeriodsPage(
         params,
       ),
       db.queryParams(
-        `SELECT p.id_payment_period, pp.description, COUNT(*) AS total
+        `SELECT p.id_payment_period,
+                CASE WHEN p.tipo_periodo = 'E' THEN 'Extraordinaria' ELSE pp.description END AS description,
+                COUNT(*) AS total
            FROM [CentroPodologico].[payroll].[periods] p
            JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = p.id_payment_period
           WHERE p.id_sucursal = @id_sucursal AND p.ejercicio = @ejercicio
-          GROUP BY p.id_payment_period, pp.description
+          GROUP BY p.id_payment_period, p.tipo_periodo, pp.description
           ORDER BY p.id_payment_period`,
         { id_sucursal, ejercicio: filters.ejercicio },
       ),
@@ -117,7 +131,7 @@ export async function getPayrollPeriodsPage(
         `SELECT TOP 1 ${PERIOD_ROW_SELECT}
            FROM [CentroPodologico].[payroll].[periods] p
            JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = p.id_payment_period
-          WHERE p.id_sucursal = @id_sucursal
+          WHERE p.id_sucursal = @id_sucursal AND p.tipo_periodo = 'O'
             AND CAST(@today AS date) BETWEEN p.fecha_inicio AND p.fecha_fin
           ORDER BY p.fecha_inicio DESC, p.id_period DESC`,
         { id_sucursal, today },
@@ -183,13 +197,29 @@ export async function getSuggestedPeriodDates(
 }
 
 const PERIOD_OVERLAP_MARKER = "PERIOD_OVERLAP";
+const EXTRAORDINARY_EXISTS_MARKER = "EXTRAORDINARY_PERIOD_EXISTS";
+const EXTRAORDINARY_FREQUENCY_MARKER = "EXTRAORDINARY_FREQUENCY_NOT_FOUND";
+const EXTRAORDINARY_CUTOFF_MARKER = "EXTRAORDINARY_CUTOFF_OUT_OF_YEAR";
+const EXTRAORDINARY_UNIQUE_INDEX ="UX_periods_extraordinaria_sucursal_ejercicio";
 const PERIOD_NOT_EDITABLE_MARKER = "PERIOD_NOT_EDITABLE";
 const PERIOD_NOT_EDITABLE_MESSAGE =
   "El periodo no existe en esta sucursal o ya no está en estatus Programada";
 
 /** Traduce los errores de SQL Server de escritura de periodos a un mensaje en español. */
-function describePeriodWriteError(error: unknown): string {
+function describePeriodWriteError(error: unknown, extraordinaryYear?: number): string {
   const sqlError = error as { message?: string; number?: number };
+  if (
+    extraordinaryYear !== undefined &&
+    (sqlError.message?.includes(EXTRAORDINARY_EXISTS_MARKER) || sqlError.message?.includes(EXTRAORDINARY_UNIQUE_INDEX))
+  ) {
+    return `Ya existe la nómina de aguinaldo de ${extraordinaryYear}`;
+  }
+  if (sqlError.message?.includes(EXTRAORDINARY_CUTOFF_MARKER)) {
+    return "La fecha de corte debe estar dentro del año del aguinaldo";
+  }
+  if (sqlError.message?.includes(EXTRAORDINARY_FREQUENCY_MARKER)) {
+    return "No existe la periodicidad extraordinaria en el catálogo";
+  }
   if (sqlError.message?.includes(PERIOD_OVERLAP_MARKER)) {
     return "Las fechas se traslapan con otro periodo de la misma frecuencia en esta sucursal";
   }
@@ -205,6 +235,77 @@ function describePeriodWriteError(error: unknown): string {
   return "No se pudo guardar el periodo de nómina";
 }
 
+/**
+ * Periodo extraordinario de aguinaldo (spec 87): periodicidad SAT 99, del 1-ene al 31-dic del año y código
+ * NOM-{año}-E{NN}. Un solo periodo por sucursal y año, revisado dentro de la transacción además del índice único.
+ */
+async function createExtraordinaryPayrollPeriod(
+  period: { ejercicio: number; fecha_corte: string; fecha_pago: string },
+  idSucursal: number,
+  idUser: number,
+): Promise<ActionResult<IPayrollPeriod>> {
+  try {
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @id_payment_period smallint = (
+         SELECT id_payment_period FROM [CentroPodologico].[RH].[payment_periods] WHERE clave_sat = @sat_key
+       );
+       IF @id_payment_period IS NULL
+         THROW 50003, '${EXTRAORDINARY_FREQUENCY_MARKER}', 1;
+
+       IF EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND tipo_periodo = 'E'
+       )
+         THROW 50004, '${EXTRAORDINARY_EXISTS_MARKER}', 1;
+
+       DECLARE @consecutivo smallint = (
+         SELECT ISNULL(MAX(consecutivo), 0) + 1
+           FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND id_payment_period = @id_payment_period
+       );
+       DECLARE @codigo varchar(20) =
+         'NOM-' + CAST(@ejercicio AS varchar(4)) + '-' + @letter
+         + CASE WHEN @consecutivo < 10 THEN '0' ELSE '' END + CAST(@consecutivo AS varchar(5));
+
+       INSERT INTO [CentroPodologico].[payroll].[periods]
+         (id_sucursal, id_payment_period, codigo, ejercicio, consecutivo,
+          fecha_inicio, fecha_fin, fecha_corte, fecha_pago, status, created_by, created_at, tipo_periodo)
+       VALUES
+         (@id_sucursal, @id_payment_period, @codigo, @ejercicio, @consecutivo,
+          DATEFROMPARTS(@ejercicio, 1, 1), DATEFROMPARTS(@ejercicio, 12, 31),
+          CAST(@fecha_corte AS date), CAST(@fecha_pago AS date),
+          1, @created_by, CAST(@created_at AS datetime2(0)), 'E');
+       DECLARE @id_period int = SCOPE_IDENTITY();
+
+       COMMIT;
+
+       SELECT ${PERIOD_ROW_SELECT}
+         FROM [CentroPodologico].[payroll].[periods] p
+         JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = p.id_payment_period
+        WHERE p.id_period = @id_period;`,
+      {
+        id_sucursal: idSucursal,
+        sat_key: EXTRAORDINARY_PERIOD_SAT_KEY,
+        letter: EXTRAORDINARY_PERIOD_CODE_LETTER,
+        ejercicio: period.ejercicio,
+        fecha_corte: period.fecha_corte,
+        fecha_pago: period.fecha_pago,
+        created_by: idUser,
+        created_at: buildDate(new Date()),
+      },
+    );
+
+    revalidatePath("/dashboard/nomina/periodos");
+    return { ok: true, data: rows[0] as IPayrollPeriod };
+  } catch (error) {
+    console.error("createExtraordinaryPayrollPeriod", error);
+    return { ok: false, message: describePeriodWriteError(error, period.ejercicio) };
+  }
+}
+
 export async function createPayrollPeriod(input: unknown): Promise<ActionResult<IPayrollPeriod>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
@@ -213,6 +314,9 @@ export async function createPayrollPeriod(input: unknown): Promise<ActionResult<
   const parsed = createPayrollPeriodSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  if (parsed.data.tipo_periodo === "E") {
+    return createExtraordinaryPayrollPeriod(parsed.data, id_sucursal, id_user);
   }
   const { id_payment_period, fecha_inicio, fecha_fin, fecha_corte, fecha_pago } = parsed.data;
 
@@ -284,6 +388,56 @@ export async function createPayrollPeriod(input: unknown): Promise<ActionResult<
   }
 }
 
+/** El periodo extraordinario solo cambia corte y pago; el corte debe caer dentro del año del periodo. */
+async function updateExtraordinaryPayrollPeriod(
+  period: { id_period: number; fecha_corte: string; fecha_pago: string },
+  idSucursal: number,
+): Promise<ActionResult<IPayrollPeriod>> {
+  try {
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @ejercicio smallint = (
+         SELECT ejercicio
+           FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 1 AND tipo_periodo = 'E'
+       );
+       IF @ejercicio IS NULL
+         THROW 50002, '${PERIOD_NOT_EDITABLE_MARKER}', 1;
+
+       IF YEAR(CAST(@fecha_corte AS date)) <> @ejercicio
+         THROW 50005, '${EXTRAORDINARY_CUTOFF_MARKER}', 1;
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET fecha_corte = CAST(@fecha_corte AS date),
+              fecha_pago  = CAST(@fecha_pago AS date),
+              updated_at  = CAST(@updated_at AS datetime2(0))
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 1 AND tipo_periodo = 'E';
+
+       COMMIT;
+
+       SELECT ${PERIOD_ROW_SELECT}
+         FROM [CentroPodologico].[payroll].[periods] p
+         JOIN [CentroPodologico].[RH].[payment_periods] pp ON pp.id_payment_period = p.id_payment_period
+        WHERE p.id_period = @id_period;`,
+      {
+        id_period: period.id_period,
+        id_sucursal: idSucursal,
+        fecha_corte: period.fecha_corte,
+        fecha_pago: period.fecha_pago,
+        updated_at: buildDate(new Date()),
+      },
+    );
+
+    revalidatePath("/dashboard/nomina/periodos");
+    return { ok: true, data: rows[0] as IPayrollPeriod };
+  } catch (error) {
+    console.error("updateExtraordinaryPayrollPeriod", error);
+    return { ok: false, message: describePeriodWriteError(error) };
+  }
+}
+
 export async function updatePayrollPeriod(input: unknown): Promise<ActionResult<IPayrollPeriod>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
@@ -292,6 +446,9 @@ export async function updatePayrollPeriod(input: unknown): Promise<ActionResult<
   const parsed = updatePayrollPeriodSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  if (parsed.data.tipo_periodo === "E") {
+    return updateExtraordinaryPayrollPeriod(parsed.data, id_sucursal);
   }
   const { id_period, fecha_inicio, fecha_fin, fecha_corte, fecha_pago } = parsed.data;
 
@@ -303,7 +460,7 @@ export async function updatePayrollPeriod(input: unknown): Promise<ActionResult<
        DECLARE @id_payment_period smallint = (
          SELECT id_payment_period
            FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
-          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 1
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 1 AND tipo_periodo = 'O'
        );
        IF @id_payment_period IS NULL
          THROW 50002, '${PERIOD_NOT_EDITABLE_MARKER}', 1;

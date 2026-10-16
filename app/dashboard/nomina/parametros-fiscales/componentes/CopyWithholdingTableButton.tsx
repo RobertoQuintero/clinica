@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Copy } from "lucide-react";
+import { WITHHOLDING_FREQUENCY_SAT_KEYS, type WithholdingFrequency } from "@/lib/payroll/taxParametersUrls";
 import { copyWithholdingTableFromPreviousYear } from "../actions";
 
 interface Props {
   year: number;
+  frequency: WithholdingFrequency;
 }
 
-/** Copia la tarifa semanal de `year - 1` a `year`; el servidor rechaza si el ejercicio ya tiene tramos. */
-export default function CopyWithholdingTableButton({ year }: Props) {
+/** Copia la tarifa de la frecuencia elegida de `year - 1` a `year`; el servidor rechaza si el ejercicio ya tiene tramos. */
+export default function CopyWithholdingTableButton({ year, frequency }: Props) {
   const router = useRouter();
   const [isCopying, setIsCopying] = useState(false);
   const [feedback, setFeedback] = useState<{ isError: boolean; message: string } | null>(null);
@@ -19,7 +21,10 @@ export default function CopyWithholdingTableButton({ year }: Props) {
     setIsCopying(true);
     setFeedback(null);
     try {
-      const result = await copyWithholdingTableFromPreviousYear({ ejercicio_destino: year });
+      const result = await copyWithholdingTableFromPreviousYear({
+        ejercicio_destino: year,
+        frecuencia: WITHHOLDING_FREQUENCY_SAT_KEYS[frequency],
+      });
       if (!result.ok) {
         setFeedback({ isError: true, message: result.message });
         return;
