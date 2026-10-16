@@ -1,7 +1,8 @@
 "use client";
 
 import { ISucursalCalendario } from "@/interfaces/sucursal";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { deleteSucursalCalendario, getSucursalCalendarios, saveSucursalCalendario } from "../actions";
@@ -20,8 +21,10 @@ function emptyForm(id_sucursal: number): CalendarioFormData {
 }
 
 export default function SucursalCalendariosModal({ id_sucursal, nombreSucursal, onClose }: Props) {
-  const [calendarios, setCalendarios] = useState<ISucursalCalendario[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const { data, loading, reload: reloadCalendarios } = useAsyncData([id_sucursal], () =>
+    getSucursalCalendarios(id_sucursal),
+  );
+  const calendarios: ISucursalCalendario[] = data ?? [];
   const [showForm, setShowForm]       = useState(false);
   const [form, setForm]               = useState<CalendarioFormData>(emptyForm(id_sucursal));
   const [saving, setSaving]           = useState(false);
@@ -30,21 +33,6 @@ export default function SucursalCalendariosModal({ id_sucursal, nombreSucursal, 
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting]       = useState(false);
   const isClient = useIsClient();
-
-  const fetchCalendarios = async () => {
-    setLoading(true);
-    try {
-      const data = await getSucursalCalendarios(id_sucursal);
-      setCalendarios(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCalendarios();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id_sucursal]);
 
   const openNew = () => {
     setForm(emptyForm(id_sucursal));
@@ -78,7 +66,7 @@ export default function SucursalCalendariosModal({ id_sucursal, nombreSucursal, 
       const res = await saveSucursalCalendario(form);
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowForm(false);
-      await fetchCalendarios();
+      await reloadCalendarios();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -93,7 +81,7 @@ export default function SucursalCalendariosModal({ id_sucursal, nombreSucursal, 
     const res = await deleteSucursalCalendario(deletingId);
     if (res.ok) {
       setDeletingId(null);
-      await fetchCalendarios();
+      await reloadCalendarios();
     } else {
       setDeleteError(res.message ?? "Error al eliminar");
     }

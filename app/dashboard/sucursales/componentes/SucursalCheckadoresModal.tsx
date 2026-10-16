@@ -1,7 +1,8 @@
 "use client";
 
 import { IChecador } from "@/interfaces/checador";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { deactivateChecador, getChecadores, saveChecador } from "../actions";
@@ -20,8 +21,10 @@ function emptyForm(id_sucursal: number): ChecadorFormData {
 }
 
 export default function SucursalCheckadoresModal({ id_sucursal, nombreSucursal, onClose }: Props) {
-  const [checadores, setChecadores]   = useState<IChecador[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const { data, loading, reload: reloadChecadores } = useAsyncData([id_sucursal], () =>
+    getChecadores(id_sucursal),
+  );
+  const checadores: IChecador[] = data ?? [];
   const [showForm, setShowForm]       = useState(false);
   const [form, setForm]               = useState<ChecadorFormData>(emptyForm(id_sucursal));
   const [saving, setSaving]           = useState(false);
@@ -30,21 +33,6 @@ export default function SucursalCheckadoresModal({ id_sucursal, nombreSucursal, 
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
   const [deactivating, setDeactivating]     = useState(false);
   const isClient = useIsClient();
-
-  const fetchChecadores = async () => {
-    setLoading(true);
-    try {
-      const data = await getChecadores(id_sucursal);
-      setChecadores(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchChecadores();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id_sucursal]);
 
   const openNew = () => {
     setForm(emptyForm(id_sucursal));
@@ -75,7 +63,7 @@ export default function SucursalCheckadoresModal({ id_sucursal, nombreSucursal, 
       );
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowForm(false);
-      await fetchChecadores();
+      await reloadChecadores();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -90,7 +78,7 @@ export default function SucursalCheckadoresModal({ id_sucursal, nombreSucursal, 
     const res = await deactivateChecador(deactivatingId);
     if (res.ok) {
       setDeactivatingId(null);
-      await fetchChecadores();
+      await reloadChecadores();
     } else {
       setDeactivateError(res.message ?? "Error al dar de baja");
     }

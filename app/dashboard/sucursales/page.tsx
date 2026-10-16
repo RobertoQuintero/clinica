@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStates, getSucursales, saveSucursal } from "./actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import SucursalFila from "./componentes/SucursalFila";
 import SucursalModal from "./componentes/SucursalModal";
 
@@ -15,9 +16,7 @@ const EMPTY: FormData = { id_sucursal: 0, nombre: "", ciudad: null, direccion: n
 export default function SucursalesPage() {
   const { user }                    = useAuth();
   const router                      = useRouter();
-  const [sucursales, setSucursales] = useState<ISucursal[]>([]);
   const [states, setStates]         = useState<ICatState[]>([]);
-  const [loading, setLoading]       = useState(true);
   const [showModal, setShowModal]   = useState(false);
   const [form, setForm]             = useState<FormData>(EMPTY);
   const [saving, setSaving]         = useState(false);
@@ -39,18 +38,10 @@ export default function SucursalesPage() {
 
   const readOnly = user?.id_role === 2 || user?.id_role === 3;
 
-  const fetchSucursales = async () => {
-    setLoading(true);
-    try {
-      const data = await getSucursales();
-      setSucursales(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, loading, reload: reloadSucursales } = useAsyncData([], () => getSucursales());
+  const sucursales: ISucursal[] = data ?? [];
 
   useEffect(() => {
-    fetchSucursales();
     getStates().then(setStates);
   }, []);
 
@@ -94,7 +85,7 @@ export default function SucursalesPage() {
       const res = await saveSucursal({ ...form, id_calendar: null, iframe: null, link_calendar: null });
       if (!res.ok) throw new Error(res.message ?? "Error al guardar");
       setShowModal(false);
-      await fetchSucursales();
+      await reloadSucursales();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -188,7 +179,7 @@ export default function SucursalesPage() {
                     key={s.id_sucursal}
                     sucursal={s}
                     onEdit={openEdit}
-                    onDeleted={fetchSucursales}
+                    onDeleted={reloadSucursales}
                     readOnly={readOnly}
                   />
                 ))

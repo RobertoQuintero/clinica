@@ -1,10 +1,11 @@
 "use client";
 
 import { ITratamientoOnicomicosisListRow } from "@/interfaces/tratamiento_onicomicosis";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTratamientos, searchTratamientos } from "./actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import TratamientoFila from "./componentes/TratamientoFila";
 import { SucursalName } from "../componentes/SucursalName";
 
@@ -12,36 +13,41 @@ export default function TratamientosPage() {
   const { selectedId } = useSucursal();
   const { user } = useAuth();
 
-  const [tratamientos, setTratamientos] = useState<ITratamientoOnicomicosisListRow[]>([]);
-  const [loading, setLoading]           = useState(true);
   const [search, setSearch]             = useState("");
   const [searched, setSearched]         = useState(false);
+  const [searchResults, setSearchResults] = useState<ITratamientoOnicomicosisListRow[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const id_especialista = user?.id_role === 5 ? user.id_user : undefined;
-      const data = await getTratamientos(selectedId, id_especialista);
-      setTratamientos(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // El rol 5 (médico externo) solo ve sus propios tratamientos.
+  const especialistaId = user?.id_role === 5 ? user.id_user : null;
+  const tratamientosData = useAsyncData([selectedId, especialistaId], () =>
+    getTratamientos(selectedId, especialistaId ?? undefined),
+  );
+  const { reload: reloadTratamientos } = tratamientosData;
+
+  // Al cambiar de sucursal se descarta la búsqueda en BD y se vuelve al listado de la sucursal.
+  const [previousSelectedId, setPreviousSelectedId] = useState(selectedId);
+  if (selectedId !== previousSelectedId) {
+    setPreviousSelectedId(selectedId);
+    setSearched(false);
+  }
+
+  const tratamientos: ITratamientoOnicomicosisListRow[] = searched
+    ? searchResults
+    : (tratamientosData.data ?? []);
+  const loading = searched ? searchLoading : tratamientosData.loading;
 
   const handleSearchEnter = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter" || search.length < 3) return;
-    setLoading(true);
+    setSearchLoading(true);
     setSearched(true);
     try {
-      const id_especialista = user?.id_role === 5 ? user.id_user : undefined;
-      const data = await searchTratamientos(selectedId, search.trim(), id_especialista);
-      setTratamientos(data);
+      const data = await searchTratamientos(selectedId, search.trim(), especialistaId ?? undefined);
+      setSearchResults(data);
     } finally {
-      setLoading(false);
+      setSearchLoading(false);
     }
   };
-
-  useEffect(() => { fetchData(); setSearched(false); }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = tratamientos.filter((t) => {
     const q = search.toLowerCase();
@@ -67,7 +73,7 @@ export default function TratamientosPage() {
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            if (e.target.value === "" && searched) { fetchData(); setSearched(false); }
+            if (e.target.value === "" && searched) { reloadTratamientos(); setSearched(false); }
           }}
           onKeyDown={handleSearchEnter}
           className="w-full sm:w-72 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 placeholder-zinc-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:placeholder-zinc-500"
