@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
-import { usePurchaseCart } from "@/contexts/PurchaseCartContext";
+import { IPurchaseCartLine, usePurchaseCart } from "@/contexts/PurchaseCartContext";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { getSuppliers } from "@/app/dashboard/proveedores/actions";
 import { getUnitsMeasurement } from "@/app/dashboard/productos/actions";
@@ -38,7 +38,8 @@ export default function RevisionOrdenPage() {
     clearCart,
   } = usePurchaseCart();
 
-  const [suppliers, setSuppliers]         = useState<ISupplier[]>([]);
+  // null = todavía no se carga; así no se marcan líneas como inválidas mientras llega la respuesta
+  const [suppliers, setSuppliers]         = useState<ISupplier[] | null>(null);
   const [units, setUnits]                 = useState<IUnitMeasurement[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<IMetodoPago[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -64,21 +65,40 @@ export default function RevisionOrdenPage() {
     () => new Map(units.map((u) => [u.id_unit_measurement, u.name])),
     [units]
   );
-  const supplierNameById = useMemo(
-    () => new Map(suppliers.map((s) => [s.id_proveedor, s.nombre_corto])),
+  const activeSuppliers = useMemo(
+    () => (suppliers ?? []).filter((supplier) => supplier.activo),
     [suppliers]
+  );
+  const validSupplierIds = useMemo(
+    () => new Set(activeSuppliers.map((supplier) => supplier.id_proveedor)),
+    [activeSuppliers]
+  );
+  const supplierNameById = useMemo(
+    () => new Map(activeSuppliers.map((s) => [s.id_proveedor, s.nombre_corto])),
+    [activeSuppliers]
+  );
+
+  /** id_supplier que cuenta para agrupar y validar: null si la línea no tiene proveedor
+   *  o si, ya cargada la lista, su proveedor no está entre los activos. */
+  const getEffectiveSupplierId = useCallback(
+    (line: IPurchaseCartLine): number | null =>
+      line.id_supplier !== null && (suppliers === null || validSupplierIds.has(line.id_supplier))
+        ? line.id_supplier
+        : null,
+    [suppliers, validSupplierIds]
   );
 
   const groupedBySupplier = useMemo(() => {
     const groups = new Map<string, typeof lines>();
     for (const line of lines) {
-      const key = line.id_supplier === null ? "sin-proveedor" : String(line.id_supplier);
+      const effectiveSupplierId = getEffectiveSupplierId(line);
+      const key = effectiveSupplierId === null ? "sin-proveedor" : String(effectiveSupplierId);
       const existing = groups.get(key) ?? [];
       existing.push(line);
       groups.set(key, existing);
     }
     return groups;
-  }, [lines]);
+  }, [lines, getEffectiveSupplierId]);
 
   const subtotal = lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
   const tax = lines.reduce(
@@ -92,7 +112,7 @@ export default function RevisionOrdenPage() {
     0
   );
   const total = subtotal + tax + shipping;
-  const hasLineWithoutSupplier = lines.some((line) => line.id_supplier === null);
+  const hasLineWithoutSupplier = lines.some((line) => getEffectiveSupplierId(line) === null);
   const hasSupplierWithoutPaymentMethod = Array.from(groupedBySupplier.keys()).some(
     (key) => key !== "sin-proveedor" && !paymentMethodBySupplier[Number(key)]
   );
@@ -162,7 +182,7 @@ export default function RevisionOrdenPage() {
                 key={key}
                 supplierName={supplierName}
                 lines={supplierLines}
-                suppliers={suppliers}
+                suppliers={activeSuppliers}
                 unitNameById={unitNameById}
                 paymentMethods={paymentMethods}
                 selectedPaymentMethodId={id_supplier !== null ? paymentMethodBySupplier[id_supplier] ?? null : null}

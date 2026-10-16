@@ -220,7 +220,7 @@ const TAX_RATE = 16;
 /**
  * Crea una orden de compra por proveedor a partir del carrito revisado, todas
  * agrupadas bajo un mismo `id_batch`. Una sola transacción: valida los productos
- * contra la BD, recalcula subtotal/IVA/total en el servidor (nunca confía en lo
+ * y los proveedores contra la BD (existentes, activos y de la empresa), recalcula subtotal/IVA/total en el servidor (nunca confía en lo
  * enviado por el cliente) y congela `conversion_factor` en cada línea.
  */
 export async function createPurchaseOrders(
@@ -291,6 +291,39 @@ export async function createPurchaseOrders(
             `El producto con id ${line.id_product} no existe, no está activo o no pertenece a la empresa`
           );
         }
+      }
+
+      // Valida que cada proveedor exista, no esté eliminado, esté activo y sea de
+      // la empresa. Un proveedor inválido aborta toda la orden.
+      const supplierParams: Record<string, unknown> = { id_empresa };
+      const supplierPlaceholders = supplierIdsWithLines
+        .map((id, index) => {
+          supplierParams[`id_supplier_${index}`] = id;
+          return `@id_supplier_${index}`;
+        })
+        .join(",");
+
+      const supplierRows = await tx.queryParams(
+        `SELECT [id_proveedor]
+           FROM [CentroPodologico].[inventory].[proveedores]
+          WHERE [id_empresa] = @id_empresa
+            AND [status] = 1
+            AND [activo] = 1
+            AND [id_proveedor] IN (${supplierPlaceholders})`,
+        supplierParams
+      );
+      const validSupplierIds = new Set(supplierRows.map((supplier) => supplier.id_proveedor));
+      const productNamesWithInvalidSupplier = [
+        ...new Set(
+          lines
+            .filter((line) => !validSupplierIds.has(line.id_supplier))
+            .map((line) => `«${productById.get(line.id_product)!.name}»`)
+        ),
+      ];
+      if (productNamesWithInvalidSupplier.length > 0) {
+        throw new Error(
+          `El proveedor asignado a ${productNamesWithInvalidSupplier.join(", ")} no existe o está inactivo. Asigna otro proveedor y vuelve a intentar.`
+        );
       }
 
       const id_batch = randomUUID();
