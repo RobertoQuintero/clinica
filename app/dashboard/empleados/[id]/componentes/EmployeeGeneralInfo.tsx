@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IEmployeeRecord } from "@/interfaces/employee";
 import { IEmployeeSchedule } from "@/interfaces/employee_schedule";
 import { formatScheduleSummary } from "../horario/scheduleFormatting";
+import EmployeeTerminationHistory from "./EmployeeTerminationHistory";
 import { dayFirst } from "@/utils/date_helpper";
 import { calculateAge, calculateSeniority } from "@/utils/employee_helpers";
 import {
@@ -187,6 +188,9 @@ export default function EmployeeGeneralInfo({ employee, schedule }: Props) {
           )}
         </div>
       </div>
+
+      {/* Historial de bajas (spec 86) */}
+      <EmployeeTerminationHistory employee={employee} />
     </div>
   );
 }

@@ -282,8 +282,8 @@ export const TERMINATION_NOTES_MAX_LENGTH = 500;
 - [x] Un registro que ya tiene un reingreso no muestra "Anular baja", y la acción lo rechaza si se llama directamente.
 
 **Historial y listado**
-- [ ] La pestaña General muestra "Historial de bajas" con las vigentes y las anuladas, de la más reciente a la más antigua, incluyendo quién registró y quién anuló.
-- [ ] En el listado, los inactivos con baja vigente muestran "Baja {dd/mm/aaaa}" bajo el badge rojo, y los inactivos sin baja no muestran fecha.
+- [x] La pestaña General muestra "Historial de bajas" con las vigentes y las anuladas, de la más reciente a la más antigua, incluyendo quién registró y quién anuló.
+- [x] En el listado, los inactivos con baja vigente muestran "Baja {dd/mm/aaaa}" bajo el badge rojo, y los inactivos sin baja no muestran fecha.
 
 **Reingreso**
 - [ ] "Reingresar" abre `EmployeeModal` precargado con los datos del registro anterior y con `fecha_ingreso` vacía.
