@@ -23,7 +23,7 @@ export const PERIOD_ROW_SELECT = `
   CONVERT(varchar(10), p.fecha_fin, 120)    AS fecha_fin,
   CONVERT(varchar(10), p.fecha_corte, 120)  AS fecha_corte,
   CONVERT(varchar(10), p.fecha_pago, 120)   AS fecha_pago,
-  p.status, p.created_by,
+  p.status, p.tipo_periodo, p.created_by,
   CONVERT(varchar(19), p.created_at, 120)   AS created_at,
   CONVERT(varchar(19), p.updated_at, 120)   AS updated_at,
   pp.description AS frecuencia_descripcion,
