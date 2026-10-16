@@ -12,6 +12,7 @@ import { IBank, IDepartment, IPosition, IShift, IPaymentPeriod } from "@/interfa
 import { ISucursal } from "@/interfaces/sucursal";
 import { getSucursalesForUser } from "@/app/dashboard/sucursales/actions";
 import { toDBString, buildDate, addZeroToday } from "@/utils/date_helpper";
+import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
 import { getVacationBadgeSummary, type VacationBadgeInput } from "@/lib/vacations/vacationStatus";
 import { fetchEmployeeTerminations } from "@/lib/terminations/terminationQueries";
@@ -545,23 +546,38 @@ export async function updateEmployee(
   }
 }
 
-export async function setEmployeeActive(
-  id_empleado: number,
-  activo: boolean
-): Promise<ActionResult<null>> {
+/**
+ * Solo activa (spec 86): desactivar se hace registrando una baja. Un empleado con baja vigente no se
+ * puede activar aquí; para eso se anula la baja. La condición va en el `UPDATE … WHERE`, así dos
+ * llamadas simultáneas no se pisan.
+ */
+export async function setEmployeeActive(id_empleado: number): Promise<ActionResult<null>> {
   try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
     const { id_empresa } = await getActiveUser();
-    await db.queryParams(
+    const activatedRows = await db.queryParams(
       `UPDATE [CentroPodologico].[RH].[empleados]
-          SET [activo] = @activo, [updated_at] = @updated_at
+          SET [activo] = 1, [updated_at] = @updated_at
+       OUTPUT INSERTED.[id_empleado]
         WHERE [id_empleado] = @id_empleado
-          AND [id_empresa]  = @id_empresa`,
-      { id_empleado, activo, id_empresa, updated_at: buildDate(new Date()) }
+          AND [id_empresa]  = @id_empresa
+          AND [activo] = 0
+          AND NOT EXISTS (SELECT 1
+                            FROM [CentroPodologico].[RH].[employee_terminations] t
+                           WHERE t.[id_empleado] = @id_empleado
+                             AND t.[anulado_at] IS NULL)`,
+      { id_empleado, id_empresa, updated_at: buildDate(new Date()) }
     );
+    if (activatedRows.length === 0) {
+      return { ok: false, message: "El empleado ya está activo o tiene una baja vigente" };
+    }
+
     revalidatePath("/dashboard/empleados");
     revalidatePath(`/dashboard/empleados/${id_empleado}`);
     return { ok: true, data: null };
   } catch {
-    return { ok: false, message: "Error al cambiar el estatus del empleado" };
+    return { ok: false, message: "Error al activar al empleado" };
   }
 }

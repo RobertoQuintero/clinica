@@ -257,21 +257,21 @@ export const TERMINATION_NOTES_MAX_LENGTH = 500;
 - [x] Insertar dos empleados con el mismo `id_empleado_anterior` falla por `UX_empleados_empleado_anterior`.
 
 **Registrar la baja**
-- [ ] Un empleado activo ya no muestra el botón "Desactivar". En su lugar aparece "Dar de baja".
-- [ ] Al elegir una causa en el modal, el tipo se precarga con su `tipo_terminacion_sugerido` y se puede cambiar.
-- [ ] Guardar una baja válida crea una fila en `RH.employee_terminations` y deja `activo = 0` en la misma operación.
+- [x] Un empleado activo ya no muestra el botón "Desactivar". En su lugar aparece "Dar de baja".
+- [x] Al elegir una causa en el modal, el tipo se precarga con su `tipo_terminacion_sugerido` y se puede cambiar.
+- [x] Guardar una baja válida crea una fila en `RH.employee_terminations` y deja `activo = 0` en la misma operación.
 - [ ] Una `fecha_baja` mayor que hoy se rechaza.
 - [ ] Una `fecha_baja` menor que `fecha_ingreso` se rechaza.
 - [ ] Con un bloque de vacaciones cuyo `fecha_fin` es posterior a `fecha_baja`, se rechaza con un mensaje que incluye las fechas del bloque.
-- [ ] Con un día económico activo posterior a `fecha_baja`, se rechaza con un mensaje que incluye esa fecha.
+- [x] Con un día económico activo posterior a `fecha_baja`, se rechaza con un mensaje que incluye esa fecha.
 - [ ] Si el empleado tiene usuarios vinculados o PINs activos, el modal muestra el aviso con N y M. Guardar no cambia `users.status` ni los identificadores.
 - [ ] Unas observaciones de más de 500 caracteres se rechazan en el servidor.
 - [ ] Un usuario con rol distinto de 1 o 4 que llama `registerEmployeeTermination` directamente recibe `{ ok: false }` y no se escribe nada.
 
 **Encabezado y estados**
 - [ ] Con una baja vigente, el encabezado muestra "Baja · {fecha} · {causa} · {Renuncia (finiquito) | Despido (liquidación)}" y los botones "Anular baja" y "Reingresar".
-- [ ] Un empleado con `activo = 0` y sin baja vigente muestra "Inactivo sin baja registrada" y los botones "Registrar baja" y "Activar".
-- [ ] "Registrar baja" en un inactivo sin baja acepta una fecha pasada y crea la fila sin cambiar `activo`, que ya es 0.
+- [x] Un empleado con `activo = 0` y sin baja vigente muestra "Inactivo sin baja registrada" y los botones "Registrar baja" y "Activar".
+- [x] "Registrar baja" en un inactivo sin baja acepta una fecha pasada y crea la fila sin cambiar `activo`, que ya es 0.
 - [ ] `setEmployeeActive` sobre un empleado con baja vigente no cambia nada y regresa `{ ok: false }`.
 - [ ] Ningún camino de la UI deja a un empleado con `activo = 0` sin crear antes una baja, salvo los inactivos que ya existían.
 
