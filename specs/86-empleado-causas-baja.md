@@ -269,7 +269,7 @@ export const TERMINATION_NOTES_MAX_LENGTH = 500;
 - [ ] Un usuario con rol distinto de 1 o 4 que llama `registerEmployeeTermination` directamente recibe `{ ok: false }` y no se escribe nada.
 
 **Encabezado y estados**
-- [ ] Con una baja vigente, el encabezado muestra "Baja · {fecha} · {causa} · {Renuncia (finiquito) | Despido (liquidación)}" y los botones "Anular baja" y "Reingresar".
+- [x] Con una baja vigente, el encabezado muestra "Baja · {fecha} · {causa} · {Renuncia (finiquito) | Despido (liquidación)}" y los botones "Anular baja" y "Reingresar".
 - [x] Un empleado con `activo = 0` y sin baja vigente muestra "Inactivo sin baja registrada" y los botones "Registrar baja" y "Activar".
 - [x] "Registrar baja" en un inactivo sin baja acepta una fecha pasada y crea la fila sin cambiar `activo`, que ya es 0.
 - [ ] `setEmployeeActive` sobre un empleado con baja vigente no cambia nada y regresa `{ ok: false }`.
@@ -286,13 +286,13 @@ export const TERMINATION_NOTES_MAX_LENGTH = 500;
 - [x] En el listado, los inactivos con baja vigente muestran "Baja {dd/mm/aaaa}" bajo el badge rojo, y los inactivos sin baja no muestran fecha.
 
 **Reingreso**
-- [ ] "Reingresar" abre `EmployeeModal` precargado con los datos del registro anterior y con `fecha_ingreso` vacía.
-- [ ] Una `fecha_ingreso ≤ fecha_baja` se rechaza.
-- [ ] Guardar crea un empleado nuevo y activo con un `codigo_empleado` distinto y `id_empleado_anterior` igual al registro anterior, y navega a su detalle.
+- [x] "Reingresar" abre `EmployeeModal` precargado con los datos del registro anterior y con `fecha_ingreso` vacía.
+- [x] Una `fecha_ingreso ≤ fecha_baja` se rechaza.
+- [x] Guardar crea un empleado nuevo y activo con un `codigo_empleado` distinto y `id_empleado_anterior` igual al registro anterior, y navega a su detalle.
 - [ ] El nuevo registro no tiene horario, documentos, identificadores, usuarios vinculados, vacaciones ni días económicos del anterior.
-- [ ] El registro anterior sigue inactivo, ya no muestra "Reingresar" y su historial dice "Reingresó como {código}".
-- [ ] El historial del nuevo registro dice "Reingreso de {código}".
-- [ ] Un segundo reingreso desde el mismo registro, por ejemplo con dos pestañas abiertas, regresa "Este registro ya tiene un reingreso".
+- [x] El registro anterior sigue inactivo, ya no muestra "Reingresar" y su historial dice "Reingresó como {código}".
+- [x] El historial del nuevo registro dice "Reingreso de {código}".
+- [x] Un segundo reingreso desde el mismo registro, por ejemplo con dos pestañas abiertas, regresa "Este registro ya tiene un reingreso".
 
 **Sin regresiones**
 - [ ] Un empleado dado de baja no aparece en el cálculo de nómina, igual que un inactivo hoy.

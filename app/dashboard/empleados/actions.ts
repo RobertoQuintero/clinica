@@ -1,6 +1,6 @@
 "use server";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import { IAuthUser } from "@/interfaces/auth";
 import {
   IEmployee,
@@ -16,6 +16,7 @@ import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
 import { getVacationBadgeSummary, type VacationBadgeInput } from "@/lib/vacations/vacationStatus";
 import { fetchEmployeeTerminations } from "@/lib/terminations/terminationQueries";
+import { isUniqueViolation, TerminationRuleError } from "@/lib/terminations/terminationErrors";
 import { parseEmployeeInput } from "./schemas";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -437,6 +438,43 @@ function buildEmployeeWriteParams(input: EmployeeFormInput, fechaIngresoDb: stri
   };
 }
 
+/**
+ * INSERT de un empleado nuevo, compartido por el alta y el reingreso. `id_empleado_anterior` solo se
+ * llena en el reingreso (spec 86). Acepta `db` o el cliente de una transacción.
+ */
+async function insertEmployeeRow(
+  client: ITransactionClient,
+  params: ReturnType<typeof buildEmployeeWriteParams> & {
+    codigo_empleado: string;
+    id_empresa: number;
+    id_empleado_anterior: number | null;
+  }
+): Promise<number> {
+  const inserted = await client.queryParams(
+    `INSERT INTO [CentroPodologico].[RH].[empleados]
+         ([codigo_empleado],[id_empresa],[id_sucursal],[nombre],[apellido_paterno],[apellido_materno],
+          [foto_url],[fecha_ingreso],[id_supervisor],[whatsapp],[email],[rfc],[curp],[nss],
+          [fecha_nacimiento],[genero],[estado_civil],[direccion],[contacto_emergencia],[whatsapp_emergencia],
+          [contacto_emergencia_2],[whatsapp_emergencia_2],
+          [id_department],[id_puesto],[id_turno],[id_periodo_pago],
+          [salario_diario],[salario_diario_fiscal],[tipo_salario],[cuenta_bancaria],
+          [codigo_postal_fiscal],[tipo_regimen],[tipo_contrato],[tipo_jornada],[sindicalizado],[banco],
+          [id_empleado_anterior],[activo],[status],[created_at])
+       OUTPUT INSERTED.[id_empleado]
+       VALUES
+         (@codigo_empleado,@id_empresa,@id_sucursal,@nombre,@apellido_paterno,@apellido_materno,
+          @foto_url,@fecha_ingreso,@id_supervisor,@whatsapp,@email,@rfc,@curp,@nss,
+          @fecha_nacimiento,@genero,@estado_civil,@direccion,@contacto_emergencia,@whatsapp_emergencia,
+          @contacto_emergencia_2,@whatsapp_emergencia_2,
+          @id_department,@id_puesto,@id_turno,@id_periodo_pago,
+          @salario_diario,@salario_diario_fiscal,@tipo_salario,@cuenta_bancaria,
+          @codigo_postal_fiscal,@tipo_regimen,@tipo_contrato,@tipo_jornada,@sindicalizado,@banco,
+          @id_empleado_anterior,1,1,@created_at)`,
+    { ...params, created_at: buildDate(new Date()) }
+  );
+  return (inserted[0] as { id_empleado: number }).id_empleado;
+}
+
 export async function createEmployee(rawInput: EmployeeFormInput): Promise<ActionResult<number>> {
   try {
     const parsedInput = parseEmployeeInput(rawInput);
@@ -450,34 +488,92 @@ export async function createEmployee(rawInput: EmployeeFormInput): Promise<Actio
     const codigo_empleado = await generateEmployeeCode(id_empresa, fechaIngresoDb);
     const writeParams = buildEmployeeWriteParams(input, fechaIngresoDb);
 
-    const inserted = await db.queryParams(
-      `INSERT INTO [CentroPodologico].[RH].[empleados]
-         ([codigo_empleado],[id_empresa],[id_sucursal],[nombre],[apellido_paterno],[apellido_materno],
-          [foto_url],[fecha_ingreso],[id_supervisor],[whatsapp],[email],[rfc],[curp],[nss],
-          [fecha_nacimiento],[genero],[estado_civil],[direccion],[contacto_emergencia],[whatsapp_emergencia],
-          [contacto_emergencia_2],[whatsapp_emergencia_2],
-          [id_department],[id_puesto],[id_turno],[id_periodo_pago],
-          [salario_diario],[salario_diario_fiscal],[tipo_salario],[cuenta_bancaria],
-          [codigo_postal_fiscal],[tipo_regimen],[tipo_contrato],[tipo_jornada],[sindicalizado],[banco],
-          [activo],[status],[created_at])
-       OUTPUT INSERTED.[id_empleado]
-       VALUES
-         (@codigo_empleado,@id_empresa,@id_sucursal,@nombre,@apellido_paterno,@apellido_materno,
-          @foto_url,@fecha_ingreso,@id_supervisor,@whatsapp,@email,@rfc,@curp,@nss,
-          @fecha_nacimiento,@genero,@estado_civil,@direccion,@contacto_emergencia,@whatsapp_emergencia,
-          @contacto_emergencia_2,@whatsapp_emergencia_2,
-          @id_department,@id_puesto,@id_turno,@id_periodo_pago,
-          @salario_diario,@salario_diario_fiscal,@tipo_salario,@cuenta_bancaria,
-          @codigo_postal_fiscal,@tipo_regimen,@tipo_contrato,@tipo_jornada,@sindicalizado,@banco,
-          1,1,@created_at)`,
-      { ...writeParams, codigo_empleado, id_empresa, created_at: buildDate(new Date()) }
-    );
-
-    const newId = (inserted[0] as { id_empleado: number }).id_empleado;
+    const newId = await insertEmployeeRow(db, {
+      ...writeParams,
+      codigo_empleado,
+      id_empresa,
+      id_empleado_anterior: null,
+    });
     revalidatePath("/dashboard/empleados");
     return { ok: true, data: newId };
   } catch {
     return { ok: false, message: "Error al guardar el empleado" };
+  }
+}
+
+/**
+ * Reingreso (spec 86): crea un empleado nuevo ligado al registro dado de baja con `id_empleado_anterior`.
+ * No hereda horario, documentos, PINs, usuarios, vacaciones ni días económicos. Las reglas se revisan
+ * dentro de la transacción con el registro anterior bloqueado; el índice único filtrado
+ * `UX_empleados_empleado_anterior` cubre dos reingresos simultáneos.
+ */
+export async function rehireEmployee(
+  id_empleado_anterior: number,
+  rawInput: EmployeeFormInput
+): Promise<ActionResult<number>> {
+  try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
+    const parsedInput = parseEmployeeInput(rawInput);
+    if (!parsedInput.ok) return { ok: false, message: parsedInput.message };
+    const input = parsedInput.data;
+
+    const previousEmployee = await getEmployeeById(id_empleado_anterior);
+    if (!previousEmployee) {
+      return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+    }
+
+    const fechaIngresoDb = toDBString(String(input.fecha_ingreso ?? ""));
+    if (!fechaIngresoDb) return { ok: false, message: FECHA_INGRESO_REQUIRED_MESSAGE };
+    const hireDate = fechaIngresoDb.slice(0, 10);
+
+    const codigo_empleado = await generateEmployeeCode(previousEmployee.id_empresa, fechaIngresoDb);
+    const writeParams = buildEmployeeWriteParams(input, fechaIngresoDb);
+
+    const newId = await db.transaction(async (tx) => {
+      const [lockedPrevious] = (await tx.queryParams(
+        `SELECT CONVERT(varchar(10), t.[fecha_baja], 120) AS fecha_baja,
+                (SELECT COUNT(*)
+                   FROM [CentroPodologico].[RH].[empleados]
+                  WHERE [id_empleado_anterior] = @id_empleado_anterior) AS rehire_count
+           FROM [CentroPodologico].[RH].[empleados] e WITH (UPDLOCK, HOLDLOCK)
+           LEFT JOIN [CentroPodologico].[RH].[employee_terminations] t
+                  ON t.[id_empleado] = e.[id_empleado] AND t.[anulado_at] IS NULL
+          WHERE e.[id_empleado] = @id_empleado_anterior`,
+        { id_empleado_anterior }
+      )) as { fecha_baja: string | null; rehire_count: number }[];
+
+      if (!lockedPrevious?.fecha_baja) {
+        throw new TerminationRuleError("El empleado no tiene una baja vigente");
+      }
+      if (lockedPrevious.rehire_count > 0) {
+        throw new TerminationRuleError("Este registro ya tiene un reingreso");
+      }
+      if (hireDate <= lockedPrevious.fecha_baja) {
+        const [year, month, day] = lockedPrevious.fecha_baja.split("-");
+        throw new TerminationRuleError(
+          `La fecha de ingreso debe ser posterior a la fecha de baja (${day}/${month}/${year})`
+        );
+      }
+
+      return insertEmployeeRow(tx, {
+        ...writeParams,
+        codigo_empleado,
+        id_empresa: previousEmployee.id_empresa,
+        id_empleado_anterior,
+      });
+    });
+
+    revalidatePath("/dashboard/empleados");
+    revalidatePath(`/dashboard/empleados/${id_empleado_anterior}`, "layout");
+    return { ok: true, data: newId };
+  } catch (error) {
+    if (error instanceof TerminationRuleError) return { ok: false, message: error.message };
+    if (isUniqueViolation(error)) {
+      return { ok: false, message: "Este registro ya tiene un reingreso" };
+    }
+    return { ok: false, message: "Error al reingresar al empleado" };
   }
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Power, UndoDot, UserMinus } from "lucide-react";
+import { Pencil, Power, UndoDot, UserMinus, UserPlus } from "lucide-react";
 import { IEmployeeRecord } from "@/interfaces/employee";
 import type { ITerminationCause } from "@/interfaces/employee_termination";
 import { setEmployeeActive, IEmployeeCatalogs } from "../../actions";
@@ -28,6 +28,7 @@ export default function EmployeeActions({ employee, catalogs, terminationCauses 
   const router = useRouter();
   const [showEditModal, setShowEditModal]               = useState(false);
   const [showTerminationModal, setShowTerminationModal] = useState(false);
+  const [showRehireModal, setShowRehireModal]                     = useState(false);
   const [showCancelTerminationModal, setShowCancelTerminationModal] = useState(false);
   const [showActivateConfirm, setShowActivateConfirm]   = useState(false);
   const [activating, setActivating]                     = useState(false);
@@ -80,6 +81,13 @@ export default function EmployeeActions({ employee, catalogs, terminationCauses 
           </button>
         )}
 
+        {canCancelTermination && (
+          <button type="button" onClick={() => setShowRehireModal(true)} className={SECONDARY_BUTTON_CLASSES}>
+            <UserPlus size={16} />
+            Reingresar
+          </button>
+        )}
+
         {isInactiveWithoutTermination && (
           <button
             type="button"
@@ -97,6 +105,10 @@ export default function EmployeeActions({ employee, catalogs, terminationCauses 
 
       {showEditModal && (
         <EmployeeModal employee={employee} catalogs={catalogs} onClose={() => setShowEditModal(false)} />
+      )}
+
+      {showRehireModal && (
+        <EmployeeModal rehireFrom={employee} catalogs={catalogs} onClose={() => setShowRehireModal(false)} />
       )}
 
       {showTerminationModal && (

@@ -4,6 +4,7 @@ import db from "@/database/connection";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import type { IEmployeeTermination, ITerminationCause } from "@/interfaces/employee_termination";
 import { fetchEmployeeTerminations } from "@/lib/terminations/terminationQueries";
+import { isUniqueViolation, TerminationRuleError } from "@/lib/terminations/terminationErrors";
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
@@ -12,15 +13,6 @@ import { cancelEmployeeTerminationSchema, registerEmployeeTerminationSchema } fr
 type ActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; message: string };
-
-/** Corta la transacción con un mensaje para el usuario; el `catch` externo lo convierte en `ok: false`. */
-class TerminationRuleError extends Error {}
-
-/** Violación de índice único (2601) o de restricción única (2627) de SQL Server. */
-function isUniqueViolation(error: unknown): boolean {
-  const sqlErrorNumber = (error as { number?: number } | null)?.number;
-  return sqlErrorNumber === 2601 || sqlErrorNumber === 2627;
-}
 
 /** "YYYY-MM-DD" → "dd/mm/aaaa" para los mensajes. */
 function formatIsoDate(isoDate: string): string {
