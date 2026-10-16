@@ -13,3 +13,4 @@
 -  la parte exenta del aguinaldo entra a la base del impuesto estatal de Ciudad de México
 -  Clave de percepción: confirma que sea la 002 (Gratificación anual / aguinaldo) del catálogo SAT, con sus importes gravado y exento por separado
 -  Tipo de nómina en el CFDI: EXTRAORDINARIA A MAS TARDAR DEBE PAGARSE EL 20 DE DIC. LANZAR ADVERTENCIA DESDE DIA 1 DE DIC*
+-  Considera laborados los últimos días de diciembre que aún no se han trabajado al momento del cálculo.

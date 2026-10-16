@@ -2694,6 +2694,106 @@ IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions] WHERE [i
 COMMIT;
 GO
 
+-- Spec 87: tipo de periodo. Todos los existentes quedan 'O'.
+ALTER TABLE [payroll].[periods] ADD [tipo_periodo] [char](1) NOT NULL
+    CONSTRAINT [DF_periods_tipo_periodo] DEFAULT ('O');
+GO
+ALTER TABLE [payroll].[periods] ADD
+    CONSTRAINT [CK_periods_tipo_periodo] CHECK ([tipo_periodo] IN ('O','E')),
+    -- El periodo E cubre exactamente el año de su ejercicio.
+    CONSTRAINT [CK_periods_extraordinaria_fechas] CHECK (
+        [tipo_periodo] = 'O'
+     OR ([fecha_inicio] = DATEFROMPARTS([ejercicio], 1, 1)
+         AND [fecha_fin] = DATEFROMPARTS([ejercicio], 12, 31)));
+GO
+-- Un solo periodo E por sucursal y ejercicio (también se revisa en la transacción de alta).
+CREATE UNIQUE NONCLUSTERED INDEX [UX_periods_extraordinaria_sucursal_ejercicio]
+    ON [payroll].[periods] ([id_sucursal], [ejercicio])
+    WHERE [tipo_periodo] = 'E';
+GO
+
+-- Spec 87: snapshot del aguinaldo. En filas de periodos 'O' siempre 0.
+ALTER TABLE [payroll].[period_employees] ADD
+    [dias_aguinaldo]    [smallint]      NOT NULL CONSTRAINT [DF_period_employees_dias_aguinaldo]    DEFAULT (0),
+    [importe_aguinaldo] [decimal](18,2) NOT NULL CONSTRAINT [DF_period_employees_importe_aguinaldo] DEFAULT (0);
+GO
+ALTER TABLE [payroll].[period_employees] ADD
+    CONSTRAINT [CK_period_employees_aguinaldo] CHECK (
+        [dias_aguinaldo] BETWEEN 0 AND 366 AND [importe_aguinaldo] >= 0);
+GO
+
+-- Spec 87: ISR art. 174 RLISR. Una fila por fila 'F' de un periodo E. Las columnas isr_* de la
+-- spec 70 se quedan en 'X' en esas filas; esta tabla es la fuente de su ISR.
+CREATE TABLE [payroll].[period_employee_isr_article174](
+    [id_period_employee]          [int]           NOT NULL,
+    [isr_estado]                  [char](1)       NOT NULL,   -- 'C' calculado, 'N' no calculado
+    [isr_motivo]                  [varchar](30)   NULL,       -- solo 'N'
+    [base_gravable]               [decimal](18,2) NULL,       -- gravado del aguinaldo; NULL con exemption_not_calculated
+    [ingreso_ordinario_mensual]   [decimal](18,2) NULL,       -- ROUND(salario_diario_fiscal × 30.4, 2)
+    [parte_mensualizada]          [decimal](18,2) NULL,       -- ROUND(base_gravable / 365 × 30.4, 2)
+    [ejercicio_tarifa]            [int]           NULL,       -- YEAR(fecha_fin)
+    -- Tramo del ordinario solo
+    [limite_inferior_ordinario]   [decimal](18,2) NULL,
+    [cuota_fija_ordinario]        [decimal](18,2) NULL,
+    [porcentaje_ordinario]        [decimal](5,2)  NULL,
+    [isr_ordinario]               [decimal](18,2) NULL,
+    -- Tramo del ordinario + parte mensualizada
+    [limite_inferior_total]       [decimal](18,2) NULL,
+    [cuota_fija_total]            [decimal](18,2) NULL,
+    [porcentaje_total]            [decimal](5,2)  NULL,
+    [isr_total]                   [decimal](18,2) NULL,
+    [diferencia_isr]              [decimal](18,2) NULL,       -- isr_total − isr_ordinario
+    [tasa]                        [decimal](9,6)  NULL,       -- ROUND(diferencia / parte_mensualizada, 6); 0 si la parte es 0
+    [isr_retenido]                [decimal](18,2) NULL,       -- ROUND(base_gravable × tasa, 2)
+ CONSTRAINT [PK_period_employee_isr_article174] PRIMARY KEY CLUSTERED ([id_period_employee] ASC),
+ CONSTRAINT [FK_period_employee_isr_article174_row] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_isr_article174] CHECK (
+     ([isr_estado] = 'N'
+        AND [isr_motivo] IS NOT NULL
+        AND [isr_motivo] IN ('no_monthly_withholding_table','income_in_gap','exemption_not_calculated')
+        AND [isr_retenido] IS NULL)
+  OR ([isr_estado] = 'C'
+        AND [isr_motivo] IS NULL
+        AND [base_gravable] IS NOT NULL AND [ingreso_ordinario_mensual] IS NOT NULL
+        AND [parte_mensualizada] IS NOT NULL AND [ejercicio_tarifa] IS NOT NULL
+        AND [isr_ordinario] IS NOT NULL AND [isr_total] IS NOT NULL
+        AND [diferencia_isr] IS NOT NULL AND [tasa] IS NOT NULL AND [isr_retenido] IS NOT NULL
+        AND [diferencia_isr] = [isr_total] - [isr_ordinario]
+        AND [isr_retenido] >= 0))
+) ON [PRIMARY]
+GO
+
+-- Spec 87: percepción de aguinaldo del catálogo + periodicidad SAT 99. Idempotente (solo datos).
+SET XACT_ABORT ON;
+BEGIN TRAN;
+
+-- Debe haber exactamente una percepción de aguinaldo (002, 'U', 30 UMA, anual).
+-- Su id es CHRISTMAS_BONUS_PERCEPTION_ID en lib/payroll/constants.ts.
+IF (SELECT COUNT(*) FROM [CentroPodologico].[payroll].[perceptions]
+     WHERE [clave_sat] = '002' AND [tipo_limite_exencion] = 'U'
+       AND [umas_limite] = 30 AND [periodicidad_limite] = 'A') <> 1
+    THROW 50087, 'No hay exactamente una percepción de aguinaldo (002, U, 30 UMA, A). Revisa el catálogo antes de seguir.', 1;
+
+-- La 99 se inserta con status = 0 para que nunca se ofrezca como frecuencia de un empleado.
+-- id_payment_period no es IDENTITY: se toma el siguiente libre.
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[RH].[payment_periods] WHERE [clave_sat] = '99')
+    INSERT INTO [CentroPodologico].[RH].[payment_periods]
+           ([id_payment_period], [clave_sat], [description], [days], [status])
+    SELECT ISNULL(MAX([id_payment_period]), 0) + 1, '99', 'Otra periodicidad (extraordinaria)', NULL, 0
+      FROM [CentroPodologico].[RH].[payment_periods];
+
+COMMIT;
+GO
+
+-- Spec 87: la 99 ya existía con status = 1 y empleados asignados? Revisar a mano.
+SELECT pp.[id_payment_period], pp.[status], COUNT(e.[id_empleado]) AS empleados_asignados
+  FROM [CentroPodologico].[RH].[payment_periods] pp
+  LEFT JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_periodo_pago] = pp.[id_payment_period]
+ WHERE pp.[clave_sat] = '99'
+ GROUP BY pp.[id_payment_period], pp.[status];
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------
