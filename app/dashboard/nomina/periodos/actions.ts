@@ -16,7 +16,11 @@ import {
   PAYROLL_PERIODS_PAGE_SIZE,
 } from "@/lib/payroll/constants";
 import { suggestPeriodDates } from "@/lib/payroll/periodDates";
-import { createPayrollPeriodSchema, updatePayrollPeriodSchema } from "@/lib/payroll/schemas";
+import {
+  createPayrollPeriodSchema,
+  payrollPeriodsPageFiltersSchema,
+  updatePayrollPeriodSchema,
+} from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
@@ -54,11 +58,17 @@ function escapeLikePattern(text: string): string {
 }
 
 export async function getPayrollPeriodsPage(
-  filters: IPayrollPeriodFilters,
+  input: IPayrollPeriodFilters,
 ): Promise<ActionResult<IPayrollPeriodsPage>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
   const { id_sucursal } = access.data;
+
+  const parsedFilters = payrollPeriodsPageFiltersSchema.safeParse(input);
+  if (!parsedFilters.success) {
+    return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const filters = parsedFilters.data;
 
   try {
     const today = addZeroToday(new Date());

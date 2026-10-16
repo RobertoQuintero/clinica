@@ -83,6 +83,7 @@ import { getCommissionTiers } from "../comisiones/actions";
 import {
   calculatePayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
+  payrollProcessFiltersSchema,
   revertPayrollCalculationSchema,
 } from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
@@ -202,11 +203,17 @@ function buildPayrollEmployeeConditions(filters: {
 }
 
 export async function getPayrollProcessPage(
-  filters: IPayrollProcessFilters,
+  input: IPayrollProcessFilters,
 ): Promise<ActionResult<IPayrollProcessPage>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
   const { id_sucursal } = access.data;
+
+  const parsedFilters = payrollProcessFiltersSchema.safeParse(input);
+  if (!parsedFilters.success) {
+    return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const filters = parsedFilters.data;
 
   try {
     const periodOptionsPromise = db.queryParams(

@@ -393,17 +393,17 @@ export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string
 
 **Periodo extraordinario**
 
-- [ ] Todos los periodos existentes quedan con `tipo_periodo = 'O'` y se crean, editan, calculan y revierten igual que antes.
+- [x] Todos los periodos existentes quedan con `tipo_periodo = 'O'` y se crean, editan, calculan y revierten igual que antes.
 - [x] Se puede crear un periodo E por sucursal y año con código `NOM-{año}-E{NN}`, periodicidad SAT 99, `fecha_inicio` 1-ene y `fecha_fin` 31-dic no editables.
 - [x] Un segundo periodo E del mismo año en la misma sucursal se rechaza con "Ya existe la nómina de aguinaldo de {año}"; en otra sucursal se permite.
 - [x] La `fecha_pago` sugerida es el 20-dic; una posterior guarda y muestra la advertencia ámbar.
 - [x] Editar un periodo E solo cambia `fecha_pago` y `fecha_corte`, y solo en estatus 1.
-- [ ] La periodicidad 99 no aparece como opción de frecuencia en el registro del empleado ni en el alta de periodos ordinarios.
+- [x] La periodicidad 99 no aparece como opción de frecuencia en el registro del empleado ni en el alta de periodos ordinarios.
 - [x] Horas extra, Faltas, Retardos y Bonos no listan periodos E ni los eligen como periodo actual.
 
 **Cálculo**
 
-- [ ] Entran los empleados activos de la sucursal con salario > 0 del tipo y `fecha_ingreso ≤ 31-dic`, de cualquier frecuencia, incluso sin `id_periodo_pago`; los dados de baja no entran.
+- [x] Entran los empleados activos de la sucursal con salario > 0 del tipo y `fecha_ingreso ≤ 31-dic`, de cualquier frecuencia, incluso sin `id_periodo_pago`; los dados de baja no entran.
 - [x] Días = 31-dic − max(1-ene, `fecha_ingreso`) + 1, sin descontar faltas, aunque se calcule antes del 31-dic.
 - [x] Importe = `ROUND(salario × 15 × días / 365, 2)`: ingreso 1-sep-2026 con $500 da 122 días y $2,506.85; ingreso anterior a 2026 da 15 × salario.
 - [x] La operativa usa `salario_diario` y la fiscal `salario_diario_fiscal`; un empleado sin salario de un tipo no tiene fila de ese tipo.
@@ -417,9 +417,9 @@ export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string
 
 **Tarifa mensual**
 
-- [ ] La pestaña "Tarifa ISR" tiene el selector Semanal | Mensual en la URL; capturar, editar, borrar y copiar operan solo sobre la frecuencia elegida.
+- [x] La pestaña "Tarifa ISR" tiene el selector Semanal | Mensual en la URL; capturar, editar, borrar y copiar operan solo sobre la frecuencia elegida.
 - [x] Un traslape dentro de la misma frecuencia se rechaza; los mismos límites en semanal y mensual se permiten.
-- [ ] Recalcular un periodo semanal da el mismo ISR que antes de cargar la tarifa mensual.
+- [x] Recalcular un periodo semanal da el mismo ISR que antes de cargar la tarifa mensual.
 
 **Pantallas**
 
@@ -430,15 +430,15 @@ export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string
 **Avisos**
 
 - [x] Del 1-dic al 20-dic, sin periodo E del año en la sucursal, Periodos y Procesar muestran el aviso ámbar; del 21-dic en adelante, el rojo; antes del 1-dic o con periodo E creado, ninguno.
-- [ ] En estatus 2, el aviso "Recalcula" aparece en el periodo E si cambió el salario del tipo, la `fecha_ingreso`, la UMA o la regla del aguinaldo, o la tarifa mensual; recalcular lo quita.
+- [x] En estatus 2, el aviso "Recalcula" aparece en el periodo E si cambió el salario del tipo, la `fecha_ingreso`, la UMA o la regla del aguinaldo, o la tarifa mensual; recalcular lo quita.
 - [x] El aviso de ISR de la spec 70 nunca aparece en un periodo E.
 
 **Calidad**
 
-- [ ] Todas las acciones nuevas o modificadas pasan por `assertPayrollAccess()` y validan con `zod`; un rol distinto de 1 y 4 recibe `{ ok: false }`.
-- [ ] Ninguna fecha viaja como `Date`: las lecturas usan `CONVERT(varchar(10|19), …, 120)`.
+- [x] Todas las acciones nuevas o modificadas pasan por `assertPayrollAccess()` y validan con `zod`; un rol distinto de 1 y 4 recibe `{ ok: false }`.
+- [x] Ninguna fecha viaja como `Date`: las lecturas usan `CONVERT(varchar(10|19), …, 120)`.
 - [x] `npx tsc --noEmit` y `npm run lint` sin errores.
-- [ ] `docs/nomina.md`, `docs/rh-empleados.md` y `queries.txt` actualizados.
+- [x] `docs/nomina.md`, `docs/rh-empleados.md` y `queries.txt` actualizados.
 
 ## Decisiones
 

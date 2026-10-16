@@ -107,6 +107,23 @@ export const updatePayrollPeriodSchema = z.discriminatedUnion("tipo_periodo", [
   extraordinaryUpdatePeriodSchema,
 ]);
 
+/** Filtros de la pantalla de Periodos (los lee la página desde la URL y los vuelve a validar la acción). */
+export const payrollPeriodsPageFiltersSchema = z.object({
+  idPaymentPeriod: z.number().int().positive().nullable(),
+  status: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).nullable(),
+  ejercicio: z.number().int().min(1900).max(2200),
+  search: z.string().max(100),
+  page: z.number().int().positive(),
+});
+
+/** Filtros de la pantalla de Procesar nómina. */
+export const payrollProcessFiltersSchema = z.object({
+  idPeriod: z.number().int().positive().nullable(),
+  payrollType: z.enum(["O", "F"]),
+  idPuesto: z.number().int().positive().nullable(),
+  search: z.string().max(200),
+});
+
 export const calculatePayrollPeriodSchema = z.object({
   id_period: z.number().int().positive("Periodo inválido"),
 });
