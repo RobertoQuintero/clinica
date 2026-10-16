@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import { WITHHOLDING_FREQUENCY_SAT_KEYS, type WithholdingFrequency } from "@/lib/payroll/taxParametersUrls";
 import { deleteWithholdingBracket } from "../actions";
 
 interface Props {
   idBracket: number;
+  frequency: WithholdingFrequency;
   bracketLabel: string;
 }
 
 /** Botón de borrar con diálogo de confirmación propio (sin `confirm()` nativo). */
-export default function DeleteWithholdingBracketButton({ idBracket, bracketLabel }: Props) {
+export default function DeleteWithholdingBracketButton({ idBracket, frequency, bracketLabel }: Props) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -30,7 +32,10 @@ export default function DeleteWithholdingBracketButton({ idBracket, bracketLabel
     setIsDeleting(true);
     setErrorMessage(null);
     try {
-      const result = await deleteWithholdingBracket({ id_tarifa: idBracket });
+      const result = await deleteWithholdingBracket({
+        id_tarifa: idBracket,
+        frecuencia: WITHHOLDING_FREQUENCY_SAT_KEYS[frequency],
+      });
       if (!result.ok) {
         setErrorMessage(result.message);
         return;

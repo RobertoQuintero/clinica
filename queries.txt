@@ -2783,6 +2783,14 @@ IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[RH].[payment_periods] WHERE [cl
     SELECT ISNULL(MAX([id_payment_period]), 0) + 1, '99', 'Otra periodicidad (extraordinaria)', NULL, 0
       FROM [CentroPodologico].[RH].[payment_periods];
 
+-- La 05 (mensual) aloja la tarifa mensual del ISR (art. 174). También status = 0: todavía no hay periodos
+-- ordinarios mensuales ni empleados con esa frecuencia.
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[RH].[payment_periods] WHERE [clave_sat] = '05')
+    INSERT INTO [CentroPodologico].[RH].[payment_periods]
+           ([id_payment_period], [clave_sat], [description], [days], [status])
+    SELECT ISNULL(MAX([id_payment_period]), 0) + 1, '05', 'Mensual', 30, 0
+      FROM [CentroPodologico].[RH].[payment_periods];
+
 COMMIT;
 GO
 

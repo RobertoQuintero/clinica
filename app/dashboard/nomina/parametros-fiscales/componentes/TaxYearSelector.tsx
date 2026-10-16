@@ -1,16 +1,25 @@
-import { TAX_PARAMETERS_TAB_URL_VALUES, type TaxParametersTab } from "@/lib/payroll/taxParametersUrls";
+import {
+  TAX_PARAMETERS_TAB_URL_VALUES,
+  WITHHOLDING_FREQUENCY_URL_VALUES,
+  type TaxParametersTab,
+  type WithholdingFrequency,
+} from "@/lib/payroll/taxParametersUrls";
 
 interface Props {
   selectedYear: number;
   yearOptions: number[];
   activeTab: TaxParametersTab;
+  frequency: WithholdingFrequency;
 }
 
 /** Formulario GET: el ejercicio vive en la URL, sin estado de cliente ni JavaScript. */
-export default function TaxYearSelector({ selectedYear, yearOptions, activeTab }: Props) {
+export default function TaxYearSelector({ selectedYear, yearOptions, activeTab, frequency }: Props) {
   return (
     <form method="get" className="flex items-end gap-2">
       <input type="hidden" name="pestana" value={TAX_PARAMETERS_TAB_URL_VALUES[activeTab]} />
+      {activeTab === "withholding" && (
+        <input type="hidden" name="frecuencia" value={WITHHOLDING_FREQUENCY_URL_VALUES[frequency]} />
+      )}
       <label className="flex flex-col gap-1 text-xs font-semibold text-[#44474f] dark:text-zinc-400">
         Ejercicio
         <select

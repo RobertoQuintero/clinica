@@ -4,12 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, Scale, X } from "lucide-react";
 import type { IWithholdingBracket } from "@/interfaces/payroll_tax_parameters";
+import {
+  WITHHOLDING_FREQUENCY_LABELS,
+  WITHHOLDING_FREQUENCY_SAT_KEYS,
+  type WithholdingFrequency,
+} from "@/lib/payroll/taxParametersUrls";
 import { withholdingBracketOverlaps } from "@/lib/payroll/taxParameters";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { saveWithholdingBracket } from "../actions";
 
 type ModalProps = {
   year: number;
+  frequency: WithholdingFrequency;
   /** Tramos del ejercicio: solo para avisar traslapes antes de enviar; el servidor revalida. */
   brackets: IWithholdingBracket[];
   editedBracket?: IWithholdingBracket;
@@ -25,7 +31,7 @@ function parseTwoDecimalNumber(text: string): number | null {
   return Number(trimmed);
 }
 
-function WithholdingBracketModal({ year, brackets, editedBracket, onClose }: ModalProps) {
+function WithholdingBracketModal({ year, frequency, brackets, editedBracket, onClose }: ModalProps) {
   const router = useRouter();
   const isEditing = editedBracket !== undefined;
 
@@ -87,8 +93,8 @@ function WithholdingBracketModal({ year, brackets, editedBracket, onClose }: Mod
     try {
       const result = await saveWithholdingBracket(
         editedBracket
-          ? { id_tarifa: editedBracket.id_tarifa, ...bracketFields }
-          : { ejercicio: year, ...bracketFields },
+          ? { id_tarifa: editedBracket.id_tarifa, frecuencia: WITHHOLDING_FREQUENCY_SAT_KEYS[frequency], ...bracketFields }
+          : { ejercicio: year, frecuencia: WITHHOLDING_FREQUENCY_SAT_KEYS[frequency], ...bracketFields },
       );
       if (!result.ok) {
         setErrorMessage(result.message);
@@ -122,7 +128,9 @@ function WithholdingBracketModal({ year, brackets, editedBracket, onClose }: Mod
               <Scale size={18} />
             </span>
             <h3 id="withholding-bracket-modal-title" className="text-lg font-semibold text-[#0b1c30] dark:text-zinc-50">
-              {isEditing ? "Editar tramo" : `Nuevo tramo ${year}`}
+              {isEditing
+                ? `Editar tramo ${WITHHOLDING_FREQUENCY_LABELS[frequency].toLowerCase()}`
+                : `Nuevo tramo ${WITHHOLDING_FREQUENCY_LABELS[frequency].toLowerCase()} ${year}`}
             </h3>
           </div>
           <button
@@ -260,7 +268,15 @@ function WithholdingBracketModal({ year, brackets, editedBracket, onClose }: Mod
   );
 }
 
-export function NewWithholdingBracketButton({ year, brackets }: { year: number; brackets: IWithholdingBracket[] }) {
+export function NewWithholdingBracketButton({
+  year,
+  frequency,
+  brackets,
+}: {
+  year: number;
+  frequency: WithholdingFrequency;
+  brackets: IWithholdingBracket[];
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const closeModal = useCallback(() => setIsOpen(false), []);
 
@@ -274,7 +290,7 @@ export function NewWithholdingBracketButton({ year, brackets }: { year: number; 
         <Plus size={18} />
         Nuevo tramo
       </button>
-      {isOpen && <WithholdingBracketModal year={year} brackets={brackets} onClose={closeModal} />}
+      {isOpen && <WithholdingBracketModal year={year} frequency={frequency} brackets={brackets} onClose={closeModal} />}
     </>
   );
 }
@@ -283,10 +299,12 @@ export function EditWithholdingBracketButton({
   bracket,
   brackets,
   year,
+  frequency,
 }: {
   bracket: IWithholdingBracket;
   brackets: IWithholdingBracket[];
   year: number;
+  frequency: WithholdingFrequency;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const closeModal = useCallback(() => setIsOpen(false), []);
@@ -303,7 +321,13 @@ export function EditWithholdingBracketButton({
         <Pencil size={16} />
       </button>
       {isOpen && (
-        <WithholdingBracketModal year={year} brackets={brackets} editedBracket={bracket} onClose={closeModal} />
+        <WithholdingBracketModal
+          year={year}
+          frequency={frequency}
+          brackets={brackets}
+          editedBracket={bracket}
+          onClose={closeModal}
+        />
       )}
     </>
   );

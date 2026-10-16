@@ -1,12 +1,10 @@
 import Link from "next/link";
-import {
-  TAX_PARAMETERS_TAB_URL_VALUES,
-  type TaxParametersTab,
-} from "@/lib/payroll/taxParametersUrls";
+import { buildTaxParametersHref, type TaxParametersTab, type WithholdingFrequency } from "@/lib/payroll/taxParametersUrls";
 
 interface Props {
   activeTab: TaxParametersTab;
   year: number;
+  frequency: WithholdingFrequency;
 }
 
 const TABS: { tab: TaxParametersTab; label: string }[] = [
@@ -15,20 +13,16 @@ const TABS: { tab: TaxParametersTab; label: string }[] = [
   { tab: "perceptions", label: "Percepciones" },
 ];
 
-/** Navegación entre pestañas con `Link`: conserva el ejercicio de la URL. */
-export default function TaxParametersTabs({ activeTab, year }: Props) {
+/** Navegación entre pestañas con `Link`: conserva el ejercicio y la frecuencia de la tarifa de la URL. */
+export default function TaxParametersTabs({ activeTab, year, frequency }: Props) {
   return (
     <nav aria-label="Datos fiscales" className="flex gap-1 border-b border-[#c4c6d0] dark:border-zinc-700">
       {TABS.map(({ tab, label }) => {
         const isActive = tab === activeTab;
-        const searchParams = new URLSearchParams({
-          pestana: TAX_PARAMETERS_TAB_URL_VALUES[tab],
-          ejercicio: String(year),
-        });
         return (
           <Link
             key={tab}
-            href={`/dashboard/nomina/parametros-fiscales?${searchParams.toString()}`}
+            href={buildTaxParametersHref(tab, year, frequency)}
             aria-current={isActive ? "page" : undefined}
             className={`-mb-px px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
               isActive
