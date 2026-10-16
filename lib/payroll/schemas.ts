@@ -37,19 +37,75 @@ function validatePeriodDateOrder(dates: PeriodDatesInput, context: z.RefinementC
   }
 }
 
-export const createPayrollPeriodSchema = z
+const ordinaryCreatePeriodSchema = z
   .object({
+    tipo_periodo: z.literal("O"),
     id_payment_period: z.number().int().positive("Selecciona una frecuencia"),
     ...periodDatesShape,
   })
   .superRefine(validatePeriodDateOrder);
 
-export const updatePayrollPeriodSchema = z
+const EXTRAORDINARY_YEAR_SCHEMA = z
+  .number({ error: "El año no es válido" })
+  .int("El año no es válido")
+  .min(2000, "El año no es válido")
+  .max(2100, "El año no es válido");
+
+// Spec 87: el periodo extraordinario siempre cubre del 1-ene al 31-dic del año, así que solo se capturan el corte y el pago.
+function validateExtraordinaryCutoffAndPayment(
+  dates: { fecha_corte: string; fecha_pago: string },
+  context: z.RefinementCtx,
+  year: number | null,
+) {
+  if (year !== null && dates.fecha_corte.slice(0, 4) !== String(year)) {
+    context.addIssue({ code: "custom", path: ["fecha_corte"], message: "La fecha de corte debe estar dentro del año del aguinaldo" });
+  }
+  if (dates.fecha_pago < dates.fecha_corte) {
+    context.addIssue({ code: "custom", path: ["fecha_pago"], message: "La fecha de pago no puede ser anterior a la de corte" });
+  }
+}
+
+const extraordinaryCutoffAndPaymentShape = {
+  fecha_corte: periodDate("La fecha de corte"),
+  fecha_pago: periodDate("La fecha de pago"),
+};
+
+const extraordinaryCreatePeriodSchema = z
   .object({
+    tipo_periodo: z.literal("E"),
+    ejercicio: EXTRAORDINARY_YEAR_SCHEMA,
+    ...extraordinaryCutoffAndPaymentShape,
+  })
+  .superRefine((period, context) => validateExtraordinaryCutoffAndPayment(period, context, period.ejercicio));
+
+/** Alta de un periodo: ordinario (frecuencia y fechas) o extraordinario de aguinaldo (año, corte y pago). */
+export const createPayrollPeriodSchema = z.discriminatedUnion("tipo_periodo", [
+  ordinaryCreatePeriodSchema,
+  extraordinaryCreatePeriodSchema,
+]);
+
+const ordinaryUpdatePeriodSchema = z
+  .object({
+    tipo_periodo: z.literal("O"),
     id_period: z.number().int().positive(),
     ...periodDatesShape,
   })
   .superRefine(validatePeriodDateOrder);
+
+// El año se valida en SQL contra el ejercicio del periodo guardado.
+const extraordinaryUpdatePeriodSchema = z
+  .object({
+    tipo_periodo: z.literal("E"),
+    id_period: z.number().int().positive(),
+    ...extraordinaryCutoffAndPaymentShape,
+  })
+  .superRefine((period, context) => validateExtraordinaryCutoffAndPayment(period, context, null));
+
+/** Edición: el periodo extraordinario solo cambia corte y pago. */
+export const updatePayrollPeriodSchema = z.discriminatedUnion("tipo_periodo", [
+  ordinaryUpdatePeriodSchema,
+  extraordinaryUpdatePeriodSchema,
+]);
 
 export const calculatePayrollPeriodSchema = z.object({
   id_period: z.number().int().positive("Periodo inválido"),

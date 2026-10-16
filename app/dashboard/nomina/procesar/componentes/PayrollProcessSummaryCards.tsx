@@ -61,7 +61,7 @@ export default function PayrollProcessSummaryCards({
         </span>
         <span className="mt-1 flex items-center gap-2 text-xs text-[#44474f] dark:text-zinc-400">
           {period.codigo}
-          <PayrollFrequencyBadge description={period.frecuencia_descripcion} />
+          <PayrollFrequencyBadge description={period.frecuencia_descripcion} periodType={period.tipo_periodo} />
         </span>
       </SummaryCard>
 

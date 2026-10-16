@@ -79,14 +79,14 @@ export async function getAbsencePage(filters: IAbsenceFilters): Promise<ActionRe
 
   try {
     const [period, periodOptions] = await Promise.all([
-      resolvePeriod(id_sucursal, idPeriod),
+      resolvePeriod(id_sucursal, idPeriod, { ordinaryOnly: true }),
       db.queryParams(
         `SELECT p.id_period, p.codigo,
                 CONVERT(varchar(10), p.fecha_inicio, 120) AS fecha_inicio,
                 CONVERT(varchar(10), p.fecha_fin, 120)    AS fecha_fin,
                 p.status
            FROM [CentroPodologico].[payroll].[periods] p
-          WHERE p.id_sucursal = @id_sucursal
+          WHERE p.id_sucursal = @id_sucursal AND p.tipo_periodo = 'O'
           ORDER BY p.fecha_inicio DESC, p.id_period DESC`,
         { id_sucursal },
       ),

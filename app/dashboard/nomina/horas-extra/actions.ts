@@ -390,7 +390,7 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
               CONVERT(varchar(10), p.fecha_fin, 120)    AS fecha_fin,
               p.status
          FROM [CentroPodologico].[payroll].[periods] p
-        WHERE p.id_sucursal = @id_sucursal
+        WHERE p.id_sucursal = @id_sucursal AND p.tipo_periodo = 'O'
         ORDER BY p.fecha_inicio DESC, p.id_period DESC`,
       { id_sucursal },
     );
@@ -407,7 +407,7 @@ export async function getOvertimePage(filters: IOvertimeFilters): Promise<Action
       { id_empresa },
     );
     const [period, periodOptions, settingsRows] = await Promise.all([
-      resolvePeriod(id_sucursal, filters.idPeriod),
+      resolvePeriod(id_sucursal, filters.idPeriod, { ordinaryOnly: true }),
       periodOptionsPromise,
       settingsPromise,
     ]);

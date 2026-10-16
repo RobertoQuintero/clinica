@@ -947,6 +947,16 @@ export async function calculatePayrollPeriod(
   }
 
   try {
+    // Spec 87, paso 4: el periodo extraordinario ya se puede crear, pero su cálculo llega en el paso 5.
+    const periodTypeRows = await db.queryParams(
+      `SELECT tipo_periodo FROM [CentroPodologico].[payroll].[periods]
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
+      { id_period: parsed.data.id_period, id_sucursal },
+    );
+    if (periodTypeRows[0]?.tipo_periodo === "E") {
+      return { ok: false, message: "El cálculo del aguinaldo aún no está disponible" };
+    }
+
     const rows = await db.queryParams(
       `SET XACT_ABORT ON;
        BEGIN TRAN;

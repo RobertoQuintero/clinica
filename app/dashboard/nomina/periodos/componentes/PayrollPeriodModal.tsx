@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarRange, X } from "lucide-react";
-import type { IPayrollPeriodDates, IPayrollPeriodRow } from "@/interfaces/payroll_period";
+import { CalendarRange, TriangleAlert, X } from "lucide-react";
+import type { IPayrollPeriodDates, IPayrollPeriodRow, PayrollPeriodType } from "@/interfaces/payroll_period";
+import { CHRISTMAS_BONUS_DEADLINE_MONTH_DAY, PAYROLL_PERIOD_TYPE_LABELS } from "@/lib/payroll/constants";
+import { addZeroToday } from "@/utils/date_helpper";
 import {
   createPayrollPeriod,
   getSuggestedPeriodDates,
@@ -20,6 +22,19 @@ const EMPTY_DATES: IPayrollPeriodDates = { fecha_inicio: "", fecha_fin: "", fech
 const FIELD_CLASSES =
   "w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] transition-all disabled:bg-[#eff4ff] dark:disabled:bg-zinc-800/60 disabled:text-[#44474f] dark:disabled:text-zinc-400 disabled:cursor-not-allowed";
 
+const PERIOD_TYPES: PayrollPeriodType[] = ["O", "E"];
+
+/** Fechas del periodo extraordinario de un año: inicio y fin fijos; corte y pago el 20-dic (editables). */
+function buildExtraordinaryDates(year: string): IPayrollPeriodDates {
+  const suggestedPaymentDate = `${year}-${CHRISTMAS_BONUS_DEADLINE_MONTH_DAY}`;
+  return {
+    fecha_inicio: `${year}-01-01`,
+    fecha_fin: `${year}-12-31`,
+    fecha_corte: suggestedPaymentDate,
+    fecha_pago: suggestedPaymentDate,
+  };
+}
+
 const DATE_FIELDS: { key: keyof IPayrollPeriodDates; label: string }[] = [
   { key: "fecha_inicio", label: "Inicio" },
   { key: "fecha_fin", label: "Fin" },
@@ -32,6 +47,9 @@ export default function PayrollPeriodModal(props: Props) {
   const isEditing = props.mode === "edit";
   const editedPeriod = props.mode === "edit" ? props.period : null;
 
+  const [periodType, setPeriodType] = useState<PayrollPeriodType>(editedPeriod?.tipo_periodo ?? "O");
+  const [bonusYear, setBonusYear] = useState(() => editedPeriod?.ejercicio.toString() ?? addZeroToday(new Date()).slice(0, 4));
+  const isExtraordinary = periodType === "E";
   const [idPaymentPeriod, setIdPaymentPeriod] = useState("");
   const [dates, setDates] = useState<IPayrollPeriodDates>(
     editedPeriod
@@ -72,13 +90,28 @@ export default function PayrollPeriodModal(props: Props) {
     else setErrorMessage(result.message);
   }
 
+  function handlePeriodTypeChange(nextType: PayrollPeriodType) {
+    if (nextType === periodType) return;
+    latestSuggestionRequest.current++;
+    setIsSuggesting(false);
+    setPeriodType(nextType);
+    setErrorMessage(null);
+    setIdPaymentPeriod("");
+    setDates(nextType === "E" ? buildExtraordinaryDates(bonusYear) : EMPTY_DATES);
+  }
+
+  function handleBonusYearChange(nextYear: string) {
+    setBonusYear(nextYear);
+    if (/^d{4}$/.test(nextYear)) setDates(buildExtraordinaryDates(nextYear));
+  }
+
   function handleDateChange(field: keyof IPayrollPeriodDates, value: string) {
     setDates((previous) => ({ ...previous, [field]: value }));
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!isEditing && !idPaymentPeriod) {
+    if (!isEditing && !isExtraordinary && !idPaymentPeriod) {
       setErrorMessage("Selecciona una frecuencia");
       return;
     }
@@ -87,8 +120,16 @@ export default function PayrollPeriodModal(props: Props) {
     setErrorMessage(null);
     try {
       const result = editedPeriod
-        ? await updatePayrollPeriod({ id_period: editedPeriod.id_period, ...dates })
-        : await createPayrollPeriod({ id_payment_period: Number(idPaymentPeriod), ...dates });
+        ? await updatePayrollPeriod(
+            isExtraordinary
+              ? { tipo_periodo: "E", id_period: editedPeriod.id_period, fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
+              : { tipo_periodo: "O", id_period: editedPeriod.id_period, ...dates },
+          )
+        : await createPayrollPeriod(
+            isExtraordinary
+              ? { tipo_periodo: "E", ejercicio: Number(bonusYear), fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
+              : { tipo_periodo: "O", id_payment_period: Number(idPaymentPeriod), ...dates },
+          );
       if (!result.ok) {
         setErrorMessage(result.message);
         return;
@@ -141,11 +182,52 @@ export default function PayrollPeriodModal(props: Props) {
             </p>
           )}
 
+          {!isEditing && (
+            <div
+              role="radiogroup"
+              aria-label="Tipo de periodo"
+              className="inline-flex w-fit rounded-lg border border-[#c4c6d0] dark:border-zinc-700 bg-[#eff4ff] dark:bg-zinc-800 p-1"
+            >
+              {PERIOD_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  role="radio"
+                  aria-checked={type === periodType}
+                  onClick={() => handlePeriodTypeChange(type)}
+                  className={`rounded-md px-4 py-1.5 text-sm font-semibold transition-colors ${
+                    type === periodType
+                      ? "bg-white dark:bg-zinc-900 text-[#0051d5] dark:text-blue-300 shadow-sm"
+                      : "text-[#44474f] dark:text-zinc-400 hover:text-[#0b1c30] dark:hover:text-zinc-100"
+                  }`}
+                >
+                  {PAYROLL_PERIOD_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">
-              Frecuencia
+              {isExtraordinary ? "Año del aguinaldo" : "Frecuencia"}
               {editedPeriod ? (
-                <input type="text" disabled value={editedPeriod.frecuencia_descripcion} className={FIELD_CLASSES} />
+                <input
+                  type="text"
+                  disabled
+                  value={isExtraordinary ? editedPeriod.ejercicio : editedPeriod.frecuencia_descripcion}
+                  className={FIELD_CLASSES}
+                />
+              ) : isExtraordinary ? (
+                <input
+                  type="number"
+                  required
+                  min={2000}
+                  max={2100}
+                  step={1}
+                  value={bonusYear}
+                  onChange={(event) => handleBonusYearChange(event.target.value)}
+                  className={FIELD_CLASSES}
+                />
               ) : (
                 <select
                   value={idPaymentPeriod}
@@ -188,14 +270,27 @@ export default function PayrollPeriodModal(props: Props) {
                     type="date"
                     required
                     value={dates[field.key]}
+                    disabled={isExtraordinary && (field.key === "fecha_inicio" || field.key === "fecha_fin")}
                     onChange={(event) => handleDateChange(field.key, event.target.value)}
                     className={FIELD_CLASSES}
                   />
                 </label>
               ))}
             </div>
+            {isExtraordinary && dates.fecha_pago > `${bonusYear}-${CHRISTMAS_BONUS_DEADLINE_MONTH_DAY}` && (
+              <p
+                role="status"
+                className="mt-3 flex gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200"
+              >
+                <TriangleAlert size={14} aria-hidden className="mt-0.5 shrink-0" />
+                El aguinaldo debe pagarse a más tardar el 20 de diciembre. Puedes guardar esta fecha, pero el pago
+                quedaría fuera de plazo.
+              </p>
+            )}
             <p className="mt-3 text-xs text-[#747780] dark:text-zinc-500">
-              {isEditing
+              {isExtraordinary
+                ? "Cubre del 1 de enero al 31 de diciembre del año. Solo se editan el corte y el pago."
+                : isEditing
                 ? "Solo se pueden cambiar las fechas mientras el periodo está Programada."
                 : isSuggesting
                   ? "Calculando fechas sugeridas…"
