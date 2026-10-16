@@ -276,10 +276,10 @@ export const TERMINATION_NOTES_MAX_LENGTH = 500;
 - [ ] Ningún camino de la UI deja a un empleado con `activo = 0` sin crear antes una baja, salvo los inactivos que ya existían.
 
 **Anular**
-- [ ] Anular sin motivo se rechaza.
-- [ ] Anular con motivo llena `anulado_by`, `anulado_at` y `motivo_anulacion`, deja `activo = 1` y conserva la fila.
-- [ ] Después de anular se puede registrar una baja nueva para el mismo empleado.
-- [ ] Un registro que ya tiene un reingreso no muestra "Anular baja", y la acción lo rechaza si se llama directamente.
+- [x] Anular sin motivo se rechaza.
+- [x] Anular con motivo llena `anulado_by`, `anulado_at` y `motivo_anulacion`, deja `activo = 1` y conserva la fila.
+- [x] Después de anular se puede registrar una baja nueva para el mismo empleado.
+- [x] Un registro que ya tiene un reingreso no muestra "Anular baja", y la acción lo rechaza si se llama directamente.
 
 **Historial y listado**
 - [ ] La pestaña General muestra "Historial de bajas" con las vigentes y las anuladas, de la más reciente a la más antigua, incluyendo quién registró y quién anuló.

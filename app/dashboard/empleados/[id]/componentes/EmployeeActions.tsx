@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Power, UserMinus } from "lucide-react";
+import { Pencil, Power, UndoDot, UserMinus } from "lucide-react";
 import { IEmployeeRecord } from "@/interfaces/employee";
 import type { ITerminationCause } from "@/interfaces/employee_termination";
 import { setEmployeeActive, IEmployeeCatalogs } from "../../actions";
 import EmployeeModal from "../../componentes/EmployeeModal";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
+import CancelTerminationModal from "./CancelTerminationModal";
 import RegisterTerminationModal from "./RegisterTerminationModal";
 
 interface Props {
@@ -27,11 +28,15 @@ export default function EmployeeActions({ employee, catalogs, terminationCauses 
   const router = useRouter();
   const [showEditModal, setShowEditModal]               = useState(false);
   const [showTerminationModal, setShowTerminationModal] = useState(false);
+  const [showCancelTerminationModal, setShowCancelTerminationModal] = useState(false);
   const [showActivateConfirm, setShowActivateConfirm]   = useState(false);
   const [activating, setActivating]                     = useState(false);
   const [error, setError]                               = useState<string | null>(null);
 
-  const hasActiveTermination = employee.baja_vigente !== null;
+  const activeTermination = employee.baja_vigente;
+  const hasActiveTermination = activeTermination !== null;
+  // Con un reingreso la baja ya no se puede anular (la acción también lo rechaza).
+  const canCancelTermination = hasActiveTermination && employee.reingreso === null;
   // Un inactivo sin baja registrada puede corregirse (Activar) o regularizarse (Registrar baja).
   const isInactiveWithoutTermination = !employee.activo && !hasActiveTermination;
 
@@ -68,6 +73,13 @@ export default function EmployeeActions({ employee, catalogs, terminationCauses 
           </button>
         )}
 
+        {canCancelTermination && (
+          <button type="button" onClick={() => setShowCancelTerminationModal(true)} className={SUCCESS_BUTTON_CLASSES}>
+            <UndoDot size={16} />
+            Anular baja
+          </button>
+        )}
+
         {isInactiveWithoutTermination && (
           <button
             type="button"
@@ -95,6 +107,15 @@ export default function EmployeeActions({ employee, catalogs, terminationCauses 
           isActive={employee.activo}
           causes={terminationCauses}
           onClose={() => setShowTerminationModal(false)}
+        />
+      )}
+
+      {showCancelTerminationModal && activeTermination && (
+        <CancelTerminationModal
+          id_empleado={employee.id_empleado}
+          employeeName={employee.nombre_completo}
+          termination={activeTermination}
+          onClose={() => setShowCancelTerminationModal(false)}
         />
       )}
 

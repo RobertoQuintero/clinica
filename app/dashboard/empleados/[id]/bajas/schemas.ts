@@ -30,3 +30,17 @@ export const registerEmployeeTerminationSchema = z.object({
 });
 
 export type RegisterEmployeeTerminationInput = z.infer<typeof registerEmployeeTerminationSchema>;
+
+export const cancelEmployeeTerminationSchema = z.object({
+  id_empleado: z.number().int().positive(),
+  motivo: z
+    .string()
+    .trim()
+    .min(1, "El motivo es obligatorio")
+    .max(
+      TERMINATION_NOTES_MAX_LENGTH,
+      `El motivo no puede pasar de ${TERMINATION_NOTES_MAX_LENGTH} caracteres`
+    ),
+});
+
+export type CancelEmployeeTerminationInput = z.infer<typeof cancelEmployeeTerminationSchema>;

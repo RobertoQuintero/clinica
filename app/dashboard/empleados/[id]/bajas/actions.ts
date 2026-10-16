@@ -7,7 +7,7 @@ import { fetchEmployeeTerminations } from "@/lib/terminations/terminationQueries
 import { assertVacationAccess } from "@/lib/vacations/vacationAccess";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
-import { registerEmployeeTerminationSchema } from "./schemas";
+import { cancelEmployeeTerminationSchema, registerEmployeeTerminationSchema } from "./schemas";
 
 type ActionResult<T> =
   | { ok: true; data: T }
@@ -204,5 +204,77 @@ export async function registerEmployeeTermination(
       return { ok: false, message: "El empleado ya tiene una baja vigente" };
     }
     return { ok: false, message: "Error al registrar la baja" };
+  }
+}
+
+/**
+ * Anula la baja vigente (spec 86): no borra la fila, llena las columnas de anulación y deja
+ * `activo = 1` en la misma transacción. Se rechaza si el registro ya tiene un reingreso; esa
+ * condición va dentro del `UPDATE … WHERE`, así una anulación repetida o concurrente con un
+ * reingreso afecta 0 filas.
+ */
+export async function cancelEmployeeTermination(input: unknown): Promise<ActionResult<null>> {
+  try {
+    const access = await assertVacationAccess();
+    if (!access.ok) return access;
+
+    const parsed = cancelEmployeeTerminationSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    }
+    const { id_empleado, motivo } = parsed.data;
+
+    // getEmployeeById valida empresa y sucursales del usuario.
+    const employee = await getEmployeeById(id_empleado);
+    if (!employee) return { ok: false, message: "El empleado no existe o no tienes acceso a él" };
+    if (employee.reingreso) {
+      return {
+        ok: false,
+        message: `No se puede anular: el empleado ya reingresó como ${employee.reingreso.codigo_empleado}`,
+      };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.queryParams(
+        `SELECT 1 AS locked
+           FROM [CentroPodologico].[RH].[empleados] WITH (UPDLOCK, HOLDLOCK)
+          WHERE [id_empleado] = @id_empleado`,
+        { id_empleado }
+      );
+
+      const now = buildDate(new Date());
+      const cancelledRows = (await tx.queryParams(
+        `UPDATE [CentroPodologico].[RH].[employee_terminations]
+            SET [anulado_by]       = @id_user,
+                [anulado_at]       = @anulado_at,
+                [motivo_anulacion] = @motivo
+         OUTPUT INSERTED.[id_employee_termination]
+          WHERE [id_empleado] = @id_empleado
+            AND [anulado_at] IS NULL
+            AND NOT EXISTS (SELECT 1
+                              FROM [CentroPodologico].[RH].[empleados]
+                             WHERE [id_empleado_anterior] = @id_empleado)`,
+        { id_empleado, id_user: access.data.id_user, anulado_at: now, motivo }
+      )) as { id_employee_termination: number }[];
+      if (cancelledRows.length === 0) {
+        throw new TerminationRuleError("La baja ya fue anulada o el empleado ya tiene un reingreso");
+      }
+
+      const reactivatedRows = (await tx.queryParams(
+        `UPDATE [CentroPodologico].[RH].[empleados]
+            SET [activo] = 1, [updated_at] = @updated_at
+         OUTPUT INSERTED.[id_empleado]
+          WHERE [id_empleado] = @id_empleado`,
+        { id_empleado, updated_at: now }
+      )) as { id_empleado: number }[];
+      if (reactivatedRows.length === 0) throw new TerminationRuleError("No se pudo anular la baja");
+    });
+
+    revalidatePath("/dashboard/empleados");
+    revalidatePath(`/dashboard/empleados/${id_empleado}`, "layout");
+    return { ok: true, data: null };
+  } catch (error) {
+    if (error instanceof TerminationRuleError) return { ok: false, message: error.message };
+    return { ok: false, message: "Error al anular la baja" };
   }
 }
