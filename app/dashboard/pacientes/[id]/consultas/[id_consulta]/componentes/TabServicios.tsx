@@ -7,6 +7,11 @@ import {
   ServicioConOpciones,
 } from "../actions";
 import { IConsultaServicio } from "@/interfaces/consulta_servicio";
+import { useAsyncData } from "@/hooks/useAsyncData";
+
+// Vacíos estables: el effect que reporta el total depende de la identidad de `consultaServicios`.
+const NO_SERVICIOS: ServicioConOpciones[] = [];
+const NO_CONSULTA_SERVICIOS: IConsultaServicio[] = [];
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -20,9 +25,11 @@ interface Props {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function TabServicios({ id_consulta, locked, onContinuar, onTotalChange }: Props) {
-  const [servicios,         setServicios        ] = useState<ServicioConOpciones[]>([]);
-  const [consultaServicios, setConsultaServicios] = useState<IConsultaServicio[]>([]);
-  const [loading,           setLoading          ] = useState(true);
+  // Un fallo de carga deja `servicios` vacío y se ve como "Debe agregar servicios", igual que antes.
+  const serviciosTabData = useAsyncData([id_consulta], () => getServiciosTabData(id_consulta));
+  const { loading, mutate: mutateServiciosTabData } = serviciosTabData;
+  const servicios:         ServicioConOpciones[] = serviciosTabData.data?.servicios ?? NO_SERVICIOS;
+  const consultaServicios: IConsultaServicio[]   = serviciosTabData.data?.consultaServicios ?? NO_CONSULTA_SERVICIOS;
   const [error,             setError            ] = useState<string | null>(null);
   const [isPending,         startTransition     ] = useTransition();
 
@@ -34,22 +41,6 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
     const total = consultaServicios.reduce((s, cs) => s + Number(cs.precio_aplicado), 0);
     onTotalChange?.(total);
   }, [consultaServicios]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    getServiciosTabData(id_consulta).then((data) => {
-      if (cancelled) return;
-      setServicios(data.servicios);
-      setConsultaServicios(data.consultaServicios);
-      setLoading(false);
-    }).catch(() => {
-      if (cancelled) return;
-      setError("Error al cargar los servicios");
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [id_consulta]);
 
   // Returns the currently selected id_servicio_opcion for a given servicio
   const getSelected = (id_servicio: number): number => {
@@ -87,13 +78,15 @@ export default function TabServicios({ id_consulta, locked, onContinuar, onTotal
         return;
       }
       // Update local consulta_servicios state
-      setConsultaServicios((prev) => {
-        const opcionIds = servicios
+      mutateServiciosTabData((current) => {
+        const opcionIds = current.servicios
           .find((s) => s.id_servicio === id_servicio)
           ?.opciones.map((o) => o.id_servicio_opcion) ?? [];
-        const filtered = prev.filter((cs) => !opcionIds.includes(cs.id_servicio_opcion));
-        if (res.data) return [...filtered, res.data as IConsultaServicio];
-        return filtered;
+        const filtered = current.consultaServicios.filter((cs) => !opcionIds.includes(cs.id_servicio_opcion));
+        return {
+          ...current,
+          consultaServicios: res.data ? [...filtered, res.data as IConsultaServicio] : filtered,
+        };
       });
     });
   };
