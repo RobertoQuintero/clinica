@@ -30,6 +30,7 @@ import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExt
 import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
 import { isVacationPayRecalculationNeeded } from "@/lib/payroll/vacationPayRecalculation";
+import { isChristmasBonusRecalculationNeeded } from "@/lib/payroll/christmasBonusRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -241,6 +242,7 @@ export async function getPayrollProcessPage(
       isrRecalculationNeeded: false,
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
+      christmasBonusRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -272,6 +274,7 @@ export async function getPayrollProcessPage(
       isrRecalculationNeeded,
       exemptionRecalculationNeeded,
       vacationPayRecalculationNeeded,
+      christmasBonusRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -419,6 +422,7 @@ export async function getPayrollProcessPage(
       isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
       isExemptionRecalculationNeeded(period.id_period),
       isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? false : isChristmasBonusRecalculationNeeded(period.id_period),
     ]);
 
     const totalPercepciones = roundToCents(
@@ -515,6 +519,7 @@ export async function getPayrollProcessPage(
         isrRecalculationNeeded,
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
+        christmasBonusRecalculationNeeded,
       },
     };
   } catch (error) {

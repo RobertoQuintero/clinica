@@ -429,9 +429,9 @@ export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string
 
 **Avisos**
 
-- [ ] Del 1-dic al 20-dic, sin periodo E del año en la sucursal, Periodos y Procesar muestran el aviso ámbar; del 21-dic en adelante, el rojo; antes del 1-dic o con periodo E creado, ninguno.
+- [x] Del 1-dic al 20-dic, sin periodo E del año en la sucursal, Periodos y Procesar muestran el aviso ámbar; del 21-dic en adelante, el rojo; antes del 1-dic o con periodo E creado, ninguno.
 - [ ] En estatus 2, el aviso "Recalcula" aparece en el periodo E si cambió el salario del tipo, la `fecha_ingreso`, la UMA o la regla del aguinaldo, o la tarifa mensual; recalcular lo quita.
-- [ ] El aviso de ISR de la spec 70 nunca aparece en un periodo E.
+- [x] El aviso de ISR de la spec 70 nunca aparece en un periodo E.
 
 **Calidad**
 
