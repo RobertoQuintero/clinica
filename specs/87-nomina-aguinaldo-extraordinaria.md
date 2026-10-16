@@ -394,38 +394,38 @@ export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string
 **Periodo extraordinario**
 
 - [ ] Todos los periodos existentes quedan con `tipo_periodo = 'O'` y se crean, editan, calculan y revierten igual que antes.
-- [ ] Se puede crear un periodo E por sucursal y año con código `NOM-{año}-E{NN}`, periodicidad SAT 99, `fecha_inicio` 1-ene y `fecha_fin` 31-dic no editables.
-- [ ] Un segundo periodo E del mismo año en la misma sucursal se rechaza con "Ya existe la nómina de aguinaldo de {año}"; en otra sucursal se permite.
-- [ ] La `fecha_pago` sugerida es el 20-dic; una posterior guarda y muestra la advertencia ámbar.
-- [ ] Editar un periodo E solo cambia `fecha_pago` y `fecha_corte`, y solo en estatus 1.
+- [x] Se puede crear un periodo E por sucursal y año con código `NOM-{año}-E{NN}`, periodicidad SAT 99, `fecha_inicio` 1-ene y `fecha_fin` 31-dic no editables.
+- [x] Un segundo periodo E del mismo año en la misma sucursal se rechaza con "Ya existe la nómina de aguinaldo de {año}"; en otra sucursal se permite.
+- [x] La `fecha_pago` sugerida es el 20-dic; una posterior guarda y muestra la advertencia ámbar.
+- [x] Editar un periodo E solo cambia `fecha_pago` y `fecha_corte`, y solo en estatus 1.
 - [ ] La periodicidad 99 no aparece como opción de frecuencia en el registro del empleado ni en el alta de periodos ordinarios.
-- [ ] Horas extra, Faltas, Retardos y Bonos no listan periodos E ni los eligen como periodo actual.
+- [x] Horas extra, Faltas, Retardos y Bonos no listan periodos E ni los eligen como periodo actual.
 
 **Cálculo**
 
 - [ ] Entran los empleados activos de la sucursal con salario > 0 del tipo y `fecha_ingreso ≤ 31-dic`, de cualquier frecuencia, incluso sin `id_periodo_pago`; los dados de baja no entran.
-- [ ] Días = 31-dic − max(1-ene, `fecha_ingreso`) + 1, sin descontar faltas, aunque se calcule antes del 31-dic.
-- [ ] Importe = `ROUND(salario × 15 × días / 365, 2)`: ingreso 1-sep-2026 con $500 da 122 días y $2,506.85; ingreso anterior a 2026 da 15 × salario.
-- [ ] La operativa usa `salario_diario` y la fiscal `salario_diario_fiscal`; un empleado sin salario de un tipo no tiene fila de ese tipo.
-- [ ] Las filas E tienen en 0 sueldo, comisiones, bonos, horas extra, faltas, retardos y vacaciones.
-- [ ] La fila fiscal tiene una percepción clave 002 con exento = `min(importe, 30 × UMA_DIARIA − exento previo del año)` y gravado = importe − exento, que suman el importe al centavo.
-- [ ] El ISR art. 174 guardado coincide al centavo con `calculateArticle174Isr` para tres casos: todo exento (ISR 0), gravado chico y gravado grande.
-- [ ] No se aplica subsidio al empleo en ninguna fila E.
-- [ ] Sin tarifa mensual del año, el periodo se calcula y las filas fiscales quedan "No calculado: No hay tarifa mensual de ISR para el año", sin deducción.
-- [ ] Una fila 'C' tiene exactamente una deducción ISR (`id_deduction = 2`), aunque sea 0; neto = aguinaldo − ISR. La operativa no tiene deducciones.
-- [ ] Revertir el periodo E borra el snapshot, las percepciones, el desglose art. 174 y las deducciones, y lo regresa a estatus 1.
+- [x] Días = 31-dic − max(1-ene, `fecha_ingreso`) + 1, sin descontar faltas, aunque se calcule antes del 31-dic.
+- [x] Importe = `ROUND(salario × 15 × días / 365, 2)`: ingreso 1-sep-2026 con $500 da 122 días y $2,506.85; ingreso anterior a 2026 da 15 × salario.
+- [x] La operativa usa `salario_diario` y la fiscal `salario_diario_fiscal`; un empleado sin salario de un tipo no tiene fila de ese tipo.
+- [x] Las filas E tienen en 0 sueldo, comisiones, bonos, horas extra, faltas, retardos y vacaciones.
+- [x] La fila fiscal tiene una percepción clave 002 con exento = `min(importe, 30 × UMA_DIARIA − exento previo del año)` y gravado = importe − exento, que suman el importe al centavo.
+- [x] El ISR art. 174 guardado coincide al centavo con `calculateArticle174Isr` para tres casos: todo exento (ISR 0), gravado chico y gravado grande.
+- [x] No se aplica subsidio al empleo en ninguna fila E.
+- [x] Sin tarifa mensual del año, el periodo se calcula y las filas fiscales quedan "No calculado: No hay tarifa mensual de ISR para el año", sin deducción.
+- [x] Una fila 'C' tiene exactamente una deducción ISR (`id_deduction = 2`), aunque sea 0; neto = aguinaldo − ISR. La operativa no tiene deducciones.
+- [x] Revertir el periodo E borra el snapshot, las percepciones, el desglose art. 174 y las deducciones, y lo regresa a estatus 1.
 
 **Tarifa mensual**
 
 - [ ] La pestaña "Tarifa ISR" tiene el selector Semanal | Mensual en la URL; capturar, editar, borrar y copiar operan solo sobre la frecuencia elegida.
-- [ ] Un traslape dentro de la misma frecuencia se rechaza; los mismos límites en semanal y mensual se permiten.
+- [x] Un traslape dentro de la misma frecuencia se rechaza; los mismos límites en semanal y mensual se permiten.
 - [ ] Recalcular un periodo semanal da el mismo ISR que antes de cargar la tarifa mensual.
 
 **Pantallas**
 
-- [ ] Procesar con periodo E muestra Días, Salario diario y Aguinaldo (operativa) y además Gravado, Exento, ISR y Neto (fiscal); tarjetas y pie suman las filas.
-- [ ] Procesar con periodo ordinario se ve igual que antes.
-- [ ] El Detalle E muestra la línea "Aguinaldo" con su fórmula y la nota de ingreso proporcional; en fiscal, gravado/exento y la tarjeta del art. 174 con cada paso; no muestra las listas de periodo ordinario.
+- [x] Procesar con periodo E muestra Días, Salario diario y Aguinaldo (operativa) y además Gravado, Exento, ISR y Neto (fiscal); tarjetas y pie suman las filas.
+- [x] Procesar con periodo ordinario se ve igual que antes.
+- [x] El Detalle E muestra la línea "Aguinaldo" con su fórmula y la nota de ingreso proporcional; en fiscal, gravado/exento y la tarjeta del art. 174 con cada paso; no muestra las listas de periodo ordinario.
 
 **Avisos**
 
@@ -437,7 +437,7 @@ export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string
 
 - [ ] Todas las acciones nuevas o modificadas pasan por `assertPayrollAccess()` y validan con `zod`; un rol distinto de 1 y 4 recibe `{ ok: false }`.
 - [ ] Ninguna fecha viaja como `Date`: las lecturas usan `CONVERT(varchar(10|19), …, 120)`.
-- [ ] `npx tsc --noEmit` y `npm run lint` sin errores.
+- [x] `npx tsc --noEmit` y `npm run lint` sin errores.
 - [ ] `docs/nomina.md`, `docs/rh-empleados.md` y `queries.txt` actualizados.
 
 ## Decisiones

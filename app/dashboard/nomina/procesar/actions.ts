@@ -15,7 +15,7 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import type { IPeriodEmployeePerception } from "@/interfaces/payroll_exemption";
-import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
+import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
@@ -561,6 +561,7 @@ export async function getPayrollEmployeeDetail(
       discountedAbsenceRows,
       discountedLatenessRows,
       storedPerceptionRows,
+      article174Rows,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -595,6 +596,7 @@ export async function getPayrollEmployeeDetail(
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
                 pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
+                pe.dias_aguinaldo, CAST(pe.importe_aguinaldo AS float) AS importe_aguinaldo,
                 pe.isr_estado, pe.isr_motivo,
                 CAST(pe.isr_base_gravable AS float)             AS isr_base_gravable,
                 pe.isr_ejercicio_tarifa,
@@ -733,6 +735,31 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Spec 87: desglose congelado del ISR art. 174 del aguinaldo (solo en el renglón fiscal de un periodo extraordinario).
+      payrollType === "F" && period.tipo_periodo === "E"
+        ? db.queryParams(
+            `SELECT a.isr_estado, a.isr_motivo,
+                    CAST(a.base_gravable AS float)             AS base_gravable,
+                    CAST(a.ingreso_ordinario_mensual AS float) AS ingreso_ordinario_mensual,
+                    CAST(a.parte_mensualizada AS float)        AS parte_mensualizada,
+                    a.ejercicio_tarifa,
+                    CAST(a.limite_inferior_ordinario AS float) AS limite_inferior_ordinario,
+                    CAST(a.cuota_fija_ordinario AS float)      AS cuota_fija_ordinario,
+                    CAST(a.porcentaje_ordinario AS float)      AS porcentaje_ordinario,
+                    CAST(a.isr_ordinario AS float)             AS isr_ordinario,
+                    CAST(a.limite_inferior_total AS float)     AS limite_inferior_total,
+                    CAST(a.cuota_fija_total AS float)          AS cuota_fija_total,
+                    CAST(a.porcentaje_total AS float)          AS porcentaje_total,
+                    CAST(a.isr_total AS float)                 AS isr_total,
+                    CAST(a.diferencia_isr AS float)            AS diferencia_isr,
+                    CAST(a.tasa AS float)                      AS tasa,
+                    CAST(a.isr_retenido AS float)              AS isr_retenido
+               FROM [CentroPodologico].[payroll].[period_employee_isr_article174] a
+               JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = a.id_period_employee
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'F'`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -786,6 +813,8 @@ export async function getPayrollEmployeeDetail(
           importe_prima_vacacional: Number(snapshotRow.importe_prima_vacacional),
           dias_vacaciones_pagadas: Number(snapshotRow.dias_vacaciones_pagadas),
           importe_vacaciones_pagadas: Number(snapshotRow.importe_vacaciones_pagadas),
+          dias_aguinaldo: Number(snapshotRow.dias_aguinaldo),
+          importe_aguinaldo: Number(snapshotRow.importe_aguinaldo),
           isr_estado: snapshotRow.isr_estado,
           isr_motivo: snapshotRow.isr_motivo ?? null,
           isr_base_gravable: toNullableNumber(snapshotRow.isr_base_gravable),
@@ -814,7 +843,7 @@ export async function getPayrollEmployeeDetail(
     const commissionTiers =
       snapshot && snapshot.importe_comision > 0 ? await getCommissionTiersOrEmpty() : [];
     const baseLines = snapshot
-      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers)
+      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers, period.tipo_periodo)
       : [];
     const perceptions = snapshot
       ? attachTaxBreakdown(baseLines, payrollType, storedPerceptionRows as IPeriodEmployeePerception[])
@@ -876,6 +905,29 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const article174Row = article174Rows[0] as Record<string, unknown> | undefined;
+    const article174: IArticle174IsrBreakdown | null = article174Row
+      ? {
+          isr_estado: article174Row.isr_estado as "C" | "N",
+          isr_motivo: (article174Row.isr_motivo as Article174SkipReason | null) ?? null,
+          base_gravable: toNullableNumber(article174Row.base_gravable),
+          ingreso_ordinario_mensual: toNullableNumber(article174Row.ingreso_ordinario_mensual),
+          parte_mensualizada: toNullableNumber(article174Row.parte_mensualizada),
+          ejercicio_tarifa: toNullableNumber(article174Row.ejercicio_tarifa),
+          limite_inferior_ordinario: toNullableNumber(article174Row.limite_inferior_ordinario),
+          cuota_fija_ordinario: toNullableNumber(article174Row.cuota_fija_ordinario),
+          porcentaje_ordinario: toNullableNumber(article174Row.porcentaje_ordinario),
+          isr_ordinario: toNullableNumber(article174Row.isr_ordinario),
+          limite_inferior_total: toNullableNumber(article174Row.limite_inferior_total),
+          cuota_fija_total: toNullableNumber(article174Row.cuota_fija_total),
+          porcentaje_total: toNullableNumber(article174Row.porcentaje_total),
+          isr_total: toNullableNumber(article174Row.isr_total),
+          diferencia_isr: toNullableNumber(article174Row.diferencia_isr),
+          tasa: toNullableNumber(article174Row.tasa),
+          isr_retenido: toNullableNumber(article174Row.isr_retenido),
+        }
+      : null;
+
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
     return {
@@ -889,6 +941,7 @@ export async function getPayrollEmployeeDetail(
         totalTaxed,
         totalExempt,
         totalDeductions,
+        article174,
         paidTreatments,
         soldProducts,
         overtimeDays,

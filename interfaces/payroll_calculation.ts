@@ -4,7 +4,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
-import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
+import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
 
 export type PayrollType = "O" | "F";
@@ -152,6 +152,8 @@ export interface IPayrollEmployeeSnapshot extends IIsrBreakdown {
   importe_prima_vacacional:      number;
   dias_vacaciones_pagadas:       number;
   importe_vacaciones_pagadas:    number;
+  dias_aguinaldo:                number;            // spec 87; 0 en periodos ordinarios
+  importe_aguinaldo:             number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -174,6 +176,8 @@ export interface IPayrollEmployeeDetail {
   totalTaxed:       number | null;
   totalExempt:      number | null;
   totalDeductions:  number;                     // ISNULL(SUM(period_employee_deductions.importe), 0); 0 si snapshot es null (spec 70)
+  // Spec 87: desglose congelado del ISR art. 174 del aguinaldo; solo en la vista fiscal de un periodo extraordinario.
+  article174:       IArticle174IsrBreakdown | null;
   paidTreatments:   IPayrollPaidTreatment[];    // [] en fiscal o sin tratamientos pagados
   soldProducts:     IPayrollSoldProduct[];      // [] en fiscal o sin ventas pagadas
   overtimeDays:     IPayrollOvertimeDay[];      // [] en fiscal o sin días pagados
