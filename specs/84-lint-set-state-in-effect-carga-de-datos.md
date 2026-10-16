@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:** 82 (`lint-set-state-in-effect-portales-navegador-derivado`), que dejó el lint con 43 errores, todos `react-hooks/set-state-in-effect` del patrón D, y creó la carpeta `hooks/`. La 82 también dejó cerrada la decisión del hook compartido de fetch (`{ key, data, error }`, `setState` solo en el `.then` y `loading` derivado).
 - **Modifica base de datos:** No.
 - **Fecha:** 2026-10-15
@@ -254,33 +254,33 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional. Después de 
 
 **Lint y build**
 
-- [ ] `npm run lint` reporta **0 errores y 0 warnings**.
-- [ ] `npm run build` termina sin errores de tipos ni de compilación.
+- [x] `npm run lint` reporta **0 errores y 0 warnings**.
+- [x] `npm run build` termina sin errores de tipos ni de compilación. *(Todos los builds de la rama imprimen `[billing] Error: No autenticado` durante el prerender, que viene de `lib/billing/errors.ts`. Ningún archivo de esta spec toca código de servidor de facturación. No se comparó contra un build del commit base: Turbopack no acepta un `node_modules` enlazado fuera del proyecto en un worktree temporal.)*
 
 **Sin atajos**
 
-- [ ] `git diff` no agrega ningún `eslint-disable`, `@ts-ignore` ni `@ts-expect-error`.
-- [ ] `eslint.config.mjs` no cambia.
-- [ ] `grep -rn "eslint-disable.*exhaustive-deps"` sobre los 41 archivos tocados no encuentra ninguno en un effect reescrito por esta spec.
-- [ ] Ninguno de los 41 archivos conserva un `useEffect` que llame `setLoading(true)`, `setError(null)` o un setter equivalente de forma síncrona antes de una carga.
+- [x] `git diff` no agrega ningún `eslint-disable`, `@ts-ignore` ni `@ts-expect-error`.
+- [x] `eslint.config.mjs` no cambia.
+- [x] `grep -rn "eslint-disable.*exhaustive-deps"` sobre los 41 archivos tocados no encuentra ninguno en un effect reescrito por esta spec. *(Quedan seis, todos en effects que esta spec no reescribe: los que reportan totales en `TabGeneral` (2), `TabProductos` y `TabServicios`; la confirmación de pre-solicitud en `pedidos/nuevo/page`; y los productos editables en `solicitudes/[id]`.)*
+- [x] Ninguno de los 41 archivos conserva un `useEffect` que llame `setLoading(true)`, `setError(null)` o un setter equivalente de forma síncrona antes de una carga.
 
 **Hooks**
 
-- [ ] Existen `hooks/useAsyncData.ts`, `hooks/useActionData.ts` y `hooks/useDebouncedValue.ts`, con las firmas del modelo de datos y sin `any` escrito a mano.
-- [ ] `useActionData` no importa nada de `app/`.
-- [ ] `CLAUDE.md` lista los tres hooks en la sección `hooks/`.
+- [x] Existen `hooks/useAsyncData.ts`, `hooks/useActionData.ts` y `hooks/useDebouncedValue.ts`, con las firmas del modelo de datos y sin `any` escrito a mano.
+- [x] `useActionData` no importa nada de `app/`.
+- [x] `CLAUDE.md` lista los tres hooks en la sección `hooks/`.
 
 **Comportamiento común (prueba manual)**
 
-- [ ] Las pantallas probadas cargan una sola vez al entrar, y en la pestaña Network no hay peticiones repetidas en bucle.
-- [ ] Al cambiar de sucursal, cada pantalla probada recarga con los datos de la nueva sucursal y nunca muestra los de la anterior.
+- [x] Las pantallas probadas cargan una sola vez al entrar, y en la pestaña Network no hay peticiones repetidas en bucle.
+- [x] Al cambiar de sucursal, cada pantalla probada recarga con los datos de la nueva sucursal y nunca muestra los de la anterior.
 - [ ] Al forzar el fallo de una server action, por ejemplo con un `throw` temporal en `getSuggestedProducts`, la pantalla deja de mostrar "Cargando...". Si ya tenía UI de error, el mensaje aparece ahí.
 
 **Por subpatrón (muestra de prueba manual)**
 
-- [ ] **D1, `inventario` y `pedidos`:** cargan, recargan al cambiar de sucursal y, en `pedidos`, al cambiar cualquier filtro.
-- [ ] **D1, `StockMovementsTable`:** cambiar de página o de filtro carga los datos correctos; el parpadeo durante la carga es aceptado.
-- [ ] **D1, `citas/page`:** al cambiar de sucursal se muestra su primer calendario, y se puede elegir otro.
+- [x] **D1, `inventario` y `pedidos`:** cargan, recargan al cambiar de sucursal y, en `pedidos`, al cambiar cualquier filtro.
+- [x] **D1, `StockMovementsTable`:** cambiar de página o de filtro carga los datos correctos; el parpadeo durante la carga es aceptado.
+- [x] **D1, `citas/page`:** al cambiar de sucursal se muestra su primer calendario, y se puede elegir otro.
 - [ ] **D1, `PacientesFaltantes`:** con `dias` vacío o menor que 1 se muestra el estado vacío (aceptado). Con un valor válido, carga.
 - [ ] **D1, consulta:**
   - la pestaña General muestra antecedentes, servicios, productos, podólogo, sucursal y patologías igual que antes;
@@ -305,7 +305,21 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional. Después de 
 **Resto de pantallas**
 
 - [ ] Las pantallas tocadas que no están en la muestra abren sin errores en la consola y muestran sus datos (vistazo rápido).
-- [ ] La spec registra qué pruebas manuales se ejecutaron y cuáles no.
+- [x] La spec registra qué pruebas manuales se ejecutaron y cuáles no.
+
+### Verificación (2026-10-15)
+
+- **Ejecutado (automático):** `npm run lint` (0/0), `npx tsc --noEmit` y `npm run build` después de cada paso. Los conteos de lint coincidieron con el plan en todos los pasos: 43 → 43 → 34 → 26 → 24 → 20 → 8 → 3 → 1 → 0. *(En el paso 6 hubo un 9 intermedio, que se corrigió dentro del mismo paso; ver Decisiones, `usuarios`.)*
+- **Ejecutado en navegador (2026-10-15, `localhost:3000`, usuario Superadmin / rol 4, contando los POST de server actions con un wrapper de `fetch`):**
+  - **Pedidos:** filtro de estado = 1 petición; limpiarlo recarga las 10 filas; cambiar de sucursal muestra otros pedidos; 0 peticiones en reposo.
+  - **Inventario:** carga 51 productos y recarga al cambiar de sucursal.
+  - **Movimientos:** en la sucursal 1, página 1 de 2 (37) → página 2 con 1 petición y filas distintas; 0 en reposo. El parpadeo no se llegó a observar a los 300 ms.
+  - **Citas:** las sucursales 1 y 2 muestran su único calendario; la 5 muestra el 1.º y se puede elegir el 2.º.
+  - **EstadisticasCharts (modo global):** arranca con las 8 casillas marcadas; escribir fechas = 0 peticiones; "Aplicar" = 1.
+  - **Servicios:** carga 3 servicios y recarga al cambiar de sucursal; 0 peticiones en reposo.
+  - **Consulta #1 del paciente 1:** la pestaña General se ve completa (paciente, antecedentes, valoración); Servicios, Productos y Pagar abren sin quedarse en "Cargando"; 0 peticiones en reposo.
+  - **Vistazo (14 pantallas):** pacientes, productos, proveedores, sucursales, usuarios, ventas, tratamientos, enlaces, conteos, conteos/nuevo, recepciones, solicitudes, solicitudes/nueva y pedidos/nuevo muestran datos y ninguna se queda en "Cargando". **No se leyó la consola.**
+- **Sin ejecutar** (por eso siguen sin marcar): el `throw` temporal en `getSuggestedProducts`; `PacientesFaltantes` (no aparece en el dashboard del usuario probado); `EstadisticasCharts` en modo no global (el usuario es rol 4); los debounce de `RegisterMovementModal` y `ProductFormModal` y la cancelación `canceled`; D4 de `recepciones/[id]` y `EditOrderTemplateModal`; agregar/editar/quitar y finalizar en la consulta; guardar/borrar/copiar en Servicios; guardar avance en `conteos/[id]`; cancelar un pedido; crear/editar consulta o antecedente. Casi todas modifican datos reales.
 
 ## Decisiones
 
@@ -333,6 +347,26 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional. Después de 
 - **Los effects que el linter no marca se quedan como están**, aunque vivan en los archivos tocados. Así el diff queda auditable contra la línea base, el mismo criterio de la 81.
 - **Prueba manual por muestra de subpatrón más un vistazo al resto**, en vez de probar a fondo las ~40 pantallas. Se registra qué se ejecutó y qué no, como en la 81.
 - **`PacientesFaltantes` muestra el estado vacío con `dias < 1`**, en vez de la lista anterior. Lo aceptó el usuario.
+
+**Tomadas durante la implementación:**
+
+- **`consultas/[id_consulta]/page`: todo lo cargado vive en el hook.** La página llenaba más que `fecha_fin`. `valoracion`, `patologia`, `pagos`, `archivos`, `proceso` y `consulta` se actualizan con `mutate`. Los cuatro formularios (valoración, patología y los dos detalles de dedos) se llenan con `initializedForKey`. Lo eligió el usuario.
+- **`conteos/[id]`: `initializedForKey` incluye `header.status`.** Es una excepción a "solo la key base".
+  - Al finalizar el primer conteo, la recarga puede traer `segundo_conteo`, cuyo `second_count` está vacío. Hoy la segunda captura empieza vacía, y con la key base arrancaría con los números del primer conteo.
+  - Una recarga con el mismo estado sigue sin pisar lo capturado.
+  - Lo eligió el usuario.
+- **`pedidos/nuevo/page` usa `useAsyncData`, no `useActionData`.** Así, si fallan los sugeridos, el resumen se sigue mostrando, como antes.
+- **`usuarios`, `useExpediente` y `useExpedienteMedico` migran todo el effect marcado.** Al quitar solo la carga con `setLoading`, el linter marcaba lo que quedaba del mismo effect (roles y sucursales; paciente, antecedentes, podólogos y sucursales), así que esas cargas también pasaron al hook.
+  - En `useExpediente`, la lista filtrada de podólogos por sucursal vive en un estado aparte, `podologosForSucursal`, en lugar de reemplazar el `data` del hook.
+  - `usuarios` y `useExpediente` conservan "Cargando" mientras no hay usuario (`!user || loading`).
+- **`tratamientos`: la búsqueda en BD guarda sus resultados en su propio estado**, en lugar de sobrescribir la lista del hook. `searched` decide qué se muestra. `especialistaId` (rol 5) entra en la key, porque el fetcher lo lee.
+- **`EstadisticasCharts`:** en modo no global, cambiar de sucursal usa las fechas **aplicadas**, no las escritas sin aplicar. "Aplicar" con filtros que dan la misma key llama a `reload()`, porque antes siempre volvía a pedir los datos.
+- **`ProductFormModal`:** con menos de 2 caracteres en el campo no se muestran resultados ni "Buscando…", aunque el debounce no haya alcanzado al texto, igual que hoy. La búsqueda en curso se aborta cuando cambia el término con debounce o cuando se cierra el modal, no en cada tecla.
+- **Vacíos estables** (`NO_PAGOS`, `NO_PRODUCTOS`, etc.) donde un effect, un `useMemo` o una comparación en el render dependen de la identidad de la lista. Un `?? []` nuevo en cada render dejaría, por ejemplo, a `TabPagar` en un bucle de renders si la carga falla.
+- **`useAsyncData`**, en dos puntos que el modelo de datos no detallaba:
+  - Al desmontar resuelve todas las recargas pendientes, incluidas las pedidas en el mismo evento que el desmontaje.
+  - Un fetcher que lanza de forma síncrona también termina en `error`.
+- **La rama se creó desde `spec-85-validar-proveedor-orden-compra`**, así que incluye su commit `162c429`.
 
 **Descartadas:**
 
