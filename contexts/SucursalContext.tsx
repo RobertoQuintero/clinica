@@ -49,13 +49,10 @@ export function SucursalProvider({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-  if(user&&user.sucursales_string.split(",").length===1){
-    setSelectedId(Number(user.sucursales_string.split(",")[0]));
-  }  
-  
-  }, [user])
-  
+  // Un usuario con una sola sucursal siempre trabaja en ella: tiene prioridad sobre el estado.
+  const userBranchIds = user?.sucursales_string.split(",") ?? [];
+  const forcedBranchId = userBranchIds.length === 1 ? Number(userBranchIds[0]) : null;
+  const effectiveSelectedId = forcedBranchId ?? selectedId;
 
   const setSelected = async (id: number) => {
     setSelectedId(id);
@@ -64,7 +61,7 @@ export function SucursalProvider({
   };
 
   return (
-    <SucursalContext.Provider value={{ sucursales, selectedId, setSelected }}>
+    <SucursalContext.Provider value={{ sucursales, selectedId: effectiveSelectedId, setSelected }}>
       {children}
     </SucursalContext.Provider>
   );

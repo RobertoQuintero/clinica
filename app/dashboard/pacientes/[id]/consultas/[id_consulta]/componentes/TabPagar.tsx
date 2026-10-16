@@ -43,16 +43,25 @@ export default function TabPagar({
   canEdit,
   onEditarPago,
 }: Props) {
-  const [mpSearch,   setMpSearch  ] = React.useState("");
+  const [mpSearch,   setMpSearch  ] = React.useState(
+    () => metodoPagoOptions.find((m) => m.idMetodoPago === pagoForm.idMetodoPago)?.descripcion ?? "",
+  );
   const [mpOpen,     setMpOpen    ] = React.useState(false);
   const mpRef = React.useRef<HTMLDivElement>(null);
 
   // sync search label when pagoForm.idMetodoPago changes externally (e.g. reset)
-  React.useEffect(() => {
-    if (!pagoForm.idMetodoPago) { setMpSearch(""); return; }
-    const found = metodoPagoOptions.find((m) => m.idMetodoPago === pagoForm.idMetodoPago);
-    if (found) setMpSearch(found.descripcion);
-  }, [pagoForm.idMetodoPago, metodoPagoOptions]);
+  const [previousIdMetodoPago, setPreviousIdMetodoPago] = React.useState(pagoForm.idMetodoPago);
+  const [previousMetodoPagoOptions, setPreviousMetodoPagoOptions] = React.useState(metodoPagoOptions);
+  if (pagoForm.idMetodoPago !== previousIdMetodoPago || metodoPagoOptions !== previousMetodoPagoOptions) {
+    setPreviousIdMetodoPago(pagoForm.idMetodoPago);
+    setPreviousMetodoPagoOptions(metodoPagoOptions);
+    if (!pagoForm.idMetodoPago) {
+      setMpSearch("");
+    } else {
+      const found = metodoPagoOptions.find((m) => m.idMetodoPago === pagoForm.idMetodoPago);
+      if (found) setMpSearch(found.descripcion);
+    }
+  }
 
   // close dropdown on outside click
   React.useEffect(() => {

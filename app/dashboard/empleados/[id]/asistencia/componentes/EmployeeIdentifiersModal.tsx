@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { IEmployeeIdentifierListItem } from "@/interfaces/asistencia";
@@ -24,13 +25,9 @@ const TIPO_LABELS: Record<string, string> = {
  *  Es el mismo contenido que antes vivía en el cuerpo de la pestaña, movido tal cual a un modal. */
 export default function EmployeeIdentifiersModal({ id_empleado, identifiers, checadores }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
   const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   async function handleDeactivate(id_empleado_identificador: number) {
     setDeactivatingId(id_empleado_identificador);
@@ -52,7 +49,7 @@ export default function EmployeeIdentifiersModal({ id_empleado, identifiers, che
       </button>
 
       {isOpen &&
-        mounted &&
+        isClient &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl">

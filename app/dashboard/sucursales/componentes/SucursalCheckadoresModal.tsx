@@ -2,6 +2,7 @@
 
 import { IChecador } from "@/interfaces/checador";
 import { useEffect, useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { deactivateChecador, getChecadores, saveChecador } from "../actions";
 import ConfirmModal from "@/app/dashboard/servicios/componentes/ConfirmModal";
@@ -28,9 +29,7 @@ export default function SucursalCheckadoresModal({ id_sucursal, nombreSucursal, 
   const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
   const [deactivating, setDeactivating]     = useState(false);
-  const [mounted, setMounted]         = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
+  const isClient = useIsClient();
 
   const fetchChecadores = async () => {
     setLoading(true);
@@ -98,7 +97,7 @@ export default function SucursalCheckadoresModal({ id_sucursal, nombreSucursal, 
     setDeactivating(false);
   };
 
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

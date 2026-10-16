@@ -6,11 +6,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Inter } from "next/font/google";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Sun, Moon, LogOut, Menu, X, ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import CambiarPasswordModal from "@/app/dashboard/componentes/CambiarPasswordModal";
 import PendingRequestsBadge from "@/app/dashboard/solicitudes/componentes/PendingRequestsBadge";
 import { NAV_LINKS, type NavChild, type NavLink } from "@/app/dashboard/componentes/navConfig";
+import { useStorageValue } from "@/hooks/useStorageValue";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -27,7 +28,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsedRaw, setCollapsedRaw] = useStorageValue("local", COLLAPSED_STORAGE_KEY, null);
+  const collapsed = collapsedRaw === "true";
   const [passwordModal, setPasswordModal] = useState(false);
   const [flyoutTop, setFlyoutTop] = useState<number | null>(null);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
@@ -42,17 +44,8 @@ export default function Sidebar({ children }: { children: ReactNode }) {
   const toggleGroup = (label: string) =>
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
 
-  useEffect(() => {
-    const stored = localStorage.getItem(COLLAPSED_STORAGE_KEY);
-    if (stored !== null) setCollapsed(stored === "true");
-  }, []);
-
   const toggleCollapsed = () => {
-    setCollapsed((c) => {
-      const next = !c;
-      localStorage.setItem(COLLAPSED_STORAGE_KEY, String(next));
-      return next;
-    });
+    setCollapsedRaw((current) => String(current !== "true"));
   };
 
   const links = NAV_LINKS.filter(

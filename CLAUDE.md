@@ -96,5 +96,6 @@ Rules when touching any code with `fecha*`/`created_at`/date fields:
 - `app/api/asistencias/iclock/` — ADMS/iClock webhook for ZKTeco biometric checadores (see `docs/asistencias-biometricas.md`); the only other REST route besides `app/api/upload`.
 - `interfaces/` — one file per domain entity (`paciente.ts`, `cita.ts`, `tratamiento.ts`, `employee.ts`, `checador.ts`, `purchase_order.ts`, `movement.ts`, `stock_count.ts`, etc.), plain TS interfaces mirroring DB rows/DTOs.
 - `contexts/` — global client providers: `AuthContext`, `SucursalContext`, `ThemeContext`.
+- `hooks/` — reusable client hooks, one per file, built on `useSyncExternalStore` instead of `useEffect` + `setState`: `useIsClient` (portal guard, `false` during SSR/hydration), `useMediaQuery`, `useStorageValue` (`localStorage`/`sessionStorage` as a raw string, with a same-tab notifier and a functional updater that reads the current stored value). Check here before reading browser APIs in a component.
 - `lib/` — cross-cutting server-side integrations (Google Calendar, rate limiter, ZKTeco ADMS parsing in `zktecoAdms.ts`, inventory logic in `lib/inventory/`), as opposed to `utils/` which holds small pure helpers (date formatting, random ids).
 - Path alias `@/*` maps to the repo root (see `tsconfig.json`).

@@ -1,18 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-
-function useIsLargeScreen() {
-  const [isLarge, setIsLarge] = useState(false);
-  const check = useCallback(() => setIsLarge(window.matchMedia("(min-width: 1024px)").matches), []);
-  useEffect(() => {
-    check();
-    const mq = window.matchMedia("(min-width: 1024px)");
-    mq.addEventListener("change", check);
-    return () => mq.removeEventListener("change", check);
-  }, [check]);
-  return isLarge;
-}
+import { useEffect, useState, useRef, useMemo } from "react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { addZeroToday } from "@/utils/date_helpper";
 import { useSucursal } from "@/contexts/SucursalContext";
 import { getEstadisticas, getEstadisticasMultiple, IEstadisticasData } from "@/app/dashboard/actions";
@@ -248,7 +237,7 @@ export default function EstadisticasCharts() {
   const [metricaProductos, setMetricaProductos] = useState<"cantidad" | "ingresos">("cantidad");
   const [selectedSucursalIds, setSelectedSucursalIds] = useState<number[]>([]);
   const globalInitialized = useRef(false);
-  const isLargeScreen = useIsLargeScreen();
+  const isLargeScreen = useMediaQuery("(min-width: 1024px)");
 
   const sucursalesByEstado = useMemo(() => {
     const map: Record<string, ISucursal[]> = {};

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 import { X, TriangleAlert } from "lucide-react";
 import {
@@ -19,7 +20,7 @@ interface Props {
 }
 
 export default function EditOrderTemplateModal({ id_purchase_order_template, onClose, onSaved }: Props) {
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +28,6 @@ export default function EditOrderTemplateModal({ id_purchase_order_template, onC
   const [name, setName] = useState("");
   const [items, setItems] = useState<IPurchaseOrderTemplateItemDetail[]>([]);
   const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     setLoading(true);
@@ -48,7 +47,7 @@ export default function EditOrderTemplateModal({ id_purchase_order_template, onC
     });
   }, [id_purchase_order_template]);
 
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   const setItemQuantity = (id_product: number, quantity: number) => {
     setItems((current) =>

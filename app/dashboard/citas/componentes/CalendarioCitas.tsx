@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -10,6 +10,7 @@ import esLocale from "@fullcalendar/core/locales/es";
 import { ICita } from "@/interfaces/cita";
 import type { IExternalEvent } from "@/app/dashboard/citas/actions";
 import { IPaciente } from "@/interfaces/paciente";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 // ── Colour palette by estado ──────────────────────────────────────────────────
 const ESTADO_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -53,19 +54,16 @@ export default function CalendarioCitas({
   loadingGCal,
 }: Props) {
   const calendarRef = useRef<FullCalendar>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const previousIsMobileRef = useRef(isMobile);
 
+  // initialView decide la vista al montar; aquí solo se reacciona a los cambios posteriores
+  // (incluido el paso del snapshot del servidor al valor real tras hidratar).
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => {
-      const mobile = e.matches;
-      setIsMobile(mobile);
-      calendarRef.current?.getApi().changeView(mobile ? "timeGridDay" : "dayGridMonth");
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+    if (previousIsMobileRef.current === isMobile) return;
+    previousIsMobileRef.current = isMobile;
+    calendarRef.current?.getApi().changeView(isMobile ? "timeGridDay" : "dayGridMonth");
+  }, [isMobile]);
 
   const dbEvents: EventInput[] = citas.map((c) => {
     const color = ESTADO_COLORS[c.estado] ?? ESTADO_COLORS.agendada;

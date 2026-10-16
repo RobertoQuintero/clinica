@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 
@@ -19,10 +19,9 @@ interface Props {
 }
 
 export default function ImageSliderModal({ open, archivos, slideIndex, onClose, onSlide }: Props) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const isClient = useIsClient();
 
-  if (!mounted || !open || archivos.length === 0) return null;
+  if (!isClient || !open || archivos.length === 0) return null;
 
   return createPortal(
     <div

@@ -3,12 +3,13 @@
 import {
   createContext,
   useContext,
-  useEffect,
-  useState,
+  useMemo,
   ReactNode,
 } from "react";
 import { ISuggestedProduct } from "@/interfaces/suggested_product";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useIsClient } from "@/hooks/useIsClient";
+import { useStorageValue } from "@/hooks/useStorageValue";
 
 /** Línea del carrito de pedido: snapshot del producto + cantidad/precio/proveedor editables. */
 export interface IPurchaseCartLine {
@@ -47,6 +48,19 @@ const EMPTY_CART_STATE: IPurchaseCartState = {
   shippingCostBySupplier: {},
 };
 
+/** Interpreta el JSON guardado en sessionStorage. Si no hay nada, está corrupto o tiene otra forma, arranca vacío. */
+function parseCarts(raw: string | null): PurchaseCartBySucursal {
+  if (raw === null) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as PurchaseCartBySucursal)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 interface PurchaseCartContextType {
   lines:                   IPurchaseCartLine[];
   estimatedDate:           string;
@@ -79,41 +93,24 @@ const PurchaseCartContext = createContext<PurchaseCartContextType | null>(null);
 
 export function PurchaseCartProvider({ children }: { children: ReactNode }) {
   const { selectedId } = useSucursal();
-  const [cartsBySucursal, setCartsBySucursal] = useState<PurchaseCartBySucursal>({});
-  const [isHydrated, setIsHydrated] = useState(false);
+  // Los carritos viven en sessionStorage para sobrevivir la navegación entre armado y
+  // revisión. No se guardan como orden en BD (ver decisiones del spec).
+  const [cartsRaw, setCartsRaw] = useStorageValue("session", SESSION_STORAGE_KEY, null);
+  const cartsBySucursal = useMemo(() => parseCarts(cartsRaw), [cartsRaw]);
+  const isHydrated = useIsClient();
 
   const currentCart = (selectedId != null ? cartsBySucursal[selectedId] : undefined) ?? EMPTY_CART_STATE;
 
   // Actualiza el carrito de la sucursal actualmente seleccionada, dejando el resto intacto.
-  // Si aún no hay sucursal seleccionada, no hay dónde escribir y no hace nada.
+  // Parte del valor actual del storage (no del último render), para que dos cambios
+  // seguidos en el mismo evento no se pisen. Sin sucursal seleccionada no hace nada.
   const updateCurrentCart = (updater: (cart: IPurchaseCartState) => IPurchaseCartState) => {
     if (selectedId == null) return;
-    setCartsBySucursal((current) => ({
-      ...current,
-      [selectedId]: updater(current[selectedId] ?? EMPTY_CART_STATE),
-    }));
+    setCartsRaw((current) => {
+      const carts = parseCarts(current);
+      return JSON.stringify({ ...carts, [selectedId]: updater(carts[selectedId] ?? EMPTY_CART_STATE) });
+    });
   };
-
-  // Carga los carritos de sessionStorage una sola vez, al montar en el cliente.
-  useEffect(() => {
-    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setCartsBySucursal(parsed ?? {});
-      } catch {
-        // sessionStorage corrupto o con un formato viejo: se ignora y arranca vacío
-      }
-    }
-    setIsHydrated(true);
-  }, []);
-
-  // Persiste cualquier cambio del carrito, para sobrevivir la navegación entre
-  // armado y revisión. No se guarda como orden en BD (ver decisiones del spec).
-  useEffect(() => {
-    if (!isHydrated) return;
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(cartsBySucursal));
-  }, [cartsBySucursal, isHydrated]);
 
   const isProductInCart = (id_product: number) =>
     currentCart.lines.some((line) => line.id_product === id_product);

@@ -1,7 +1,8 @@
 "use client";
 
 import { IProduct } from "@/interfaces/product";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 
 interface Props {
@@ -26,9 +27,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default function ProductViewModal({ product, categoryName, supplierName, unitName, onClose }: Props) {
-  const [mounted, setMounted] = useState(false);
+  const isClient = useIsClient();
   const [showFullImage, setShowFullImage] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
 
   const fmtPrice = (val: number | null) =>
     val === null || val === undefined
@@ -37,7 +37,7 @@ export default function ProductViewModal({ product, categoryName, supplierName, 
 
   const isVenta = product.id_category === 4;
 
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

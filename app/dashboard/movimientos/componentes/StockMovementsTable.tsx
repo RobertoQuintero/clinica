@@ -39,6 +39,15 @@ export default function StockMovementsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Cualquier cambio de filtro reinicia la página, salvo el cambio de página en sí.
+  // Se ajusta en el render para que el fetch salga una sola vez, ya con la página 1.
+  const filterKey = JSON.stringify([selectedId, search, movementFilter, dateFrom, dateTo]);
+  const [previousFilterKey, setPreviousFilterKey] = useState(filterKey);
+  if (filterKey !== previousFilterKey) {
+    setPreviousFilterKey(filterKey);
+    setPage(1);
+  }
+
   useEffect(() => {
     getMovementTypes().then((result) => {
       if (result.ok) setMovementTypes(result.data);
@@ -51,11 +60,6 @@ export default function StockMovementsTable() {
       if (result.ok) setSummary(result.data);
     });
   }, [selectedId, refreshToken]);
-
-  useEffect(() => {
-    // Cualquier cambio de filtro reinicia la página, salvo el cambio de página en sí.
-    setPage(1);
-  }, [selectedId, search, movementFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     if (!selectedId) return;

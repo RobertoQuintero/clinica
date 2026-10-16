@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
 import { createPortal } from "react-dom";
 
 interface Props {
@@ -12,9 +12,8 @@ interface Props {
 }
 
 export default function ConfirmModal({ message, onConfirm, onCancel, loading, error }: Props) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
+  const isClient = useIsClient();
+  if (!isClient) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -1,6 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, ReactNode } from "react";
+import { useIsClient } from "@/hooks/useIsClient";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useStorageValue } from "@/hooks/useStorageValue";
 
 type Theme = "light" | "dark";
 
@@ -15,22 +18,23 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [savedTheme, setSavedTheme] = useStorageValue("local", "theme", null);
+  const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
+  const systemTheme: Theme = prefersDark ? "dark" : "light";
+  const theme: Theme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : systemTheme;
+  const isClient = useIsClient();
 
-  // Read saved preference on mount (after hydration)
+  // Durante la hidratación `theme` todavía es el del servidor ("light"); se espera al valor real
+  // para no quitar la clase que ya puso el script inline de app/layout.tsx.
   useEffect(() => {
-    const saved = localStorage.getItem("theme") as Theme | null;
-    const preferred = saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setTheme(preferred);
-    document.documentElement.classList.toggle("dark", preferred === "dark");
-  }, []);
+    if (!isClient) return;
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [isClient, theme]);
 
   const toggle = () => {
-    setTheme((prev) => {
-      const next: Theme = prev === "dark" ? "light" : "dark";
-      localStorage.setItem("theme", next);
-      document.documentElement.classList.toggle("dark", next === "dark");
-      return next;
+    setSavedTheme((current) => {
+      const currentTheme = current === "dark" || current === "light" ? current : systemTheme;
+      return currentTheme === "dark" ? "light" : "dark";
     });
   };
 
