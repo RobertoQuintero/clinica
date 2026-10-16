@@ -17,7 +17,7 @@ export default function RecepcionesPage() {
   const { selectedId } = useSucursal();
 
   const { data, loading, error } = useActionData(selectedId ? [selectedId] : null, () =>
-    getPendingReceptions(selectedId!),
+    getPendingReceptions(selectedId),
   );
   const receptions = data ?? [];
 

@@ -14,7 +14,7 @@ export default function StockCountsTable() {
   const isSupervisor = user ? SUPERVISOR_ROLE_IDS.includes(user.id_role) : false;
 
   const { data, loading, error } = useActionData(selectedId ? [selectedId] : null, () =>
-    getStockCounts(selectedId!),
+    getStockCounts(selectedId),
   );
   const counts = data ?? [];
 

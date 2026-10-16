@@ -38,7 +38,7 @@ export default function PedidosPage() {
     selectedId ? [selectedId, statusFilter, supplierFilter, dateFrom, dateTo] : null,
     () =>
       getPurchaseOrders({
-        id_sucursal: selectedId!,
+        id_sucursal: selectedId,
         id_status: statusFilter ? Number(statusFilter) : null,
         id_supplier: supplierFilter ? Number(supplierFilter) : null,
         date_from: dateFrom || null,

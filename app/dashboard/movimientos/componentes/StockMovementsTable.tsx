@@ -60,7 +60,7 @@ export default function StockMovementsTable() {
     selectedId ? [selectedId, search, movementFilter, dateFrom, dateTo, page, refreshToken] : null,
     () =>
       getStockMovements({
-        id_sucursal: selectedId!,
+        id_sucursal: selectedId,
         search: search.trim() || null,
         id_movement: movementFilter ? Number(movementFilter) : null,
         date_from: dateFrom || null,

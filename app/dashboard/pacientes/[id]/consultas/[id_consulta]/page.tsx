@@ -13,7 +13,8 @@ import { createWebId } from "@/utils/random";
 import { getConsultaData, getMetodosPago, savePago, savePatologia, saveOnicocriptosisDetalle, saveOnicomicosisDetalle, saveValoracion, updateCitaEstado, updateConsultaCosto, updateConsultaFechaFin, updateProcesoField, eliminarPago, editarPago, EditarPagoData, updateTratamientoOnicomicosisMessage } from "./actions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import TabFotos from "./componentes/TabFotos";
 import TabGeneral from "./componentes/TabGeneral";
 import TabPagar from "./componentes/TabPagar";
@@ -39,6 +40,11 @@ import { fmtDatetime } from "./componentes/helpers";
 
 type Tab = "general" | "valoracion" | "patologia" | "servicios" | "fotos_valoracion" | "productos" | "fotos_pedicure" | "pagar";
 
+// Vacíos estables para cuando no hay datos: TabPagar compara la identidad de sus opciones en el render.
+const NO_ARCHIVOS: IArchivo[] = [];
+const NO_PAGOS: IPago[] = [];
+const NO_METODOS_PAGO: IMetodoPago[] = [];
+
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function ConsultaPage() {
@@ -50,16 +56,31 @@ export default function ConsultaPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>("general");
 
-  // data
-  const [consulta,   setConsulta  ] = useState<IConsulta | null>(null);
-  const [paciente,   setPaciente  ] = useState<IPaciente | null>(null);
-  const [valoracion, setValoracion] = useState<IValoracionPiel | null>(null);
-  const [archivos,   setArchivos  ] = useState<IArchivo[]>([]);
-  const [pagos,      setPagos     ] = useState<IPago[]>([]);
-  const [loading,    setLoading   ] = useState(true);
-  const [patologia,  setPatologia ] = useState<IPatologiaUngueal | null>(null);
-  const [proceso,    setProceso   ] = useState<IProceso | null>(null);
-  const [metodosPago, setMetodosPago] = useState<IMetodoPago[]>([]);
+  // data: vive en el hook; los cambios locales después de guardar usan mutateConsultaData
+  const consultaDataKey = [id_consulta, id_paciente] as const;
+  const consultaData = useAsyncData(consultaDataKey, async () => {
+    const [data, metodosPago] = await Promise.all([
+      getConsultaData(id_consulta, id_paciente),
+      getMetodosPago(),
+    ]);
+    return { ...data, metodosPago };
+  });
+  const { loading, mutate: mutateConsultaData } = consultaData;
+  const consulta:    IConsulta | null         = consultaData.data?.consulta ?? null;
+  const paciente:    IPaciente | null         = consultaData.data?.paciente ?? null;
+  const valoracion:  IValoracionPiel | null   = consultaData.data?.valoracion ?? null;
+  const archivos:    IArchivo[]               = consultaData.data?.archivos ?? NO_ARCHIVOS;
+  const pagos:       IPago[]                  = consultaData.data?.pagos ?? NO_PAGOS;
+  const patologia:   IPatologiaUngueal | null = consultaData.data?.patologia ?? null;
+  const proceso:     IProceso | null          = consultaData.data?.proceso ?? null;
+  const metodosPago: IMetodoPago[]            = consultaData.data?.metodosPago ?? NO_METODOS_PAGO;
+
+  const updateProceso = (nextProceso: IProceso) =>
+    mutateConsultaData((current) => ({ ...current, proceso: nextProceso }));
+  const updateConsultaFechaFinLocally = (fechaFin: string) =>
+    mutateConsultaData((current) =>
+      current.consulta ? { ...current, consulta: { ...current.consulta, fecha_fin: fechaFin } } : current,
+    );
 
   // valoracion form
   const VALORACION_DEFAULTS: IValoracionPiel = {
@@ -129,35 +150,22 @@ id_usuario_elimino: null,
   const [pagoError,  setPagoError ] = useState<string | null>(null);
   const [deletingPagoId, setDeletingPagoId] = useState<number | null>(null);
 
-  // ── fetch ──────────────────────────────────────────────────────────────────
+  // ── formularios: se llenan en el render cuando llegan los datos de una consulta nueva ──
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const [data, mp] = await Promise.all([
-        getConsultaData(id_consulta, id_paciente), 
-        getMetodosPago(),
-      ]);
-      if (data.consulta)   setConsulta(data.consulta);
-      if (data.paciente)   setPaciente(data.paciente);
-      if (data.valoracion) { setValoracion(data.valoracion); setValoracionForm(data.valoracion); }
-      if (data.patologia)  { setPatologia(data.patologia);  setPatologiaForm(data.patologia);  }
-      setArchivos(data.archivos);
-      setPagos(data.pagos);
-      setProceso(data.proceso);
-      if (data.onicocriptosisDetalle.length > 0) {
-        setOnicocriptosisForm(detalleRowsToFormState(data.onicocriptosisDetalle));
-      }
-      if (data.onicomicosisDetalle.length > 0) {
-        setOnicomicosisForm(detalleRowsToFormStateOnicomicosis(data.onicomicosisDetalle));
-      }
-      setMetodosPago(mp);
-    } finally {
-      setLoading(false);
+  const serializedConsultaDataKey = JSON.stringify(consultaDataKey);
+  const [formsInitializedForKey, setFormsInitializedForKey] = useState<string | null>(null);
+  if (consultaData.data && formsInitializedForKey !== serializedConsultaDataKey) {
+    const loadedData = consultaData.data;
+    setFormsInitializedForKey(serializedConsultaDataKey);
+    if (loadedData.valoracion) setValoracionForm(loadedData.valoracion);
+    if (loadedData.patologia)  setPatologiaForm(loadedData.patologia);
+    if (loadedData.onicocriptosisDetalle.length > 0) {
+      setOnicocriptosisForm(detalleRowsToFormState(loadedData.onicocriptosisDetalle));
     }
-  };
-
-  useEffect(() => { fetchAll(); }, [id_consulta]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (loadedData.onicomicosisDetalle.length > 0) {
+      setOnicomicosisForm(detalleRowsToFormStateOnicomicosis(loadedData.onicomicosisDetalle));
+    }
+  }
 
   // ── valoracion submit ──────────────────────────────────────────────────────
 
@@ -171,11 +179,12 @@ id_usuario_elimino: null,
         created_at: valoracionForm.created_at || buildDate(new Date()),
       });
       if (!result.ok) throw new Error(result.data);
-      setValoracion(result.data);
-      setValoracionForm(result.data);
+      const savedValoracion = result.data;
+      mutateConsultaData((current) => ({ ...current, valoracion: savedValoracion }));
+      setValoracionForm(savedValoracion);
       // mark step complete and advance
       const procResult = await updateProcesoField(id_consulta, "valoracion_piel", 1);
-      if (procResult.ok) setProceso(procResult.data);
+      if (procResult.ok) updateProceso(procResult.data);
       setActiveTab("patologia");
     } catch (err: unknown) {
       setValoracionError(err instanceof Error ? err.message : "Error al guardar");
@@ -209,8 +218,9 @@ id_usuario_elimino: null,
     try {
       const result = await savePatologia(patologiaForm);
       if (!result.ok) throw new Error(result.data);
-      setPatologia(result.data);
-      setPatologiaForm(result.data);
+      const savedPatologia = result.data;
+      mutateConsultaData((current) => ({ ...current, patologia: savedPatologia }));
+      setPatologiaForm(savedPatologia);
 
       const onicoResult = await saveOnicocriptosisDetalle(
         id_consulta,
@@ -226,7 +236,7 @@ id_usuario_elimino: null,
 
       // mark step complete and advance
       const procResult = await updateProcesoField(id_consulta, "patologia_ungueal", 1);
-      if (procResult.ok) setProceso(procResult.data);
+      if (procResult.ok) updateProceso(procResult.data);
       setActiveTab("servicios");
     } catch (err: unknown) {
       setPatologiaError(err instanceof Error ? err.message : "Error al guardar");
@@ -253,10 +263,11 @@ id_usuario_elimino: null,
       await updateConsultaCosto(id_consulta, totalGeneral);
       const fechaFin = buildDate(new Date());
       await updateConsultaFechaFin(id_consulta, fechaFin);
-      setConsulta((prev) => prev ? { ...prev, fecha_fin: fechaFin } : prev);
+      updateConsultaFechaFinLocally(fechaFin);
       const result = await savePago(pagoForm);
       if (!result.ok) throw new Error(result.data);
-      setPagos((prev) => [result.data, ...prev]);
+      const savedPago = result.data;
+      mutateConsultaData((current) => ({ ...current, pagos: [savedPago, ...current.pagos] }));
       if (consulta?.id_cita) {
         await updateCitaEstado(consulta.id_cita, "atendida");
       }
@@ -310,7 +321,7 @@ id_usuario_elimino: null,
 
   const handleContinuar = async (field: "servicios" | "productos" | "fotos_valoracion" | "fotos_pedicure", nextTab: Tab) => {
     const procResult = await updateProcesoField(id_consulta, field, 1);
-    if (procResult.ok) setProceso(procResult.data);
+    if (procResult.ok) updateProceso(procResult.data);
     setActiveTab(nextTab);
   };
 
@@ -324,9 +335,9 @@ id_usuario_elimino: null,
       const fechaFin = buildDate(new Date());
       const fechaFinResult = await updateConsultaFechaFin(id_consulta, fechaFin);
       if (fechaFinResult.ok) {
-        setConsulta((prev) => prev ? { ...prev, fecha_fin: fechaFin } : null);
+        updateConsultaFechaFinLocally(fechaFin);
       }
-      setProceso(procResult.data);
+      updateProceso(procResult.data);
       setActiveTab("general");
     }
   };
@@ -337,7 +348,11 @@ id_usuario_elimino: null,
     try {
       const result = await eliminarPago(id_pago, user.id_user);
       if (result.ok) {
-        setPagos((prev) => prev.map((p) => p.id_pago === id_pago ? result.data : p));
+        const deletedPago = result.data;
+        mutateConsultaData((current) => ({
+          ...current,
+          pagos: current.pagos.map((p) => p.id_pago === id_pago ? deletedPago : p),
+        }));
       }
     } finally {
       setDeletingPagoId(null);
@@ -347,7 +362,11 @@ id_usuario_elimino: null,
   const handleEditarPago = async (id_pago: number, data: EditarPagoData) => {
     const result = await editarPago(id_pago, data);
     if (!result.ok) throw new Error(typeof result.data === "string" ? result.data : "Error al editar el pago");
-    setPagos((prev) => prev.map((p) => p.id_pago === id_pago ? result.data as IPago : p));
+    const editedPago = result.data as IPago;
+    mutateConsultaData((current) => ({
+      ...current,
+      pagos: current.pagos.map((p) => p.id_pago === id_pago ? editedPago : p),
+    }));
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -504,7 +523,7 @@ id_usuario_elimino: null,
           {activeTab === "fotos_valoracion" && (
             <TabFotos
               archivos={archivos}
-              onAddArchivo={(a) => setArchivos((prev) => [a, ...prev])}
+              onAddArchivo={(a) => mutateConsultaData((current) => ({ ...current, archivos: [a, ...current.archivos] }))}
               paciente={paciente}
               id_paciente={id_paciente}
               id_consulta={id_consulta}
@@ -525,7 +544,7 @@ id_usuario_elimino: null,
           {activeTab === "fotos_pedicure" && (
             <TabFotos
               archivos={archivos}
-              onAddArchivo={(a) => setArchivos((prev) => [a, ...prev])}
+              onAddArchivo={(a) => mutateConsultaData((current) => ({ ...current, archivos: [a, ...current.archivos] }))}
               paciente={paciente}
               id_paciente={id_paciente}
               id_consulta={id_consulta}

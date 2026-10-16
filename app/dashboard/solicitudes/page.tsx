@@ -17,7 +17,7 @@ export default function SolicitudesPage() {
   const { selectedId } = useSucursal();
 
   const { data, loading, error } = useActionData(selectedId ? [selectedId] : null, () =>
-    getPendingPurchaseRequests(selectedId!),
+    getPendingPurchaseRequests(selectedId),
   );
   const requests = data ?? [];
 

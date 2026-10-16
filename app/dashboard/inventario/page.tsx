@@ -23,7 +23,7 @@ export default function InventarioPage() {
   }, []);
 
   const suggestedProducts = useActionData(selectedId ? [selectedId] : null, () =>
-    getSuggestedProducts(selectedId!),
+    getSuggestedProducts(selectedId),
   );
   const { loading, error } = suggestedProducts;
   const products = useMemo<ISuggestedProduct[]>(

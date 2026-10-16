@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PackageSearch, TriangleAlert } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
 import { StockCountType } from "@/interfaces/stock_count";
 import {
   createStockCount,
@@ -12,35 +13,24 @@ import {
   getCountableProductCount,
   getOpenStockCount,
   ICountableCategory,
-  IOpenStockCount,
 } from "../../actions";
 
 export default function NewCountForm() {
   const { selectedId } = useSucursal();
   const router = useRouter();
 
-  const [openCount, setOpenCount] = useState<IOpenStockCount | null>(null);
-  const [checkingOpenCount, setCheckingOpenCount] = useState(true);
+  const openCountData = useActionData(selectedId ? [selectedId] : null, () =>
+    getOpenStockCount(selectedId),
+  );
+  const openCount = openCountData.data ?? null;
+  const checkingOpenCount = openCountData.loading;
 
   const [categories, setCategories] = useState<ICountableCategory[]>([]);
   const [countType, setCountType] = useState<StockCountType>("general");
   const [categoryId, setCategoryId] = useState("");
 
-  const [productCount, setProductCount] = useState<number | null>(null);
-  const [countingProducts, setCountingProducts] = useState(false);
-
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    setCheckingOpenCount(true);
-    getOpenStockCount(selectedId)
-      .then((result) => {
-        if (result.ok) setOpenCount(result.data);
-      })
-      .finally(() => setCheckingOpenCount(false));
-  }, [selectedId]);
 
   useEffect(() => {
     if (!selectedId || openCount) return;
@@ -49,19 +39,15 @@ export default function NewCountForm() {
     });
   }, [selectedId, openCount]);
 
-  useEffect(() => {
-    if (!selectedId || openCount) return;
-    if (countType === "category" && !categoryId) {
-      setProductCount(null);
-      return;
-    }
-    setCountingProducts(true);
-    getCountableProductCount(selectedId, countType, countType === "category" ? Number(categoryId) : null)
-      .then((result) => {
-        if (result.ok) setProductCount(result.data.product_count);
-      })
-      .finally(() => setCountingProducts(false));
-  }, [selectedId, openCount, countType, categoryId]);
+  // Sin conteo abierto y con la categoría elegida (si aplica); si no, no hay número que mostrar.
+  const canCountProducts = !!selectedId && !openCount && !(countType === "category" && !categoryId);
+  const productCountData = useActionData(
+    canCountProducts ? [selectedId, countType, categoryId] : null,
+    () =>
+      getCountableProductCount(selectedId, countType, countType === "category" ? Number(categoryId) : null),
+  );
+  const productCount = productCountData.data?.product_count ?? null;
+  const countingProducts = productCountData.loading;
 
   const handleSubmit = async () => {
     if (countType === "category" && !categoryId) {

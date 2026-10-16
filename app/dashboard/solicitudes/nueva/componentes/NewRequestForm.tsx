@@ -33,7 +33,7 @@ export default function NewRequestForm() {
   }, []);
 
   const requestProducts = useActionData(selectedId ? [selectedId] : null, () =>
-    getProductsForRequest(selectedId!),
+    getProductsForRequest(selectedId),
   );
   const { loading, error: loadError } = requestProducts;
   const products = useMemo<IRequestProduct[]>(

@@ -1,31 +1,20 @@
 "use client";
 
 import { useSucursal } from "@/contexts/SucursalContext";
-import { ISucursalCalendario } from "@/interfaces/sucursal";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getSucursalCalendarios } from "@/app/dashboard/sucursales/actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 
 export default function CitasPage() {
   const { selectedId } = useSucursal();
-  const [calendarios, setCalendarios] = useState<ISucursalCalendario[]>([]);
-  const [activeCalendarId, setActiveCalendarId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { data, loading } = useAsyncData([selectedId], () => getSucursalCalendarios(selectedId));
+  const calendarios = data ?? [];
 
-  useEffect(() => {
-    setLoading(true);
-    getSucursalCalendarios(selectedId)
-      .then((data) => {
-        setCalendarios(data);
-        setActiveCalendarId(data[0]?.id_sucursal_calendario ?? null);
-      })
-      .catch(() => {
-        setCalendarios([]);
-        setActiveCalendarId(null);
-      })
-      .finally(() => setLoading(false));
-  }, [selectedId]);
-
-  const activeCalendario = calendarios.find((c) => c.id_sucursal_calendario === activeCalendarId) ?? null;
+  // El calendario activo se deriva: el elegido si existe en la sucursal actual y, si no, el primero.
+  const [selectedCalendarId, setSelectedCalendarId] = useState<number | null>(null);
+  const activeCalendario =
+    calendarios.find((c) => c.id_sucursal_calendario === selectedCalendarId) ?? calendarios[0] ?? null;
+  const activeCalendarId = activeCalendario?.id_sucursal_calendario ?? null;
 
   return (
     <div>
@@ -56,7 +45,7 @@ export default function CitasPage() {
             {calendarios.map((c) => (
               <button
                 key={c.id_sucursal_calendario}
-                onClick={() => setActiveCalendarId(c.id_sucursal_calendario)}
+                onClick={() => setSelectedCalendarId(c.id_sucursal_calendario)}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   activeCalendarId === c.id_sucursal_calendario
                     ? "border-zinc-800 text-zinc-800 dark:border-zinc-100 dark:text-zinc-100"

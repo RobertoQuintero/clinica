@@ -74,8 +74,8 @@ export default function NuevoPedidoPage() {
   // separado: si fallan los sugeridos, el resumen se sigue mostrando (y su error se ignora).
   const branchOverview = useAsyncData(selectedId ? [selectedId] : null, () =>
     Promise.all([
-      getSuggestedProducts(selectedId!),
-      getPurchaseOrdersSummary(selectedId!),
+      getSuggestedProducts(selectedId),
+      getPurchaseOrdersSummary(selectedId),
     ]),
   );
   const [suggestedResult, summaryResult] = branchOverview.data ?? [];

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getPacientesCumpleanos, IPacienteCumpleanos } from "../actions";
+import { getPacientesCumpleanos } from "../actions";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import { useSucursal } from "@/contexts/SucursalContext";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,16 +25,9 @@ const diasParaCumple = (val: string): number => {
 export default function PacientesCumpleanos() {
   const {user} = useAuth();
   const { selectedId } = useSucursal();
-  const [pacientes, setPacientes] = useState<IPacienteCumpleanos[]>([]);
-  const [loading, setLoading]     = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    getPacientesCumpleanos().then((data) => {
-      setPacientes(data);
-      setLoading(false);
-    });
-  }, [selectedId]);
+  // La action toma la sucursal de la cookie; selectedId va en la key para recargar al cambiarla.
+  const { data, loading } = useAsyncData([selectedId], () => getPacientesCumpleanos());
+  const pacientes = data ?? [];
 
   if (loading) return <p className="text-sm text-zinc-400">Cargando...</p>;
 

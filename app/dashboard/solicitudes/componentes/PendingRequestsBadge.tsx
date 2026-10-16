@@ -20,7 +20,7 @@ export default function PendingRequestsBadge() {
 
   // Un error o la carga en curso se muestran igual que "sin pendientes": sin badge.
   const { data } = useActionData(canSeeCount && selectedId ? [selectedId] : null, () =>
-    getPendingRequestsCount(selectedId!),
+    getPendingRequestsCount(selectedId),
   );
   const count = data ?? 0;
 

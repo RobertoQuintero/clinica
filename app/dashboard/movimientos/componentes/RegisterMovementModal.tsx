@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, TriangleAlert } from "lucide-react";
 import { useSucursal } from "@/contexts/SucursalContext";
+import { useActionData } from "@/hooks/useActionData";
 import {
   getMovementTypes,
   getTransferDestinations,
@@ -10,7 +11,6 @@ import {
   searchProductsForMovement,
   IMovementProductOption,
   IMovementType,
-  ITransferDestination,
 } from "../actions";
 import { useMovementsRefresh } from "./MovementsRefreshContext";
 import ProductQuickViewButton from "@/app/dashboard/componentes/ProductQuickViewButton";
@@ -40,7 +40,6 @@ export default function RegisterMovementModal() {
   const [error, setError] = useState<string | null>(null);
 
   const [movementTypes, setMovementTypes] = useState<IMovementType[]>([]);
-  const [destinations, setDestinations] = useState<ITransferDestination[]>([]);
 
   const [form, setForm] = useState(initialFormState);
 
@@ -64,15 +63,10 @@ export default function RegisterMovementModal() {
     });
   }, [open]);
 
-  useEffect(() => {
-    if (!isTransfer || !selectedId) {
-      setDestinations([]);
-      return;
-    }
-    getTransferDestinations(selectedId).then((result) => {
-      if (result.ok) setDestinations(result.data);
-    });
-  }, [isTransfer, selectedId]);
+  const transferDestinations = useActionData(isTransfer && selectedId ? [selectedId] : null, () =>
+    getTransferDestinations(selectedId),
+  );
+  const destinations = transferDestinations.data ?? [];
 
   useEffect(() => {
     if (!open || !selectedId || productSearch.trim().length < 2) {
