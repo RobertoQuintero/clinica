@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Ban, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActionData } from "@/hooks/useActionData";
 import {
   IPurchaseRequestDetail,
   IRequestProduct,
@@ -34,9 +35,10 @@ export default function PurchaseRequestDetailPage() {
   const { user } = useAuth();
   const id_purchase_request = Number(params.id);
 
-  const [request, setRequest] = useState<IPurchaseRequestDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
+  const requestKey = id_purchase_request ? [id_purchase_request] : null;
+  const requestData = useActionData(requestKey, () => getPurchaseRequestDetail(id_purchase_request));
+  const { loading, error, reload: reloadRequest } = requestData;
+  const request: IPurchaseRequestDetail | null = requestData.data ?? null;
 
   // Estado de edición (solo aplica si el rol 2 dueño ve la solicitud en Pendiente).
   const [products, setProducts]     = useState<IRequestProduct[]>([]);
@@ -56,29 +58,15 @@ export default function PurchaseRequestDetailPage() {
 
   const [showRejectModal, setShowRejectModal] = useState(false);
 
-  const fetchRequest = () => {
-    setLoading(true);
-    setError(null);
-    return getPurchaseRequestDetail(id_purchase_request)
-      .then((result) => {
-        if (result.ok) {
-          setRequest(result.data);
-          setNotes(result.data.notes ?? "");
-          setQuantities(
-            Object.fromEntries(result.data.items.map((item) => [item.id_product, item.quantity]))
-          );
-        } else {
-          setError(result.message);
-        }
-      })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    if (!id_purchase_request) return;
-    fetchRequest();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id_purchase_request]);
+  // Notas y cantidades son estado del usuario: se llenan en el render solo cuando llega otra solicitud,
+  // no en cada recarga (después de guardar ya coinciden con lo guardado).
+  const serializedRequestKey = JSON.stringify(requestKey);
+  const [formInitializedForKey, setFormInitializedForKey] = useState<string | null>(null);
+  if (request && formInitializedForKey !== serializedRequestKey) {
+    setFormInitializedForKey(serializedRequestKey);
+    setNotes(request.notes ?? "");
+    setQuantities(Object.fromEntries(request.items.map((item) => [item.id_product, item.quantity])));
+  }
 
   useEffect(() => {
     getUnitsMeasurement().then(setUnits);
@@ -156,7 +144,7 @@ export default function PurchaseRequestDetailPage() {
       setSaveError(result.message);
       return;
     }
-    await fetchRequest();
+    await reloadRequest();
   };
 
   const handleCancel = async () => {
@@ -165,7 +153,7 @@ export default function PurchaseRequestDetailPage() {
     const result = await cancelPurchaseRequest(id_purchase_request);
     if (result.ok) {
       setShowCancelConfirm(false);
-      await fetchRequest();
+      await reloadRequest();
     } else {
       setCancelError(result.message);
     }
@@ -368,7 +356,7 @@ export default function PurchaseRequestDetailPage() {
         <RejectRequestModal
           id_purchase_request={id_purchase_request}
           onClose={() => setShowRejectModal(false)}
-          onRejected={fetchRequest}
+          onRejected={reloadRequest}
         />
       )}
     </div>

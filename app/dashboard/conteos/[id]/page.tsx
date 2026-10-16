@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
@@ -17,6 +17,7 @@ import {
 import StockCountStatusBadge from "../componentes/StockCountStatusBadge";
 import CountEntryTable from "./componentes/CountEntryTable";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
+import { useActionData } from "@/hooks/useActionData";
 
 const READ_ONLY_STATUSES = ["pendiente_revision", "cerrado", "cancelado"];
 
@@ -25,11 +26,19 @@ export default function CountEntryPage() {
   const router = useRouter();
   const id_stock_count = Number(params.id);
 
-  const [header, setHeader] = useState<IStockCountHeader | null>(null);
-  const [lines, setLines] = useState<ICountEntryLine[]>([]);
+  const countData = useActionData(id_stock_count ? [id_stock_count] : null, async () => {
+    const [headerResult, linesResult] = await Promise.all([
+      getStockCountHeader(id_stock_count),
+      getCountEntryLines(id_stock_count),
+    ]);
+    if (!headerResult.ok) return headerResult;
+    if (!linesResult.ok) return linesResult;
+    return { ok: true as const, data: { header: headerResult.data, lines: linesResult.data } };
+  });
+  const { loading, error: loadError, reload: reloadCount } = countData;
+  const header: IStockCountHeader | null = countData.data?.header ?? null;
+  const lines: ICountEntryLine[] = countData.data?.lines ?? [];
   const [values, setValues] = useState<Record<number, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -43,37 +52,21 @@ export default function CountEntryPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const loadData = () => {
-    if (!id_stock_count) return;
-    setLoading(true);
-    setLoadError(null);
-    Promise.all([getStockCountHeader(id_stock_count), getCountEntryLines(id_stock_count)]).then(
-      ([headerResult, linesResult]) => {
-        if (!headerResult.ok) {
-          setLoadError(headerResult.message);
-          setLoading(false);
-          return;
-        }
-        if (!linesResult.ok) {
-          setLoadError(linesResult.message);
-          setLoading(false);
-          return;
-        }
-        setHeader(headerResult.data);
-        setLines(linesResult.data);
-        const initialValues: Record<number, string> = {};
-        for (const line of linesResult.data) {
-          if (line.counted_quantity !== null) {
-            initialValues[line.id_stock_count_item] = String(line.counted_quantity);
-          }
-        }
-        setValues(initialValues);
-        setLoading(false);
+  // Lo capturado es estado del usuario: se inicializa en el render cuando llega otro conteo o cuando
+  // el conteo cambia de estado (p. ej. primer → segundo conteo, que trae `second_count` vacío).
+  // Una recarga con el mismo estado no pisa lo capturado.
+  const valuesKey = header ? JSON.stringify([id_stock_count, header.status]) : null;
+  const [valuesInitializedForKey, setValuesInitializedForKey] = useState<string | null>(null);
+  if (valuesKey !== null && valuesInitializedForKey !== valuesKey) {
+    setValuesInitializedForKey(valuesKey);
+    const initialValues: Record<number, string> = {};
+    for (const line of lines) {
+      if (line.counted_quantity !== null) {
+        initialValues[line.id_stock_count_item] = String(line.counted_quantity);
       }
-    );
-  };
-
-  useEffect(loadData, [id_stock_count]);
+    }
+    setValues(initialValues);
+  }
 
   const readOnly = header ? READ_ONLY_STATUSES.includes(header.status) : true;
   const allFilled = lines.every((line) => (values[line.id_stock_count_item] ?? "").trim() !== "");
@@ -128,7 +121,7 @@ export default function CountEntryPage() {
       return;
     }
     setShowFinishConfirm(false);
-    loadData();
+    reloadCount();
   };
 
   const handleCancel = async () => {
