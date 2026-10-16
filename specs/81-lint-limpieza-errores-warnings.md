@@ -234,6 +234,7 @@ Cada paso deja el sistema compilando (`npm run build`) y funcional. Después de 
 - **`ITransactionClient.queryParams: DB["queryParams"]`.** Sigue igual que el método real sin escribir `any`, y no rompe a los 10 archivos que la usan. Cambiar a `unknown[]` obligaría a tipar las filas en decenas de llamadores, lo que sería otra spec.
 - **`next/image` para el slider de tratamientos,** como pide `CLAUDE.md`.
 - **El cloud name se deriva de `CLOUDINARY_URL` en `next.config.ts`** en vez de quedar escrito en el código. Así no se duplica la configuración ni se mete a Git un dato del entorno. El `pathname` queda restringido a ese cloud name, siguiendo el precedente de Facturapi.
+  - *Reemplazada por la spec 83: el patrón acepta cualquier cuenta con `/*/image/upload/**`.*
 - **Si falta `CLOUDINARY_URL`, se omite el patrón sin romper el build.** Sin esa variable las subidas tampoco funcionan, así que no es un escenario nuevo.
 - **No se arregla nada que el linter no reporte** (por ejemplo, el `new Date(paciente.created_at)` de `TabGeneral.tsx`), aunque se vea al pasar. Así el diff queda auditable contra la línea base.
 

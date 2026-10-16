@@ -3,7 +3,7 @@
 ## Header
 
 - **Estado:** Implementado
-- **Depende de:** 81 (`lint-limpieza-errores-warnings`), que dejó el lint con solo 69 errores, todos `react-hooks/set-state-in-effect`. La futura spec 83 (fetch de datos en effects) parte del estado que deja esta.
+- **Depende de:** 81 (`lint-limpieza-errores-warnings`), que dejó el lint con solo 69 errores, todos `react-hooks/set-state-in-effect`. La futura spec 84 (fetch de datos en effects) parte del estado que deja esta.
 - **Modifica base de datos:** No.
 - **Fecha:** 2026-10-15
 - **Objetivo:** Eliminar los 26 errores de `react-hooks/set-state-in-effect` que vienen de portales (`mounted`), lecturas del navegador (`matchMedia`, `localStorage`, `sessionStorage`) y estado derivado de props, usando hooks compartidos en `hooks/` y sin cambios funcionales visibles.
@@ -11,7 +11,7 @@
   - **A. Guarda `mounted` para `createPortal`:** 13.
   - **B. APIs del navegador al montar:** 5.
   - **C. Estado derivado de props o reset por cambio de filtro:** 8.
-  - **D. Fetch con `setLoading`/`setError` síncronos:** 43. Fuera de esta spec; es la 83.
+  - **D. Fetch con `setLoading`/`setError` síncronos:** 43. Fuera de esta spec; es la 84.
 
   Resultado esperado: **43 errores, todos `set-state-in-effect` y todos del patrón D**, y 0 warnings.
 
@@ -31,7 +31,7 @@
   - `app/dashboard/empleados/[id]/asistencia/componentes/EmployeeIdentifiersModal.tsx`;
   - `app/dashboard/empleados/[id]/usuarios/componentes/LinkUserModal.tsx`;
   - `app/dashboard/pedidos/[id]/componentes/UploadInvoiceModal.tsx`;
-  - `app/dashboard/pedidos/nuevo/componentes/EditOrderTemplateModal.tsx` (solo la guarda; su fetch es de la 83);
+  - `app/dashboard/pedidos/nuevo/componentes/EditOrderTemplateModal.tsx` (solo la guarda; su fetch es de la 84);
   - `app/dashboard/pedidos/nuevo/componentes/SaveCartAsTemplateModal.tsx` (el foco se queda igual que en `CambiarPasswordModal`);
   - `app/dashboard/productos/componentes/ProductViewModal.tsx`;
   - `app/dashboard/solicitudes/componentes/RejectRequestModal.tsx`;
@@ -69,7 +69,7 @@
 
 **No incluye:**
 
-- **Patrón D: los 43 effects de fetch.** Es la spec 83, que ya tiene decidido usar un hook compartido (`{ key, data, error }`, con `setState` solo en el `.then` y `loading` derivado). También quedan intactos los effects de fetch que conviven en archivos de esta spec (`EditOrderTemplateModal`, `Sucursal*Modal`, el primer effect de `SucursalContext`), con sus `eslint-disable`.
+- **Patrón D: los 43 effects de fetch.** Es la spec 84, que ya tiene decidido usar un hook compartido (`{ key, data, error }`, con `setState` solo en el `.then` y `loading` derivado). También quedan intactos los effects de fetch que conviven en archivos de esta spec (`EditOrderTemplateModal`, `Sucursal*Modal`, el primer effect de `SucursalContext`), con sus `eslint-disable`.
 - Guardar el tema o el sidebar en cookie para que el servidor los pinte. Se siguen aplicando tras hidratar, como hoy (el tema ya lo cubre el script inline).
 - Mover la asignación del podólogo de rol 2 a los padres de `ConsultaModal` (`expediente` y `tratamientos/[id_tratamiento]`).
 - Unificar los dos `ConfirmModal` duplicados (`app/dashboard/componentes/` y `servicios/componentes/`), ni crear un `<ClientPortal>` compartido. Se anota como deuda.
@@ -353,7 +353,7 @@ Prueba manual hecha en Chrome contra el dev server, con un usuario de rol 4 (Sup
 
 **Deuda encontrada (fuera de alcance, para otras specs):**
 
-- **`next.config.ts` (spec 81):** `remotePatterns` solo permite la cuenta de Cloudinary que tiene hoy `CLOUDINARY_URL` (`ds7odsbwv`). Las fotos de tratamientos guardadas en `dmq9e2wuv` hacen tronar `ImageSliderModal` con `next/image`.
+- **`next.config.ts` (spec 81):** `remotePatterns` solo permite la cuenta de Cloudinary que tiene hoy `CLOUDINARY_URL` (`ds7odsbwv`). Las fotos de tratamientos guardadas en `dmq9e2wuv` hacen tronar `ImageSliderModal` con `next/image`. Resuelto en la spec 83.
 - **Producto 26 ("Agua Oxigenada"):** apunta a `id_supplier = 6`, que no existe en `inventory.proveedores`.
   - `createPurchaseOrders` no valida el proveedor, así que deja crear la orden.
   - La lista y el detalle de pedidos la ocultan, porque hacen INNER JOIN con `proveedores`.
@@ -364,9 +364,9 @@ Prueba manual hecha en Chrome contra el dev server, con un usuario de rol 4 (Sup
 
 **Tomadas:**
 
-- **Separar `set-state-in-effect` en dos specs.** Esta (82) cubre portales, APIs del navegador y estado derivado (26 errores, de bajo riesgo). La 83 cubre los 43 effects de fetch, que cambian el comportamiento en tiempo de ejecución de ~40 pantallas. Es el mismo criterio con el que se separó la 81.
-- **Para la 83 ya quedó decidido el hook compartido de fetch** (`{ key, data, error }`, `setState` solo en el `.then` y `loading` derivado), en vez de arreglar cada effect a mano, adoptar SWR/TanStack Query o migrar a Server Components. Se anota aquí para que el `/spec` de la 83 no lo reabra.
-- **Carpeta nueva `hooks/` en la raíz, con un hook por archivo.** `lib/` es para integraciones del servidor y `utils/` para helpers puros; ninguna de las dos sirve para hooks de cliente. La 83 pondrá su hook en el mismo lugar.
+- **Separar `set-state-in-effect` en dos specs.** Esta (82) cubre portales, APIs del navegador y estado derivado (26 errores, de bajo riesgo). La 84 cubre los 43 effects de fetch, que cambian el comportamiento en tiempo de ejecución de ~40 pantallas. Es el mismo criterio con el que se separó la 81.
+- **Para la 84 ya quedó decidido el hook compartido de fetch** (`{ key, data, error }`, `setState` solo en el `.then` y `loading` derivado), en vez de arreglar cada effect a mano, adoptar SWR/TanStack Query o migrar a Server Components. Se anota aquí para que el `/spec` de la 84 no lo reabra.
+- **Carpeta nueva `hooks/` en la raíz, con un hook por archivo.** `lib/` es para integraciones del servidor y `utils/` para helpers puros; ninguna de las dos sirve para hooks de cliente. La 84 pondrá su hook en el mismo lugar.
 - **`useSyncExternalStore` como base de los tres hooks.** Es la API de React pensada para leer fuentes externas (DOM, storage) sin effects. Además da un snapshot de servidor explícito, así que no hay *hydration mismatch*.
 - **`useIsClient()` uniforme en los 13 modales,** aunque algunos solo se montan tras un clic. Es seguro también para modales siempre montados, como `ImageSliderModal`, y evita revisar padre por padre.
 - **Tema y sidebar siguen aplicándose tras hidratar.** Pasarlos a cookie para que el servidor los pinte sería un cambio funcional. El parpadeo del tema ya lo evita el script inline de `app/layout.tsx`.
@@ -376,8 +376,8 @@ Prueba manual hecha en Chrome contra el dev server, con un usuario de rol 4 (Sup
 - **"Ajustar estado durante el render" para los autocompletes editables,** en vez de derivar sin estado. El texto también lo escribe el usuario, así que necesita estado propio; solo se resetea cuando cambia la prop de origen.
 - **`selectedId` derivado en `SucursalContext`.** La sucursal única es un hecho del usuario, no un estado que haya que forzar. La forma del contexto no cambia para los consumidores.
 - **`ConsultaModal`, rol 2: la llamada al padre se queda en un effect con guarda,** en vez de mover la lógica a los dos padres (`expediente` y `tratamientos/[id_tratamiento]`). Cambia menos archivos, y la guarda permite dependencias completas sin bucle.
-- **`ConsultaFila` se resuelve completo en la 82,** incluida su carga de detalle con `setState` solo en el `.then`. El error reportado es del patrón C, y el archivo no tiene por qué esperar al hook de la 83.
-- **Quitar los `eslint-disable` solo en los effects reescritos.** Los de effects de fetch se quedan para la 83.
+- **`ConsultaFila` se resuelve completo en la 82,** incluida su carga de detalle con `setState` solo en el `.then`. El error reportado es del patrón C, y el archivo no tiene por qué esperar al hook de la 84.
+- **Quitar los `eslint-disable` solo en los effects reescritos.** Los de effects de fetch se quedan para la 84.
 - **Documentar `hooks/` en `CLAUDE.md`,** para que futuras features encuentren y reusen los hooks en vez de duplicarlos.
 
 **Descartadas:**
