@@ -1,3 +1,4 @@
+import type { IEmployeeTermination } from "@/interfaces/employee_termination";
 import type { IVacationBadgeSummary } from "@/interfaces/vacation";
 
 /** Fila de RH.empleados tal como la devuelven los server actions. */
@@ -13,6 +14,7 @@ export interface IEmployee {
   foto_url:            string | null;
   fecha_ingreso:       string;          // "YYYY-MM-DD" — nunca Date
   id_supervisor:       number | null;
+  id_empleado_anterior: number | null;  // reingreso: registro dado de baja del que proviene (spec 86)
   whatsapp:            string | null;
   email:               string | null;
   rfc:                 string | null;
@@ -63,6 +65,8 @@ export interface IEmployeeListItem extends IEmployee {
   nombre_periodo_pago: string | null;
   /** Estatus de vacaciones del año vigente (spec 76); `null` si aún no tiene año. Solo lo llena el listado. */
   vacation?:           IVacationBadgeSummary | null;
+  /** Fecha de la baja vigente (spec 86); `null` si no tiene. Solo lo llena el listado. */
+  fecha_baja?:         string | null;   // "YYYY-MM-DD"
 }
 
 /** Expediente del detalle: agrega el nombre del supervisor y del turno. */
@@ -71,12 +75,15 @@ export interface IEmployeeRecord extends IEmployeeListItem {
   nombre_turno:        string | null;
   nombre_banco:        string | null;   // JOIN RH.cat_bancos
   clave_estado_sat:    string | null;   // Cat_states.state_key de la sucursal; NULL si no tiene estado
+  baja_vigente:        IEmployeeTermination | null;   // spec 86
+  codigo_empleado_anterior: string | null;            // código del registro del que reingresó
+  reingreso:           { id_empleado: number; codigo_empleado: string } | null;   // registro que apunta a este
 }
 
 /** Payload del modal de alta/edición. Sin campos derivados ni generados.
  *  dias_laborales / horario quedan fuera: son texto heredado de solo lectura (ver spec 59). */
 export type EmployeeFormInput = Omit<
   IEmployee,
-  | "id_empleado" | "codigo_empleado" | "id_empresa" | "activo" | "status" | "created_at" | "updated_at"
+  | "id_empleado" | "codigo_empleado" | "id_empresa" | "id_empleado_anterior" | "activo" | "status" | "created_at" | "updated_at"
   | "dias_laborales" | "horario"
 >;

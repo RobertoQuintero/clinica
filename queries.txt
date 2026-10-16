@@ -1230,6 +1230,79 @@ CREATE UNIQUE NONCLUSTERED INDEX [UX_economic_days_empleado_fecha_activo]
     WHERE [cancelado_at] IS NULL
 GO
 
+-------------------- BAJAS DE EMPLEADO (spec 86) ---------------------
+-- Spec 86: catálogo IMSS/IDSE de causas de baja. Sembrado, sin pantalla de edición.
+CREATE TABLE [RH].[cat_causas_baja](
+    [clave]                     [char](1)       NOT NULL,   -- '1'..'9', 'A'
+    [nombre]                    [nvarchar](100) NOT NULL,
+    [tipo_terminacion_sugerido] [char](1)       NOT NULL,   -- 'R' | 'D'; solo precarga el modal
+    [status]                    [bit]           NOT NULL CONSTRAINT [DF_cat_causas_baja_status] DEFAULT (1),
+ CONSTRAINT [PK_cat_causas_baja] PRIMARY KEY CLUSTERED ([clave] ASC),
+ CONSTRAINT [CK_cat_causas_baja_tipo] CHECK ([tipo_terminacion_sugerido] IN ('R','D'))
+) ON [PRIMARY]
+GO
+
+-- Siembra idempotente
+INSERT [RH].[cat_causas_baja] ([clave],[nombre],[tipo_terminacion_sugerido])
+SELECT v.[clave], v.[nombre], v.[tipo]
+FROM (VALUES
+    ('1', N'Término de contrato',     'R'),
+    ('2', N'Separación voluntaria',   'R'),
+    ('3', N'Abandono de empleo',      'R'),
+    ('4', N'Defunción',               'R'),
+    ('5', N'Clausura',                'D'),
+    ('6', N'Otras',                   'R'),
+    ('7', N'Ausentismo',              'R'),
+    ('8', N'Rescisión de contrato',   'D'),
+    ('9', N'Jubilación',              'R'),
+    ('A', N'Pensión',                 'R')
+) AS v([clave],[nombre],[tipo])
+WHERE NOT EXISTS (SELECT 1 FROM [RH].[cat_causas_baja] c WHERE c.[clave] = v.[clave])
+GO
+
+CREATE TABLE [RH].[employee_terminations](
+    [id_employee_termination] [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]             [int]            NOT NULL,
+    [fecha_baja]              [date]           NOT NULL,   -- último día laborado
+    [clave_causa]             [char](1)        NOT NULL,
+    [tipo_terminacion]        [char](1)        NOT NULL,   -- 'R' renuncia/finiquito, 'D' despido/liquidación
+    [observaciones]           [nvarchar](500)  NULL,
+    [registrado_by]           [int]            NOT NULL,
+    [registrado_at]           [datetime2](0)   NOT NULL,   -- buildDate(new Date())
+    -- Anulación (todo NULL o todo lleno)
+    [anulado_by]              [int]            NULL,
+    [anulado_at]              [datetime2](0)   NULL,
+    [motivo_anulacion]        [nvarchar](500)  NULL,
+ CONSTRAINT [PK_employee_terminations] PRIMARY KEY CLUSTERED ([id_employee_termination] ASC),
+ CONSTRAINT [FK_employee_terminations_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [FK_employee_terminations_causa] FOREIGN KEY ([clave_causa])
+     REFERENCES [RH].[cat_causas_baja] ([clave]),
+ CONSTRAINT [CK_employee_terminations_tipo] CHECK ([tipo_terminacion] IN ('R','D')),
+ CONSTRAINT [CK_employee_terminations_anulacion] CHECK (
+     ([anulado_by] IS NULL AND [anulado_at] IS NULL AND [motivo_anulacion] IS NULL)
+  OR ([anulado_by] IS NOT NULL AND [anulado_at] IS NOT NULL AND [motivo_anulacion] IS NOT NULL
+          AND LEN(LTRIM(RTRIM([motivo_anulacion]))) > 0))
+) ON [PRIMARY]
+GO
+
+-- Una sola baja vigente por empleado.
+CREATE UNIQUE NONCLUSTERED INDEX [UX_employee_terminations_empleado_vigente]
+    ON [RH].[employee_terminations] ([id_empleado])
+    WHERE [anulado_at] IS NULL
+GO
+
+-- Reingreso: el registro nuevo apunta al registro dado de baja.
+ALTER TABLE [RH].[empleados] ADD [id_empleado_anterior] [int] NULL
+    CONSTRAINT [FK_empleados_empleado_anterior] REFERENCES [RH].[empleados] ([id_empleado])
+GO
+
+-- Desde un registro solo se puede reingresar una vez.
+CREATE UNIQUE NONCLUSTERED INDEX [UX_empleados_empleado_anterior]
+    ON [RH].[empleados] ([id_empleado_anterior])
+    WHERE [id_empleado_anterior] IS NOT NULL
+GO
+
 -- Un renglón por checada (entrada o salida), tal como la reporta el dispositivo.
 CREATE TABLE [RH].[asistencias](
     [id_asistencia]        [int] IDENTITY(1,1) NOT NULL,

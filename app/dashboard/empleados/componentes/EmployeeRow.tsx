@@ -42,7 +42,14 @@ export default function EmployeeRow({ employee, onEdit }: Props) {
         {dayFirst(employee.fecha_ingreso + "T00:00:00")}
       </td>
       <td className="px-6 py-4">
-        <EmployeeStatusBadge activo={employee.activo} />
+        <div className="flex flex-col items-start gap-1">
+          <EmployeeStatusBadge activo={employee.activo} />
+          {!employee.activo && employee.fecha_baja && (
+            <span className="text-xs text-[#44474f] dark:text-zinc-400">
+              Baja {dayFirst(employee.fecha_baja + "T00:00:00")}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-6 py-4">
         {employee.vacation ? (

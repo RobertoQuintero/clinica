@@ -1,4 +1,6 @@
 import { IEmployeeRecord } from "@/interfaces/employee";
+import type { ITerminationCause } from "@/interfaces/employee_termination";
+import { TERMINATION_TYPE_LABELS } from "@/lib/terminations/terminationRules";
 import type { IVacationBadgeSummary } from "@/interfaces/vacation";
 import { dayFirst } from "@/utils/date_helpper";
 import { IEmployeeCatalogs } from "../../actions";
@@ -11,6 +13,7 @@ import EmployeeFiscalStatusBadge from "./EmployeeFiscalStatusBadge";
 interface Props {
   employee: IEmployeeRecord;
   catalogs: IEmployeeCatalogs;
+  terminationCauses: ITerminationCause[];
   /** Estatus de vacaciones del año vigente; `null` si el empleado aún no tiene año. */
   vacation: IVacationBadgeSummary | null;
 }
@@ -24,7 +27,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function EmployeeHeader({ employee, catalogs, vacation }: Props) {
+export default function EmployeeHeader({ employee, catalogs, terminationCauses, vacation }: Props) {
+  const termination = employee.baja_vigente;
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6 shadow-sm">
       <div className="flex flex-col lg:flex-row gap-8">
@@ -54,8 +58,20 @@ export default function EmployeeHeader({ employee, catalogs, vacation }: Props) 
               <p className="text-sm font-semibold text-[#0051d5] dark:text-blue-400">
                 {employee.nombre_puesto}
               </p>
+              {termination ? (
+                <p className="mt-1 text-sm font-semibold text-[#ba1a1a] dark:text-red-400">
+                  Baja · {dayFirst(termination.fecha_baja + "T00:00:00")} · {termination.nombre_causa} ·{" "}
+                  {TERMINATION_TYPE_LABELS[termination.tipo_terminacion]}
+                </p>
+              ) : (
+                !employee.activo && (
+                  <p className="mt-1 text-sm font-semibold text-[#ba1a1a] dark:text-red-400">
+                    Inactivo sin baja registrada
+                  </p>
+                )
+              )}
             </div>
-            <EmployeeActions employee={employee} catalogs={catalogs} />
+            <EmployeeActions employee={employee} catalogs={catalogs} terminationCauses={terminationCauses} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">

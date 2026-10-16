@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getEmployeeById, getEmployeeCatalogs } from "../actions";
 import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
 import { getCurrentVacationStatus } from "./vacaciones/actions";
+import { getTerminationCauses } from "./bajas/actions";
 import EmployeeHeader from "./componentes/EmployeeHeader";
 import EmployeeTabs from "./componentes/EmployeeTabs";
 
@@ -16,9 +17,10 @@ export default async function EmployeeDetailLayout({ params, children }: Props) 
   const { id } = await params;
   const id_empleado = Number(id);
 
-  const [employee, catalogs] = await Promise.all([
+  const [employee, catalogs, terminationCauses] = await Promise.all([
     getEmployeeById(id_empleado),
     getEmployeeCatalogs(),
+    getTerminationCauses(),
   ]);
 
   if (!employee) notFound();
@@ -40,7 +42,12 @@ export default async function EmployeeDetailLayout({ params, children }: Props) 
         <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Expediente del empleado</h2>
       </div>
 
-      <EmployeeHeader employee={employee} catalogs={catalogs} vacation={vacation} />
+      <EmployeeHeader
+        employee={employee}
+        catalogs={catalogs}
+        terminationCauses={terminationCauses}
+        vacation={vacation}
+      />
 
       <EmployeeTabs id_empleado={id_empleado} />
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
-import { EmployeeFormInput, IEmployeeListItem } from "@/interfaces/employee";
+import { EmployeeFormInput, IEmployeeListItem, IEmployeeRecord } from "@/interfaces/employee";
 import { addZeroToday } from "@/utils/date_helpper";
 import {
   DEFAULT_EMPLOYEE_FISCAL_VALUES,
@@ -16,12 +16,15 @@ import {
   isClabeAccount,
   type StampingField,
 } from "@/lib/payroll/payrollStampingReadiness";
-import { createEmployee, updateEmployee, IEmployeeCatalogs } from "../actions";
+import { createEmployee, rehireEmployee, updateEmployee, IEmployeeCatalogs } from "../actions";
 
 interface Props {
   /** Ausente = modo crear. Acepta IEmployeeListItem (listado) o IEmployeeRecord (expediente),
    *  ya que el formulario solo usa los campos propios de IEmployee. */
   employee?: IEmployeeListItem;
+  /** Reingreso (spec 86): empleado dado de baja del que se precargan los datos. Es un alta con valores
+   *  iniciales y `fecha_ingreso` vacía; al guardar crea un registro nuevo ligado a este. */
+  rehireFrom?: IEmployeeRecord;
   catalogs: IEmployeeCatalogs;
   onClose: () => void;
 }
@@ -119,12 +122,17 @@ function validateForm(form: EmployeeFormInput): string | null {
   return null;
 }
 
-export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
+export default function EmployeeModal({ employee, rehireFrom, catalogs, onClose }: Props) {
   const router = useRouter();
   const isEditing = Boolean(employee);
+  const isRehiring = Boolean(rehireFrom);
 
   const [form, setForm]           = useState<EmployeeFormInput>(
-    employee ? employeeToFormInput(employee) : buildEmptyForm()
+    employee
+      ? employeeToFormInput(employee)
+      : rehireFrom
+        ? { ...employeeToFormInput(rehireFrom), fecha_ingreso: "" }
+        : buildEmptyForm()
   );
   const [saving, setSaving]       = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -211,17 +219,30 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
       return;
     }
 
+    const terminationDate = rehireFrom?.baja_vigente?.fecha_baja;
+    if (terminationDate && String(form.fecha_ingreso).slice(0, 10) <= terminationDate) {
+      setError("La fecha de ingreso debe ser posterior a la fecha de baja");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
       const result = employee
         ? await updateEmployee(employee.id_empleado, form)
-        : await createEmployee(form);
+        : rehireFrom
+          ? await rehireEmployee(rehireFrom.id_empleado, form)
+          : await createEmployee(form);
       if (!result.ok) {
         setError(result.message);
         return;
       }
-      router.refresh();
+      if (rehireFrom) {
+        // El reingreso es un registro nuevo: se navega a su expediente.
+        router.push(`/dashboard/empleados/${result.data}`);
+      } else {
+        router.refresh();
+      }
       onClose();
     } catch {
       setError("Error inesperado al guardar el empleado");
@@ -235,7 +256,7 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
       <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-zinc-900 shadow-xl">
         <div className="flex items-center justify-between border-b border-[#c4c6d0] dark:border-zinc-700 px-6 py-4 sticky top-0 bg-white dark:bg-zinc-900 z-10">
           <h3 className="text-lg font-semibold text-[#0b1c30] dark:text-zinc-50">
-            {isEditing ? "Editar empleado" : "Nuevo empleado"}
+            {isEditing ? "Editar empleado" : isRehiring ? "Reingresar empleado" : "Nuevo empleado"}
           </h3>
           <button
             onClick={onClose}
@@ -249,6 +270,13 @@ export default function EmployeeModal({ employee, catalogs, onClose }: Props) {
           {error && (
             <p className="rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">
               {error}
+            </p>
+          )}
+
+          {rehireFrom && (
+            <p className="rounded-md bg-[#eff4ff] dark:bg-zinc-800/60 px-4 py-2 text-sm text-[#44474f] dark:text-zinc-300">
+              Se crea un registro nuevo ligado a {rehireFrom.codigo_empleado}. Captura la fecha de ingreso; el horario, los
+              documentos, los identificadores de checador y los usuarios no se copian.
             </p>
           )}
 
