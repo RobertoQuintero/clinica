@@ -11,6 +11,7 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
+import ChristmasBonusEmployeesTable from "./componentes/ChristmasBonusEmployeesTable";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
 import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
 import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
@@ -35,6 +36,8 @@ export default async function ProcesarNominaPage({
   };
 
   const result = await getPayrollProcessPage(filters);
+  // Spec 87: un periodo extraordinario (aguinaldo) tiene sus propias columnas y no usa los avisos de incidencias.
+  const isExtraordinary = result.ok && result.data.period?.tipo_periodo === "E";
 
   return (
     <div className="flex flex-col gap-5">
@@ -50,7 +53,9 @@ export default async function ProcesarNominaPage({
             {result.ok && result.data.period && <PayrollStatusBadge status={result.data.period.status} />}
           </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
-            Salario del periodo por empleado: salario diario por los días pagados.
+            {isExtraordinary
+              ? "Aguinaldo anual por empleado: 15 días de salario diario, proporcional a los días del año."
+              : "Salario del periodo por empleado: salario diario por los días pagados."}
           </p>
         </div>
         {/* En estatus 1 el botón "Calcular nómina" vive en el estado vacío. */}
@@ -115,6 +120,7 @@ export default async function ProcesarNominaPage({
             <IsrNotCalculatedNotice
               isrNotCalculated={result.data.isrNotCalculated}
               fiscalYear={Number(result.data.period.fecha_fin.slice(0, 4))}
+              isExtraordinary={isExtraordinary}
             />
           )}
           <PayrollRecalculationNotice
@@ -156,7 +162,11 @@ export default async function ProcesarNominaPage({
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"
-              description="Al calcular la nómina se guarda el salario de cada empleado del periodo, en su versión operativa y fiscal."
+              description={
+                isExtraordinary
+                  ? "Al calcular se guarda el aguinaldo de cada empleado activo de la sucursal, en su versión operativa y fiscal."
+                  : "Al calcular la nómina se guarda el salario de cada empleado del periodo, en su versión operativa y fiscal."
+              }
               action={
                 <PayrollCalculationActions
                   idPeriod={result.data.period.id_period}
@@ -164,6 +174,16 @@ export default async function ProcesarNominaPage({
                   status={result.data.period.status}
                 />
               }
+            />
+          ) : isExtraordinary ? (
+            <ChristmasBonusEmployeesTable
+              rows={result.data.rows}
+              idPeriod={result.data.period.id_period}
+              payrollType={filters.payrollType}
+              idPuesto={filters.idPuesto}
+              search={filters.search}
+              totals={result.data.totals}
+              hasActiveFilters={filters.idPuesto !== null || filters.search !== ""}
             />
           ) : (
             <PayrollEmployeesTable

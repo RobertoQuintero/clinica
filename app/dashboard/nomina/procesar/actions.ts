@@ -15,6 +15,7 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import type { IPeriodEmployeePerception } from "@/interfaces/payroll_exemption";
+import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
 import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
@@ -226,7 +227,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
       isrNotCalculated: [],
       puestoOptions: [],
       excludedEmployees: [],
@@ -249,6 +250,8 @@ export async function getPayrollProcessPage(
       idPuesto: filters.idPuesto,
       search: filters.search,
     });
+
+    const isOrdinaryPeriod = period.tipo_periodo === "O";
 
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
@@ -289,27 +292,43 @@ export async function getPayrollProcessPage(
                 CAST(pe.importe_bono_extension AS float) AS importe_bono_extension,
                 pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
                 pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
+                pe.dias_aguinaldo, CAST(pe.importe_aguinaldo AS float) AS importe_aguinaldo,
+                CAST(taxes.gravado AS float) AS importe_gravado, CAST(taxes.exento AS float) AS importe_exento,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
-                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas AS total_percepciones,
-                pe.isr_estado, CAST(pe.isr_retenido AS float) AS isr_retenido,
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
+                  + pe.importe_aguinaldo AS total_percepciones,
+                -- Spec 87: en un periodo extraordinario el ISR vive en el desglose del art. 174, no en las columnas isr_*.
+                ISNULL(article174.isr_estado, pe.isr_estado) AS isr_estado,
+                CAST(CASE WHEN article174.id_period_employee IS NOT NULL THEN article174.isr_retenido
+                          ELSE pe.isr_retenido END AS float) AS isr_retenido,
                 CAST(deductions.total AS float) AS total_deducciones,
                 CAST(pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
                   + pe.importe_horas_extra_dobles + pe.importe_horas_extra_triples
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
-                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas - deductions.total AS float) AS neto,
+                  + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
+                  + pe.importe_aguinaldo - deductions.total AS float) AS neto,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
            JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
+           LEFT JOIN [CentroPodologico].[payroll].[period_employee_isr_article174] article174
+                  ON article174.id_period_employee = pe.id_period_employee
           CROSS APPLY (SELECT ISNULL(SUM(d.importe), 0) AS total
                          FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                         WHERE d.id_period_employee = pe.id_period_employee) AS deductions
+          -- Spec 87: gravado y exento del aguinaldo; null en operativa o si algún exento quedó sin calcular.
+          OUTER APPLY (SELECT CASE WHEN pe.tipo_nomina = 'F' AND MAX(CASE WHEN pep.exencion_estado = 'N' THEN 1 ELSE 0 END) = 0
+                                   THEN ISNULL(SUM(pep.importe_gravado), 0) END AS gravado,
+                              CASE WHEN pe.tipo_nomina = 'F' AND MAX(CASE WHEN pep.exencion_estado = 'N' THEN 1 ELSE 0 END) = 0
+                                   THEN ISNULL(SUM(pep.importe_exento), 0) END AS exento
+                         FROM [CentroPodologico].[payroll].[period_employee_perceptions] pep
+                        WHERE pep.id_period_employee = pe.id_period_employee) AS taxes
           WHERE ${rowConditions.join(" AND ")}
           ORDER BY ${PAYROLL_EMPLOYEE_ORDER_BY}`,
         rowParams,
@@ -325,6 +344,9 @@ export async function getPayrollProcessPage(
                 CAST(ISNULL(SUM(importe_bono_asistencia), 0) AS float) AS importe_bono_asistencia,
                 CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension,
                 CAST(ISNULL(SUM(importe_prima_vacacional + importe_vacaciones_pagadas), 0) AS float) AS importe_vacaciones,
+                CAST(ISNULL(SUM(importe_aguinaldo), 0) AS float) AS importe_aguinaldo,
+                CAST(ISNULL(SUM(taxes.gravado), 0) AS float) AS importe_gravado,
+                CAST(ISNULL(SUM(taxes.exento), 0) AS float) AS importe_exento,
                 CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
                 CAST(ISNULL(SUM(deductions.total), 0) AS float) AS total_deducciones
            FROM [CentroPodologico].[payroll].[period_employees] pe
@@ -332,16 +354,28 @@ export async function getPayrollProcessPage(
                               ISNULL(SUM(CASE WHEN d.id_deduction = @isr_deduction_id THEN d.importe END), 0) AS isr
                          FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                         WHERE d.id_period_employee = pe.id_period_employee) AS deductions
+          CROSS APPLY (SELECT ISNULL(SUM(pep.importe_gravado), 0) AS gravado, ISNULL(SUM(pep.importe_exento), 0) AS exento
+                         FROM [CentroPodologico].[payroll].[period_employee_perceptions] pep
+                        WHERE pep.id_period_employee = pe.id_period_employee) AS taxes
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType, isr_deduction_id: ISR_DEDUCTION_ID },
       ),
       // Spec 70: renglones "ISR no calculado" por motivo, de todo el tipo (sin filtros de puesto ni búsqueda).
       db.queryParams(
-        `SELECT isr_motivo, COUNT(*) AS employees
-           FROM [CentroPodologico].[payroll].[period_employees]
-          WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina AND isr_estado = 'N'
-          GROUP BY isr_motivo
-          ORDER BY isr_motivo`,
+        `SELECT not_calculated.isr_motivo, COUNT(*) AS employees
+           FROM (
+             SELECT isr_motivo
+               FROM [CentroPodologico].[payroll].[period_employees]
+              WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina AND isr_estado = 'N'
+             UNION ALL
+             -- Spec 87: ISR art. 174 del aguinaldo de un periodo extraordinario.
+             SELECT a.isr_motivo
+               FROM [CentroPodologico].[payroll].[period_employee_isr_article174] a
+               JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = a.id_period_employee
+              WHERE pe.id_period = @id_period AND pe.tipo_nomina = @tipo_nomina AND a.isr_estado = 'N'
+           ) AS not_calculated
+          GROUP BY not_calculated.isr_motivo
+          ORDER BY not_calculated.isr_motivo`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
       ),
       db.queryParams(
@@ -358,7 +392,7 @@ export async function getPayrollProcessPage(
            FROM [CentroPodologico].[RH].[empleados] e
           WHERE e.status = 1 AND e.activo = 1
             AND e.id_sucursal = @id_sucursal
-            AND e.id_periodo_pago = @id_payment_period
+            ${period.tipo_periodo === "E" ? "" : "AND e.id_periodo_pago = @id_payment_period"}
             AND e.fecha_ingreso <= CAST(@fecha_fin AS date)
             AND (${salaryColumn} IS NULL OR ${salaryColumn} <= 0)
           ORDER BY e.apellido_paterno, e.apellido_materno, e.nombre, e.id_empleado`,
@@ -374,15 +408,17 @@ export async function getPayrollProcessPage(
           WHERE id_period = @id_period`,
         { id_period: period.id_period },
       ),
-      isOvertimeRecalculationNeeded(period.id_period),
-      isAbsenceRecalculationNeeded(period.id_period),
-      isLatenessRecalculationNeeded(period.id_period),
-      isPunctualityBonusRecalculationNeeded(period.id_period),
-      isAttendanceBonusRecalculationNeeded(period.id_period),
-      isShiftExtensionBonusRecalculationNeeded(period.id_period),
-      isIsrRecalculationNeeded(period.id_period),
+      // Spec 87: un periodo extraordinario no tiene horas extra, faltas, retardos, bonos, ISR de la spec 70 ni
+      // vacaciones; esos avisos compararían contra un cálculo que nunca los incluyó. El del exento sí le aplica.
+      isOrdinaryPeriod ? isOvertimeRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isAbsenceRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isLatenessRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isPunctualityBonusRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isAttendanceBonusRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isShiftExtensionBonusRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
       isExemptionRecalculationNeeded(period.id_period),
-      isVacationPayRecalculationNeeded(period.id_period),
+      isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
     ]);
 
     const totalPercepciones = roundToCents(
@@ -394,7 +430,8 @@ export async function getPayrollProcessPage(
         Number(totals[0]?.importe_bono_puntualidad ?? 0) +
         Number(totals[0]?.importe_bono_asistencia ?? 0) +
         Number(totals[0]?.importe_bono_extension ?? 0) +
-        Number(totals[0]?.importe_vacaciones ?? 0),
+        Number(totals[0]?.importe_vacaciones ?? 0) +
+        Number(totals[0]?.importe_aguinaldo ?? 0),
     );
 
     return {
@@ -432,6 +469,10 @@ export async function getPayrollProcessPage(
           importe_prima_vacacional: Number(row.importe_prima_vacacional),
           dias_vacaciones_pagadas: Number(row.dias_vacaciones_pagadas),
           importe_vacaciones_pagadas: Number(row.importe_vacaciones_pagadas),
+          dias_aguinaldo: Number(row.dias_aguinaldo),
+          importe_aguinaldo: Number(row.importe_aguinaldo),
+          importe_gravado: toNullableNumber(row.importe_gravado),
+          importe_exento: toNullableNumber(row.importe_exento),
           total_percepciones: Number(row.total_percepciones),
           isr_retenido: row.isr_retenido === null ? null : Number(row.isr_retenido),
           total_deducciones: Number(row.total_deducciones),
@@ -448,11 +489,14 @@ export async function getPayrollProcessPage(
           importeBonoAsistencia: Number(totals[0]?.importe_bono_asistencia ?? 0),
           importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
           importeVacaciones: Number(totals[0]?.importe_vacaciones ?? 0),
+          importeAguinaldo: Number(totals[0]?.importe_aguinaldo ?? 0),
+          importeGravado: Number(totals[0]?.importe_gravado ?? 0),
+          importeExento: Number(totals[0]?.importe_exento ?? 0),
           totalPercepciones,
           importeIsr: Number(totals[0]?.importe_isr ?? 0),
           totalNeto: roundToCents(totalPercepciones - Number(totals[0]?.total_deducciones ?? 0)),
         },
-        isrNotCalculated: (isrNotCalculatedRows as { isr_motivo: IsrSkipReason; employees: number }[]).map((row) => ({
+        isrNotCalculated: (isrNotCalculatedRows as { isr_motivo: IsrSkipReason | Article174SkipReason; employees: number }[]).map((row) => ({
           reason: row.isr_motivo,
           employees: Number(row.employees),
         })),

@@ -4,6 +4,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
+import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
 
 export type PayrollType = "O" | "F";
@@ -47,8 +48,12 @@ export interface IPayrollEmployeeRow {
   importe_prima_vacacional:   number;
   dias_vacaciones_pagadas:    number;
   importe_vacaciones_pagadas: number;
-  total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia + importe_bono_extension, calculado en el SELECT
-  isr_estado:         IsrStatus;      // spec 70; siempre 'X' en operativa
+  dias_aguinaldo:     number;         // spec 87; 0 en periodos ordinarios
+  importe_aguinaldo:  number;
+  importe_gravado:    number | null;  // spec 87: gravado del aguinaldo; null en operativa o con el exento sin calcular
+  importe_exento:     number | null;
+  total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia + importe_bono_extension + importe_aguinaldo, calculado en el SELECT
+  isr_estado:         IsrStatus;      // spec 70 (ISR art. 174 en un periodo extraordinario); siempre 'X' en operativa
   isr_retenido:       number | null;  // null salvo en 'C'
   total_deducciones:  number;         // ISNULL(SUM(period_employee_deductions.importe), 0), calculado en el SELECT
   neto:               number;         // total_percepciones − total_deducciones, calculado en el SELECT
@@ -73,8 +78,8 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; totalPercepciones: number; importeIsr: number; totalNeto: number };   // de todo el tipo, sin filtros
-  isrNotCalculated:  { reason: IsrSkipReason; employees: number }[];   // renglones 'N' por motivo (spec 70), de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; importeAguinaldo: number; importeGravado: number; importeExento: number; totalPercepciones: number; importeIsr: number; totalNeto: number };   // de todo el tipo, sin filtros
+  isrNotCalculated:  { reason: IsrSkipReason | Article174SkipReason; employees: number }[];   // renglones 'N' por motivo (spec 70, o ISR art. 174 en un periodo extraordinario), de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;
