@@ -257,7 +257,8 @@ async function createExtraordinaryPayrollPeriod(
 
        IF EXISTS (
          SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
-          WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND tipo_periodo = 'E'
+          WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio
+            AND tipo_periodo = 'E' AND concepto_extraordinario = 'A'
        )
          THROW 50004, '${EXTRAORDINARY_EXISTS_MARKER}', 1;
 
@@ -272,12 +273,12 @@ async function createExtraordinaryPayrollPeriod(
 
        INSERT INTO [CentroPodologico].[payroll].[periods]
          (id_sucursal, id_payment_period, codigo, ejercicio, consecutivo,
-          fecha_inicio, fecha_fin, fecha_corte, fecha_pago, status, created_by, created_at, tipo_periodo)
+          fecha_inicio, fecha_fin, fecha_corte, fecha_pago, status, created_by, created_at, tipo_periodo, concepto_extraordinario)
        VALUES
          (@id_sucursal, @id_payment_period, @codigo, @ejercicio, @consecutivo,
           DATEFROMPARTS(@ejercicio, 1, 1), DATEFROMPARTS(@ejercicio, 12, 31),
           CAST(@fecha_corte AS date), CAST(@fecha_pago AS date),
-          1, @created_by, CAST(@created_at AS datetime2(0)), 'E');
+          1, @created_by, CAST(@created_at AS datetime2(0)), 'E', 'A');
        DECLARE @id_period int = SCOPE_IDENTITY();
 
        COMMIT;
@@ -316,6 +317,10 @@ export async function createPayrollPeriod(input: unknown): Promise<ActionResult<
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
   if (parsed.data.tipo_periodo === "E") {
+    // Spec 90 (paso 3): el alta del periodo de PTU llega después; mientras tanto solo se crea el de aguinaldo.
+    if (parsed.data.concepto_extraordinario !== "A") {
+      return { ok: false, message: "El periodo de PTU aún no está disponible" };
+    }
     return createExtraordinaryPayrollPeriod(parsed.data, id_sucursal, id_user);
   }
   const { id_payment_period, fecha_inicio, fecha_fin, fecha_corte, fecha_pago } = parsed.data;

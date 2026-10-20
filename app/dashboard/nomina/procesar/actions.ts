@@ -261,6 +261,7 @@ export async function getPayrollProcessPage(
     });
 
     const isOrdinaryPeriod = period.tipo_periodo === "O";
+    const isChristmasBonusPeriod = period.tipo_periodo === "E" && period.concepto_extraordinario === "A";
 
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
@@ -429,7 +430,7 @@ export async function getPayrollProcessPage(
       isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
       isExemptionRecalculationNeeded(period.id_period),
       isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? false : isChristmasBonusRecalculationNeeded(period.id_period),
+      isChristmasBonusPeriod ? isChristmasBonusRecalculationNeeded(period.id_period) : false,
     ]);
 
     const totalPercepciones = roundToCents(
@@ -748,7 +749,7 @@ export async function getPayrollEmployeeDetail(
           )
         : Promise.resolve([]),
       // Spec 87: desglose congelado del ISR art. 174 del aguinaldo (solo en el renglón fiscal de un periodo extraordinario).
-      payrollType === "F" && period.tipo_periodo === "E"
+      payrollType === "F" && period.tipo_periodo === "E" && period.concepto_extraordinario === "A"
         ? db.queryParams(
             `SELECT a.isr_estado, a.isr_motivo,
                     CAST(a.base_gravable AS float)             AS base_gravable,
@@ -1043,7 +1044,8 @@ async function calculateExtraordinaryPayrollPeriod(
               @fecha_inicio      = fecha_inicio,
               @fecha_fin         = fecha_fin
          FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
-        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status IN (1, 2) AND tipo_periodo = 'E';
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status IN (1, 2)
+          AND tipo_periodo = 'E' AND concepto_extraordinario = 'A';
        IF @id_payment_period IS NULL
          THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
 
@@ -1108,13 +1110,16 @@ export async function calculatePayrollPeriod(
   }
 
   try {
-    // Spec 87: el periodo extraordinario (aguinaldo) tiene su propio cálculo; el resto del batch es del ordinario.
+    // Spec 87/90: el periodo extraordinario tiene su propio cálculo según el concepto; el resto del batch es del ordinario.
     const periodTypeRows = await db.queryParams(
-      `SELECT tipo_periodo FROM [CentroPodologico].[payroll].[periods]
+      `SELECT tipo_periodo, concepto_extraordinario FROM [CentroPodologico].[payroll].[periods]
         WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
       { id_period: parsed.data.id_period, id_sucursal },
     );
     if (periodTypeRows[0]?.tipo_periodo === "E") {
+      if (periodTypeRows[0].concepto_extraordinario === "P") {
+        return { ok: false, message: "El cálculo de la PTU aún no está disponible" };
+      }
       return calculateExtraordinaryPayrollPeriod(parsed.data.id_period, id_sucursal, id_user);
     }
 

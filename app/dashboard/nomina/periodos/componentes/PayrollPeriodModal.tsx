@@ -122,12 +122,12 @@ export default function PayrollPeriodModal(props: Props) {
       const result = editedPeriod
         ? await updatePayrollPeriod(
             isExtraordinary
-              ? { tipo_periodo: "E", id_period: editedPeriod.id_period, fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
+              ? { tipo_periodo: "E", concepto_extraordinario: "A", id_period: editedPeriod.id_period, fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
               : { tipo_periodo: "O", id_period: editedPeriod.id_period, ...dates },
           )
         : await createPayrollPeriod(
             isExtraordinary
-              ? { tipo_periodo: "E", ejercicio: Number(bonusYear), fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
+              ? { tipo_periodo: "E", concepto_extraordinario: "A", ejercicio: Number(bonusYear), fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
               : { tipo_periodo: "O", id_payment_period: Number(idPaymentPeriod), ...dates },
           );
       if (!result.ok) {

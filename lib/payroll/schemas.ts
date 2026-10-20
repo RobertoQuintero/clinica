@@ -45,6 +45,9 @@ const ordinaryCreatePeriodSchema = z
   })
   .superRefine(validatePeriodDateOrder);
 
+// Spec 90: lo que paga el periodo extraordinario ('A' aguinaldo, 'P' PTU).
+const EXTRAORDINARY_CONCEPT_SCHEMA = z.enum(["A", "P"], { error: "El concepto del periodo no es válido" });
+
 const EXTRAORDINARY_YEAR_SCHEMA = z
   .number({ error: "El año no es válido" })
   .int("El año no es válido")
@@ -73,6 +76,7 @@ const extraordinaryCutoffAndPaymentShape = {
 const extraordinaryCreatePeriodSchema = z
   .object({
     tipo_periodo: z.literal("E"),
+    concepto_extraordinario: EXTRAORDINARY_CONCEPT_SCHEMA,
     ejercicio: EXTRAORDINARY_YEAR_SCHEMA,
     ...extraordinaryCutoffAndPaymentShape,
   })
@@ -96,6 +100,7 @@ const ordinaryUpdatePeriodSchema = z
 const extraordinaryUpdatePeriodSchema = z
   .object({
     tipo_periodo: z.literal("E"),
+    concepto_extraordinario: EXTRAORDINARY_CONCEPT_SCHEMA,
     id_period: z.number().int().positive(),
     ...extraordinaryCutoffAndPaymentShape,
   })

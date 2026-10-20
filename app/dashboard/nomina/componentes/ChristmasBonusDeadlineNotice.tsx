@@ -22,7 +22,7 @@ export default async function ChristmasBonusDeadlineNotice() {
     const rows = await db.queryParams(
       `SELECT TOP 1 1 AS has_period
          FROM [CentroPodologico].[payroll].[periods]
-        WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND tipo_periodo = 'E'`,
+        WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND tipo_periodo = 'E' AND concepto_extraordinario = 'A'`,
       { id_sucursal: access.data.id_sucursal, ejercicio: year },
     );
     hasExtraordinaryPeriod = rows.length > 0;

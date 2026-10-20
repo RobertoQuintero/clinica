@@ -166,6 +166,24 @@ export interface IPtuHistoryYear {
   closedDistribution: boolean;
 }
 
+// ── Pago de la PTU en nómina extraordinaria (spec 90) ─────────────────────────────────────────────
+
+/** Desglose congelado de la PTU pagada (`payroll.period_employee_ptu`). */
+export interface IPtuPaymentBreakdown {
+  id_ptu_distribution: number;
+  ejercicio_reparto:   number;
+  dias:                number;
+  ptu_dias:            number;
+  ptu_salario:         number;
+  ptu_bruto:           number;
+  tope_tres_meses:     number;
+  promedio_tres_anios: number | null;
+  anios_promedio:      number | null;
+  ptu_final:           number;
+}
+
+export type PtuPaymentDeadlineState = "none" | "upcoming" | "overdue";
+
 /** Empleado que se puede agregar a mano a un reparto. */
 export interface IPtuAddableEmployee {
   id_empleado:           number;
