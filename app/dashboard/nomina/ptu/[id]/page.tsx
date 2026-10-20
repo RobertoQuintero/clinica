@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { PTU_TAXPAYER_TYPE_LABELS } from "@/lib/payroll/constants";
-import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
+import { formatDateTimeSlashed, formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { getPtuDistributionDetail } from "../actions";
 import PreloadPtuEmployeesButton from "../componentes/PreloadPtuEmployeesButton";
 import { EditPtuDistributionButton } from "../componentes/PtuDistributionActions";
@@ -10,6 +10,7 @@ import { PtuDistributionStatusBadge } from "../componentes/PtuDistributionBadges
 import PtuDistributionEmployeesTable from "../componentes/PtuDistributionEmployeesTable";
 import { AddPtuEmployeeButton } from "../componentes/PtuEmployeeActions";
 import PtuDistributionLog from "../componentes/PtuDistributionLog";
+import PtuDistributionStatusActions from "../componentes/PtuDistributionStatusActions";
 import PtuDistributionSummaryCards from "../componentes/PtuDistributionSummaryCards";
 
 export default async function PtuDistributionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -57,6 +58,19 @@ export default async function PtuDistributionPage({ params }: { params: Promise<
             fiscalYear={distribution.ejercicio}
           />
         )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[#44474f] dark:text-zinc-400">
+          {isDraft
+            ? "En borrador: se puede editar. Ciérralo cuando el contador valide los montos."
+            : `Cerrado el ${formatDateTimeSlashed(distribution.cerrado_at ?? distribution.updated_at)}. Es de solo lectura; reábrelo para modificarlo.`}
+        </p>
+        <PtuDistributionStatusActions
+          idPtuDistribution={distribution.id_ptu_distribution}
+          fiscalYear={distribution.ejercicio}
+          status={distribution.estado}
+        />
       </div>
 
       <section

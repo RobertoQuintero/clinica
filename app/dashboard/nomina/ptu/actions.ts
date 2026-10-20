@@ -739,3 +739,106 @@ export async function savePtuHistory(rawInput: unknown): Promise<ActionResult<nu
     return { ok: false, message: "No se pudo guardar la PTU del ejercicio anterior" };
   }
 }
+
+/**
+ * Cierra el reparto: exige renta gravable mayor a 0 y al menos un trabajador elegible. Antes recalcula, de
+ * modo que la sucursal, la categoría y el contrato de cada fila quedan congelados tal como están hoy.
+ */
+export async function closePtuDistribution(rawInput: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionIdSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const { id_ptu_distribution } = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      if (distribution.estado === "C") return "already_closed" as const;
+      if (Number(distribution.renta_gravable) <= 0) return "no_taxable_income" as const;
+
+      await recalculatePtuDistribution(tx, distribution);
+      const eligible = (await tx.queryParams(
+        `SELECT COUNT(*) AS total
+           FROM [CentroPodologico].[payroll].[ptu_distribution_employees]
+          WHERE id_ptu_distribution = @id_ptu_distribution AND elegible = 1`,
+        { id_ptu_distribution },
+      )) as { total: number }[];
+      if (Number(eligible[0].total) === 0) return "no_eligible_employees" as const;
+
+      const now = buildDate(new Date());
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[payroll].[ptu_distributions]
+            SET [estado] = 'C', [cerrado_by] = @user, [cerrado_at] = @now, [updated_at] = @now
+          WHERE [id_ptu_distribution] = @id_ptu_distribution`,
+        { id_ptu_distribution, user: access.data.id_user, now },
+      );
+      await writePtuLogEntry(tx, {
+        id_ptu_distribution,
+        id_empleado: null,
+        accion: "C",
+        changed_by: access.data.id_user,
+        changed_at: now,
+      });
+      return "closed" as const;
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "already_closed") return { ok: false, message: "El reparto ya está cerrado" };
+    if (outcome === "no_taxable_income") {
+      return { ok: false, message: "Para cerrar, captura una renta gravable mayor a 0 en los parámetros del reparto" };
+    }
+    if (outcome === "no_eligible_employees") {
+      return { ok: false, message: "Para cerrar, el reparto necesita al menos un trabajador elegible" };
+    }
+    revalidatePath(PTU_PATH);
+    revalidatePath(`${PTU_PATH}/${id_ptu_distribution}`);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("closePtuDistribution", error);
+    return { ok: false, message: "No se pudo cerrar el reparto" };
+  }
+}
+
+/** Vuelve el reparto a borrador y limpia el cierre. En esta spec siempre se permite. */
+export async function reopenPtuDistribution(rawInput: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionIdSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const { id_ptu_distribution } = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      if (distribution.estado === "B") return "already_draft" as const;
+
+      const now = buildDate(new Date());
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[payroll].[ptu_distributions]
+            SET [estado] = 'B', [cerrado_by] = NULL, [cerrado_at] = NULL, [updated_at] = @now
+          WHERE [id_ptu_distribution] = @id_ptu_distribution`,
+        { id_ptu_distribution, now },
+      );
+      await writePtuLogEntry(tx, {
+        id_ptu_distribution,
+        id_empleado: null,
+        accion: "O",
+        changed_by: access.data.id_user,
+        changed_at: now,
+      });
+      return "reopened" as const;
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "already_draft") return { ok: false, message: "El reparto ya está en borrador" };
+    revalidatePath(PTU_PATH);
+    revalidatePath(`${PTU_PATH}/${id_ptu_distribution}`);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("reopenPtuDistribution", error);
+    return { ok: false, message: "No se pudo reabrir el reparto" };
+  }
+}

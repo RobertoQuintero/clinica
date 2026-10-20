@@ -8,10 +8,19 @@ import { deletePtuDistribution } from "../actions";
 interface Props {
   idPtuDistribution: number;
   fiscalYear: number;
+  /** "icon" para la fila de la lista; "labeled" para la cabecera del reparto. */
+  variant?: "icon" | "labeled";
+  /** Ruta a la que ir tras eliminar; sin ella solo se refresca la página (la lista). */
+  redirectTo?: string;
 }
 
 /** Botón de eliminar un reparto en borrador, con diálogo de confirmación propio (sin `confirm()` nativo). */
-export default function DeletePtuDistributionButton({ idPtuDistribution, fiscalYear }: Props) {
+export default function DeletePtuDistributionButton({
+  idPtuDistribution,
+  fiscalYear,
+  variant = "icon",
+  redirectTo,
+}: Props) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -36,7 +45,8 @@ export default function DeletePtuDistributionButton({ idPtuDistribution, fiscalY
         return;
       }
       setIsConfirming(false);
-      router.refresh();
+      if (redirectTo) router.push(redirectTo);
+      else router.refresh();
     } catch {
       setErrorMessage("Error inesperado al eliminar el reparto");
     } finally {
@@ -54,9 +64,14 @@ export default function DeletePtuDistributionButton({ idPtuDistribution, fiscalY
         }}
         title="Eliminar reparto"
         aria-label={`Eliminar el reparto de PTU ${fiscalYear}`}
-        className="p-1.5 rounded-lg text-[#ba1a1a] hover:bg-[#ba1a1a]/10 transition-colors"
+        className={
+          variant === "labeled"
+            ? "flex items-center gap-2 rounded-lg border border-[#ba1a1a]/40 px-4 py-2 text-sm font-semibold text-[#ba1a1a] hover:bg-[#ba1a1a]/10 transition-colors"
+            : "p-1.5 rounded-lg text-[#ba1a1a] hover:bg-[#ba1a1a]/10 transition-colors"
+        }
       >
         <Trash2 size={16} />
+        {variant === "labeled" && "Eliminar"}
       </button>
 
       {isConfirming && (
