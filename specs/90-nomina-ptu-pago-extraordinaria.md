@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 52 (`nomina-periodos`): `payroll.periods`, código, estatus y el modal de periodo.
   - 53 (`nomina-calculo-salario`): `payroll.period_employees`, `calculatePayrollPeriod` y Procesar.
@@ -359,59 +359,59 @@ export const PTU_PAYMENT_WARNING_DAYS = 30;
 
 **Periodo extraordinario y concepto**
 
-- [ ] Todos los periodos E existentes quedan con `concepto_extraordinario = 'A'` y los ordinarios con `NULL`. Un `'O'` con concepto o un `'E'` sin concepto se rechaza en la base.
-- [ ] Un periodo de aguinaldo se crea, calcula, muestra y revierte igual que antes, y su snapshot es idéntico antes y después de la spec.
-- [ ] En la misma sucursal y año pueden convivir un periodo E de aguinaldo y uno de PTU. Un segundo periodo PTU se rechaza con "Ya existe la nómina de PTU de {año}".
-- [ ] El código del periodo PTU es `NOM-{año}-E{NN}`, con consecutivo compartido con el aguinaldo del mismo año.
-- [ ] El modal ofrece **Ordinaria | Aguinaldo | PTU**. En PTU, `fecha_inicio` es 1-ene y `fecha_fin` 31-dic del año de pago, y ninguna de las dos se puede editar.
-- [ ] La `fecha_pago` sugerida es el 30-may si el reparto es de persona moral y el 29-jun si es de persona física. Una fecha posterior se guarda y muestra la advertencia ámbar.
-- [ ] Sin reparto cerrado del año − 1, el alta se rechaza con "Cierra primero el reparto de PTU {año−1}". Si la sucursal no tiene filas con `ptu_final > 0`, se rechaza con "Nadie de esta sucursal cobra PTU {año−1}".
-- [ ] El listado distingue con su badge los periodos "Aguinaldo" y "PTU". Horas extra, Faltas, Retardos y Bonos no listan ninguno de los dos.
+- [x] Todos los periodos E existentes quedan con `concepto_extraordinario = 'A'` y los ordinarios con `NULL`. Un `'O'` con concepto o un `'E'` sin concepto se rechaza en la base.
+- [x] Un periodo de aguinaldo se crea, calcula, muestra y revierte igual que antes, y su snapshot es idéntico antes y después de la spec.
+- [x] En la misma sucursal y año pueden convivir un periodo E de aguinaldo y uno de PTU. Un segundo periodo PTU se rechaza con "Ya existe la nómina de PTU de {año}".
+- [x] El código del periodo PTU es `NOM-{año}-E{NN}`, con consecutivo compartido con el aguinaldo del mismo año.
+- [x] El modal ofrece **Ordinaria | Aguinaldo | PTU**. En PTU, `fecha_inicio` es 1-ene y `fecha_fin` 31-dic del año de pago, y ninguna de las dos se puede editar.
+- [x] La `fecha_pago` sugerida es el 30-may si el reparto es de persona moral y el 29-jun si es de persona física. Una fecha posterior se guarda y muestra la advertencia ámbar.
+- [x] Sin reparto cerrado del año − 1, el alta se rechaza con "Cierra primero el reparto de PTU {año−1}". Si la sucursal no tiene filas con `ptu_final > 0`, se rechaza con "Nadie de esta sucursal cobra PTU {año−1}".
+- [x] El listado distingue con su badge los periodos "Aguinaldo" y "PTU". Horas extra, Faltas, Retardos y Bonos no listan ninguno de los dos.
 
 **Cálculo**
 
-- [ ] Entran exactamente las filas del reparto cerrado del año − 1 cuyo `id_sucursal` congelado es la sucursal del periodo y que tienen `ptu_final > 0`, dados de baja incluidos. Nadie más entra.
-- [ ] Solo se generan filas `'F'`; el periodo PTU no tiene filas operativas.
-- [ ] `importe_ptu` = `ptu_final` del reparto, y `period_employee_ptu` congela días, PTU por días, PTU por salario, bruto, tope de 3 meses, promedio y final, iguales al reparto.
-- [ ] Con el caso de referencia de la spec 89, el periodo tiene exactamente A **$34,523.80**, B **$27,000.00** y C **$38,095.23**, y D y E no aparecen.
-- [ ] Las filas PTU tienen en 0 sueldo, días, faltas, aguinaldo, comisiones, bonos, horas extra y vacaciones.
-- [ ] Cada fila tiene una percepción clave 003 con exento = `min(importe, 15 × UMA_DIARIA − exento previo del año de pago)` y gravado = importe − exento, y los dos suman el importe al centavo.
-- [ ] El ISR art. 174 guardado coincide al centavo con `calculateArticle174Isr`, usando como ingreso ordinario `ROUND(salario_diario_tope × 30.4, 2)` y la tarifa mensual del año de pago.
-- [ ] No se aplica subsidio al empleo. Sin tarifa mensual del año, las filas quedan en "No calculado: No hay tarifa mensual de ISR para el año" y sin deducción.
-- [ ] Una fila `'C'` tiene exactamente una deducción ISR (`id_deduction = 2`), aunque sea 0, y neto = PTU − ISR.
-- [ ] Si alguna fila pagable tiene `salario_diario_tope = 0`, "Calcular" no escribe nada y lista los nombres.
-- [ ] Una fila del reparto no puede quedar pagada en dos periodos: el `UNIQUE` lo rechaza con "Alguno de estos trabajadores ya cobró la PTU de {año−1}".
-- [ ] "Revertir" borra el snapshot, las percepciones, el art. 174, las deducciones y `period_employee_ptu`, y regresa el periodo a estatus 1.
+- [x] Entran exactamente las filas del reparto cerrado del año − 1 cuyo `id_sucursal` congelado es la sucursal del periodo y que tienen `ptu_final > 0`, dados de baja incluidos. Nadie más entra.
+- [x] Solo se generan filas `'F'`; el periodo PTU no tiene filas operativas.
+- [x] `importe_ptu` = `ptu_final` del reparto, y `period_employee_ptu` congela días, PTU por días, PTU por salario, bruto, tope de 3 meses, promedio y final, iguales al reparto.
+- [x] Con el caso de referencia de la spec 89, el periodo tiene exactamente A **$34,523.80**, B **$27,000.00** y C **$38,095.23**, y D y E no aparecen.
+- [x] Las filas PTU tienen en 0 sueldo, días, faltas, aguinaldo, comisiones, bonos, horas extra y vacaciones.
+- [x] Cada fila tiene una percepción clave 003 con exento = `min(importe, 15 × UMA_DIARIA − exento previo del año de pago)` y gravado = importe − exento, y los dos suman el importe al centavo.
+- [x] El ISR art. 174 guardado coincide al centavo con `calculateArticle174Isr`, usando como ingreso ordinario `ROUND(salario_diario_tope × 30.4, 2)` y la tarifa mensual del año de pago.
+- [x] No se aplica subsidio al empleo. Sin tarifa mensual del año, las filas quedan en "No calculado: No hay tarifa mensual de ISR para el año" y sin deducción.
+- [x] Una fila `'C'` tiene exactamente una deducción ISR (`id_deduction = 2`), aunque sea 0, y neto = PTU − ISR.
+- [x] Si alguna fila pagable tiene `salario_diario_tope = 0`, "Calcular" no escribe nada y lista los nombres.
+- [x] Una fila del reparto no puede quedar pagada en dos periodos: el `UNIQUE` lo rechaza con "Alguno de estos trabajadores ya cobró la PTU de {año−1}".
+- [x] "Revertir" borra el snapshot, las percepciones, el art. 174, las deducciones y `period_employee_ptu`, y regresa el periodo a estatus 1.
 
 **Candado del reparto**
 
-- [ ] Con un periodo PTU calculado (estatus ≥ 2) que use el reparto, "Reabrir" se rechaza, también desde una pestaña vieja, con un mensaje que nombra el periodo y la sucursal. La vista muestra el botón deshabilitado con ese motivo.
-- [ ] Con el periodo solo creado (estatus 1), o después de revertirlo, "Reabrir" funciona.
+- [x] Con un periodo PTU calculado (estatus ≥ 2) que use el reparto, "Reabrir" se rechaza, también desde una pestaña vieja, con un mensaje que nombra el periodo y la sucursal. La vista muestra el botón deshabilitado con ese motivo.
+- [x] Con el periodo solo creado (estatus 1), o después de revertirlo, "Reabrir" funciona.
 
 **Pantallas**
 
-- [ ] En Procesar, un periodo PTU siempre muestra la fiscal, aunque la URL diga `tipo=operativa`, y no muestra el toggle.
-- [ ] La tabla PTU muestra Días, PTU por días, PTU por salario, PTU (con "Topado" cuando `ptu_final < ptu_bruto`), Gravado, Exento, ISR y Neto. Las tarjetas y el pie suman lo mismo que las filas.
-- [ ] Los periodos ordinarios y de aguinaldo se ven en Procesar y en el Detalle exactamente igual que antes.
-- [ ] El Detalle PTU muestra "PTU {año−1}" con "Por días $X + por salario $Y = $Z", la nota "Topada a $W (…)" solo cuando hubo tope, el gravado/exento y la tarjeta del art. 174. No muestra las listas de periodo ordinario.
+- [x] En Procesar, un periodo PTU siempre muestra la fiscal, aunque la URL diga `tipo=operativa`, y no muestra el toggle.
+- [x] La tabla PTU muestra Días, PTU por días, PTU por salario, PTU (con "Topado" cuando `ptu_final < ptu_bruto`), Gravado, Exento, ISR y Neto. Las tarjetas y el pie suman lo mismo que las filas.
+- [x] Los periodos ordinarios y de aguinaldo se ven en Procesar y en el Detalle exactamente igual que antes.
+- [x] El Detalle PTU muestra "PTU {año−1}" con "Por días $X + por salario $Y = $Z", la nota "Topada a $W (…)" solo cuando hubo tope, el gravado/exento y la tarjeta del art. 174. No muestra las listas de periodo ordinario.
 
 **Avisos**
 
-- [ ] Con el reparto del año − 1 cerrado, filas pagables en la sucursal y sin periodo PTU creado, Periodos y Procesar muestran:
+- [x] Con el reparto del año − 1 cerrado, filas pagables en la sucursal y sin periodo PTU creado, Periodos y Procesar muestran:
   - en ámbar, desde el 30-abr (persona moral) o el 30-may (persona física) hasta la fecha límite;
   - en rojo, desde el día siguiente a la fecha límite.
-- [ ] Antes de la ventana, con el periodo PTU creado o sin reparto cerrado, no hay aviso de PTU.
+- [x] Antes de la ventana, con el periodo PTU creado o sin reparto cerrado, no hay aviso de PTU.
 - [ ] El aviso del 20-dic del aguinaldo solo considera periodos `'A'`: crear el periodo PTU no lo quita.
 - [ ] En estatus 2, "Recalcula" aparece en el periodo PTU si cambió la tarifa mensual que usó el art. 174, o la UMA o la regla del catálogo (aviso de exento), y recalcular lo quita.
 
 **Calidad**
 
-- [ ] Todas las acciones nuevas o modificadas pasan por `assertPayrollAccess()` y validan con `zod`. Un rol distinto de 1 y 4 recibe `{ ok: false }`.
-- [ ] La empresa y la sucursal salen de la sesión, nunca del cliente.
-- [ ] Ninguna fecha viaja como `Date`.
-- [ ] Las páginas siguen siendo Server Components, y `PtuPaymentEmployeesTable` y `PtuPaymentDeadlineNotice` también.
-- [ ] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
-- [ ] `docs/nomina.md` y `queries.txt` quedan actualizados.
+- [x] Todas las acciones nuevas o modificadas pasan por `assertPayrollAccess()` y validan con `zod`. Un rol distinto de 1 y 4 recibe `{ ok: false }`.
+- [x] La empresa y la sucursal salen de la sesión, nunca del cliente.
+- [x] Ninguna fecha viaja como `Date`.
+- [x] Las páginas siguen siendo Server Components, y `PtuPaymentEmployeesTable` y `PtuPaymentDeadlineNotice` también.
+- [x] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
+- [x] `docs/nomina.md` y `queries.txt` quedan actualizados.
 
 ## Decisiones
 
