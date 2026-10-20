@@ -8,6 +8,7 @@ import PreloadPtuEmployeesButton from "../componentes/PreloadPtuEmployeesButton"
 import { EditPtuDistributionButton } from "../componentes/PtuDistributionActions";
 import { PtuDistributionStatusBadge } from "../componentes/PtuDistributionBadges";
 import PtuDistributionEmployeesTable from "../componentes/PtuDistributionEmployeesTable";
+import { AddPtuEmployeeButton } from "../componentes/PtuEmployeeActions";
 import PtuDistributionLog from "../componentes/PtuDistributionLog";
 import PtuDistributionSummaryCards from "../componentes/PtuDistributionSummaryCards";
 
@@ -98,7 +99,26 @@ export default async function PtuDistributionPage({ params }: { params: Promise<
       </section>
 
       <PtuDistributionSummaryCards distribution={distribution} />
-      <PtuDistributionEmployeesTable employees={employees} fiscalYear={distribution.ejercicio} />
+      <section aria-label="Trabajadores del reparto" className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-semibold text-[#0b1c30] dark:text-zinc-50">
+            Trabajadores
+            <span className="ml-2 text-sm font-normal text-[#44474f] dark:text-zinc-400">{employees.length}</span>
+          </h3>
+          {isDraft && (
+            <AddPtuEmployeeButton
+              idPtuDistribution={distribution.id_ptu_distribution}
+              fiscalYear={distribution.ejercicio}
+            />
+          )}
+        </div>
+        <PtuDistributionEmployeesTable
+          idPtuDistribution={distribution.id_ptu_distribution}
+          employees={employees}
+          fiscalYear={distribution.ejercicio}
+          isEditable={isDraft}
+        />
+      </section>
       <PtuDistributionLog entries={log} />
     </div>
   );

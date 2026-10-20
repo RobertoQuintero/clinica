@@ -1,8 +1,9 @@
 import "server-only";
 
 import type { ITransactionClient } from "@/database/connection";
-import type { IPtuDistribution, IPtuHistoryEntry, PtuCategory } from "@/interfaces/payroll_ptu";
+import type { IPtuAddableEmployee, IPtuDistribution, IPtuHistoryEntry, PtuCategory } from "@/interfaces/payroll_ptu";
 import { PTU_AVERAGE_YEARS } from "@/lib/payroll/constants";
+import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 
 /** Columnas de payroll.ptu_distributions; las fechas salen como string (nunca Date). */
 export const PTU_DISTRIBUTION_SELECT = `
@@ -141,5 +142,46 @@ export async function loadPtuPreloadRows(
     dias: Number(row.dias),
     salario: Number(row.salario),
     salario_diario_tope: Number(row.salario_diario_tope),
+  }));
+}
+
+/**
+ * Empleados de la empresa que pudieron trabajar en el ejercicio y todavía no están en el reparto:
+ * `fecha_ingreso` a más tardar el 31-dic y sin baja vigente anterior al 1-ene. Con `id_empleado`
+ * devuelve a lo mucho ese empleado, para validar un alta en la acción.
+ */
+export async function loadPtuAddableEmployees(
+  client: ITransactionClient,
+  distribution: Pick<IPtuDistribution, "id_ptu_distribution" | "id_empresa" | "ejercicio">,
+  id_empleado?: number,
+): Promise<IPtuAddableEmployee[]> {
+  const rows = (await client.queryParams(
+    `SELECT e.id_empleado, e.id_sucursal, e.categoria_ptu, e.tipo_contrato, e.codigo_empleado,
+            ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo, s.nombre AS nombre_sucursal,
+            CONVERT(varchar(10), e.fecha_ingreso, 120) AS fecha_ingreso, e.salario_diario_fiscal
+       FROM [CentroPodologico].[RH].[empleados] e
+       JOIN [CentroPodologico].[dbo].[sucursales] s ON s.id_sucursal = e.id_sucursal
+      WHERE s.id_empresa = @id_empresa
+        AND e.status = 1
+        AND e.fecha_ingreso <= @year_end
+        AND NOT EXISTS (
+              SELECT 1 FROM [CentroPodologico].[RH].[employee_terminations] t
+               WHERE t.id_empleado = e.id_empleado AND t.anulado_at IS NULL AND t.fecha_baja < @year_start)
+        AND NOT EXISTS (
+              SELECT 1 FROM [CentroPodologico].[payroll].[ptu_distribution_employees] pe
+               WHERE pe.id_ptu_distribution = @id_ptu_distribution AND pe.id_empleado = e.id_empleado)
+        AND (@id_empleado IS NULL OR e.id_empleado = @id_empleado)
+      ORDER BY nombre_completo`,
+    {
+      id_empresa: distribution.id_empresa,
+      id_ptu_distribution: distribution.id_ptu_distribution,
+      year_start: `${distribution.ejercicio}-01-01`,
+      year_end: `${distribution.ejercicio}-12-31`,
+      id_empleado: id_empleado ?? null,
+    },
+  )) as IPtuAddableEmployee[];
+  return rows.map((row) => ({
+    ...row,
+    salario_diario_fiscal: row.salario_diario_fiscal === null ? null : Number(row.salario_diario_fiscal),
   }));
 }

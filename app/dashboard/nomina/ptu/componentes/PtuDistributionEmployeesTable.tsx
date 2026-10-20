@@ -1,10 +1,15 @@
 import type { IPtuDistributionEmployee } from "@/interfaces/payroll_ptu";
 import { PTU_CATEGORY_SHORT_LABELS, PTU_INELIGIBILITY_REASON_LABELS } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
+import { EditPtuEmployeeButton } from "./PtuEmployeeActions";
+import RemovePtuEmployeeButton from "./RemovePtuEmployeeButton";
 
 interface Props {
+  idPtuDistribution: number;
   employees: IPtuDistributionEmployee[];
   fiscalYear: number;
+  /** Solo un reparto en borrador se edita. */
+  isEditable: boolean;
 }
 
 const HEADER_CELL = "px-4 py-3 font-semibold whitespace-nowrap";
@@ -15,7 +20,8 @@ function formatMoneyOrDash(amount: number | null): string {
   return amount === null ? "—" : formatPayrollCurrency(amount);
 }
 
-export default function PtuDistributionEmployeesTable({ employees, fiscalYear }: Props) {
+export default function PtuDistributionEmployeesTable({ idPtuDistribution, employees, fiscalYear, isEditable }: Props) {
+  const columnCount = isEditable ? 14 : 13;
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
@@ -35,12 +41,13 @@ export default function PtuDistributionEmployeesTable({ employees, fiscalYear }:
               <th className={`${HEADER_CELL} text-right`}>Promedio 3 años</th>
               <th className={`${HEADER_CELL} text-right`}>PTU final</th>
               <th className={HEADER_CELL}>Motivo</th>
+              {isEditable && <th className={`${HEADER_CELL} text-right`}>Acciones</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4c6d0]/50 dark:divide-zinc-700/50">
             {employees.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-6 py-10 text-center text-[#747780] dark:text-zinc-500">
+                <td colSpan={columnCount} className="px-6 py-10 text-center text-[#747780] dark:text-zinc-500">
                   Todavía no hay trabajadores. «Precargar trabajadores» trae a quienes tienen nómina fiscal ordinaria
                   con fecha de fin en {fiscalYear}.
                 </td>
@@ -108,6 +115,20 @@ export default function PtuDistributionEmployeesTable({ employees, fiscalYear }:
                   <td className="px-4 py-3 text-sm">
                     {employee.motivo ? PTU_INELIGIBILITY_REASON_LABELS[employee.motivo] : ""}
                   </td>
+                  {isEditable && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <EditPtuEmployeeButton idPtuDistribution={idPtuDistribution} employee={employee} />
+                        {employee.origen === "M" && (
+                          <RemovePtuEmployeeButton
+                            idPtuDistribution={idPtuDistribution}
+                            idEmployee={employee.id_empleado}
+                            employeeName={employee.nombre_completo}
+                          />
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

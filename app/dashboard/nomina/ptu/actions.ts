@@ -1,21 +1,26 @@
 "use server";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import type {
+  IPtuAddableEmployee,
   IPtuDistribution,
   IPtuDistributionDetail,
   IPtuDistributionEmployee,
   IPtuDistributionLogEntry,
+  PtuEmployeeOrigin,
+  PtuLogAction,
 } from "@/interfaces/payroll_ptu";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { calculatePtuDistribution } from "@/lib/payroll/ptuDistribution";
 import { PTU_LOG_ENTRIES_LIMIT } from "@/lib/payroll/constants";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { loadPtuPreloadRows, PTU_DISTRIBUTION_SELECT } from "@/lib/payroll/ptuDistributionSql";
+import { loadPtuAddableEmployees, loadPtuPreloadRows, PTU_DISTRIBUTION_SELECT } from "@/lib/payroll/ptuDistributionSql";
 import { lockPtuDistribution, recalculatePtuDistribution } from "@/lib/payroll/ptuRecalculation";
 import {
   createPtuDistributionSchema,
+  ptuDistributionEmployeeSchema,
   ptuDistributionIdSchema,
+  updatePtuDistributionEmployeeSchema,
   updatePtuDistributionParametersSchema,
 } from "@/lib/payroll/ptuSchemas";
 import { buildDate } from "@/utils/date_helpper";
@@ -374,5 +379,231 @@ export async function preloadPtuDistribution(rawInput: unknown): Promise<ActionR
   } catch (error) {
     console.error("preloadPtuDistribution", error);
     return { ok: false, message: "No se pudo precargar los trabajadores" };
+  }
+}
+
+const EMPLOYEE_NOT_IN_DISTRIBUTION_MESSAGE = "El trabajador no está en el reparto";
+
+async function writePtuLogEntry(
+  tx: ITransactionClient,
+  entry: {
+    id_ptu_distribution: number;
+    id_empleado: number | null;
+    accion: PtuLogAction;
+    campo?: string | null;
+    valor_anterior?: string | null;
+    valor_nuevo?: string | null;
+    changed_by: number;
+    changed_at: string;
+  },
+): Promise<void> {
+  await tx.queryParams(
+    `INSERT INTO [CentroPodologico].[payroll].[ptu_distribution_log]
+       ([id_ptu_distribution],[id_empleado],[accion],[campo],[valor_anterior],[valor_nuevo],[changed_by],[changed_at])
+     VALUES (@id_ptu_distribution, @id_empleado, @accion, @campo, @valor_anterior, @valor_nuevo, @changed_by, @changed_at)`,
+    { campo: null, valor_anterior: null, valor_nuevo: null, ...entry },
+  );
+}
+
+/** Empleados que se pueden agregar a mano a un reparto en borrador (alcance de la spec 89). */
+export async function getPtuAddableEmployees(rawInput: unknown): Promise<ActionResult<IPtuAddableEmployee[]>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionIdSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+
+  try {
+    const distribution = await db.transaction((tx) =>
+      lockPtuDistribution(tx, parsed.data.id_ptu_distribution, access.data.id_empresa),
+    );
+    if (!distribution) return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    return { ok: true, data: await loadPtuAddableEmployees(db, distribution) };
+  } catch (error) {
+    console.error("getPtuAddableEmployees", error);
+    return { ok: false, message: "No se pudo cargar la lista de empleados" };
+  }
+}
+
+/** Entradas editables de una fila, con la etiqueta que se escribe en la bitácora (`campo`). */
+const EDITABLE_EMPLOYEE_FIELDS = ["dias", "salario", "salario_diario_tope"] as const;
+
+/** Edita días, salario y salario diario tope de un trabajador. Marca la fila `editado` y recalcula todo. */
+export async function updatePtuDistributionEmployee(rawInput: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = updatePtuDistributionEmployeeSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const input = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, input.id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      if (distribution.estado === "C") return "closed" as const;
+
+      const currentRows = (await tx.queryParams(
+        `SELECT dias, salario, salario_diario_tope
+           FROM [CentroPodologico].[payroll].[ptu_distribution_employees] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_ptu_distribution = @id_ptu_distribution AND id_empleado = @id_empleado`,
+        { id_ptu_distribution: input.id_ptu_distribution, id_empleado: input.id_empleado },
+      )) as { dias: number; salario: number; salario_diario_tope: number }[];
+      const current = currentRows[0];
+      if (!current) return "employee_not_found" as const;
+
+      const changedFields = EDITABLE_EMPLOYEE_FIELDS.filter(
+        (field) => Math.round(Number(current[field]) * 100) !== Math.round(input[field] * 100),
+      );
+      if (changedFields.length === 0) return "unchanged" as const;
+
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[payroll].[ptu_distribution_employees]
+            SET [dias] = @dias, [salario] = @salario, [salario_diario_tope] = @salario_diario_tope, [editado] = 1
+          WHERE [id_ptu_distribution] = @id_ptu_distribution AND [id_empleado] = @id_empleado`,
+        {
+          id_ptu_distribution: input.id_ptu_distribution,
+          id_empleado: input.id_empleado,
+          dias: input.dias,
+          salario: input.salario,
+          salario_diario_tope: input.salario_diario_tope,
+        },
+      );
+      await recalculatePtuDistribution(tx, distribution);
+
+      const now = buildDate(new Date());
+      for (const field of changedFields) {
+        await writePtuLogEntry(tx, {
+          id_ptu_distribution: input.id_ptu_distribution,
+          id_empleado: input.id_empleado,
+          accion: "E",
+          campo: field,
+          valor_anterior: String(Number(current[field])),
+          valor_nuevo: String(input[field]),
+          changed_by: access.data.id_user,
+          changed_at: now,
+        });
+      }
+      return "updated" as const;
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "closed") return { ok: false, message: CLOSED_DISTRIBUTION_MESSAGE };
+    if (outcome === "employee_not_found") return { ok: false, message: EMPLOYEE_NOT_IN_DISTRIBUTION_MESSAGE };
+    if (outcome === "updated") revalidatePath(`${PTU_PATH}/${input.id_ptu_distribution}`);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("updatePtuDistributionEmployee", error);
+    return { ok: false, message: "No se pudo guardar la fila del trabajador" };
+  }
+}
+
+/** Agrega a mano a un trabajador sin snapshots en el ejercicio (por ejemplo, anterior al sistema). Entra en ceros. */
+export async function addPtuDistributionEmployee(rawInput: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionEmployeeSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const input = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, input.id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      if (distribution.estado === "C") return "closed" as const;
+
+      // Misma regla que la lista del modal: no se confía en lo que mande el cliente.
+      const [employee] = await loadPtuAddableEmployees(tx, distribution, input.id_empleado);
+      if (!employee) return "not_addable" as const;
+
+      await tx.queryParams(
+        `INSERT INTO [CentroPodologico].[payroll].[ptu_distribution_employees]
+           ([id_ptu_distribution],[id_empleado],[id_sucursal],[origen],[dias],[salario],[salario_diario_tope],
+            [categoria_ptu],[tipo_contrato],[elegible],[motivo],[ptu_final])
+         VALUES
+           (@id_ptu_distribution,@id_empleado,@id_sucursal,'M',0,0,@salario_diario_tope,
+            @categoria_ptu,@tipo_contrato,0,'no_days',0)`,
+        {
+          id_ptu_distribution: input.id_ptu_distribution,
+          id_empleado: employee.id_empleado,
+          id_sucursal: employee.id_sucursal,
+          salario_diario_tope: employee.salario_diario_fiscal ?? 0,
+          categoria_ptu: employee.categoria_ptu,
+          tipo_contrato: employee.tipo_contrato,
+        },
+      );
+      await recalculatePtuDistribution(tx, distribution);
+      await writePtuLogEntry(tx, {
+        id_ptu_distribution: input.id_ptu_distribution,
+        id_empleado: employee.id_empleado,
+        accion: "A",
+        changed_by: access.data.id_user,
+        changed_at: buildDate(new Date()),
+      });
+      return "added" as const;
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "closed") return { ok: false, message: CLOSED_DISTRIBUTION_MESSAGE };
+    if (outcome === "not_addable") {
+      return { ok: false, message: "El empleado no se puede agregar: ya está en el reparto o no trabajó en el ejercicio" };
+    }
+    revalidatePath(`${PTU_PATH}/${input.id_ptu_distribution}`);
+    return { ok: true, data: null };
+  } catch (error) {
+    if (isUniqueViolation(error)) return { ok: false, message: "El trabajador ya está en el reparto" };
+    console.error("addPtuDistributionEmployee", error);
+    return { ok: false, message: "No se pudo agregar al trabajador" };
+  }
+}
+
+/** Quita a un trabajador agregado a mano. Uno precargado volvería con la siguiente precarga: se pone en 0 días. */
+export async function removePtuDistributionEmployee(rawInput: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionEmployeeSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const input = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, input.id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      if (distribution.estado === "C") return "closed" as const;
+
+      const rows = (await tx.queryParams(
+        `SELECT origen
+           FROM [CentroPodologico].[payroll].[ptu_distribution_employees] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_ptu_distribution = @id_ptu_distribution AND id_empleado = @id_empleado`,
+        { id_ptu_distribution: input.id_ptu_distribution, id_empleado: input.id_empleado },
+      )) as { origen: PtuEmployeeOrigin }[];
+      if (rows.length === 0) return "employee_not_found" as const;
+      if (rows[0].origen !== "M") return "preloaded" as const;
+
+      await tx.queryParams(
+        `DELETE FROM [CentroPodologico].[payroll].[ptu_distribution_employees]
+          WHERE [id_ptu_distribution] = @id_ptu_distribution AND [id_empleado] = @id_empleado`,
+        { id_ptu_distribution: input.id_ptu_distribution, id_empleado: input.id_empleado },
+      );
+      await recalculatePtuDistribution(tx, distribution);
+      await writePtuLogEntry(tx, {
+        id_ptu_distribution: input.id_ptu_distribution,
+        id_empleado: input.id_empleado,
+        accion: "Q",
+        changed_by: access.data.id_user,
+        changed_at: buildDate(new Date()),
+      });
+      return "removed" as const;
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "closed") return { ok: false, message: CLOSED_DISTRIBUTION_MESSAGE };
+    if (outcome === "employee_not_found") return { ok: false, message: EMPLOYEE_NOT_IN_DISTRIBUTION_MESSAGE };
+    if (outcome === "preloaded") {
+      return { ok: false, message: "Solo se pueden quitar los trabajadores agregados a mano. Para sacar a otro, pon sus días en 0" };
+    }
+    revalidatePath(`${PTU_PATH}/${input.id_ptu_distribution}`);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("removePtuDistributionEmployee", error);
+    return { ok: false, message: "No se pudo quitar al trabajador" };
   }
 }

@@ -156,3 +156,16 @@ export interface IPtuDistributionDetail {
   employees:    IPtuDistributionEmployee[];
   log:          IPtuDistributionLogEntry[];
 }
+
+/** Empleado que se puede agregar a mano a un reparto. */
+export interface IPtuAddableEmployee {
+  id_empleado:           number;
+  id_sucursal:           number;
+  categoria_ptu:         PtuCategory;
+  tipo_contrato:         string | null;
+  codigo_empleado:       string;
+  nombre_completo:       string;
+  nombre_sucursal:       string;
+  fecha_ingreso:         string;   // "YYYY-MM-DD"
+  salario_diario_fiscal: number | null;
+}
