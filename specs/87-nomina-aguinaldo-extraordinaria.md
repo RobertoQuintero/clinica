@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 52 (`nomina-periodos`): `payroll.periods`, código, estatus, modal de periodo.
   - 53 (`nomina-calculo-salario`): `payroll.period_employees`, `calculatePayrollPeriod`, Procesar.
