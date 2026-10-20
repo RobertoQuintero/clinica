@@ -61,12 +61,15 @@ function validateExtraordinaryCutoffAndPayment(
   year: number | null,
 ) {
   if (year !== null && dates.fecha_corte.slice(0, 4) !== String(year)) {
-    context.addIssue({ code: "custom", path: ["fecha_corte"], message: "La fecha de corte debe estar dentro del año del aguinaldo" });
+    context.addIssue({ code: "custom", path: ["fecha_corte"], message: "La fecha de corte debe estar dentro del año del periodo" });
   }
   if (dates.fecha_pago < dates.fecha_corte) {
     context.addIssue({ code: "custom", path: ["fecha_pago"], message: "La fecha de pago no puede ser anterior a la de corte" });
   }
 }
+
+/** Año de pago de la PTU (el reparto que se paga es el del año anterior). */
+export const ptuPaymentYearSchema = EXTRAORDINARY_YEAR_SCHEMA;
 
 const extraordinaryCutoffAndPaymentShape = {
   fecha_corte: periodDate("La fecha de corte"),

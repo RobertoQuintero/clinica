@@ -50,7 +50,7 @@ export default function ActivePayrollPeriodCard({ activePeriod, today }: Props) 
           </h3>
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-xl font-semibold text-[#0b1c30] dark:text-zinc-50">{activePeriod.codigo}</span>
-            <PayrollFrequencyBadge description={activePeriod.frecuencia_descripcion} periodType={activePeriod.tipo_periodo} />
+            <PayrollFrequencyBadge description={activePeriod.frecuencia_descripcion} periodType={activePeriod.tipo_periodo} extraordinaryConcept={activePeriod.concepto_extraordinario} />
           </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400 mt-1">
             {formatPeriodRange(activePeriod.fecha_inicio, activePeriod.fecha_fin)}

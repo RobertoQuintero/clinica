@@ -61,7 +61,7 @@ export default function PayrollPeriodsTable({ rows, totalRows, page, ejercicio, 
                     {period.codigo}
                   </td>
                   <td className="px-6 py-4">
-                    <PayrollFrequencyBadge description={period.frecuencia_descripcion} periodType={period.tipo_periodo} />
+                    <PayrollFrequencyBadge description={period.frecuencia_descripcion} periodType={period.tipo_periodo} extraordinaryConcept={period.concepto_extraordinario} />
                   </td>
                   <td className="px-6 py-4 text-sm text-[#0b1c30] dark:text-zinc-200 whitespace-nowrap">
                     {formatPeriodRange(period.fecha_inicio, period.fecha_fin)}
