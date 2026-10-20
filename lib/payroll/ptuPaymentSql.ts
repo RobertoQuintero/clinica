@@ -1,13 +1,19 @@
 import "server-only";
 
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { PTU_PERCEPTION_ID } from "@/lib/payroll/constants";
+import { ISR_DEDUCTION_ID, PTU_PERCEPTION_ID } from "@/lib/payroll/constants";
 import {
   EXEMPTION_APPLY_SQL,
   EXEMPTION_INSERT_COLUMNS_SQL,
   EXEMPTION_PARAMETERS_SQL,
   EXEMPTION_SELECT_SQL,
 } from "@/lib/payroll/exemptionSql";
+import {
+  ARTICLE_174_APPLY_SQL,
+  ARTICLE_174_INSERT_COLUMNS_SQL,
+  ARTICLE_174_PARAMETERS_SQL,
+  ARTICLE_174_SELECT_SQL,
+} from "@/lib/payroll/isrArticle174Sql";
 import { PTU_PAYMENT_PRECONDITION_SQL } from "@/lib/payroll/ptuPaymentSource";
 
 export const PTU_ZERO_DAILY_CAP_MARKER = "PTU_ZERO_DAILY_CAP";
@@ -28,6 +34,10 @@ export const PTU_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_ptu_distribution_
  *   fila del reparto dos veces en toda la historia.
  * - La línea de percepción PTU (clave 003) pasa por el motor de gravado/exento de la spec 73: exento hasta 15 UMA por
  *   año de `fecha_fin`, acumulado entre periodos.
+ * - ISR art. 174 RLISR sobre el gravado de cada fila (sin subsidio), con el mismo SQL del aguinaldo (spec 87): el
+ *   ingreso ordinario mensual es ROUND(salario_diario × 30.4, 2) y `salario_diario` ya es el tope congelado del reparto.
+ *   El desglose va en `period_employee_isr_article174` y el retenido, solo en filas calculadas, como deducción ISR
+ *   aunque sea 0. Sin tarifa mensual del año de pago la fila queda "No calculado" y el periodo se calcula igual.
  */
 export const PTU_PAYMENT_SNAPSHOT_SQL = `
        ${PTU_PAYMENT_PRECONDITION_SQL}
@@ -91,4 +101,19 @@ export const PTU_PAYMENT_SNAPSHOT_SQL = `
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period_employee] = fl.[id_period_employee]
          JOIN [CentroPodologico].[payroll].[perceptions] exemption_rule
-           ON exemption_rule.[id_perception] = fl.[id_perception]${EXEMPTION_APPLY_SQL};`;
+           ON exemption_rule.[id_perception] = fl.[id_perception]${EXEMPTION_APPLY_SQL};
+
+       ${ARTICLE_174_PARAMETERS_SQL}
+
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_isr_article174] (${ARTICLE_174_INSERT_COLUMNS_SQL})
+       SELECT ${ARTICLE_174_SELECT_SQL}
+         FROM [CentroPodologico].[payroll].[period_employees] pe${ARTICLE_174_APPLY_SQL}
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F';
+
+       -- Una fila de deducción ISR por renglón 'F' calculado, aunque el retenido sea 0.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_deductions]
+         ([id_period_employee], [id_deduction], [importe])
+       SELECT a.[id_period_employee], ${ISR_DEDUCTION_ID}, a.[isr_retenido]
+         FROM [CentroPodologico].[payroll].[period_employee_isr_article174] a
+         JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.[id_period_employee] = a.[id_period_employee]
+        WHERE pe.[id_period] = @id_period AND a.[isr_estado] = 'C';`;
