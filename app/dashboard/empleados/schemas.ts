@@ -62,6 +62,8 @@ const employeeInputSchema = z
     tipo_contrato: catalogKey(SAT_CONTRACT_TYPES, "El tipo de contrato"),
     tipo_jornada: catalogKey(SAT_WORKDAY_TYPES, "El tipo de jornada"),
     sindicalizado: z.boolean().nullish().transform((value) => value ?? null),
+
+    categoria_ptu: z.enum(["N", "C", "X"], { error: "La categoría de PTU no es válida" }),
   })
   .superRefine((employee, context) => {
     // La sucursal sin estado no se puede resolver aquí ni debe impedir guardar.

@@ -3,6 +3,7 @@ import type { PayrollPeriodType } from "@/interfaces/payroll_period";
 import type { ExemptionSkipReason } from "@/interfaces/payroll_exemption";
 import type { IsrSkipReason } from "@/interfaces/payroll_isr";
 import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
+import type { PtuCategory } from "@/interfaces/payroll_ptu";
 
 export const PAYROLL_PERIOD_STATUS = {
   1: { label: "Programada",  badge: "neutral" },
@@ -105,4 +106,10 @@ export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = {
 export const EXEMPTION_SKIP_REASON_LABELS: Record<ExemptionSkipReason, string> = {
   missing_uma:           "No hay UMA diaria vigente al fin del periodo",
   unsupported_frequency: "El tope semanal solo se calcula en periodos de frecuencia semanal",
+};
+
+export const PTU_CATEGORY_LABELS: Record<PtuCategory, string> = {
+  N: "Normal",
+  C: "Confianza (tope 120%)",
+  X: "Excluido (director, administrador o gerente general)",
 };

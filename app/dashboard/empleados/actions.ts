@@ -124,6 +124,7 @@ const EMPLOYEE_SELECT_COLUMNS = `
             e.[tipo_jornada],
             e.[sindicalizado],
             e.[banco],
+            e.[categoria_ptu],
             e.[activo],
             e.[status],
             CONVERT(varchar(19), e.[created_at], 120) AS created_at,
@@ -435,6 +436,7 @@ function buildEmployeeWriteParams(input: EmployeeFormInput, fechaIngresoDb: stri
     tipo_jornada: input.tipo_jornada ?? null,
     sindicalizado: input.sindicalizado ?? null,
     banco: input.banco ?? null,
+    categoria_ptu: input.categoria_ptu,
   };
 }
 
@@ -458,7 +460,7 @@ async function insertEmployeeRow(
           [contacto_emergencia_2],[whatsapp_emergencia_2],
           [id_department],[id_puesto],[id_turno],[id_periodo_pago],
           [salario_diario],[salario_diario_fiscal],[tipo_salario],[cuenta_bancaria],
-          [codigo_postal_fiscal],[tipo_regimen],[tipo_contrato],[tipo_jornada],[sindicalizado],[banco],
+          [codigo_postal_fiscal],[tipo_regimen],[tipo_contrato],[tipo_jornada],[sindicalizado],[banco],[categoria_ptu],
           [id_empleado_anterior],[activo],[status],[created_at])
        OUTPUT INSERTED.[id_empleado]
        VALUES
@@ -468,7 +470,7 @@ async function insertEmployeeRow(
           @contacto_emergencia_2,@whatsapp_emergencia_2,
           @id_department,@id_puesto,@id_turno,@id_periodo_pago,
           @salario_diario,@salario_diario_fiscal,@tipo_salario,@cuenta_bancaria,
-          @codigo_postal_fiscal,@tipo_regimen,@tipo_contrato,@tipo_jornada,@sindicalizado,@banco,
+          @codigo_postal_fiscal,@tipo_regimen,@tipo_contrato,@tipo_jornada,@sindicalizado,@banco,@categoria_ptu,
           @id_empleado_anterior,1,1,@created_at)`,
     { ...params, created_at: buildDate(new Date()) }
   );
@@ -628,6 +630,7 @@ export async function updateEmployee(
          [tipo_jornada]         = @tipo_jornada,
          [sindicalizado]        = @sindicalizado,
          [banco]                = @banco,
+         [categoria_ptu]        = @categoria_ptu,
          [updated_at]           = @updated_at
        WHERE [id_empleado] = @id_empleado
          AND [id_empresa]  = @id_empresa`,
