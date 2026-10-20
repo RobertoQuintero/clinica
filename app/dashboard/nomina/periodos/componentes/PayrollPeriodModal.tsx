@@ -10,6 +10,7 @@ import {
   PAYROLL_PERIOD_TYPE_LABELS,
 } from "@/lib/payroll/constants";
 import { useActionData } from "@/hooks/useActionData";
+import { formatLongDayMonth } from "@/lib/payroll/periodFormat";
 import { addZeroToday } from "@/utils/date_helpper";
 import {
   createPayrollPeriod,
@@ -33,16 +34,6 @@ type PeriodKind = "O" | ExtraordinaryConcept;
 
 const PERIOD_KINDS: PeriodKind[] = ["O", "A", "P"];
 const PERIOD_KIND_LABELS: Record<PeriodKind, string> = { O: PAYROLL_PERIOD_TYPE_LABELS.O, ...EXTRAORDINARY_CONCEPT_LABELS };
-const MONTH_NAMES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
-
-/** "2027-05-30" → "30 de mayo". */
-function formatDayAndMonth(isoDate: string): string {
-  return `${Number(isoDate.slice(8, 10))} de ${MONTH_NAMES[Number(isoDate.slice(5, 7)) - 1]}`;
-}
-
 /**
  * Fechas del periodo extraordinario de un año: inicio y fin fijos. En el aguinaldo corte y pago se sugieren el 20-dic;
  * en la PTU quedan vacíos hasta que llega la fecha límite del reparto (ver `getPtuPaymentSuggestion`). Ambos son editables.
@@ -337,7 +328,7 @@ export default function PayrollPeriodModal(props: Props) {
                 className="mt-3 flex gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200"
               >
                 <TriangleAlert size={14} aria-hidden className="mt-0.5 shrink-0" />
-                La PTU debe pagarse a más tardar el {formatDayAndMonth(ptuDeadline)}. Puedes guardar esta fecha, pero el
+                La PTU debe pagarse a más tardar el {formatLongDayMonth(ptuDeadline)}. Puedes guardar esta fecha, pero el
                 pago quedaría fuera de plazo.
               </p>
             )}

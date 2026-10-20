@@ -11,6 +11,7 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
 import ChristmasBonusDeadlineNotice from "../componentes/ChristmasBonusDeadlineNotice";
+import PtuPaymentDeadlineNotice from "../componentes/PtuPaymentDeadlineNotice";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
 import ChristmasBonusEmployeesTable from "./componentes/ChristmasBonusEmployeesTable";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
@@ -76,6 +77,7 @@ export default async function ProcesarNominaPage({
       </div>
 
       <ChristmasBonusDeadlineNotice />
+      <PtuPaymentDeadlineNotice />
 
       {!result.ok ? (
         <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">
@@ -170,8 +172,12 @@ export default async function ProcesarNominaPage({
             message="Hay vacaciones o primas que no coinciden con el último cálculo. Recalcula la nómina."
           />
           <PayrollRecalculationNotice
-            recalculationNeeded={result.data.christmasBonusRecalculationNeeded}
-            message="Hay aguinaldos cuyo salario, fecha de ingreso o ISR del art. 174 no coinciden con el último cálculo. Recalcula la nómina."
+            recalculationNeeded={result.data.extraordinaryRecalculationNeeded}
+            message={
+              isPtuPeriod
+                ? "Hay cálculos de ISR del art. 174 de la PTU que no coinciden con la tarifa mensual actual. Recalcula la nómina."
+                : "Hay aguinaldos cuyo salario, fecha de ingreso o ISR del art. 174 no coinciden con el último cálculo. Recalcula la nómina."
+            }
           />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState

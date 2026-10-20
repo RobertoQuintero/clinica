@@ -95,7 +95,7 @@ export interface IPayrollProcessPage {
   isrRecalculationNeeded: boolean;   // ídem, para el ISR de la nómina fiscal (spec 70)
   exemptionRecalculationNeeded: boolean;   // ídem, para el gravado/exento de las percepciones fiscales (spec 73)
   vacationPayRecalculationNeeded: boolean;   // ídem, para la prima vacacional y las vacaciones pagadas (spec 78)
-  christmasBonusRecalculationNeeded: boolean;   // ídem, para el aguinaldo de un periodo extraordinario (spec 87)
+  extraordinaryRecalculationNeeded: boolean;   // ídem, para el aguinaldo o la PTU de un periodo extraordinario (specs 87 y 90)
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".

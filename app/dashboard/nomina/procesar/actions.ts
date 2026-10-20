@@ -31,7 +31,7 @@ import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExt
 import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
 import { isVacationPayRecalculationNeeded } from "@/lib/payroll/vacationPayRecalculation";
-import { isChristmasBonusRecalculationNeeded } from "@/lib/payroll/christmasBonusRecalculation";
+import { isExtraordinaryRecalculationNeeded } from "@/lib/payroll/extraordinaryRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
@@ -286,7 +286,7 @@ export async function getPayrollProcessPage(
       isrRecalculationNeeded: false,
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
-      christmasBonusRecalculationNeeded: false,
+      extraordinaryRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -302,7 +302,6 @@ export async function getPayrollProcessPage(
     });
 
     const isOrdinaryPeriod = period.tipo_periodo === "O";
-    const isChristmasBonusPeriod = period.tipo_periodo === "E" && period.concepto_extraordinario === "A";
 
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
@@ -323,7 +322,7 @@ export async function getPayrollProcessPage(
       isrRecalculationNeeded,
       exemptionRecalculationNeeded,
       vacationPayRecalculationNeeded,
-      christmasBonusRecalculationNeeded,
+      extraordinaryRecalculationNeeded,
     ] = await Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
@@ -481,7 +480,7 @@ export async function getPayrollProcessPage(
       isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
       isExemptionRecalculationNeeded(period.id_period),
       isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
-      isChristmasBonusPeriod ? isChristmasBonusRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? false : isExtraordinaryRecalculationNeeded(period.id_period),
     ]);
 
     const totalPercepciones = roundToCents(
@@ -582,7 +581,7 @@ export async function getPayrollProcessPage(
         isrRecalculationNeeded,
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
-        christmasBonusRecalculationNeeded,
+        extraordinaryRecalculationNeeded,
       },
     };
   } catch (error) {

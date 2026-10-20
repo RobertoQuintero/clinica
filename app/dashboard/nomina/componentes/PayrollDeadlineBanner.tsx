@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
-import type { ChristmasBonusDeadlineState } from "@/interfaces/payroll_christmas_bonus";
+
+export type PayrollDeadlineState = "none" | "upcoming" | "overdue";
 
 interface Props {
-  state: ChristmasBonusDeadlineState;
-  year: number;
+  state: PayrollDeadlineState;
+  /** Nombre accesible de la sección: "Aguinaldo 2026", "PTU 2026". */
+  label: string;
+  /** Título según el estado: ámbar antes de la fecha límite y rojo después. */
+  headlines: { upcoming: string; overdue: string };
+  /** Qué falta hacer, antes del enlace a Periodos. */
+  message: string;
 }
 
 const BANNER_STYLES = {
@@ -20,26 +26,21 @@ const BANNER_STYLES = {
   },
 } as const;
 
-/** Parte visual del aviso del 20 de diciembre (spec 87): ámbar hasta el 20-dic y rojo después. Sin estado, no pinta nada. */
-export default function ChristmasBonusDeadlineBanner({ state, year }: Props) {
+/**
+ * Parte visual de los avisos de fecha límite de las nóminas extraordinarias (aguinaldo, spec 87; PTU, spec 90):
+ * ámbar hasta la fecha límite y rojo después. Sin estado, no pinta nada.
+ */
+export default function PayrollDeadlineBanner({ state, label, headlines, message }: Props) {
   if (state === "none") return null;
   const styles = BANNER_STYLES[state];
 
   return (
-    <section
-      aria-label={`Aguinaldo ${year}`}
-      role="status"
-      className={`rounded-xl border p-4 flex gap-3 ${styles.section}`}
-    >
+    <section aria-label={label} role="status" className={`rounded-xl border p-4 flex gap-3 ${styles.section}`}>
       <TriangleAlert size={20} className={`shrink-0 mt-0.5 ${styles.icon}`} aria-hidden />
       <div className="min-w-0">
-        <p className={`text-sm font-semibold ${styles.text}`}>
-          {state === "upcoming"
-            ? `Aguinaldo ${year}: debe pagarse a más tardar el 20 de diciembre`
-            : `Aguinaldo ${year}: venció el 20 de diciembre`}
-        </p>
+        <p className={`text-sm font-semibold ${styles.text}`}>{headlines[state]}</p>
         <p className={`text-sm mt-0.5 ${styles.text}`}>
-          Esta sucursal aún no tiene su nómina de aguinaldo.{" "}
+          {message}{" "}
           <Link
             href="/dashboard/nomina/periodos"
             className="font-medium text-[#0051d5] dark:text-blue-300 underline-offset-2 hover:underline"
