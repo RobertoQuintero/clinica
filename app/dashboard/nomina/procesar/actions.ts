@@ -43,6 +43,12 @@ import {
 import { buildPerceptionLines } from "@/lib/payroll/perceptionLines";
 import { CHRISTMAS_BONUS_SNAPSHOT_SQL } from "@/lib/payroll/christmasBonusSql";
 import {
+  PTU_ALREADY_PAID_CONSTRAINT,
+  PTU_PAYMENT_SNAPSHOT_SQL,
+  PTU_ZERO_DAILY_CAP_MARKER,
+} from "@/lib/payroll/ptuPaymentSql";
+import { PTU_DISTRIBUTION_NOT_CLOSED_MARKER, PTU_NO_PAYABLE_ROWS_MARKER } from "@/lib/payroll/ptuPaymentSource";
+import {
   ATTENDANCE_BONUS_APPLY_SQL,
   ATTENDANCE_BONUS_INSERT_COLUMNS_SQL,
   ATTENDANCE_BONUS_SELECT_SQL,
@@ -1076,6 +1082,80 @@ async function calculateExtraordinaryPayrollPeriod(
   }
 }
 
+/** Traduce los errores del cálculo de la PTU (spec 90); `paymentYear` es el ejercicio del periodo. */
+function describePtuPaymentError(error: unknown, paymentYear: number): string {
+  const sqlError = error as { message?: string };
+  const message = sqlError.message ?? "";
+  if (message.includes(PTU_DISTRIBUTION_NOT_CLOSED_MARKER)) {
+    return `Cierra primero el reparto de PTU ${paymentYear - 1}`;
+  }
+  if (message.includes(PTU_NO_PAYABLE_ROWS_MARKER)) {
+    return `Nadie de esta sucursal cobra PTU ${paymentYear - 1}`;
+  }
+  if (message.includes(PTU_ZERO_DAILY_CAP_MARKER)) {
+    const names = message.slice(message.indexOf(`${PTU_ZERO_DAILY_CAP_MARKER}:`) + PTU_ZERO_DAILY_CAP_MARKER.length + 1);
+    return `El reparto de PTU ${paymentYear - 1} tiene trabajadores sin salario diario tope: ${names}. Reábrelo, corrígelo y ciérralo de nuevo`;
+  }
+  if (message.includes(PTU_ALREADY_PAID_CONSTRAINT)) {
+    return `Alguno de estos trabajadores ya cobró la PTU de ${paymentYear - 1}`;
+  }
+  return describePayrollCalculationError(error);
+}
+
+/**
+ * Calcular y Recalcular un periodo extraordinario de PTU (spec 90): en un solo batch con el periodo y el reparto
+ * leídos con UPDLOCK/HOLDLOCK borra el snapshot, inserta una fila fiscal por fila pagable del reparto cerrado de la
+ * sucursal y pasa la PTU por el motor de gravado/exento. Revertir funciona igual que en un ordinario gracias al cascade.
+ */
+async function calculatePtuPaymentPeriod(
+  idPeriod: number,
+  idSucursal: number,
+  idUser: number,
+  paymentYear: number,
+): Promise<ActionResult<{ operativa: number; fiscal: number }>> {
+  try {
+    const rows = await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       DECLARE @id_payment_period smallint, @ejercicio smallint, @fecha_inicio date, @fecha_fin date;
+       SELECT @id_payment_period = id_payment_period,
+              @ejercicio         = ejercicio,
+              @fecha_inicio      = fecha_inicio,
+              @fecha_fin         = fecha_fin
+         FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status IN (1, 2)
+          AND tipo_periodo = 'E' AND concepto_extraordinario = 'P';
+       IF @id_payment_period IS NULL
+         THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
+
+       DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
+       ${PTU_PAYMENT_SNAPSHOT_SQL}
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET status = 2, updated_at = CAST(@calculated_at AS datetime2(0))
+        WHERE id_period = @id_period;
+
+       COMMIT;
+
+       SELECT ISNULL(SUM(CASE WHEN tipo_nomina = 'O' THEN 1 ELSE 0 END), 0) AS operativa,
+              ISNULL(SUM(CASE WHEN tipo_nomina = 'F' THEN 1 ELSE 0 END), 0) AS fiscal
+         FROM [CentroPodologico].[payroll].[period_employees]
+        WHERE id_period = @id_period;`,
+      { id_period: idPeriod, id_sucursal: idSucursal, calculated_by: idUser, calculated_at: buildDate(new Date()) },
+    );
+
+    revalidatePayrollPaths();
+    return {
+      ok: true,
+      data: { operativa: Number(rows[0]?.operativa ?? 0), fiscal: Number(rows[0]?.fiscal ?? 0) },
+    };
+  } catch (error) {
+    console.error("calculatePtuPaymentPeriod", error);
+    return { ok: false, message: describePtuPaymentError(error, paymentYear) };
+  }
+}
+
 /**
  * Calcular (estatus 1) y Recalcular (estatus 2): en un solo batch con bloqueo reemplaza el
  * snapshot del periodo (filas 'O' y 'F') y deja el periodo en estatus 2 (En cálculo).
@@ -1112,13 +1192,18 @@ export async function calculatePayrollPeriod(
   try {
     // Spec 87/90: el periodo extraordinario tiene su propio cálculo según el concepto; el resto del batch es del ordinario.
     const periodTypeRows = await db.queryParams(
-      `SELECT tipo_periodo, concepto_extraordinario FROM [CentroPodologico].[payroll].[periods]
+      `SELECT tipo_periodo, concepto_extraordinario, ejercicio FROM [CentroPodologico].[payroll].[periods]
         WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
       { id_period: parsed.data.id_period, id_sucursal },
     );
     if (periodTypeRows[0]?.tipo_periodo === "E") {
       if (periodTypeRows[0].concepto_extraordinario === "P") {
-        return { ok: false, message: "El cálculo de la PTU aún no está disponible" };
+        return calculatePtuPaymentPeriod(
+          parsed.data.id_period,
+          id_sucursal,
+          id_user,
+          Number(periodTypeRows[0].ejercicio),
+        );
       }
       return calculateExtraordinaryPayrollPeriod(parsed.data.id_period, id_sucursal, id_user);
     }
