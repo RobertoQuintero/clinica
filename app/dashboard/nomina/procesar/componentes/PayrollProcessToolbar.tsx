@@ -14,6 +14,8 @@ interface Props {
   puestoOptions: IPayrollProcessPage["puestoOptions"];
   selectedPuestoId: number | null;
   searchText: string;
+  /** Spec 90: un periodo PTU solo tiene nómina fiscal, así que no hay nada que alternar. */
+  showPayrollTypeToggle?: boolean;
 }
 
 const SEARCH_DEBOUNCE_MILLISECONDS = 350;
@@ -29,6 +31,7 @@ export default function PayrollProcessToolbar({
   puestoOptions,
   selectedPuestoId,
   searchText,
+  showPayrollTypeToggle = true,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -68,6 +71,7 @@ export default function PayrollProcessToolbar({
           ))}
         </select>
 
+        {showPayrollTypeToggle && (
         <div
           role="radiogroup"
           aria-label="Tipo de nómina"
@@ -93,6 +97,7 @@ export default function PayrollProcessToolbar({
             );
           })}
         </div>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">

@@ -15,6 +15,7 @@ import {
 } from "@/interfaces/payroll_calculation";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import type { IPeriodEmployeePerception } from "@/interfaces/payroll_exemption";
+import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
@@ -178,6 +179,36 @@ function sumTaxBreakdown(lines: IPayrollPerceptionLine[], field: "taxed" | "exem
   return roundToCents(total);
 }
 
+/** Columnas `ptu_*` que el SELECT de Procesar trae de `period_employee_ptu` (todas null fuera de un periodo PTU). */
+interface IPtuPaymentRowColumns {
+  ptu_id_ptu_distribution: number | null;
+  ptu_ejercicio_reparto: number | null;
+  ptu_dias_trabajados: number | null;
+  ptu_ptu_dias: number | null;
+  ptu_ptu_salario: number | null;
+  ptu_ptu_bruto: number | null;
+  ptu_tope_tres_meses: number | null;
+  ptu_promedio_tres_anios: number | null;
+  ptu_anios_promedio: number | null;
+  ptu_ptu_final: number | null;
+}
+
+function toPtuPaymentBreakdown(columns: IPtuPaymentRowColumns): IPtuPaymentBreakdown | null {
+  if (columns.ptu_id_ptu_distribution === null || columns.ptu_id_ptu_distribution === undefined) return null;
+  return {
+    id_ptu_distribution: Number(columns.ptu_id_ptu_distribution),
+    ejercicio_reparto: Number(columns.ptu_ejercicio_reparto),
+    dias: Number(columns.ptu_dias_trabajados),
+    ptu_dias: Number(columns.ptu_ptu_dias),
+    ptu_salario: Number(columns.ptu_ptu_salario),
+    ptu_bruto: Number(columns.ptu_ptu_bruto),
+    tope_tres_meses: Number(columns.ptu_tope_tres_meses),
+    promedio_tres_anios: toNullableNumber(columns.ptu_promedio_tres_anios),
+    anios_promedio: toNullableNumber(columns.ptu_anios_promedio),
+    ptu_final: Number(columns.ptu_ptu_final),
+  };
+}
+
 /** Orden de la tabla de Procesar; Anterior / Siguiente del detalle lo sigue. Determinista gracias al id. */
 const PAYROLL_EMPLOYEE_ORDER_BY = "e.apellido_paterno, e.apellido_materno, e.nombre, pe.id_empleado";
 
@@ -219,7 +250,7 @@ export async function getPayrollProcessPage(
   if (!parsedFilters.success) {
     return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Datos inválidos" };
   }
-  const filters = parsedFilters.data;
+  const filters = { ...parsedFilters.data };
 
   try {
     const periodOptionsPromise = db.queryParams(
@@ -241,7 +272,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importePtu: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
       isrNotCalculated: [],
       puestoOptions: [],
       excludedEmployees: [],
@@ -258,6 +289,10 @@ export async function getPayrollProcessPage(
       christmasBonusRecalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
+
+    // Spec 90: la PTU solo existe en la nómina fiscal; un periodo PTU ignora `tipo=operativa` de la URL.
+    const isPtuPeriod = period.tipo_periodo === "E" && period.concepto_extraordinario === "P";
+    if (isPtuPeriod) filters.payrollType = "F";
 
     const { conditions: rowConditions, params: rowParams } = buildPayrollEmployeeConditions({
       idPeriod: period.id_period,
@@ -310,6 +345,13 @@ export async function getPayrollProcessPage(
                 pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
                 pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
                 pe.dias_aguinaldo, CAST(pe.importe_aguinaldo AS float) AS importe_aguinaldo,
+                CAST(pe.importe_ptu AS float) AS importe_ptu,
+                ptu.id_ptu_distribution AS ptu_id_ptu_distribution, ptu.ejercicio_reparto AS ptu_ejercicio_reparto,
+                ptu.dias AS ptu_dias_trabajados, CAST(ptu.ptu_dias AS float) AS ptu_ptu_dias,
+                CAST(ptu.ptu_salario AS float) AS ptu_ptu_salario, CAST(ptu.ptu_bruto AS float) AS ptu_ptu_bruto,
+                CAST(ptu.tope_tres_meses AS float) AS ptu_tope_tres_meses,
+                CAST(ptu.promedio_tres_anios AS float) AS ptu_promedio_tres_anios,
+                ptu.anios_promedio AS ptu_anios_promedio, CAST(ptu.ptu_final AS float) AS ptu_ptu_final,
                 CAST(taxes.gravado AS float) AS importe_gravado, CAST(taxes.exento AS float) AS importe_exento,
                 pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
@@ -317,7 +359,7 @@ export async function getPayrollProcessPage(
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
                   + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
-                  + pe.importe_aguinaldo AS total_percepciones,
+                  + pe.importe_aguinaldo + pe.importe_ptu AS total_percepciones,
                 -- Spec 87: en un periodo extraordinario el ISR vive en el desglose del art. 174, no en las columnas isr_*.
                 ISNULL(article174.isr_estado, pe.isr_estado) AS isr_estado,
                 CAST(CASE WHEN article174.id_period_employee IS NOT NULL THEN article174.isr_retenido
@@ -329,13 +371,15 @@ export async function getPayrollProcessPage(
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
                   + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
-                  + pe.importe_aguinaldo - deductions.total AS float) AS neto,
+                  + pe.importe_aguinaldo + pe.importe_ptu - deductions.total AS float) AS neto,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
            JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
            LEFT JOIN [CentroPodologico].[payroll].[period_employee_isr_article174] article174
                   ON article174.id_period_employee = pe.id_period_employee
+           LEFT JOIN [CentroPodologico].[payroll].[period_employee_ptu] ptu
+                  ON ptu.id_period_employee = pe.id_period_employee
           CROSS APPLY (SELECT ISNULL(SUM(d.importe), 0) AS total
                          FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                         WHERE d.id_period_employee = pe.id_period_employee) AS deductions
@@ -362,6 +406,7 @@ export async function getPayrollProcessPage(
                 CAST(ISNULL(SUM(importe_bono_extension), 0) AS float) AS importe_bono_extension,
                 CAST(ISNULL(SUM(importe_prima_vacacional + importe_vacaciones_pagadas), 0) AS float) AS importe_vacaciones,
                 CAST(ISNULL(SUM(importe_aguinaldo), 0) AS float) AS importe_aguinaldo,
+                CAST(ISNULL(SUM(importe_ptu), 0) AS float) AS importe_ptu,
                 CAST(ISNULL(SUM(taxes.gravado), 0) AS float) AS importe_gravado,
                 CAST(ISNULL(SUM(taxes.exento), 0) AS float) AS importe_exento,
                 CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
@@ -404,7 +449,7 @@ export async function getPayrollProcessPage(
           ORDER BY pu.name`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
       ),
-      db.queryParams(
+      isPtuPeriod ? Promise.resolve([]) : db.queryParams(
         `SELECT e.id_empleado, e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo
            FROM [CentroPodologico].[RH].[empleados] e
           WHERE e.status = 1 AND e.activo = 1
@@ -449,7 +494,8 @@ export async function getPayrollProcessPage(
         Number(totals[0]?.importe_bono_asistencia ?? 0) +
         Number(totals[0]?.importe_bono_extension ?? 0) +
         Number(totals[0]?.importe_vacaciones ?? 0) +
-        Number(totals[0]?.importe_aguinaldo ?? 0),
+        Number(totals[0]?.importe_aguinaldo ?? 0) +
+        Number(totals[0]?.importe_ptu ?? 0),
     );
 
     return {
@@ -489,6 +535,8 @@ export async function getPayrollProcessPage(
           importe_vacaciones_pagadas: Number(row.importe_vacaciones_pagadas),
           dias_aguinaldo: Number(row.dias_aguinaldo),
           importe_aguinaldo: Number(row.importe_aguinaldo),
+          importe_ptu: Number(row.importe_ptu),
+          ptu: toPtuPaymentBreakdown(row as unknown as IPtuPaymentRowColumns),
           importe_gravado: toNullableNumber(row.importe_gravado),
           importe_exento: toNullableNumber(row.importe_exento),
           total_percepciones: Number(row.total_percepciones),
@@ -508,6 +556,7 @@ export async function getPayrollProcessPage(
           importeBonoExtension: Number(totals[0]?.importe_bono_extension ?? 0),
           importeVacaciones: Number(totals[0]?.importe_vacaciones ?? 0),
           importeAguinaldo: Number(totals[0]?.importe_aguinaldo ?? 0),
+          importePtu: Number(totals[0]?.importe_ptu ?? 0),
           importeGravado: Number(totals[0]?.importe_gravado ?? 0),
           importeExento: Number(totals[0]?.importe_exento ?? 0),
           totalPercepciones,

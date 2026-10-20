@@ -5,6 +5,7 @@ import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
 import { IsrAmountCell } from "./IsrAmountCell";
+import { TaxAmountCell } from "./TaxAmountCell";
 
 interface Props {
   rows: IPayrollEmployeeRow[];
@@ -18,19 +19,6 @@ interface Props {
 }
 
 const FOOTER_AMOUNT_CLASSES = "px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100";
-
-/** Gravado o exento del aguinaldo; "—" cuando no hay desglose (el exento no se pudo calcular). */
-function TaxAmountCell({ amount }: { amount: number | null }) {
-  return (
-    <td className="px-4 py-3.5 text-sm text-right tabular-nums whitespace-nowrap">
-      {amount === null ? (
-        <span className="text-[#747780] dark:text-zinc-500" title="El exento no se pudo calcular">—</span>
-      ) : (
-        <span className="text-[#0b1c30] dark:text-zinc-200">{formatPayrollCurrency(amount)}</span>
-      )}
-    </td>
-  );
-}
 
 /**
  * Tabla de Procesar para un periodo extraordinario (spec 87): el aguinaldo de cada empleado con sus días y salario
