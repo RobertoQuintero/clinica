@@ -131,3 +131,28 @@ export interface IPtuHistoryAverage {
   average: number;
   years:   number;
 }
+
+// ── Bitácora y detalle del reparto ────────────────────────────────────────────────────────────
+
+/** P parámetros, R precarga, A agregar, Q quitar, E edición de fila, H historial, C cerrar, O reabrir. */
+export type PtuLogAction = "P" | "R" | "A" | "Q" | "E" | "H" | "C" | "O";
+
+/** Fila de payroll.ptu_distribution_log + nombres resueltos por JOIN. */
+export interface IPtuDistributionLogEntry {
+  id_ptu_distribution_log: number;
+  id_empleado:             number | null;   // null en acciones del reparto
+  accion:                  PtuLogAction;
+  campo:                   string | null;
+  valor_anterior:          string | null;
+  valor_nuevo:             string | null;
+  changed_by_name:         string;
+  changed_at:              string;          // "YYYY-MM-DD HH:mm:ss"
+  nombre_empleado:         string | null;
+}
+
+/** Lo que muestra la pantalla del reparto: el reparto, sus trabajadores y las últimas entradas de la bitácora. */
+export interface IPtuDistributionDetail {
+  distribution: IPtuDistribution;
+  employees:    IPtuDistributionEmployee[];
+  log:          IPtuDistributionLogEntry[];
+}

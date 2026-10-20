@@ -1,10 +1,17 @@
 "use server";
 
 import db from "@/database/connection";
-import type { IPtuDistribution } from "@/interfaces/payroll_ptu";
+import type {
+  IPtuDistribution,
+  IPtuDistributionDetail,
+  IPtuDistributionEmployee,
+  IPtuDistributionLogEntry,
+} from "@/interfaces/payroll_ptu";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { calculatePtuDistribution } from "@/lib/payroll/ptuDistribution";
-import { PTU_DISTRIBUTION_SELECT } from "@/lib/payroll/ptuDistributionSql";
+import { PTU_LOG_ENTRIES_LIMIT } from "@/lib/payroll/constants";
+import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
+import { loadPtuPreloadRows, PTU_DISTRIBUTION_SELECT } from "@/lib/payroll/ptuDistributionSql";
 import { lockPtuDistribution, recalculatePtuDistribution } from "@/lib/payroll/ptuRecalculation";
 import {
   createPtuDistributionSchema,
@@ -211,5 +218,161 @@ export async function deletePtuDistribution(rawInput: unknown): Promise<ActionRe
   } catch (error) {
     console.error("deletePtuDistribution", error);
     return { ok: false, message: "No se pudo eliminar el reparto" };
+  }
+}
+
+const PTU_EMPLOYEE_ROW_SELECT = `
+  pe.id_ptu_distribution_employee, pe.id_ptu_distribution, pe.id_empleado, pe.id_sucursal, pe.origen, pe.editado,
+  pe.dias, pe.salario, pe.salario_diario_tope, pe.categoria_ptu, pe.tipo_contrato,
+  pe.elegible, pe.motivo, pe.salario_reparto, pe.ptu_dias, pe.ptu_salario, pe.ptu_bruto,
+  pe.tope_tres_meses, pe.promedio_tres_anios, pe.anios_promedio, pe.ptu_final,
+  e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo, s.nombre AS nombre_sucursal`;
+
+/** El reparto, sus trabajadores y las últimas entradas de la bitácora. `data: null` si no existe o es de otra empresa. */
+export async function getPtuDistributionDetail(rawId: unknown): Promise<ActionResult<IPtuDistributionDetail | null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionIdSchema.safeParse({ id_ptu_distribution: rawId });
+  if (!parsed.success) return { ok: true, data: null };
+  const { id_ptu_distribution } = parsed.data;
+
+  try {
+    const distributions = (await db.queryParams(
+      `SELECT ${PTU_DISTRIBUTION_SELECT}
+         FROM [CentroPodologico].[payroll].[ptu_distributions] d
+        WHERE d.id_ptu_distribution = @id_ptu_distribution AND d.id_empresa = @id_empresa`,
+      { id_ptu_distribution, id_empresa: access.data.id_empresa },
+    )) as IPtuDistribution[];
+    if (distributions.length === 0) return { ok: true, data: null };
+
+    const [employeeRows, logRows] = await Promise.all([
+      db.queryParams(
+        `SELECT ${PTU_EMPLOYEE_ROW_SELECT}
+           FROM [CentroPodologico].[payroll].[ptu_distribution_employees] pe
+           JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
+           JOIN [CentroPodologico].[dbo].[sucursales] s ON s.id_sucursal = pe.id_sucursal
+          WHERE pe.id_ptu_distribution = @id_ptu_distribution
+          ORDER BY pe.elegible DESC, nombre_completo`,
+        { id_ptu_distribution },
+      ) as Promise<IPtuDistributionEmployee[]>,
+      db.queryParams(
+        `SELECT TOP (@limit) l.id_ptu_distribution_log, l.id_empleado, l.accion, l.campo,
+                l.valor_anterior, l.valor_nuevo, ISNULL(u.nombre, '') AS changed_by_name,
+                CONVERT(varchar(19), l.changed_at, 120) AS changed_at,
+                ${EMPLOYEE_FULL_NAME_SQL} AS nombre_empleado
+           FROM [CentroPodologico].[payroll].[ptu_distribution_log] l
+           LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.id_user = l.changed_by
+           LEFT JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = l.id_empleado
+          WHERE l.id_ptu_distribution = @id_ptu_distribution
+          ORDER BY l.changed_at DESC, l.id_ptu_distribution_log DESC`,
+        { id_ptu_distribution, limit: PTU_LOG_ENTRIES_LIMIT },
+      ) as Promise<IPtuDistributionLogEntry[]>,
+    ]);
+
+    return { ok: true, data: { distribution: distributions[0], employees: employeeRows, log: logRows } };
+  } catch (error) {
+    console.error("getPtuDistributionDetail", error);
+    return { ok: false, message: "No se pudo cargar el reparto de PTU" };
+  }
+}
+
+export interface IPtuPreloadSummary {
+  added: number;
+  updated: number;
+}
+
+/**
+ * Trae los trabajadores del ejercicio desde la nómina fiscal ordinaria. Agrega a los que faltan y
+ * actualiza solo las filas sin la marca `editado`; nunca borra. Es idempotente: repetirla sin que
+ * cambie la nómina no modifica nada ni escribe en la bitácora.
+ */
+export async function preloadPtuDistribution(rawInput: unknown): Promise<ActionResult<IPtuPreloadSummary>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionIdSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const { id_ptu_distribution } = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      if (distribution.estado === "C") return "closed" as const;
+
+      const preloadRows = await loadPtuPreloadRows(tx, access.data.id_empresa, distribution.ejercicio);
+      const existingRows = (await tx.queryParams(
+        `SELECT id_empleado, editado, dias, salario, salario_diario_tope
+           FROM [CentroPodologico].[payroll].[ptu_distribution_employees] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_ptu_distribution = @id_ptu_distribution`,
+        { id_ptu_distribution },
+      )) as { id_empleado: number; editado: boolean; dias: number; salario: number; salario_diario_tope: number }[];
+      const existingByEmployee = new Map(existingRows.map((row) => [row.id_empleado, row]));
+
+      let added = 0;
+      let updated = 0;
+      for (const preload of preloadRows) {
+        const existing = existingByEmployee.get(preload.id_empleado);
+        if (!existing) {
+          // Las derivadas son un marcador: el recálculo de abajo las reescribe en esta misma transacción.
+          await tx.queryParams(
+            `INSERT INTO [CentroPodologico].[payroll].[ptu_distribution_employees]
+               ([id_ptu_distribution],[id_empleado],[id_sucursal],[origen],[dias],[salario],[salario_diario_tope],
+                [categoria_ptu],[tipo_contrato],[elegible],[motivo],[ptu_final])
+             VALUES
+               (@id_ptu_distribution,@id_empleado,@id_sucursal,'P',@dias,@salario,@salario_diario_tope,
+                @categoria_ptu,@tipo_contrato,0,'no_days',0)`,
+            { ...preload, id_ptu_distribution },
+          );
+          added++;
+          continue;
+        }
+        if (existing.editado) continue;
+        const hasChanged =
+          Number(existing.dias) !== preload.dias ||
+          Math.round(Number(existing.salario) * 100) !== Math.round(preload.salario * 100) ||
+          Math.round(Number(existing.salario_diario_tope) * 100) !== Math.round(preload.salario_diario_tope * 100);
+        if (!hasChanged) continue;
+        await tx.queryParams(
+          `UPDATE [CentroPodologico].[payroll].[ptu_distribution_employees]
+              SET [dias] = @dias, [salario] = @salario, [salario_diario_tope] = @salario_diario_tope
+            WHERE [id_ptu_distribution] = @id_ptu_distribution AND [id_empleado] = @id_empleado`,
+          {
+            id_ptu_distribution,
+            id_empleado: preload.id_empleado,
+            dias: preload.dias,
+            salario: preload.salario,
+            salario_diario_tope: preload.salario_diario_tope,
+          },
+        );
+        updated++;
+      }
+
+      // Se recalcula siempre: la categoría, el contrato o el historial pudieron cambiar desde la última vez.
+      await recalculatePtuDistribution(tx, distribution);
+
+      if (added > 0 || updated > 0) {
+        await tx.queryParams(
+          `INSERT INTO [CentroPodologico].[payroll].[ptu_distribution_log]
+             ([id_ptu_distribution],[id_empleado],[accion],[campo],[valor_anterior],[valor_nuevo],[changed_by],[changed_at])
+           VALUES (@id_ptu_distribution, NULL, 'R', NULL, NULL, @valor_nuevo, @changed_by, @changed_at)`,
+          {
+            id_ptu_distribution,
+            valor_nuevo: `Agregó ${added} y actualizó ${updated}`,
+            changed_by: access.data.id_user,
+            changed_at: buildDate(new Date()),
+          },
+        );
+      }
+      return { added, updated };
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "closed") return { ok: false, message: CLOSED_DISTRIBUTION_MESSAGE };
+    revalidatePath(PTU_PATH);
+    revalidatePath(`${PTU_PATH}/${id_ptu_distribution}`);
+    return { ok: true, data: outcome };
+  } catch (error) {
+    console.error("preloadPtuDistribution", error);
+    return { ok: false, message: "No se pudo precargar los trabajadores" };
   }
 }

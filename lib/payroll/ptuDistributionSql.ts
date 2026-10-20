@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { ITransactionClient } from "@/database/connection";
-import type { IPtuDistribution, IPtuHistoryEntry } from "@/interfaces/payroll_ptu";
+import type { IPtuDistribution, IPtuHistoryEntry, PtuCategory } from "@/interfaces/payroll_ptu";
 import { PTU_AVERAGE_YEARS } from "@/lib/payroll/constants";
 
 /** Columnas de payroll.ptu_distributions; las fechas salen como string (nunca Date). */
@@ -80,4 +80,66 @@ export async function loadPtuHistoryByEmployee(
     addEntry(row.id_empleado, { ejercicio: row.ejercicio, importe: Number(row.importe), origen: "manual" });
   }
   return historyByEmployee;
+}
+
+/** Trabajador que la precarga propone para un reparto, con los datos actuales del empleado. */
+export interface IPtuPreloadRow {
+  id_empleado:         number;
+  id_sucursal:         number;
+  categoria_ptu:       PtuCategory;
+  tipo_contrato:       string | null;
+  dias:                number;
+  salario:             number;
+  salario_diario_tope: number;
+}
+
+/** Tope de días de un trabajador en el ejercicio (columna `dias` smallint con CHECK 0..366). */
+const MAX_PRELOAD_DAYS = 366;
+
+/**
+ * Trabajadores de la empresa con al menos una fila fiscal ('F') de un periodo ordinario ('O') cuyo
+ * `fecha_fin` cae en el ejercicio, activos o dados de baja. Los periodos extraordinarios (aguinaldo)
+ * no suman. Días y salario son la suma de `dias` e `importe_salario` (solo sueldo: sin horas extra,
+ * bonos, comisiones, aguinaldo, prima ni vacaciones pagadas); el salario diario tope es el de la
+ * fila fiscal más reciente. La empresa del empleado es la de su sucursal actual.
+ */
+export async function loadPtuPreloadRows(
+  client: ITransactionClient,
+  id_empresa: number,
+  ejercicio: number,
+): Promise<IPtuPreloadRow[]> {
+  const rows = (await client.queryParams(
+    `WITH fiscal_rows AS (
+       SELECT pe.id_empleado, pe.dias, pe.importe_salario, pe.salario_diario,
+              ROW_NUMBER() OVER (PARTITION BY pe.id_empleado ORDER BY p.fecha_fin DESC, p.id_period DESC) AS recency
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+         JOIN [CentroPodologico].[payroll].[periods] p ON p.id_period = pe.id_period
+         JOIN [CentroPodologico].[RH].[empleados] emp ON emp.id_empleado = pe.id_empleado
+         JOIN [CentroPodologico].[dbo].[sucursales] s ON s.id_sucursal = emp.id_sucursal
+        WHERE pe.tipo_nomina = 'F'
+          AND p.tipo_periodo = 'O'
+          AND p.fecha_fin >= @year_start AND p.fecha_fin <= @year_end
+          AND s.id_empresa = @id_empresa
+     )
+     SELECT f.id_empleado, emp.id_sucursal, emp.categoria_ptu, emp.tipo_contrato,
+            CASE WHEN SUM(f.dias) > @max_days THEN @max_days ELSE SUM(f.dias) END AS dias,
+            SUM(f.importe_salario) AS salario,
+            MAX(CASE WHEN f.recency = 1 THEN f.salario_diario END) AS salario_diario_tope
+       FROM fiscal_rows f
+       JOIN [CentroPodologico].[RH].[empleados] emp ON emp.id_empleado = f.id_empleado
+      GROUP BY f.id_empleado, emp.id_sucursal, emp.categoria_ptu, emp.tipo_contrato
+      ORDER BY f.id_empleado`,
+    {
+      id_empresa,
+      year_start: `${ejercicio}-01-01`,
+      year_end: `${ejercicio}-12-31`,
+      max_days: MAX_PRELOAD_DAYS,
+    },
+  )) as IPtuPreloadRow[];
+  return rows.map((row) => ({
+    ...row,
+    dias: Number(row.dias),
+    salario: Number(row.salario),
+    salario_diario_tope: Number(row.salario_diario_tope),
+  }));
 }

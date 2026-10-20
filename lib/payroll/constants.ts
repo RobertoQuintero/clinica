@@ -7,6 +7,7 @@ import type {
   PtuCategory,
   PtuDistributionStatus,
   PtuIneligibilityReason,
+  PtuLogAction,
   PtuTaxpayerType,
   PtuThreeMonthsFactor,
 } from "@/interfaces/payroll_ptu";
@@ -134,3 +135,32 @@ export const PTU_INELIGIBILITY_REASON_LABELS: Record<PtuIneligibilityReason, str
 };
 export const PTU_DISTRIBUTION_STATUS_LABELS: Record<PtuDistributionStatus, string> = { B: "Borrador", C: "Cerrado" };
 export const PTU_TAXPAYER_TYPE_LABELS: Record<PtuTaxpayerType, string> = { M: "Persona moral", F: "Persona física" };
+
+export const PTU_LOG_ENTRIES_LIMIT = 20;
+export const PTU_LOG_ACTION_LABELS: Record<PtuLogAction, string> = {
+  P: "Parámetros",
+  R: "Precarga",
+  A: "Trabajador agregado",
+  Q: "Trabajador quitado",
+  E: "Edición de fila",
+  H: "Historial de PTU",
+  C: "Cierre",
+  O: "Reapertura",
+};
+/** Campo de la bitácora -> etiqueta. `type` decide cómo se muestra el valor. */
+export const PTU_LOG_FIELD_LABELS: Record<string, { label: string; type: "text" | "money" | "taxpayer" | "number" }> = {
+  tipo_persona:            { label: "Tipo de persona",                    type: "taxpayer" },
+  renta_gravable:          { label: "Renta gravable",                     type: "money" },
+  ptu_no_cobrada_anterior: { label: "PTU no cobrada del ejercicio anterior", type: "money" },
+  factor_tres_meses:       { label: "Factor de 3 meses",                  type: "number" },
+  dias:                    { label: "Días",                               type: "number" },
+  salario:                 { label: "Salario",                            type: "money" },
+  salario_diario_tope:     { label: "Salario diario tope",                type: "money" },
+};
+
+/** Versión corta de PTU_CATEGORY_LABELS para las celdas de una tabla. */
+export const PTU_CATEGORY_SHORT_LABELS: Record<PtuCategory, string> = {
+  N: "Normal",
+  C: "Confianza",
+  X: "Excluido",
+};
