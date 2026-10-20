@@ -16,6 +16,8 @@ import {
   isClabeAccount,
   type StampingField,
 } from "@/lib/payroll/payrollStampingReadiness";
+import { PTU_CATEGORY_LABELS } from "@/lib/payroll/constants";
+import type { PtuCategory } from "@/interfaces/payroll_ptu";
 import { createEmployee, rehireEmployee, updateEmployee, IEmployeeCatalogs } from "../actions";
 
 interface Props {
@@ -71,6 +73,7 @@ function buildEmptyForm(): EmployeeFormInput {
     tipo_jornada: DEFAULT_EMPLOYEE_FISCAL_VALUES.tipo_jornada,
     sindicalizado: DEFAULT_EMPLOYEE_FISCAL_VALUES.sindicalizado,
     banco: null,
+    categoria_ptu: "N",
   };
 }
 
@@ -110,6 +113,7 @@ function employeeToFormInput(employee: IEmployeeListItem): EmployeeFormInput {
     tipo_jornada: employee.tipo_jornada,
     sindicalizado: employee.sindicalizado,
     banco: employee.banco,
+    categoria_ptu: employee.categoria_ptu,
   };
 }
 
@@ -657,6 +661,25 @@ export default function EmployeeModal({ employee, rehireFrom, catalogs, onClose 
                   <option value="false">No</option>
                   <option value="true">Sí</option>
                 </select>
+              </label>
+              <label className="flex flex-col gap-1 sm:col-span-2">
+                <span className={labelClass}>Categoría para el reparto de PTU</span>
+                <select
+                  name="categoria_ptu"
+                  value={form.categoria_ptu}
+                  onChange={handleTextChange}
+                  className={inputClass}
+                >
+                  {(Object.keys(PTU_CATEGORY_LABELS) as PtuCategory[]).map((category) => (
+                    <option key={category} value={category}>
+                      {PTU_CATEGORY_LABELS[category]}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-[#44474f] dark:text-zinc-400">
+                  Directores, administradores y gerentes generales no reciben PTU (LFT art. 127 fr. I). A los
+                  trabajadores de confianza su PTU se topa al salario más alto de base aumentado 20% (fr. II).
+                </span>
               </label>
             </div>
           </section>

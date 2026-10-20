@@ -1303,6 +1303,12 @@ CREATE UNIQUE NONCLUSTERED INDEX [UX_empleados_empleado_anterior]
     WHERE [id_empleado_anterior] IS NOT NULL
 GO
 
+-- Spec 89: categoría PTU. Todos los existentes quedan 'N'.
+ALTER TABLE [RH].[empleados] ADD [categoria_ptu] [char](1) NOT NULL
+    CONSTRAINT [DF_empleados_categoria_ptu] DEFAULT ('N')
+    CONSTRAINT [CK_empleados_categoria_ptu] CHECK ([categoria_ptu] IN ('N','C','X'));
+GO
+
 -- Un renglón por checada (entrada o salida), tal como la reporta el dispositivo.
 CREATE TABLE [RH].[asistencias](
     [id_asistencia]        [int] IDENTITY(1,1) NOT NULL,
@@ -2810,6 +2816,134 @@ SELECT pp.[id_payment_period], pp.[status], COUNT(e.[id_empleado]) AS empleados_
   LEFT JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_periodo_pago] = pp.[id_payment_period]
  WHERE pp.[clave_sat] = '99'
  GROUP BY pp.[id_payment_period], pp.[status];
+GO
+
+-- Spec 89: reparto de PTU por empresa y ejercicio.
+-- Un reparto por empresa y ejercicio. Las columnas derivadas se reescriben en cada recálculo.
+CREATE TABLE [payroll].[ptu_distributions](
+    [id_ptu_distribution]           [int] IDENTITY(1,1) NOT NULL,
+    [id_empresa]                    [int]           NOT NULL,
+    [ejercicio]                     [smallint]      NOT NULL,   -- año de las utilidades
+    [tipo_persona]                  [char](1)       NOT NULL,   -- 'M' moral, 'F' física (lo usa la spec 90)
+    [renta_gravable]                [decimal](18,2) NOT NULL,
+    [ptu_no_cobrada_anterior]       [decimal](18,2) NOT NULL CONSTRAINT [DF_ptu_distributions_no_cobrada] DEFAULT (0),
+    [factor_tres_meses]             [decimal](5,2)  NOT NULL,   -- 90.00 | 91.25
+    [estado]                        [char](1)       NOT NULL CONSTRAINT [DF_ptu_distributions_estado] DEFAULT ('B'),
+    -- Derivadas
+    [fondo]                         [decimal](18,2) NOT NULL,
+    [mitad_dias]                    [decimal](18,2) NOT NULL,
+    [mitad_salario]                 [decimal](18,2) NOT NULL,
+    [total_dias]                    [int]           NOT NULL,   -- solo elegibles
+    [total_salario_reparto]         [decimal](18,2) NOT NULL,   -- solo elegibles, ya con tope 120%
+    [tope_salario_diario_confianza] [decimal](18,2) NULL,       -- NULL sin elegibles 'N'
+    [total_repartido]               [decimal](18,2) NOT NULL,   -- SUM(ptu_final)
+    [remanente_topes]               [decimal](18,2) NOT NULL,   -- SUM(bruto − final)
+    [remanente_redondeo]            [decimal](18,2) NOT NULL,   -- fondo − SUM(bruto)
+    -- Auditoría
+    [created_by]                    [int]           NOT NULL,
+    [created_at]                    [datetime2](0)  NOT NULL,
+    [updated_at]                    [datetime2](0)  NOT NULL,
+    [cerrado_by]                    [int]           NULL,
+    [cerrado_at]                    [datetime2](0)  NULL,
+ CONSTRAINT [PK_ptu_distributions] PRIMARY KEY CLUSTERED ([id_ptu_distribution] ASC),
+ CONSTRAINT [UQ_ptu_distributions_empresa_ejercicio] UNIQUE ([id_empresa], [ejercicio]),
+ CONSTRAINT [CK_ptu_distributions_valores] CHECK (
+     [tipo_persona] IN ('M','F')
+     AND [estado] IN ('B','C')
+     AND [factor_tres_meses] IN (90.00, 91.25)
+     AND [renta_gravable] >= 0 AND [ptu_no_cobrada_anterior] >= 0
+     AND [mitad_dias] + [mitad_salario] = [fondo]
+     AND [remanente_topes] >= 0 AND [remanente_redondeo] >= 0
+     AND [total_repartido] + [remanente_topes] + [remanente_redondeo] = [fondo]),
+ CONSTRAINT [CK_ptu_distributions_cierre] CHECK (
+     ([estado] = 'B' AND [cerrado_by] IS NULL AND [cerrado_at] IS NULL)
+  OR ([estado] = 'C' AND [cerrado_by] IS NOT NULL AND [cerrado_at] IS NOT NULL))
+) ON [PRIMARY]
+GO
+
+-- Un renglón por trabajador del reparto.
+CREATE TABLE [payroll].[ptu_distribution_employees](
+    [id_ptu_distribution_employee]  [int] IDENTITY(1,1) NOT NULL,
+    [id_ptu_distribution]           [int]           NOT NULL,
+    [id_empleado]                   [int]           NOT NULL,
+    [id_sucursal]                   [int]           NOT NULL,   -- la actual del empleado; se congela al cerrar
+    [origen]                        [char](1)       NOT NULL,   -- 'P' precarga, 'M' agregado a mano
+    [editado]                       [bit]           NOT NULL CONSTRAINT [DF_ptu_distribution_employees_editado] DEFAULT (0),
+    -- Entradas (precarga o edición)
+    [dias]                          [smallint]      NOT NULL,
+    [salario]                       [decimal](18,2) NOT NULL,
+    [salario_diario_tope]           [decimal](18,2) NOT NULL,
+    -- Congeladas del empleado en cada recálculo
+    [categoria_ptu]                 [char](1)       NOT NULL,
+    [tipo_contrato]                 [varchar](2)    NULL,
+    -- Derivadas
+    [elegible]                      [bit]           NOT NULL,
+    [motivo]                        [varchar](30)   NULL,
+    [salario_reparto]               [decimal](18,2) NULL,
+    [ptu_dias]                      [decimal](18,2) NULL,
+    [ptu_salario]                   [decimal](18,2) NULL,
+    [ptu_bruto]                     [decimal](18,2) NULL,
+    [tope_tres_meses]               [decimal](18,2) NULL,
+    [promedio_tres_anios]           [decimal](18,2) NULL,       -- NULL sin datos
+    [anios_promedio]                [tinyint]       NULL,       -- 1..3; NULL sin datos
+    [ptu_final]                     [decimal](18,2) NOT NULL,
+ CONSTRAINT [PK_ptu_distribution_employees] PRIMARY KEY CLUSTERED ([id_ptu_distribution_employee] ASC),
+ CONSTRAINT [UQ_ptu_distribution_employees] UNIQUE ([id_ptu_distribution], [id_empleado]),
+ CONSTRAINT [FK_ptu_distribution_employees_distribution] FOREIGN KEY ([id_ptu_distribution])
+     REFERENCES [payroll].[ptu_distributions] ([id_ptu_distribution]) ON DELETE CASCADE,
+ CONSTRAINT [FK_ptu_distribution_employees_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_ptu_distribution_employees_entradas] CHECK (
+     [origen] IN ('P','M') AND [categoria_ptu] IN ('N','C','X')
+     AND [dias] BETWEEN 0 AND 366 AND [salario] >= 0 AND [salario_diario_tope] >= 0),
+ CONSTRAINT [CK_ptu_distribution_employees_reparto] CHECK (
+     ([elegible] = 0
+        AND [motivo] IS NOT NULL
+        AND [motivo] IN ('excluded_category','eventual_under_60_days','no_days')
+        AND [ptu_final] = 0)
+  OR ([elegible] = 1
+        AND [motivo] IS NULL
+        AND [salario_reparto] IS NOT NULL AND [ptu_dias] IS NOT NULL
+        AND [ptu_salario] IS NOT NULL AND [ptu_bruto] IS NOT NULL
+        AND [tope_tres_meses] IS NOT NULL
+        AND [ptu_bruto] = [ptu_dias] + [ptu_salario]
+        AND [ptu_final] <= [ptu_bruto]
+        AND ([promedio_tres_anios] IS NULL OR [anios_promedio] IS NOT NULL)))
+) ON [PRIMARY]
+GO
+
+-- PTU de años anteriores capturada a mano. Si el ejercicio tiene un reparto cerrado
+-- de la empresa, ese reparto gana y esta fila se ignora.
+CREATE TABLE [payroll].[ptu_history](
+    [id_empleado]  [int]           NOT NULL,
+    [ejercicio]    [smallint]      NOT NULL,
+    [importe]      [decimal](18,2) NOT NULL,
+    [captured_by]  [int]           NOT NULL,
+    [captured_at]  [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_ptu_history] PRIMARY KEY CLUSTERED ([id_empleado], [ejercicio]),
+ CONSTRAINT [FK_ptu_history_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_ptu_history_importe] CHECK ([importe] >= 0)
+) ON [PRIMARY]
+GO
+
+-- Bitácora del reparto. Se borra junto con un reparto en borrador.
+-- Acciones: P parámetros, R precarga, A agregar, Q quitar, E edición (una por campo), H historial, C cerrar, O reabrir.
+CREATE TABLE [payroll].[ptu_distribution_log](
+    [id_ptu_distribution_log] [int] IDENTITY(1,1) NOT NULL,
+    [id_ptu_distribution]     [int]           NOT NULL,
+    [id_empleado]             [int]           NULL,         -- NULL en acciones del reparto
+    [accion]                  [char](1)       NOT NULL,
+    [campo]                   [varchar](40)   NULL,
+    [valor_anterior]          [nvarchar](100) NULL,
+    [valor_nuevo]             [nvarchar](100) NULL,
+    [changed_by]              [int]           NOT NULL,
+    [changed_at]              [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_ptu_distribution_log] PRIMARY KEY CLUSTERED ([id_ptu_distribution_log] ASC),
+ CONSTRAINT [FK_ptu_distribution_log_distribution] FOREIGN KEY ([id_ptu_distribution])
+     REFERENCES [payroll].[ptu_distributions] ([id_ptu_distribution]) ON DELETE CASCADE,
+ CONSTRAINT [CK_ptu_distribution_log_accion] CHECK ([accion] IN ('P','R','A','Q','E','H','C','O'))
+) ON [PRIMARY]
 GO
 
 

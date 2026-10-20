@@ -1,4 +1,5 @@
 import type { IEmployeeTermination } from "@/interfaces/employee_termination";
+import type { PtuCategory } from "@/interfaces/payroll_ptu";
 import type { IVacationBadgeSummary } from "@/interfaces/vacation";
 
 /** Fila de RH.empleados tal como la devuelven los server actions. */
@@ -48,6 +49,7 @@ export interface IEmployee {
   tipo_jornada:        string | null;   // clave c_TipoJornada
   sindicalizado:       boolean | null;
   banco:               string | null;   // clave c_Banco
+  categoria_ptu:       PtuCategory;     // spec 89: 'N' normal, 'C' confianza, 'X' excluido del reparto de PTU
 
   activo:              boolean;
   status:              boolean;
