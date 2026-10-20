@@ -11,6 +11,17 @@ export function formatPeriodDate(dateString: string): string {
   return `${day} ${SHORT_MONTH_NAMES[month - 1]} ${year}`;
 }
 
+const LONG_MONTH_NAMES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+/** "2027-05-30" -> "30 de mayo". */
+export function formatLongDayMonth(dateString: string): string {
+  const { month, day } = splitDateString(dateString);
+  return `${day} de ${LONG_MONTH_NAMES[month - 1]}`;
+}
+
 /** "2026-09-14" -> "14 sep". */
 export function formatPeriodDayMonth(dateString: string): string {
   const { month, day } = splitDateString(dateString);

@@ -3,11 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarRange, TriangleAlert, X } from "lucide-react";
-import type { IPayrollPeriodDates, IPayrollPeriodRow, PayrollPeriodType } from "@/interfaces/payroll_period";
-import { CHRISTMAS_BONUS_DEADLINE_MONTH_DAY, PAYROLL_PERIOD_TYPE_LABELS } from "@/lib/payroll/constants";
+import type { ExtraordinaryConcept, IPayrollPeriodDates, IPayrollPeriodRow } from "@/interfaces/payroll_period";
+import {
+  CHRISTMAS_BONUS_DEADLINE_MONTH_DAY,
+  EXTRAORDINARY_CONCEPT_LABELS,
+  PAYROLL_PERIOD_TYPE_LABELS,
+} from "@/lib/payroll/constants";
+import { useActionData } from "@/hooks/useActionData";
+import { formatLongDayMonth } from "@/lib/payroll/periodFormat";
 import { addZeroToday } from "@/utils/date_helpper";
 import {
   createPayrollPeriod,
+  getPtuPaymentSuggestion,
   getSuggestedPeriodDates,
   updatePayrollPeriod,
   type IPayrollFrequency,
@@ -22,11 +29,17 @@ const EMPTY_DATES: IPayrollPeriodDates = { fecha_inicio: "", fecha_fin: "", fech
 const FIELD_CLASSES =
   "w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-[#0b1c30] dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#0051d5] focus:border-[#0051d5] transition-all disabled:bg-[#eff4ff] dark:disabled:bg-zinc-800/60 disabled:text-[#44474f] dark:disabled:text-zinc-400 disabled:cursor-not-allowed";
 
-const PERIOD_TYPES: PayrollPeriodType[] = ["O", "E"];
+/** Lo que se crea: un periodo ordinario o uno extraordinario de aguinaldo (A) o de PTU (P). */
+type PeriodKind = "O" | ExtraordinaryConcept;
 
-/** Fechas del periodo extraordinario de un año: inicio y fin fijos; corte y pago el 20-dic (editables). */
-function buildExtraordinaryDates(year: string): IPayrollPeriodDates {
-  const suggestedPaymentDate = `${year}-${CHRISTMAS_BONUS_DEADLINE_MONTH_DAY}`;
+const PERIOD_KINDS: PeriodKind[] = ["O", "A", "P"];
+const PERIOD_KIND_LABELS: Record<PeriodKind, string> = { O: PAYROLL_PERIOD_TYPE_LABELS.O, ...EXTRAORDINARY_CONCEPT_LABELS };
+/**
+ * Fechas del periodo extraordinario de un año: inicio y fin fijos. En el aguinaldo corte y pago se sugieren el 20-dic;
+ * en la PTU quedan vacíos hasta que llega la fecha límite del reparto (ver `getPtuPaymentSuggestion`). Ambos son editables.
+ */
+function buildExtraordinaryDates(concept: ExtraordinaryConcept, year: string): IPayrollPeriodDates {
+  const suggestedPaymentDate = concept === "A" ? `${year}-${CHRISTMAS_BONUS_DEADLINE_MONTH_DAY}` : "";
   return {
     fecha_inicio: `${year}-01-01`,
     fecha_fin: `${year}-12-31`,
@@ -47,9 +60,13 @@ export default function PayrollPeriodModal(props: Props) {
   const isEditing = props.mode === "edit";
   const editedPeriod = props.mode === "edit" ? props.period : null;
 
-  const [periodType, setPeriodType] = useState<PayrollPeriodType>(editedPeriod?.tipo_periodo ?? "O");
-  const [bonusYear, setBonusYear] = useState(() => editedPeriod?.ejercicio.toString() ?? addZeroToday(new Date()).slice(0, 4));
-  const isExtraordinary = periodType === "E";
+  const [periodKind, setPeriodKind] = useState<PeriodKind>(editedPeriod?.concepto_extraordinario ?? "O");
+  const [extraordinaryYear, setExtraordinaryYear] = useState(
+    () => editedPeriod?.ejercicio.toString() ?? addZeroToday(new Date()).slice(0, 4),
+  );
+  const isExtraordinary = periodKind !== "O";
+  const isPtu = periodKind === "P";
+  const isValidYear = /^\d{4}$/.test(extraordinaryYear);
   const [idPaymentPeriod, setIdPaymentPeriod] = useState("");
   const [dates, setDates] = useState<IPayrollPeriodDates>(
     editedPeriod
@@ -65,6 +82,22 @@ export default function PayrollPeriodModal(props: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const latestSuggestionRequest = useRef(0);
+
+  // Fecha límite de la PTU según el tipo de persona del reparto del año anterior (y, de paso, la precondición del alta).
+  const ptuSuggestion = useActionData(
+    isPtu && isValidYear ? ["ptu-payment-suggestion", Number(extraordinaryYear)] : null,
+    () => getPtuPaymentSuggestion(Number(extraordinaryYear)),
+  );
+  // Año para el que ya se aplicó la sugerencia a las fechas, para no pisar lo que el usuario edite después.
+  const [appliedSuggestionYear, setAppliedSuggestionYear] = useState<string | null>(null);
+  if (!isEditing && isPtu && ptuSuggestion.data && appliedSuggestionYear !== extraordinaryYear) {
+    const suggestedPaymentDate = ptuSuggestion.data.fecha_limite;
+    setAppliedSuggestionYear(extraordinaryYear);
+    setDates((previous) => ({ ...previous, fecha_corte: suggestedPaymentDate, fecha_pago: suggestedPaymentDate }));
+  }
+  const ptuDeadline = isPtu ? (ptuSuggestion.data?.fecha_limite ?? null) : null;
+  const ptuBlockingMessage = isPtu && !isEditing ? ptuSuggestion.error : null;
+  const isWaitingForPtuSuggestion = isPtu && !isEditing && !ptuSuggestion.data;
 
   const { onClose } = props;
   useEffect(() => {
@@ -90,19 +123,21 @@ export default function PayrollPeriodModal(props: Props) {
     else setErrorMessage(result.message);
   }
 
-  function handlePeriodTypeChange(nextType: PayrollPeriodType) {
-    if (nextType === periodType) return;
+  function handlePeriodKindChange(nextKind: PeriodKind) {
+    if (nextKind === periodKind) return;
     latestSuggestionRequest.current++;
     setIsSuggesting(false);
-    setPeriodType(nextType);
+    setPeriodKind(nextKind);
     setErrorMessage(null);
     setIdPaymentPeriod("");
-    setDates(nextType === "E" ? buildExtraordinaryDates(bonusYear) : EMPTY_DATES);
+    setAppliedSuggestionYear(null);
+    setDates(nextKind === "O" ? EMPTY_DATES : buildExtraordinaryDates(nextKind, extraordinaryYear));
   }
 
-  function handleBonusYearChange(nextYear: string) {
-    setBonusYear(nextYear);
-    if (/^d{4}$/.test(nextYear)) setDates(buildExtraordinaryDates(nextYear));
+  function handleExtraordinaryYearChange(nextYear: string) {
+    setExtraordinaryYear(nextYear);
+    setAppliedSuggestionYear(null);
+    if (periodKind !== "O" && /^\d{4}$/.test(nextYear)) setDates(buildExtraordinaryDates(periodKind, nextYear));
   }
 
   function handleDateChange(field: keyof IPayrollPeriodDates, value: string) {
@@ -122,12 +157,12 @@ export default function PayrollPeriodModal(props: Props) {
       const result = editedPeriod
         ? await updatePayrollPeriod(
             isExtraordinary
-              ? { tipo_periodo: "E", id_period: editedPeriod.id_period, fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
+              ? { tipo_periodo: "E", concepto_extraordinario: periodKind, id_period: editedPeriod.id_period, fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
               : { tipo_periodo: "O", id_period: editedPeriod.id_period, ...dates },
           )
         : await createPayrollPeriod(
             isExtraordinary
-              ? { tipo_periodo: "E", ejercicio: Number(bonusYear), fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
+              ? { tipo_periodo: "E", concepto_extraordinario: periodKind, ejercicio: Number(extraordinaryYear), fecha_corte: dates.fecha_corte, fecha_pago: dates.fecha_pago }
               : { tipo_periodo: "O", id_payment_period: Number(idPaymentPeriod), ...dates },
           );
       if (!result.ok) {
@@ -176,9 +211,9 @@ export default function PayrollPeriodModal(props: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
-          {errorMessage && (
+          {(errorMessage ?? ptuBlockingMessage) && (
             <p role="alert" className="rounded-md bg-red-50 dark:bg-red-900/30 px-4 py-2 text-sm text-red-600 dark:text-red-400">
-              {errorMessage}
+              {errorMessage ?? ptuBlockingMessage}
             </p>
           )}
 
@@ -188,20 +223,20 @@ export default function PayrollPeriodModal(props: Props) {
               aria-label="Tipo de periodo"
               className="inline-flex w-fit rounded-lg border border-[#c4c6d0] dark:border-zinc-700 bg-[#eff4ff] dark:bg-zinc-800 p-1"
             >
-              {PERIOD_TYPES.map((type) => (
+              {PERIOD_KINDS.map((kind) => (
                 <button
-                  key={type}
+                  key={kind}
                   type="button"
                   role="radio"
-                  aria-checked={type === periodType}
-                  onClick={() => handlePeriodTypeChange(type)}
+                  aria-checked={kind === periodKind}
+                  onClick={() => handlePeriodKindChange(kind)}
                   className={`rounded-md px-4 py-1.5 text-sm font-semibold transition-colors ${
-                    type === periodType
+                    kind === periodKind
                       ? "bg-white dark:bg-zinc-900 text-[#0051d5] dark:text-blue-300 shadow-sm"
                       : "text-[#44474f] dark:text-zinc-400 hover:text-[#0b1c30] dark:hover:text-zinc-100"
                   }`}
                 >
-                  {PAYROLL_PERIOD_TYPE_LABELS[type]}
+                  {PERIOD_KIND_LABELS[kind]}
                 </button>
               ))}
             </div>
@@ -209,7 +244,7 @@ export default function PayrollPeriodModal(props: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">
-              {isExtraordinary ? "Año del aguinaldo" : "Frecuencia"}
+              {isPtu ? "Año de pago" : isExtraordinary ? "Año del aguinaldo" : "Frecuencia"}
               {editedPeriod ? (
                 <input
                   type="text"
@@ -224,8 +259,8 @@ export default function PayrollPeriodModal(props: Props) {
                   min={2000}
                   max={2100}
                   step={1}
-                  value={bonusYear}
-                  onChange={(event) => handleBonusYearChange(event.target.value)}
+                  value={extraordinaryYear}
+                  onChange={(event) => handleExtraordinaryYearChange(event.target.value)}
                   className={FIELD_CLASSES}
                 />
               ) : (
@@ -277,7 +312,7 @@ export default function PayrollPeriodModal(props: Props) {
                 </label>
               ))}
             </div>
-            {isExtraordinary && dates.fecha_pago > `${bonusYear}-${CHRISTMAS_BONUS_DEADLINE_MONTH_DAY}` && (
+            {periodKind === "A" && dates.fecha_pago > `${extraordinaryYear}-${CHRISTMAS_BONUS_DEADLINE_MONTH_DAY}` && (
               <p
                 role="status"
                 className="mt-3 flex gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200"
@@ -287,8 +322,20 @@ export default function PayrollPeriodModal(props: Props) {
                 quedaría fuera de plazo.
               </p>
             )}
+            {ptuDeadline && dates.fecha_pago > ptuDeadline && (
+              <p
+                role="status"
+                className="mt-3 flex gap-2 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-900 dark:text-amber-200"
+              >
+                <TriangleAlert size={14} aria-hidden className="mt-0.5 shrink-0" />
+                La PTU debe pagarse a más tardar el {formatLongDayMonth(ptuDeadline)}. Puedes guardar esta fecha, pero el
+                pago quedaría fuera de plazo.
+              </p>
+            )}
             <p className="mt-3 text-xs text-[#747780] dark:text-zinc-500">
-              {isExtraordinary
+              {isPtu
+                ? `Paga la PTU del reparto ${Number(extraordinaryYear) - 1}. Cubre del 1 de enero al 31 de diciembre del año de pago. Solo se editan el corte y el pago.`
+                : isExtraordinary
                 ? "Cubre del 1 de enero al 31 de diciembre del año. Solo se editan el corte y el pago."
                 : isEditing
                 ? "Solo se pueden cambiar las fechas mientras el periodo está Programada."
@@ -308,7 +355,7 @@ export default function PayrollPeriodModal(props: Props) {
             </button>
             <button
               type="submit"
-              disabled={isSaving || isSuggesting}
+              disabled={isSaving || isSuggesting || isWaitingForPtuSuggestion}
               className="rounded-lg bg-[#0051d5] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0051d5]/90 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSaving ? "Guardando…" : isEditing ? "Guardar cambios" : "Crear periodo"}

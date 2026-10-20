@@ -54,6 +54,7 @@ export default function PayrollProcessSummaryCards({
   const showsDeductions = payrollType === "F";
   // Spec 87: en un periodo extraordinario las percepciones son solo el aguinaldo y el ISR sale del art. 174.
   const isExtraordinary = period.tipo_periodo === "E";
+  const isPtu = isExtraordinary && period.concepto_extraordinario === "P";
 
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${showsDeductions ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
@@ -63,7 +64,7 @@ export default function PayrollProcessSummaryCards({
         </span>
         <span className="mt-1 flex items-center gap-2 text-xs text-[#44474f] dark:text-zinc-400">
           {period.codigo}
-          <PayrollFrequencyBadge description={period.frecuencia_descripcion} periodType={period.tipo_periodo} />
+          <PayrollFrequencyBadge description={period.frecuencia_descripcion} periodType={period.tipo_periodo} extraordinaryConcept={period.concepto_extraordinario} />
         </span>
       </SummaryCard>
 
@@ -85,11 +86,16 @@ export default function PayrollProcessSummaryCards({
         </span>
       </SummaryCard>
 
-      <SummaryCard icon={<Banknote size={20} />} label={isExtraordinary ? "Total de aguinaldo" : "Total de percepciones"}>
+      <SummaryCard icon={<Banknote size={20} />} label={isPtu ? "Total de PTU" : isExtraordinary ? "Total de aguinaldo" : "Total de percepciones"}>
         <span className="text-xl font-bold leading-tight text-[#0b1c30] dark:text-zinc-50 tabular-nums">
           {formatPayrollCurrency(totals.totalPercepciones)}
         </span>
-        {isExtraordinary ? (
+        {isPtu ? (
+          <span className="text-xs text-[#44474f] dark:text-zinc-400 tabular-nums">
+            PTU {period.ejercicio - 1}: gravado {formatPayrollCurrency(totals.importeGravado)} + exento{" "}
+            {formatPayrollCurrency(totals.importeExento)}
+          </span>
+        ) : isExtraordinary ? (
           <span className="text-xs text-[#44474f] dark:text-zinc-400 tabular-nums">
             {showsDeductions
               ? `Aguinaldo: gravado ${formatPayrollCurrency(totals.importeGravado)} + exento ${formatPayrollCurrency(totals.importeExento)}`

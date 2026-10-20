@@ -18,23 +18,27 @@ const ARTICLE_174_DIFFERS_CONDITION = `EXISTS (
                    SELECT ${ARTICLE_174_COLUMNS_SQL.map(({ expression }) => expression).join(", ")})`;
 
 /**
- * Aviso "Recalcula" del aguinaldo (spec 87): ¿lo que saldría hoy ya no coincide con lo que congeló el último cálculo?
- * Solo aplica a periodos extraordinarios en estatus 2 (En cálculo); en cualquier otro caso responde false.
+ * Aviso "Recalcula" de un periodo extraordinario (specs 87 y 90): ¿lo que saldría hoy ya no coincide con lo que
+ * congeló el último cálculo? Solo aplica a periodos extraordinarios en estatus 2 (En cálculo); en cualquier otro caso
+ * responde false.
  *
  * Se activa cuando, respecto del snapshot:
- * - cambió el salario diario de su tipo ('O' o 'F') o la fecha de ingreso (los días se recalculan con la fecha de hoy);
- * - el ISR del art. 174 de hoy no coincide con el guardado: la tarifa mensual del año o el ingreso ordinario
- *   (que sale del salario fiscal) ya no son los usados.
- * La UMA y la regla de exento del catálogo las ve el aviso de exento de la spec 73, que también aplica a este periodo.
+ * - (aguinaldo) cambió el salario diario de su tipo ('O' o 'F') o la fecha de ingreso (los días se recalculan con la
+ *   fecha de hoy). La PTU no lo revisa: su importe y su salario salen del reparto cerrado, que no cambia mientras el
+ *   periodo está calculado (spec 90);
+ * - (ambos) el ISR del art. 174 de hoy no coincide con el guardado: la tarifa mensual del año o el ingreso ordinario
+ *   ya no son los usados.
+ * La UMA y la regla de exento del catálogo las ve el aviso de exento de la spec 73, que también aplica a estos periodos.
  *
  * Un solo batch con los fragmentos de `isrArticle174Sql.ts`, los mismos del cálculo.
  */
-export async function isChristmasBonusRecalculationNeeded(idPeriod: number): Promise<boolean> {
+export async function isExtraordinaryRecalculationNeeded(idPeriod: number): Promise<boolean> {
   const rows = await db.queryParams(
     `SET NOCOUNT ON;
-     DECLARE @fecha_inicio date, @fecha_fin date;
+     DECLARE @fecha_inicio date, @fecha_fin date, @concepto char(1);
      SELECT @fecha_inicio = fecha_inicio,
-            @fecha_fin    = fecha_fin
+            @fecha_fin    = fecha_fin,
+            @concepto     = concepto_extraordinario
        FROM [CentroPodologico].[payroll].[periods]
       WHERE id_period = @id_period AND status = 2 AND tipo_periodo = 'E';
      IF @fecha_fin IS NULL
@@ -45,7 +49,7 @@ export async function isChristmasBonusRecalculationNeeded(idPeriod: number): Pro
      ${ARTICLE_174_PARAMETERS_SQL}
 
      SELECT CASE
-              WHEN EXISTS (
+              WHEN @concepto = 'A' AND EXISTS (
                 SELECT 1
                   FROM [CentroPodologico].[payroll].[period_employees] pe
                   JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = pe.[id_empleado]

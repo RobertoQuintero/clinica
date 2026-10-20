@@ -8,9 +8,13 @@ import { describeProductSalesCommission } from "@/lib/payroll/productSalesCommis
 import { describeShiftExtensionBonus } from "@/lib/payroll/shiftExtensionBonus";
 import { describePunctualityBonus } from "@/lib/payroll/punctualityBonus";
 import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
-import type { PayrollPeriodType } from "@/interfaces/payroll_period";
+import type { ExtraordinaryConcept } from "@/interfaces/payroll_period";
 import { describeChristmasBonus } from "@/lib/payroll/christmasBonus";
+import { describePtuPayment } from "@/lib/payroll/ptuPayment";
 import { VACATION_PREMIUM_PERCENT } from "@/lib/payroll/constants";
+
+/** Qué se paga en el periodo: "O" ordinario, "A" aguinaldo o "P" PTU (concepto de un periodo extraordinario). */
+export type PerceptionPeriodKind = "O" | ExtraordinaryConcept;
 
 /** "2026-09-22" -> "22/09/2026". Opera sobre el string, sin pasar por `Date`. */
 function formatDayMonthYear(dateString: string): string {
@@ -73,7 +77,8 @@ function describeCommission(
  * (spec 64: se muestra con 'C' y con 'P', este último con $0 y el motivo; con 'N' se omite) y
  * "Bono por extensión de jornada" (spec 68: solo si está asignado y el importe es mayor que 0; la vista fiscal
  * nunca lo trae asignado) y, spec 78, "Prima vacacional" y "Vacaciones pagadas" (cada una omitida con importe 0).
- * Un periodo extraordinario (spec 87) solo tiene la línea "Aguinaldo": nada de lo anterior se paga ahí.
+ * Un periodo extraordinario solo tiene su propia línea: "Aguinaldo" (spec 87) o "PTU {año}" (spec 90, con el
+ * desglose por días y por salario y la nota del tope); nada de lo anterior se paga ahí.
  * Los conceptos futuros se agregan aquí.
  * Las fechas son "YYYY-MM-DD" y se comparan como strings.
  */
@@ -114,13 +119,28 @@ export function buildPerceptionLines(
     | "importe_vacaciones_pagadas"
     | "dias_aguinaldo"
     | "importe_aguinaldo"
+    | "importe_ptu"
+    | "ptu"
   >,
   fechaIngreso: string,
   fechaInicio: string,
   commissionTiers: ICommissionTier[],
-  periodType: PayrollPeriodType = "O",
+  periodKind: PerceptionPeriodKind = "O",
 ): IPayrollPerceptionLineBase[] {
-  if (periodType === "E") {
+  if (periodKind === "P") {
+    const description = snapshot.ptu ? describePtuPayment(snapshot.ptu) : null;
+    return [
+      {
+        key: "ptu",
+        label: snapshot.ptu ? `PTU ${snapshot.ptu.ejercicio_reparto}` : "PTU",
+        description: description?.formula ?? "Sin desglose del reparto",
+        note: description?.capNote ?? null,
+        amount: snapshot.importe_ptu,
+      },
+    ];
+  }
+
+  if (periodKind === "A") {
     const bonus = describeChristmasBonus(snapshot.salario_diario, snapshot.dias_aguinaldo, fechaInicio, fechaIngreso);
     return [
       {

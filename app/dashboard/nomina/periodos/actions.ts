@@ -1,7 +1,9 @@
 "use server";
 
 import db from "@/database/connection";
+import type { PtuTaxpayerType } from "@/interfaces/payroll_ptu";
 import {
+  ExtraordinaryConcept,
   IPayrollPeriod,
   IPayrollPeriodDates,
   IPayrollPeriodFilters,
@@ -16,9 +18,18 @@ import {
   PAYROLL_PERIODS_PAGE_SIZE,
 } from "@/lib/payroll/constants";
 import { suggestPeriodDates } from "@/lib/payroll/periodDates";
+import { getPtuPaymentDeadline } from "@/lib/payroll/ptuPaymentDeadline";
+import {
+  loadBranchCompanyId,
+  loadPtuPaymentSource,
+  PTU_DISTRIBUTION_NOT_CLOSED_MARKER,
+  PTU_NO_PAYABLE_ROWS_MARKER,
+  PTU_PAYMENT_PRECONDITION_SQL,
+} from "@/lib/payroll/ptuPaymentSource";
 import {
   createPayrollPeriodSchema,
   payrollPeriodsPageFiltersSchema,
+  ptuPaymentYearSchema,
   updatePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
@@ -196,26 +207,80 @@ export async function getSuggestedPeriodDates(
   }
 }
 
+/** Lo que el modal necesita para sugerir el pago de un periodo PTU: la fecha límite según el tipo de persona del reparto. */
+export interface IPtuPaymentSuggestion {
+  tipo_persona: PtuTaxpayerType;
+  fecha_limite: string;   // "YYYY-MM-DD"
+}
+
+/**
+ * Fecha límite de la PTU del año de pago, o el motivo por el que todavía no se puede crear el periodo: el reparto
+ * del año − 1 debe estar cerrado y la sucursal debe tener al menos una fila con `ptu_final > 0`.
+ */
+export async function getPtuPaymentSuggestion(paymentYear: unknown): Promise<ActionResult<IPtuPaymentSuggestion>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  const parsedYear = ptuPaymentYearSchema.safeParse(paymentYear);
+  if (!parsedYear.success) {
+    return { ok: false, message: parsedYear.error.issues[0]?.message ?? "El año no es válido" };
+  }
+
+  try {
+    const idEmpresa = await loadBranchCompanyId(access.data.id_sucursal);
+    if (idEmpresa === null) return { ok: false, message: "La sucursal no tiene empresa asignada" };
+
+    const source = await loadPtuPaymentSource(idEmpresa, access.data.id_sucursal, parsedYear.data);
+    if (!source.distribution) {
+      return { ok: false, message: `Cierra primero el reparto de PTU ${parsedYear.data - 1}` };
+    }
+    if (source.payableRowCount === 0) {
+      return { ok: false, message: `Nadie de esta sucursal cobra PTU ${parsedYear.data - 1}` };
+    }
+    return {
+      ok: true,
+      data: {
+        tipo_persona: source.distribution.tipo_persona,
+        fecha_limite: getPtuPaymentDeadline(parsedYear.data, source.distribution.tipo_persona),
+      },
+    };
+  } catch (error) {
+    console.error("getPtuPaymentSuggestion", error);
+    return { ok: false, message: "No se pudo consultar el reparto de PTU" };
+  }
+}
+
 const PERIOD_OVERLAP_MARKER = "PERIOD_OVERLAP";
 const EXTRAORDINARY_EXISTS_MARKER = "EXTRAORDINARY_PERIOD_EXISTS";
 const EXTRAORDINARY_FREQUENCY_MARKER = "EXTRAORDINARY_FREQUENCY_NOT_FOUND";
 const EXTRAORDINARY_CUTOFF_MARKER = "EXTRAORDINARY_CUTOFF_OUT_OF_YEAR";
-const EXTRAORDINARY_UNIQUE_INDEX ="UX_periods_extraordinaria_sucursal_ejercicio";
+const EXTRAORDINARY_UNIQUE_INDEX = "UX_periods_extraordinaria_sucursal_ejercicio_concepto";
 const PERIOD_NOT_EDITABLE_MARKER = "PERIOD_NOT_EDITABLE";
 const PERIOD_NOT_EDITABLE_MESSAGE =
   "El periodo no existe en esta sucursal o ya no está en estatus Programada";
 
+const EXTRAORDINARY_CONCEPT_NAMES: Record<ExtraordinaryConcept, string> = { A: "aguinaldo", P: "PTU" };
+
 /** Traduce los errores de SQL Server de escritura de periodos a un mensaje en español. */
-function describePeriodWriteError(error: unknown, extraordinaryYear?: number): string {
+function describePeriodWriteError(
+  error: unknown,
+  extraordinary?: { year: number; concept: ExtraordinaryConcept },
+): string {
   const sqlError = error as { message?: string; number?: number };
   if (
-    extraordinaryYear !== undefined &&
+    extraordinary !== undefined &&
     (sqlError.message?.includes(EXTRAORDINARY_EXISTS_MARKER) || sqlError.message?.includes(EXTRAORDINARY_UNIQUE_INDEX))
   ) {
-    return `Ya existe la nómina de aguinaldo de ${extraordinaryYear}`;
+    return `Ya existe la nómina de ${EXTRAORDINARY_CONCEPT_NAMES[extraordinary.concept]} de ${extraordinary.year}`;
+  }
+  if (extraordinary !== undefined && sqlError.message?.includes(PTU_DISTRIBUTION_NOT_CLOSED_MARKER)) {
+    return `Cierra primero el reparto de PTU ${extraordinary.year - 1}`;
+  }
+  if (extraordinary !== undefined && sqlError.message?.includes(PTU_NO_PAYABLE_ROWS_MARKER)) {
+    return `Nadie de esta sucursal cobra PTU ${extraordinary.year - 1}`;
   }
   if (sqlError.message?.includes(EXTRAORDINARY_CUTOFF_MARKER)) {
-    return "La fecha de corte debe estar dentro del año del aguinaldo";
+    return "La fecha de corte debe estar dentro del año del periodo";
   }
   if (sqlError.message?.includes(EXTRAORDINARY_FREQUENCY_MARKER)) {
     return "No existe la periodicidad extraordinaria en el catálogo";
@@ -236,14 +301,16 @@ function describePeriodWriteError(error: unknown, extraordinaryYear?: number): s
 }
 
 /**
- * Periodo extraordinario de aguinaldo (spec 87): periodicidad SAT 99, del 1-ene al 31-dic del año y código
- * NOM-{año}-E{NN}. Un solo periodo por sucursal y año, revisado dentro de la transacción además del índice único.
+ * Periodo extraordinario (spec 87 aguinaldo, spec 90 PTU): periodicidad SAT 99, del 1-ene al 31-dic del año y código
+ * NOM-{año}-E{NN} con el consecutivo compartido entre conceptos. Un solo periodo por sucursal, año y concepto,
+ * revisado dentro de la transacción además del índice único. El de PTU exige además el reparto cerrado del año − 1.
  */
 async function createExtraordinaryPayrollPeriod(
-  period: { ejercicio: number; fecha_corte: string; fecha_pago: string },
+  period: { concepto_extraordinario: ExtraordinaryConcept; ejercicio: number; fecha_corte: string; fecha_pago: string },
   idSucursal: number,
   idUser: number,
 ): Promise<ActionResult<IPayrollPeriod>> {
+  const concept = period.concepto_extraordinario;
   try {
     const rows = await db.queryParams(
       `SET XACT_ABORT ON;
@@ -257,9 +324,11 @@ async function createExtraordinaryPayrollPeriod(
 
        IF EXISTS (
          SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
-          WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND tipo_periodo = 'E'
+          WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio
+            AND tipo_periodo = 'E' AND concepto_extraordinario = @concepto
        )
          THROW 50004, '${EXTRAORDINARY_EXISTS_MARKER}', 1;
+       ${concept === "P" ? PTU_PAYMENT_PRECONDITION_SQL : ""}
 
        DECLARE @consecutivo smallint = (
          SELECT ISNULL(MAX(consecutivo), 0) + 1
@@ -272,12 +341,12 @@ async function createExtraordinaryPayrollPeriod(
 
        INSERT INTO [CentroPodologico].[payroll].[periods]
          (id_sucursal, id_payment_period, codigo, ejercicio, consecutivo,
-          fecha_inicio, fecha_fin, fecha_corte, fecha_pago, status, created_by, created_at, tipo_periodo)
+          fecha_inicio, fecha_fin, fecha_corte, fecha_pago, status, created_by, created_at, tipo_periodo, concepto_extraordinario)
        VALUES
          (@id_sucursal, @id_payment_period, @codigo, @ejercicio, @consecutivo,
           DATEFROMPARTS(@ejercicio, 1, 1), DATEFROMPARTS(@ejercicio, 12, 31),
           CAST(@fecha_corte AS date), CAST(@fecha_pago AS date),
-          1, @created_by, CAST(@created_at AS datetime2(0)), 'E');
+          1, @created_by, CAST(@created_at AS datetime2(0)), 'E', @concepto);
        DECLARE @id_period int = SCOPE_IDENTITY();
 
        COMMIT;
@@ -290,6 +359,7 @@ async function createExtraordinaryPayrollPeriod(
         id_sucursal: idSucursal,
         sat_key: EXTRAORDINARY_PERIOD_SAT_KEY,
         letter: EXTRAORDINARY_PERIOD_CODE_LETTER,
+        concepto: concept,
         ejercicio: period.ejercicio,
         fecha_corte: period.fecha_corte,
         fecha_pago: period.fecha_pago,
@@ -302,7 +372,7 @@ async function createExtraordinaryPayrollPeriod(
     return { ok: true, data: rows[0] as IPayrollPeriod };
   } catch (error) {
     console.error("createExtraordinaryPayrollPeriod", error);
-    return { ok: false, message: describePeriodWriteError(error, period.ejercicio) };
+    return { ok: false, message: describePeriodWriteError(error, { year: period.ejercicio, concept }) };
   }
 }
 

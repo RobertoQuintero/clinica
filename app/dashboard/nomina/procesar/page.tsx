@@ -11,9 +11,11 @@ import { addZeroToday } from "@/utils/date_helpper";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
 import ChristmasBonusDeadlineNotice from "../componentes/ChristmasBonusDeadlineNotice";
+import PtuPaymentDeadlineNotice from "../componentes/PtuPaymentDeadlineNotice";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
 import ChristmasBonusEmployeesTable from "./componentes/ChristmasBonusEmployeesTable";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
+import PtuPaymentEmployeesTable from "./componentes/PtuPaymentEmployeesTable";
 import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
 import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
@@ -37,8 +39,11 @@ export default async function ProcesarNominaPage({
   };
 
   const result = await getPayrollProcessPage(filters);
-  // Spec 87: un periodo extraordinario (aguinaldo) tiene sus propias columnas y no usa los avisos de incidencias.
+  // Spec 87/90: un periodo extraordinario (aguinaldo o PTU) tiene sus propias columnas y no usa los avisos de incidencias.
   const isExtraordinary = result.ok && result.data.period?.tipo_periodo === "E";
+  const isPtuPeriod = isExtraordinary && result.ok && result.data.period?.concepto_extraordinario === "P";
+  // La PTU solo existe en la nómina fiscal: se ignora `tipo=operativa` de la URL.
+  const payrollType = isPtuPeriod ? "F" : filters.payrollType;
 
   return (
     <div className="flex flex-col gap-5">
@@ -54,9 +59,11 @@ export default async function ProcesarNominaPage({
             {result.ok && result.data.period && <PayrollStatusBadge status={result.data.period.status} />}
           </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
-            {isExtraordinary
-              ? "Aguinaldo anual por empleado: 15 días de salario diario, proporcional a los días del año."
-              : "Salario del periodo por empleado: salario diario por los días pagados."}
+            {isPtuPeriod
+              ? "PTU del reparto cerrado por empleado: lo que se paga, lo gravado y el ISR del art. 174."
+              : isExtraordinary
+                ? "Aguinaldo anual por empleado: 15 días de salario diario, proporcional a los días del año."
+                : "Salario del periodo por empleado: salario diario por los días pagados."}
           </p>
         </div>
         {/* En estatus 1 el botón "Calcular nómina" vive en el estado vacío. */}
@@ -70,6 +77,7 @@ export default async function ProcesarNominaPage({
       </div>
 
       <ChristmasBonusDeadlineNotice />
+      <PtuPaymentDeadlineNotice />
 
       {!result.ok ? (
         <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">
@@ -102,14 +110,15 @@ export default async function ProcesarNominaPage({
           <PayrollProcessToolbar
             periodOptions={result.data.periodOptions}
             selectedPeriodId={result.data.period.id_period}
-            selectedPayrollType={filters.payrollType}
+            selectedPayrollType={payrollType}
+            showPayrollTypeToggle={!isPtuPeriod}
             puestoOptions={result.data.puestoOptions}
             selectedPuestoId={filters.idPuesto}
             searchText={filters.search}
           />
           <PayrollProcessSummaryCards
             period={result.data.period}
-            payrollType={filters.payrollType}
+            payrollType={payrollType}
             totals={result.data.totals}
             lastCalculatedAt={result.data.lastCalculatedAt}
             today={today}
@@ -117,9 +126,9 @@ export default async function ProcesarNominaPage({
           />
           <ExcludedEmployeesNotice
             excludedEmployees={result.data.excludedEmployees}
-            payrollType={filters.payrollType}
+            payrollType={payrollType}
           />
-          {filters.payrollType === "F" && (
+          {payrollType === "F" && (
             <IsrNotCalculatedNotice
               isrNotCalculated={result.data.isrNotCalculated}
               fiscalYear={Number(result.data.period.fecha_fin.slice(0, 4))}
@@ -163,14 +172,20 @@ export default async function ProcesarNominaPage({
             message="Hay vacaciones o primas que no coinciden con el último cálculo. Recalcula la nómina."
           />
           <PayrollRecalculationNotice
-            recalculationNeeded={result.data.christmasBonusRecalculationNeeded}
-            message="Hay aguinaldos cuyo salario, fecha de ingreso o ISR del art. 174 no coinciden con el último cálculo. Recalcula la nómina."
+            recalculationNeeded={result.data.extraordinaryRecalculationNeeded}
+            message={
+              isPtuPeriod
+                ? "Hay cálculos de ISR del art. 174 de la PTU que no coinciden con la tarifa mensual actual. Recalcula la nómina."
+                : "Hay aguinaldos cuyo salario, fecha de ingreso o ISR del art. 174 no coinciden con el último cálculo. Recalcula la nómina."
+            }
           />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"
               description={
-                isExtraordinary
+                isPtuPeriod
+                  ? "Al calcular se guarda la PTU de cada trabajador de la sucursal en el reparto cerrado, solo en su versión fiscal."
+                  : isExtraordinary
                   ? "Al calcular se guarda el aguinaldo de cada empleado activo de la sucursal, en su versión operativa y fiscal."
                   : "Al calcular la nómina se guarda el salario de cada empleado del periodo, en su versión operativa y fiscal."
               }
@@ -182,11 +197,20 @@ export default async function ProcesarNominaPage({
                 />
               }
             />
+          ) : isPtuPeriod ? (
+            <PtuPaymentEmployeesTable
+              rows={result.data.rows}
+              idPeriod={result.data.period.id_period}
+              idPuesto={filters.idPuesto}
+              search={filters.search}
+              totals={result.data.totals}
+              hasActiveFilters={filters.idPuesto !== null || filters.search !== ""}
+            />
           ) : isExtraordinary ? (
             <ChristmasBonusEmployeesTable
               rows={result.data.rows}
               idPeriod={result.data.period.id_period}
-              payrollType={filters.payrollType}
+              payrollType={payrollType}
               idPuesto={filters.idPuesto}
               search={filters.search}
               totals={result.data.totals}
@@ -196,7 +220,7 @@ export default async function ProcesarNominaPage({
             <PayrollEmployeesTable
               rows={result.data.rows}
               idPeriod={result.data.period.id_period}
-              payrollType={filters.payrollType}
+              payrollType={payrollType}
               idPuesto={filters.idPuesto}
               search={filters.search}
               totals={result.data.totals}

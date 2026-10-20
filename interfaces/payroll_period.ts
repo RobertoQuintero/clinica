@@ -3,6 +3,9 @@ export type PayrollPeriodStatus = 1 | 2 | 3 | 4;
 // Spec 87: 'O' ordinaria (por frecuencia), 'E' extraordinaria (aguinaldo anual).
 export type PayrollPeriodType = "O" | "E";
 
+// Spec 90: lo que paga un periodo extraordinario. 'A' aguinaldo, 'P' PTU. Es null en los ordinarios.
+export type ExtraordinaryConcept = "A" | "P";
+
 export interface IPayrollPeriod {
   id_period:          number;
   id_sucursal:        number;
@@ -16,7 +19,8 @@ export interface IPayrollPeriod {
   fecha_pago:         string;
   status:             PayrollPeriodStatus;
   tipo_periodo:       PayrollPeriodType;
-  created_by:         number;
+  concepto_extraordinario: ExtraordinaryConcept | null;
+  created_by:        number;
   created_at:         string;   // "YYYY-MM-DD HH:mm:ss"
   updated_at:         string | null;
 }

@@ -1,5 +1,5 @@
-import { PAYROLL_PERIOD_STATUS } from "@/lib/payroll/constants";
-import type { PayrollPeriodStatus, PayrollPeriodType } from "@/interfaces/payroll_period";
+import { EXTRAORDINARY_CONCEPT_LABELS, PAYROLL_PERIOD_STATUS, PAYROLL_PERIOD_TYPE_LABELS } from "@/lib/payroll/constants";
+import type { ExtraordinaryConcept, PayrollPeriodStatus, PayrollPeriodType } from "@/interfaces/payroll_period";
 
 const BADGE_BASE = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border";
 
@@ -15,20 +15,25 @@ export function PayrollStatusBadge({ status }: { status: PayrollPeriodStatus }) 
   return <span className={`${BADGE_BASE} ${STATUS_BADGE_STYLES[badge]}`}>{label}</span>;
 }
 
-/** Frecuencia del periodo; en uno extraordinario (aguinaldo) muestra "Extraordinaria" en lugar de la periodicidad 99. */
+const EXTRAORDINARY_BADGE_STYLES: Record<ExtraordinaryConcept, string> = {
+  A: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800",
+  P: "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800",
+};
+
+/** Frecuencia del periodo; en uno extraordinario muestra su concepto (Aguinaldo o PTU) en lugar de la periodicidad 99. */
 export function PayrollFrequencyBadge({
   description,
   periodType = "O",
+  extraordinaryConcept = null,
 }: {
   description: string;
   periodType?: PayrollPeriodType;
+  extraordinaryConcept?: ExtraordinaryConcept | null;
 }) {
   if (periodType === "E") {
     return (
-      <span
-        className={`${BADGE_BASE} bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800`}
-      >
-        Extraordinaria
+      <span className={`${BADGE_BASE} ${EXTRAORDINARY_BADGE_STYLES[extraordinaryConcept ?? "A"]}`}>
+        {extraordinaryConcept ? EXTRAORDINARY_CONCEPT_LABELS[extraordinaryConcept] : PAYROLL_PERIOD_TYPE_LABELS.E}
       </span>
     );
   }

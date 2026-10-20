@@ -2,7 +2,7 @@ import db from "@/database/connection";
 import { assertPayrollAccess } from "@/lib/payroll/access";
 import { getChristmasBonusDeadlineState } from "@/lib/payroll/christmasBonusDeadline";
 import { addZeroToday } from "@/utils/date_helpper";
-import ChristmasBonusDeadlineBanner from "./ChristmasBonusDeadlineBanner";
+import PayrollDeadlineBanner from "./PayrollDeadlineBanner";
 
 /**
  * Aviso del 20 de diciembre (spec 87) para Periodos y Procesar: del 1-dic en adelante, mientras la sucursal no haya
@@ -22,7 +22,7 @@ export default async function ChristmasBonusDeadlineNotice() {
     const rows = await db.queryParams(
       `SELECT TOP 1 1 AS has_period
          FROM [CentroPodologico].[payroll].[periods]
-        WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND tipo_periodo = 'E'`,
+        WHERE id_sucursal = @id_sucursal AND ejercicio = @ejercicio AND tipo_periodo = 'E' AND concepto_extraordinario = 'A'`,
       { id_sucursal: access.data.id_sucursal, ejercicio: year },
     );
     hasExtraordinaryPeriod = rows.length > 0;
@@ -32,6 +32,14 @@ export default async function ChristmasBonusDeadlineNotice() {
   }
 
   return (
-    <ChristmasBonusDeadlineBanner state={getChristmasBonusDeadlineState(today, hasExtraordinaryPeriod)} year={year} />
+    <PayrollDeadlineBanner
+      state={getChristmasBonusDeadlineState(today, hasExtraordinaryPeriod)}
+      label={`Aguinaldo ${year}`}
+      headlines={{
+        upcoming: `Aguinaldo ${year}: debe pagarse a más tardar el 20 de diciembre`,
+        overdue: `Aguinaldo ${year}: venció el 20 de diciembre`,
+      }}
+      message="Esta sucursal aún no tiene su nómina de aguinaldo."
+    />
   );
 }

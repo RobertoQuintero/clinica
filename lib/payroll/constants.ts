@@ -1,5 +1,5 @@
 import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
-import type { PayrollPeriodType } from "@/interfaces/payroll_period";
+import type { ExtraordinaryConcept, PayrollPeriodType } from "@/interfaces/payroll_period";
 import type { ExemptionSkipReason } from "@/interfaces/payroll_exemption";
 import type { IsrSkipReason } from "@/interfaces/payroll_isr";
 import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
@@ -88,8 +88,21 @@ export const ARTICLE_174_MONTH_DAYS_FACTOR = 30.4;  // fijado por el art. 174 RL
 
 export const PAYROLL_PERIOD_TYPE_LABELS: Record<PayrollPeriodType, string> = {
   O: "Ordinaria",
-  E: "Extraordinaria (aguinaldo)",
+  E: "Extraordinaria",
 };
+export const EXTRAORDINARY_CONCEPT_LABELS: Record<ExtraordinaryConcept, string> = {
+  A: "Aguinaldo",
+  P: "PTU",
+};
+
+// Spec 90: pago de la PTU en nómina extraordinaria.
+export const PTU_PERCEPTION_ID = 3;                 // 003, 'U' 15 UMA por año (confirmado por el script de datos)
+export const PTU_PERCEPTION_SAT_KEY = "003";
+export const PTU_PAYMENT_DEADLINE_MONTH_DAY: Record<PtuTaxpayerType, string> = {
+  M: "05-30",   // 60 días después del 31-mar (declaración de persona moral)
+  F: "06-29",   // 60 días después del 30-abr (declaración de persona física)
+};
+export const PTU_PAYMENT_WARNING_DAYS = 30;
 export const EXTRAORDINARY_PERIOD_SAT_KEY = "99";
 export const EXTRAORDINARY_PERIOD_CODE_LETTER = "E";
 export const MONTHLY_WITHHOLDING_SAT_KEY = "05";
@@ -109,6 +122,7 @@ export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = {
   [VACATION_PREMIUM_PERCEPTION_ID]: "prima_vacacional",
   [PAID_VACATION_PERCEPTION_ID]:    "vacaciones_pagadas",
   [CHRISTMAS_BONUS_PERCEPTION_ID]:  "aguinaldo",
+  [PTU_PERCEPTION_ID]:              "ptu",
 };
 export const EXEMPTION_SKIP_REASON_LABELS: Record<ExemptionSkipReason, string> = {
   missing_uma:           "No hay UMA diaria vigente al fin del periodo",

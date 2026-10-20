@@ -155,6 +155,8 @@ export interface IPtuDistributionDetail {
   distribution: IPtuDistribution;
   employees:    IPtuDistributionEmployee[];
   log:          IPtuDistributionLogEntry[];
+  /** Periodo PTU calculado que paga este reparto; null si ninguno lo usa. */
+  payrollUsage: IPtuDistributionPayrollUsage | null;
 }
 
 /** Un ejercicio anterior en el modal de historial: de un reparto cerrado, capturado a mano o sin dato. */
@@ -164,6 +166,30 @@ export interface IPtuHistoryYear {
   origen:             "reparto" | "manual" | null;
   /** Hay un reparto cerrado de la empresa para este ejercicio: solo lectura. */
   closedDistribution: boolean;
+}
+
+// ── Pago de la PTU en nómina extraordinaria (spec 90) ─────────────────────────────────────────────
+
+/** Desglose congelado de la PTU pagada (`payroll.period_employee_ptu`). */
+export interface IPtuPaymentBreakdown {
+  id_ptu_distribution: number;
+  ejercicio_reparto:   number;
+  dias:                number;
+  ptu_dias:            number;
+  ptu_salario:         number;
+  ptu_bruto:           number;
+  tope_tres_meses:     number;
+  promedio_tres_anios: number | null;
+  anios_promedio:      number | null;
+  ptu_final:           number;
+}
+
+export type PtuPaymentDeadlineState = "none" | "upcoming" | "overdue";
+
+/** Periodo PTU calculado (estatus >= 2) que ya usa un reparto: mientras exista, el reparto no se puede reabrir. */
+export interface IPtuDistributionPayrollUsage {
+  codigo:          string;
+  nombre_sucursal: string;
 }
 
 /** Empleado que se puede agregar a mano a un reparto. */

@@ -11,6 +11,8 @@ interface Props {
   idPtuDistribution: number;
   fiscalYear: number;
   status: PtuDistributionStatus;
+  /** Motivo por el que "Reabrir" no está disponible (un periodo PTU calculado usa el reparto); null si se puede. */
+  reopenBlockedReason?: string | null;
 }
 
 const DIALOG_COPY = {
@@ -29,7 +31,12 @@ const DIALOG_COPY = {
 } as const;
 
 /** Cerrar, reabrir y eliminar el reparto, cada uno con diálogo de confirmación propio (sin `confirm()` nativo). */
-export default function PtuDistributionStatusActions({ idPtuDistribution, fiscalYear, status }: Props) {
+export default function PtuDistributionStatusActions({
+  idPtuDistribution,
+  fiscalYear,
+  status,
+  reopenBlockedReason = null,
+}: Props) {
   const router = useRouter();
   const [pendingAction, setPendingAction] = useState<"close" | "reopen" | null>(null);
   const [isWorking, setIsWorking] = useState(false);
@@ -91,14 +98,23 @@ export default function PtuDistributionStatusActions({ idPtuDistribution, fiscal
           />
         </>
       ) : (
-        <button
-          type="button"
-          onClick={() => openDialog("reopen")}
-          className="flex items-center gap-2 rounded-lg border border-[#0051d5] px-4 py-2 text-sm font-semibold text-[#0051d5] hover:bg-[#0051d5]/10 transition-colors"
-        >
-          <LockKeyholeOpen size={16} />
-          Reabrir reparto
-        </button>
+        <div className="flex flex-col items-start gap-1.5">
+          <button
+            type="button"
+            onClick={() => openDialog("reopen")}
+            disabled={reopenBlockedReason !== null}
+            aria-describedby={reopenBlockedReason ? "ptu-reopen-blocked-reason" : undefined}
+            className="flex items-center gap-2 rounded-lg border border-[#0051d5] px-4 py-2 text-sm font-semibold text-[#0051d5] hover:bg-[#0051d5]/10 transition-colors disabled:cursor-not-allowed disabled:border-[#c4c6d0] disabled:text-[#747780] disabled:hover:bg-transparent dark:disabled:border-zinc-700 dark:disabled:text-zinc-500"
+          >
+            <LockKeyholeOpen size={16} />
+            Reabrir reparto
+          </button>
+          {reopenBlockedReason && (
+            <p id="ptu-reopen-blocked-reason" className="max-w-md text-xs text-[#44474f] dark:text-zinc-400">
+              {reopenBlockedReason}
+            </p>
+          )}
+        </div>
       )}
 
       {copy && (

@@ -2946,6 +2946,82 @@ CREATE TABLE [payroll].[ptu_distribution_log](
 ) ON [PRIMARY]
 GO
 
+-- Spec 90: concepto del periodo extraordinario. Los E existentes son aguinaldo.
+ALTER TABLE [payroll].[periods] ADD [concepto_extraordinario] [char](1) NULL;
+GO
+UPDATE [payroll].[periods] SET [concepto_extraordinario] = 'A' WHERE [tipo_periodo] = 'E';
+GO
+ALTER TABLE [payroll].[periods] ADD CONSTRAINT [CK_periods_concepto_extraordinario] CHECK (
+    ([tipo_periodo] = 'O' AND [concepto_extraordinario] IS NULL)
+ OR ([tipo_periodo] = 'E' AND [concepto_extraordinario] IS NOT NULL
+                          AND [concepto_extraordinario] IN ('A','P')));
+GO
+-- Un periodo E por sucursal, ejercicio y concepto (también se revisa en la transacción de alta).
+DROP INDEX [UX_periods_extraordinaria_sucursal_ejercicio] ON [payroll].[periods];
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [UX_periods_extraordinaria_sucursal_ejercicio_concepto]
+    ON [payroll].[periods] ([id_sucursal], [ejercicio], [concepto_extraordinario])
+    WHERE [tipo_periodo] = 'E';
+GO
+
+-- Spec 90: importe de PTU en el snapshot. En cualquier fila que no sea PTU, siempre 0.
+ALTER TABLE [payroll].[period_employees] ADD
+    [importe_ptu] [decimal](18,2) NOT NULL CONSTRAINT [DF_period_employees_importe_ptu] DEFAULT (0);
+GO
+ALTER TABLE [payroll].[period_employees] DROP CONSTRAINT [CK_period_employees_montos];
+GO
+ALTER TABLE [payroll].[period_employees] ADD CONSTRAINT [CK_period_employees_montos] CHECK (
+    [salario_diario] > 0 AND [importe_salario] >= 0 AND [importe_ptu] >= 0
+    AND ([dias] > 0
+      OR ([dias] = 0 AND [importe_salario] = 0
+          AND ([dias_aguinaldo] > 0 OR [importe_ptu] > 0))));
+GO
+
+-- Spec 90: liga cada fila 'F' de un periodo PTU con su fila del reparto y congela el desglose.
+-- El UNIQUE sobre la fila del reparto hace que se pague una sola vez en toda la historia.
+CREATE TABLE [payroll].[period_employee_ptu](
+    [id_period_employee]            [int]           NOT NULL,
+    [id_ptu_distribution_employee]  [int]           NOT NULL,
+    [id_ptu_distribution]           [int]           NOT NULL,
+    [ejercicio_reparto]             [smallint]      NOT NULL,   -- año de las utilidades (año del periodo − 1)
+    [dias]                          [smallint]      NOT NULL,
+    [ptu_dias]                      [decimal](18,2) NOT NULL,
+    [ptu_salario]                   [decimal](18,2) NOT NULL,
+    [ptu_bruto]                     [decimal](18,2) NOT NULL,
+    [tope_tres_meses]               [decimal](18,2) NOT NULL,
+    [promedio_tres_anios]           [decimal](18,2) NULL,
+    [anios_promedio]                [tinyint]       NULL,
+    [ptu_final]                     [decimal](18,2) NOT NULL,
+ CONSTRAINT [PK_period_employee_ptu] PRIMARY KEY CLUSTERED ([id_period_employee] ASC),
+ CONSTRAINT [UQ_period_employee_ptu_distribution_employee] UNIQUE ([id_ptu_distribution_employee]),
+ CONSTRAINT [FK_period_employee_ptu_row] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [FK_period_employee_ptu_distribution_employee] FOREIGN KEY ([id_ptu_distribution_employee])
+     REFERENCES [payroll].[ptu_distribution_employees] ([id_ptu_distribution_employee]),
+ CONSTRAINT [FK_period_employee_ptu_distribution] FOREIGN KEY ([id_ptu_distribution])
+     REFERENCES [payroll].[ptu_distributions] ([id_ptu_distribution]),
+ CONSTRAINT [CK_period_employee_ptu] CHECK (
+     [ptu_final] > 0
+     AND [ptu_bruto] = [ptu_dias] + [ptu_salario]
+     AND [ptu_final] <= [ptu_bruto]
+     AND ([promedio_tres_anios] IS NULL OR [anios_promedio] IS NOT NULL))
+) ON [PRIMARY]
+GO
+
+-- Spec 90: percepción de PTU del catálogo. Idempotente (solo verifica).
+-- Debe haber exactamente una percepción de PTU (003, 'U', 15 UMA, anual).
+-- Su id es PTU_PERCEPTION_ID en lib/payroll/constants.ts.
+IF (SELECT COUNT(*) FROM [CentroPodologico].[payroll].[perceptions]
+     WHERE [clave_sat] = '003' AND [tipo_limite_exencion] = 'U'
+       AND [umas_limite] = 15 AND [periodicidad_limite] = 'A') <> 1
+    THROW 50090, 'No hay exactamente una percepción de PTU (003, U, 15 UMA, A). Revisa el catálogo antes de seguir.', 1;
+
+SELECT [id_perception], [clave_sat], [description]
+  FROM [CentroPodologico].[payroll].[perceptions]
+ WHERE [clave_sat] = '003' AND [tipo_limite_exencion] = 'U'
+   AND [umas_limite] = 15 AND [periodicidad_limite] = 'A';
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------

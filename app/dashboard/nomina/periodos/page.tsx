@@ -3,6 +3,7 @@ import type { IPayrollPeriodFilters, PayrollPeriodStatus } from "@/interfaces/pa
 import { addZeroToday } from "@/utils/date_helpper";
 import { getPayrollFrequencies, getPayrollPeriodsPage } from "./actions";
 import ChristmasBonusDeadlineNotice from "../componentes/ChristmasBonusDeadlineNotice";
+import PtuPaymentDeadlineNotice from "../componentes/PtuPaymentDeadlineNotice";
 import ActivePayrollPeriodCard from "./componentes/ActivePayrollPeriodCard";
 import { NewPayrollPeriodButton } from "./componentes/PayrollPeriodActions";
 import PayrollPeriodsFilterBar from "./componentes/PayrollPeriodsFilterBar";
@@ -66,6 +67,7 @@ export default async function PeriodosNominaPage({
       </div>
 
       <ChristmasBonusDeadlineNotice />
+      <PtuPaymentDeadlineNotice />
 
       {!result.ok ? (
         <p role="alert" className="rounded-xl border border-[#ba1a1a]/30 bg-[#ba1a1a]/10 px-4 py-3 text-sm text-[#ba1a1a] dark:text-red-400">

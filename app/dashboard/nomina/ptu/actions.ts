@@ -23,6 +23,7 @@ import {
   loadPtuPreloadRows,
   PTU_DISTRIBUTION_SELECT,
 } from "@/lib/payroll/ptuDistributionSql";
+import { describePtuReopenBlocked, findPtuDistributionPayrollUsage } from "@/lib/payroll/ptuPaymentSource";
 import { lockPtuDistribution, recalculatePtuDistribution } from "@/lib/payroll/ptuRecalculation";
 import {
   createPtuDistributionSchema,
@@ -283,7 +284,8 @@ export async function getPtuDistributionDetail(rawId: unknown): Promise<ActionRe
       ) as Promise<IPtuDistributionLogEntry[]>,
     ]);
 
-    return { ok: true, data: { distribution: distributions[0], employees: employeeRows, log: logRows } };
+    const payrollUsage = distributions[0].estado === "C" ? await findPtuDistributionPayrollUsage(db, id_ptu_distribution) : null;
+    return { ok: true, data: { distribution: distributions[0], employees: employeeRows, log: logRows, payrollUsage } };
   } catch (error) {
     console.error("getPtuDistributionDetail", error);
     return { ok: false, message: "No se pudo cargar el reparto de PTU" };
@@ -801,7 +803,10 @@ export async function closePtuDistribution(rawInput: unknown): Promise<ActionRes
   }
 }
 
-/** Vuelve el reparto a borrador y limpia el cierre. En esta spec siempre se permite. */
+/**
+ * Vuelve el reparto a borrador y limpia el cierre. Se rechaza mientras un periodo PTU calculado (spec 90) lo use; la
+ * revisión corre dentro de la transacción que ya bloquea el reparto, así que no se cuela un cálculo en paralelo.
+ */
 export async function reopenPtuDistribution(rawInput: unknown): Promise<ActionResult<null>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
@@ -814,6 +819,9 @@ export async function reopenPtuDistribution(rawInput: unknown): Promise<ActionRe
       const distribution = await lockPtuDistribution(tx, id_ptu_distribution, access.data.id_empresa);
       if (!distribution) return "not_found" as const;
       if (distribution.estado === "B") return "already_draft" as const;
+
+      const payrollUsage = await findPtuDistributionPayrollUsage(tx, id_ptu_distribution);
+      if (payrollUsage) return { blockedMessage: describePtuReopenBlocked(payrollUsage) };
 
       const now = buildDate(new Date());
       await tx.queryParams(
@@ -834,6 +842,7 @@ export async function reopenPtuDistribution(rawInput: unknown): Promise<ActionRe
 
     if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
     if (outcome === "already_draft") return { ok: false, message: "El reparto ya está en borrador" };
+    if (typeof outcome === "object") return { ok: false, message: outcome.blockedMessage };
     revalidatePath(PTU_PATH);
     revalidatePath(`${PTU_PATH}/${id_ptu_distribution}`);
     return { ok: true, data: null };

@@ -9,7 +9,7 @@ import {
 
 /**
  * Fragmentos SQL del ISR art. 174 RLISR del aguinaldo (spec 87), compartidos por `calculatePayrollPeriod` y por el
- * aviso "Recalcula" (`christmasBonusRecalculation.ts`). `lib/payroll/isrArticle174.ts` los espeja y, si divergen,
+ * aviso "Recalcula" (`extraordinaryRecalculation.ts`). `lib/payroll/isrArticle174.ts` los espeja y, si divergen,
  * manda este SQL.
  *
  * `ARTICLE_174_PARAMETERS_SQL` declara las variables `@article174_*`; necesita @fecha_fin y se pega en el batch antes
