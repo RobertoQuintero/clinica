@@ -155,6 +155,8 @@ export interface IPtuDistributionDetail {
   distribution: IPtuDistribution;
   employees:    IPtuDistributionEmployee[];
   log:          IPtuDistributionLogEntry[];
+  /** Periodo PTU calculado que paga este reparto; null si ninguno lo usa. */
+  payrollUsage: IPtuDistributionPayrollUsage | null;
 }
 
 /** Un ejercicio anterior en el modal de historial: de un reparto cerrado, capturado a mano o sin dato. */
@@ -183,6 +185,12 @@ export interface IPtuPaymentBreakdown {
 }
 
 export type PtuPaymentDeadlineState = "none" | "upcoming" | "overdue";
+
+/** Periodo PTU calculado (estatus >= 2) que ya usa un reparto: mientras exista, el reparto no se puede reabrir. */
+export interface IPtuDistributionPayrollUsage {
+  codigo:          string;
+  nombre_sucursal: string;
+}
 
 /** Empleado que se puede agregar a mano a un reparto. */
 export interface IPtuAddableEmployee {

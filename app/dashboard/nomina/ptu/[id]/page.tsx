@@ -12,6 +12,7 @@ import { AddPtuEmployeeButton } from "../componentes/PtuEmployeeActions";
 import PtuDistributionLog from "../componentes/PtuDistributionLog";
 import PtuDistributionStatusActions from "../componentes/PtuDistributionStatusActions";
 import PtuDistributionSummaryCards from "../componentes/PtuDistributionSummaryCards";
+import { describePtuReopenBlocked } from "@/lib/payroll/ptuPaymentSource";
 
 export default async function PtuDistributionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,7 +27,7 @@ export default async function PtuDistributionPage({ params }: { params: Promise<
   }
   if (result.data === null) notFound();
 
-  const { distribution, employees, log } = result.data;
+  const { distribution, employees, log, payrollUsage } = result.data;
   const isDraft = distribution.estado === "B";
 
   return (
@@ -70,6 +71,7 @@ export default async function PtuDistributionPage({ params }: { params: Promise<
           idPtuDistribution={distribution.id_ptu_distribution}
           fiscalYear={distribution.ejercicio}
           status={distribution.estado}
+          reopenBlockedReason={payrollUsage ? describePtuReopenBlocked(payrollUsage) : null}
         />
       </div>
 

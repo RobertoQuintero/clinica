@@ -1,7 +1,7 @@
 import "server-only";
 
-import db from "@/database/connection";
-import type { PtuTaxpayerType } from "@/interfaces/payroll_ptu";
+import db, { type ITransactionClient } from "@/database/connection";
+import type { IPtuDistributionPayrollUsage, PtuTaxpayerType } from "@/interfaces/payroll_ptu";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 
 export const PTU_DISTRIBUTION_NOT_CLOSED_MARKER = "PTU_DISTRIBUTION_NOT_CLOSED";
@@ -33,6 +33,32 @@ export interface IPtuPaymentSource {
   payableRowCount: number;
   /** Trabajadores pagables con `salario_diario_tope = 0`: bloquean el cálculo. */
   zeroCapEmployeeNames: string[];
+}
+
+/**
+ * Periodo PTU calculado (estatus >= 2) que paga este reparto, o null. Solo cuenta un periodo con filas ligadas en
+ * `period_employee_ptu`: crearlo no toma datos del reparto y "Revertir" lo libera.
+ */
+export async function findPtuDistributionPayrollUsage(
+  client: ITransactionClient,
+  idPtuDistribution: number,
+): Promise<IPtuDistributionPayrollUsage | null> {
+  const rows = (await client.queryParams(
+    `SELECT TOP 1 p.codigo, s.nombre AS nombre_sucursal
+       FROM [CentroPodologico].[payroll].[period_employee_ptu] ptu
+       JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = ptu.id_period_employee
+       JOIN [CentroPodologico].[payroll].[periods] p ON p.id_period = pe.id_period
+       JOIN [CentroPodologico].[dbo].[sucursales] s ON s.id_sucursal = p.id_sucursal
+      WHERE ptu.id_ptu_distribution = @id_ptu_distribution AND p.status >= 2
+      ORDER BY p.codigo`,
+    { id_ptu_distribution: idPtuDistribution },
+  )) as IPtuDistributionPayrollUsage[];
+  return rows[0] ?? null;
+}
+
+/** Mensaje de "Reabrir" bloqueado, para la acción y para el botón deshabilitado. */
+export function describePtuReopenBlocked(usage: IPtuDistributionPayrollUsage): string {
+  return `El reparto ya se usa en la nómina ${usage.codigo} de ${usage.nombre_sucursal}. Revierte ese cálculo para reabrirlo`;
 }
 
 /** Empresa de la sucursal (nunca la del cliente ni la de la sesión). null si la sucursal no existe. */
