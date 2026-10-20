@@ -28,6 +28,7 @@ import {
   AlarmClock,
   Award,
   Scale,
+  HandCoins,
   type LucideIcon,
 } from "lucide-react";
 
@@ -122,6 +123,12 @@ export const NAV_LINKS: NavLink[] = [
         href: "/dashboard/nomina/bonos",
         label: "Bonos",
         icon: Award,
+        excludeRoles: [2, 3, 5, 6],
+      },
+      {
+        href: "/dashboard/nomina/ptu",
+        label: "PTU",
+        icon: HandCoins,
         excludeRoles: [2, 3, 5, 6],
       },
       {

@@ -3,7 +3,6 @@
  * reutilizarlos para validar antes de enviar, pero la validación que cuenta es la de la acción.
  */
 import { z } from "zod";
-import { PTU_THREE_MONTHS_FACTORS } from "@/lib/payroll/constants";
 
 const MAX_MONEY_AMOUNT = 9_999_999_999_999.99;   // decimal(18,2) con margen
 const MAX_DAYS_IN_YEAR = 366;
@@ -22,12 +21,10 @@ const moneyAmount = (message: string) =>
 const distributionId = entityId("El reparto no es válido");
 const employeeId = entityId("El empleado no es válido");
 
-const threeMonthsFactor = z
-  .number({ error: "El factor de 3 meses debe ser 90 o 91.25" })
-  .refine(
-    (value) => (PTU_THREE_MONTHS_FACTORS as readonly number[]).includes(value),
-    "El factor de 3 meses debe ser 90 o 91.25",
-  );
+// Los literales deben coincidir con PTU_THREE_MONTHS_FACTORS; con ellos el tipo inferido es PtuThreeMonthsFactor.
+const threeMonthsFactor = z.union([z.literal(90), z.literal(91.25)], {
+  error: "El factor de 3 meses debe ser 90 o 91.25",
+});
 
 const taxpayerType = z.enum(["M", "F"], { error: "El tipo de persona no es válido" });
 
