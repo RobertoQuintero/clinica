@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 53 (`nomina-calculo-salario`): `payroll.period_employees`; las filas `'F'` de periodos ordinarios son la fuente de la precarga (`dias`, `importe_salario`).
   - 71 (`empleado-datos-fiscales-cfdi-nomina`): `RH.empleados.tipo_contrato`, que decide a quién se le exige el mínimo de 60 días.
@@ -440,37 +440,37 @@ export const PTU_TAXPAYER_TYPE_LABELS: Record<PtuTaxpayerType, string> = { M: "P
 
 **Categoría del empleado**
 
-- [ ] Todos los empleados existentes quedan con `categoria_ptu = 'N'`, y un empleado nuevo sin el campo se guarda `'N'`.
-- [ ] El formulario del empleado permite elegir Normal, Confianza o Excluido. Un valor fuera de `'N' | 'C' | 'X'` devuelve `{ ok: false }`.
+- [x] Todos los empleados existentes quedan con `categoria_ptu = 'N'`, y un empleado nuevo sin el campo se guarda `'N'`.
+- [x] El formulario del empleado permite elegir Normal, Confianza o Excluido. Un valor fuera de `'N' | 'C' | 'X'` devuelve `{ ok: false }`.
 
 **Reparto**
 
-- [ ] Se puede crear un reparto por empresa y ejercicio. Un segundo reparto del mismo ejercicio se rechaza con "Ya existe el reparto de PTU de {ejercicio}".
-- [ ] Fondo = `ROUND(renta_gravable × 10%, 2) + ptu_no_cobrada_anterior`, y las dos mitades suman el fondo exacto.
-- [ ] El factor de 3 meses solo acepta 90 o 91.25.
-- [ ] Un reparto solo muestra empleados de la empresa de la sesión. Abrir el de otra empresa da 404.
+- [x] Se puede crear un reparto por empresa y ejercicio. Un segundo reparto del mismo ejercicio se rechaza con "Ya existe el reparto de PTU de {ejercicio}".
+- [x] Fondo = `ROUND(renta_gravable × 10%, 2) + ptu_no_cobrada_anterior`, y las dos mitades suman el fondo exacto.
+- [x] El factor de 3 meses solo acepta 90 o 91.25.
+- [x] Un reparto solo muestra empleados de la empresa de la sesión. Abrir el de otra empresa da 404.
 
 **Precarga y edición**
 
-- [ ] La precarga trae a todos los empleados de la empresa, de cualquier sucursal y activos o dados de baja, que tengan al menos una fila `'F'` de un periodo ordinario con `fecha_fin` en el ejercicio.
-- [ ] Los días y el salario precargados son `SUM(dias)` y `SUM(importe_salario)` de esas filas. Las filas de periodos `'E'` no cuentan.
-- [ ] Precargar de nuevo no duplica filas, no pisa las filas editadas y no borra ninguna.
-- [ ] "Agregar trabajador" ofrece solo a los empleados de la empresa con `fecha_ingreso` ≤ 31-dic del ejercicio y sin baja vigente anterior al 1-ene. El agregado entra en ceros.
-- [ ] Solo las filas agregadas a mano se pueden quitar.
-- [ ] Cada escritura recalcula todo el reparto en la misma transacción. No existe ningún estado en el que las derivadas no correspondan a las entradas.
+- [x] La precarga trae a todos los empleados de la empresa, de cualquier sucursal y activos o dados de baja, que tengan al menos una fila `'F'` de un periodo ordinario con `fecha_fin` en el ejercicio.
+- [x] Los días y el salario precargados son `SUM(dias)` y `SUM(importe_salario)` de esas filas. Las filas de periodos `'E'` no cuentan.
+- [x] Precargar de nuevo no duplica filas, no pisa las filas editadas y no borra ninguna.
+- [x] "Agregar trabajador" ofrece solo a los empleados de la empresa con `fecha_ingreso` ≤ 31-dic del ejercicio y sin baja vigente anterior al 1-ene. El agregado entra en ceros.
+- [x] Solo las filas agregadas a mano se pueden quitar.
+- [x] Cada escritura recalcula todo el reparto en la misma transacción. No existe ningún estado en el que las derivadas no correspondan a las entradas.
 
 **Reglas del cálculo**
 
-- [ ] Una fila `'X'` queda no elegible con "Excluido: director, administrador o gerente general" y $0.
-- [ ] Una fila con `tipo_contrato` distinto de `'01'` y menos de 60 días queda no elegible con "Eventual con menos de 60 días". Con `'01'` o `NULL` entra aunque tenga menos de 60 días.
-- [ ] Una fila con 0 días queda no elegible con "Sin días trabajados".
-- [ ] Los no elegibles no suman a `total_dias` ni a `total_salario_reparto`.
-- [ ] El salario de reparto de un elegible `'C'` es `min(salario, ROUND(1.2 × máximo salario_diario_tope de los elegibles 'N', 2) × dias)`. Sin elegibles `'N'` no tiene tope.
-- [ ] `ptu_dias` y `ptu_salario` se truncan a centavos, así que el total repartido nunca supera el fondo.
-- [ ] `ptu_final = min(bruto, max(tope_tres_meses, promedio_tres_anios))`, y el promedio solo divide entre los años con dato.
-- [ ] Para un ejercicio con reparto cerrado de la empresa, el historial usa su `ptu_final` e ignora la captura manual.
-- [ ] `total_repartido + remanente_topes + remanente_redondeo = fondo` en todo reparto. El remanente no se redistribuye.
-- [ ] El caso de referencia del plan (paso 3) da exactamente:
+- [x] Una fila `'X'` queda no elegible con "Excluido: director, administrador o gerente general" y $0.
+- [x] Una fila con `tipo_contrato` distinto de `'01'` y menos de 60 días queda no elegible con "Eventual con menos de 60 días". Con `'01'` o `NULL` entra aunque tenga menos de 60 días.
+- [x] Una fila con 0 días queda no elegible con "Sin días trabajados".
+- [x] Los no elegibles no suman a `total_dias` ni a `total_salario_reparto`.
+- [x] El salario de reparto de un elegible `'C'` es `min(salario, ROUND(1.2 × máximo salario_diario_tope de los elegibles 'N', 2) × dias)`. Sin elegibles `'N'` no tiene tope.
+- [x] `ptu_dias` y `ptu_salario` se truncan a centavos, así que el total repartido nunca supera el fondo.
+- [x] `ptu_final = min(bruto, max(tope_tres_meses, promedio_tres_anios))`, y el promedio solo divide entre los años con dato.
+- [x] Para un ejercicio con reparto cerrado de la empresa, el historial usa su `ptu_final` e ignora la captura manual.
+- [x] `total_repartido + remanente_topes + remanente_redondeo = fondo` en todo reparto. El remanente no se redistribuye.
+- [x] El caso de referencia del plan (paso 3) da exactamente:
   - A **$34,523.80**, B **$27,000.00**, C **$38,095.23**, y D y E en $0;
   - total repartido **$99,619.03**, remanente por topes **$380.94** y remanente por redondeo **$0.03**;
   - con historial 2025 de $30,000 para B, B queda en **$27,380.94**;
@@ -478,19 +478,19 @@ export const PTU_TAXPAYER_TYPE_LABELS: Record<PtuTaxpayerType, string> = { M: "P
 
 **Ciclo de vida y bitácora**
 
-- [ ] Cerrar exige renta gravable > 0 y al menos un elegible, y congela `id_sucursal`.
-- [ ] Un reparto cerrado no acepta ninguna escritura, ni siquiera desde una pestaña vieja.
-- [ ] Reabrir regresa el reparto a borrador y permite editar.
-- [ ] Solo un reparto en borrador se puede eliminar, y al eliminarlo se borran sus filas y su bitácora.
-- [ ] Cada cambio real de parámetros, precarga, agregar, quitar, edición (una entrada por campo), historial, cierre y reapertura deja su entrada en la bitácora. Guardar sin cambios no deja nada.
+- [x] Cerrar exige renta gravable > 0 y al menos un elegible, y congela `id_sucursal`.
+- [x] Un reparto cerrado no acepta ninguna escritura, ni siquiera desde una pestaña vieja.
+- [x] Reabrir regresa el reparto a borrador y permite editar.
+- [x] Solo un reparto en borrador se puede eliminar, y al eliminarlo se borran sus filas y su bitácora.
+- [x] Cada cambio real de parámetros, precarga, agregar, quitar, edición (una entrada por campo), historial, cierre y reapertura deja su entrada en la bitácora. Guardar sin cambios no deja nada.
 
 **Calidad**
 
-- [ ] Todas las acciones nuevas pasan por `assertPayrollAccess()` y validan con `zod`. Un rol distinto de 1 y 4 recibe `{ ok: false }` y no ve "PTU" en la navegación.
-- [ ] Ninguna fecha viaja como `Date`.
-- [ ] Las páginas son Server Components y solo los modales y botones de acción son `"use client"`.
-- [ ] `npx tsc --noEmit` y `npm run lint` sin errores.
-- [ ] `docs/nomina.md`, `docs/rh-empleados.md` y `queries.txt` quedan actualizados.
+- [x] Todas las acciones nuevas pasan por `assertPayrollAccess()` y validan con `zod`. Un rol distinto de 1 y 4 recibe `{ ok: false }` y no ve "PTU" en la navegación.
+- [x] Ninguna fecha viaja como `Date`.
+- [x] Las páginas son Server Components y solo los modales y botones de acción son `"use client"`.
+- [x] `npx tsc --noEmit` y `npm run lint` sin errores.
+- [x] `docs/nomina.md`, `docs/rh-empleados.md` y `queries.txt` quedan actualizados.
 
 ## Decisiones
 
