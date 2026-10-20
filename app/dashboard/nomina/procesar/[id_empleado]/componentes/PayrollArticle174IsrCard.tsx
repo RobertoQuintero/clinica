@@ -1,5 +1,6 @@
 import { CircleMinus, Landmark, TriangleAlert } from "lucide-react";
 import type { IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
+import type { ExtraordinaryConcept } from "@/interfaces/payroll_period";
 import { describeArticle174SkipReason } from "@/lib/payroll/isrArticle174";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildTaxParametersHref } from "@/lib/payroll/taxParametersUrls";
@@ -11,7 +12,24 @@ interface Props {
   totalPerceptions: number;
   totalDeductions: number;
   fiscalYear: number;
+  /** Qué se paga en el periodo extraordinario: cambia solo los textos (aguinaldo o PTU). */
+  concept?: ExtraordinaryConcept;
 }
+
+const CONCEPT_TEXT: Record<ExtraordinaryConcept, { taxed: string; monthlyPart: string; isr: string; missing: string }> = {
+  A: {
+    taxed: "Gravado del aguinaldo",
+    monthlyPart: "Parte mensualizada del aguinaldo",
+    isr: "ISR del aguinaldo",
+    missing: "Este empleado no tiene aguinaldo con ISR calculado. Recalcula la nómina.",
+  },
+  P: {
+    taxed: "Gravado de la PTU",
+    monthlyPart: "Parte mensualizada de la PTU",
+    isr: "ISR de la PTU",
+    missing: "Este empleado no tiene PTU con ISR calculado. Recalcula la nómina.",
+  },
+};
 
 const PLAIN_NUMBER_FORMATTER = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 4 });
 
@@ -36,18 +54,24 @@ function BracketLine({ label, bracketText }: { label: string; bracketText: strin
 }
 
 /** Cada paso del art. 174 con lo que congeló el cálculo: ordinario mensual, parte mensualizada, ISR de cada tarifa y tasa. */
-function Article174CalculationDetail({ breakdown }: { breakdown: IArticle174IsrBreakdown }) {
+function Article174CalculationDetail({
+  breakdown,
+  concept,
+}: {
+  breakdown: IArticle174IsrBreakdown;
+  concept: ExtraordinaryConcept;
+}) {
   const usesBracket = breakdown.limite_inferior_ordinario !== null;
   return (
     <div className="mt-3 rounded-lg bg-[#f8f9ff] dark:bg-zinc-800/50 px-4 py-3">
       <dl>
-        <PayrollCalculationRow label="Gravado del aguinaldo" value={formatPayrollCurrency(breakdown.base_gravable ?? 0)} />
+        <PayrollCalculationRow label={CONCEPT_TEXT[concept].taxed} value={formatPayrollCurrency(breakdown.base_gravable ?? 0)} />
         <PayrollCalculationRow
           label="Ingreso ordinario mensual"
           value={formatPayrollCurrency(breakdown.ingreso_ordinario_mensual ?? 0)}
         />
         <PayrollCalculationRow
-          label="Parte mensualizada del aguinaldo"
+          label={CONCEPT_TEXT[concept].monthlyPart}
           value={formatPayrollCurrency(breakdown.parte_mensualizada ?? 0)}
         />
         {usesBracket && (
@@ -83,8 +107,14 @@ function Article174CalculationDetail({ breakdown }: { breakdown: IArticle174IsrB
   );
 }
 
-/** Tarjeta "Deducciones" del Detalle fiscal de un periodo extraordinario: ISR del aguinaldo por el art. 174 RLISR (spec 87). */
-export default function PayrollArticle174IsrCard({ breakdown, totalPerceptions, totalDeductions, fiscalYear }: Props) {
+/** Tarjeta "Deducciones" del Detalle fiscal de un periodo extraordinario: ISR del aguinaldo o de la PTU por el art. 174 RLISR (specs 87 y 90). */
+export default function PayrollArticle174IsrCard({
+  breakdown,
+  totalPerceptions,
+  totalDeductions,
+  fiscalYear,
+  concept = "A",
+}: Props) {
   const netPay = Math.round((totalPerceptions - totalDeductions) * 100) / 100;
 
   return (
@@ -119,7 +149,7 @@ export default function PayrollArticle174IsrCard({ breakdown, totalPerceptions, 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">ISR del aguinaldo</span>
+                <span className="text-sm font-semibold text-[#0b1c30] dark:text-zinc-100">{CONCEPT_TEXT[concept].isr}</span>
                 <span className="mt-0.5 text-sm text-[#44474f] dark:text-zinc-400">
                   Art. 174 RLISR sobre el gravado, con la tarifa mensual
                 </span>
@@ -131,7 +161,7 @@ export default function PayrollArticle174IsrCard({ breakdown, totalPerceptions, 
               )}
             </div>
 
-            {breakdown?.isr_estado === "C" && <Article174CalculationDetail breakdown={breakdown} />}
+            {breakdown?.isr_estado === "C" && <Article174CalculationDetail breakdown={breakdown} concept={concept} />}
 
             {breakdown?.isr_estado === "N" && breakdown.isr_motivo && (
               <p className="mt-3 flex gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
@@ -155,7 +185,7 @@ export default function PayrollArticle174IsrCard({ breakdown, totalPerceptions, 
 
             {!breakdown && (
               <p className="mt-3 rounded-lg bg-[#f8f9ff] dark:bg-zinc-800/50 px-3 py-2 text-sm text-[#44474f] dark:text-zinc-300">
-                Este empleado no tiene aguinaldo con ISR calculado. Recalcula la nómina.
+                {CONCEPT_TEXT[concept].missing}
               </p>
             )}
           </div>

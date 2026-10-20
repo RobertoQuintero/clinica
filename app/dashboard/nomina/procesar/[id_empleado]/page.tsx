@@ -53,6 +53,10 @@ export default async function PayrollEmployeeDetailPage({
   const isPeriodCalculated = detail !== null && detail.period.status !== 1;
   // Spec 87: el aguinaldo no tiene tratamientos, ventas, horas extra, faltas ni retardos que listar.
   const isExtraordinary = detail?.period.tipo_periodo === "E";
+  // Spec 90: la PTU solo existe en la nómina fiscal, así que no hay toggle y se ignora `tipo=operativa` de la URL.
+  const isPtuPeriod = isExtraordinary && detail?.period.concepto_extraordinario === "P";
+  const payrollType = isPtuPeriod ? "F" : filters.payrollType;
+  const viewFilters: IPayrollEmployeeDetailFilters = { ...filters, payrollType };
   // Sin cálculo (estatus 1) o sin fila en el tipo seleccionado no hay Anterior / Siguiente.
   const showNavigation = isPeriodCalculated && detail.snapshot !== null;
 
@@ -92,7 +96,7 @@ export default async function PayrollEmployeeDetailPage({
             <PayrollEmployeeNavigation
               previousEmployeeId={detail.navigation.previousEmployeeId}
               nextEmployeeId={detail.navigation.nextEmployeeId}
-              filters={filters}
+              filters={viewFilters}
             />
           )}
         </div>
@@ -106,12 +110,12 @@ export default async function PayrollEmployeeDetailPage({
 
       {detail && (
         <>
-          <PayrollTypeToggle idEmpleado={idEmpleado} filters={filters} />
+          {!isPtuPeriod && <PayrollTypeToggle idEmpleado={idEmpleado} filters={filters} />}
           <PayrollEmployeeProfileCard
             employee={detail.employee}
             period={detail.period}
             salarioDiario={detail.snapshot?.salario_diario ?? null}
-            payrollType={filters.payrollType}
+            payrollType={payrollType}
           />
           {!isPeriodCalculated ? (
             <PayrollDetailNotice
@@ -132,17 +136,18 @@ export default async function PayrollEmployeeDetailPage({
                 <PayrollPerceptionsCard
                   perceptions={detail.perceptions}
                   totalPerceptions={detail.totalPerceptions}
-                  showTaxBreakdown={filters.payrollType === "F"}
+                  showTaxBreakdown={payrollType === "F"}
                   totalTaxed={detail.totalTaxed}
                   totalExempt={detail.totalExempt}
                 />
-                {filters.payrollType === "F" &&
+                {payrollType === "F" &&
                   (isExtraordinary ? (
                     <PayrollArticle174IsrCard
                       breakdown={detail.article174}
                       totalPerceptions={detail.totalPerceptions}
                       totalDeductions={detail.totalDeductions}
                       fiscalYear={Number(detail.period.fecha_fin.slice(0, 4))}
+                      concept={detail.period.concepto_extraordinario ?? "A"}
                     />
                   ) : (
                     <PayrollDeductionsCard
@@ -164,11 +169,13 @@ export default async function PayrollEmployeeDetailPage({
             </div>
           ) : (
             <PayrollDetailNotice
-              title={`Este empleado no está en la nómina ${PAYROLL_TYPE[filters.payrollType].label.toLowerCase()} de este periodo`}
+              title={`Este empleado no está en la nómina ${PAYROLL_TYPE[payrollType].label.toLowerCase()} de este periodo`}
               description={
-                isExtraordinary
-                  ? `El aguinaldo incluye a los empleados activos de la sucursal con salario diario ${PAYROLL_TYPE[filters.payrollType].label.toLowerCase()} capturado.`
-                  : `Al calcular se incluyen los empleados activos de la frecuencia del periodo con salario diario ${PAYROLL_TYPE[filters.payrollType].label.toLowerCase()} capturado.`
+                isPtuPeriod
+                  ? "La PTU incluye a los trabajadores de la sucursal con PTU mayor que cero en el reparto cerrado."
+                  : isExtraordinary
+                  ? `El aguinaldo incluye a los empleados activos de la sucursal con salario diario ${PAYROLL_TYPE[payrollType].label.toLowerCase()} capturado.`
+                  : `Al calcular se incluyen los empleados activos de la frecuencia del periodo con salario diario ${PAYROLL_TYPE[payrollType].label.toLowerCase()} capturado.`
               }
             />
           )}

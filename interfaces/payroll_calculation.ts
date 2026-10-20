@@ -158,6 +158,8 @@ export interface IPayrollEmployeeSnapshot extends IIsrBreakdown {
   importe_vacaciones_pagadas:    number;
   dias_aguinaldo:                number;            // spec 87; 0 en periodos ordinarios
   importe_aguinaldo:             number;
+  importe_ptu:                   number;            // spec 90; 0 salvo en un periodo extraordinario de PTU
+  ptu:                           IPtuPaymentBreakdown | null;   // spec 90: desglose congelado; null fuera de un periodo PTU
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 

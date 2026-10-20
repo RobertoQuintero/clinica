@@ -606,11 +606,15 @@ export async function getPayrollEmployeeDetail(
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
-  const { idEmpleado, idPeriod, payrollType, idPuesto, search } = parsed.data;
+  const { idEmpleado, idPeriod, idPuesto, search } = parsed.data;
+  let payrollType = parsed.data.payrollType;
 
   try {
     const period = await resolvePeriod(id_sucursal, idPeriod);
     if (!period) return { ok: true, data: null };
+
+    // Spec 90: la PTU solo existe en la nómina fiscal; un periodo PTU ignora `tipo=operativa` de la URL.
+    if (period.tipo_periodo === "E" && period.concepto_extraordinario === "P") payrollType = "F";
 
     const { conditions: navigationConditions, params: navigationParams } = buildPayrollEmployeeConditions({
       idPeriod: period.id_period,
@@ -665,6 +669,13 @@ export async function getPayrollEmployeeDetail(
                 pe.dias_prima_vacacional, CAST(pe.importe_prima_vacacional AS float) AS importe_prima_vacacional,
                 pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
                 pe.dias_aguinaldo, CAST(pe.importe_aguinaldo AS float) AS importe_aguinaldo,
+                CAST(pe.importe_ptu AS float) AS importe_ptu,
+                ptu.id_ptu_distribution AS ptu_id_ptu_distribution, ptu.ejercicio_reparto AS ptu_ejercicio_reparto,
+                ptu.dias AS ptu_dias_trabajados, CAST(ptu.ptu_dias AS float) AS ptu_ptu_dias,
+                CAST(ptu.ptu_salario AS float) AS ptu_ptu_salario, CAST(ptu.ptu_bruto AS float) AS ptu_ptu_bruto,
+                CAST(ptu.tope_tres_meses AS float) AS ptu_tope_tres_meses,
+                CAST(ptu.promedio_tres_anios AS float) AS ptu_promedio_tres_anios,
+                ptu.anios_promedio AS ptu_anios_promedio, CAST(ptu.ptu_final AS float) AS ptu_ptu_final,
                 pe.isr_estado, pe.isr_motivo,
                 CAST(pe.isr_base_gravable AS float)             AS isr_base_gravable,
                 pe.isr_ejercicio_tarifa,
@@ -687,6 +698,8 @@ export async function getPayrollEmployeeDetail(
                        WHERE d.id_period_employee = pe.id_period_employee) AS float) AS total_deducciones,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
+           LEFT JOIN [CentroPodologico].[payroll].[period_employee_ptu] ptu
+                  ON ptu.id_period_employee = pe.id_period_employee
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina`,
         { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
       ),
@@ -803,8 +816,8 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
-      // Spec 87: desglose congelado del ISR art. 174 del aguinaldo (solo en el renglón fiscal de un periodo extraordinario).
-      payrollType === "F" && period.tipo_periodo === "E" && period.concepto_extraordinario === "A"
+      // Spec 87/90: desglose congelado del ISR art. 174 (solo en el renglón fiscal de un periodo extraordinario, de aguinaldo o PTU).
+      payrollType === "F" && period.tipo_periodo === "E"
         ? db.queryParams(
             `SELECT a.isr_estado, a.isr_motivo,
                     CAST(a.base_gravable AS float)             AS base_gravable,
@@ -883,6 +896,8 @@ export async function getPayrollEmployeeDetail(
           importe_vacaciones_pagadas: Number(snapshotRow.importe_vacaciones_pagadas),
           dias_aguinaldo: Number(snapshotRow.dias_aguinaldo),
           importe_aguinaldo: Number(snapshotRow.importe_aguinaldo),
+          importe_ptu: Number(snapshotRow.importe_ptu),
+          ptu: toPtuPaymentBreakdown(snapshotRow as IPtuPaymentRowColumns),
           isr_estado: snapshotRow.isr_estado,
           isr_motivo: snapshotRow.isr_motivo ?? null,
           isr_base_gravable: toNullableNumber(snapshotRow.isr_base_gravable),
@@ -911,7 +926,7 @@ export async function getPayrollEmployeeDetail(
     const commissionTiers =
       snapshot && snapshot.importe_comision > 0 ? await getCommissionTiersOrEmpty() : [];
     const baseLines = snapshot
-      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers, period.tipo_periodo)
+      ? buildPerceptionLines(snapshot, employee.fecha_ingreso, period.fecha_inicio, commissionTiers, period.concepto_extraordinario ?? "O")
       : [];
     const perceptions = snapshot
       ? attachTaxBreakdown(baseLines, payrollType, storedPerceptionRows as IPeriodEmployeePerception[])
