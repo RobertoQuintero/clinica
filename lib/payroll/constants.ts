@@ -3,7 +3,13 @@ import type { PayrollPeriodType } from "@/interfaces/payroll_period";
 import type { ExemptionSkipReason } from "@/interfaces/payroll_exemption";
 import type { IsrSkipReason } from "@/interfaces/payroll_isr";
 import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
-import type { PtuCategory } from "@/interfaces/payroll_ptu";
+import type {
+  PtuCategory,
+  PtuDistributionStatus,
+  PtuIneligibilityReason,
+  PtuTaxpayerType,
+  PtuThreeMonthsFactor,
+} from "@/interfaces/payroll_ptu";
 
 export const PAYROLL_PERIOD_STATUS = {
   1: { label: "Programada",  badge: "neutral" },
@@ -113,3 +119,18 @@ export const PTU_CATEGORY_LABELS: Record<PtuCategory, string> = {
   C: "Confianza (tope 120%)",
   X: "Excluido (director, administrador o gerente general)",
 };
+
+export const PTU_PROFIT_SHARE_PERCENT = 10;
+export const PTU_THREE_MONTHS_FACTORS: readonly PtuThreeMonthsFactor[] = [90, 91.25];
+export const PTU_EVENTUAL_MINIMUM_DAYS = 60;
+export const PTU_TRUST_SALARY_CAP_FACTOR = 1.2;
+export const PTU_PERMANENT_CONTRACT_TYPE = "01";   // c_TipoContrato: tiempo indeterminado
+export const PTU_AVERAGE_YEARS = 3;
+
+export const PTU_INELIGIBILITY_REASON_LABELS: Record<PtuIneligibilityReason, string> = {
+  excluded_category:      "Excluido: director, administrador o gerente general",
+  eventual_under_60_days: "Eventual con menos de 60 días",
+  no_days:                "Sin días trabajados",
+};
+export const PTU_DISTRIBUTION_STATUS_LABELS: Record<PtuDistributionStatus, string> = { B: "Borrador", C: "Cerrado" };
+export const PTU_TAXPAYER_TYPE_LABELS: Record<PtuTaxpayerType, string> = { M: "Persona moral", F: "Persona física" };
