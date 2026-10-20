@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { ITransactionClient } from "@/database/connection";
-import type { IPtuAddableEmployee, IPtuDistribution, IPtuHistoryEntry, PtuCategory } from "@/interfaces/payroll_ptu";
+import type { IPtuAddableEmployee, IPtuDistribution, IPtuHistoryEntry, IPtuHistoryYear, PtuCategory } from "@/interfaces/payroll_ptu";
 import { PTU_AVERAGE_YEARS } from "@/lib/payroll/constants";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 
@@ -20,6 +20,23 @@ export const PTU_DISTRIBUTION_SELECT = `
 /** Los tres ejercicios anteriores al del reparto, del más reciente al más antiguo. */
 export function getPtuAverageYears(ejercicio: number): number[] {
   return Array.from({ length: PTU_AVERAGE_YEARS }, (_, index) => ejercicio - 1 - index);
+}
+
+/** Ejercicios, entre los tres anteriores al del reparto, que ya tienen un reparto cerrado de la empresa. */
+export async function loadPtuClosedDistributionYears(
+  client: ITransactionClient,
+  distribution: Pick<IPtuDistribution, "id_empresa" | "ejercicio">,
+): Promise<Set<number>> {
+  const years = getPtuAverageYears(distribution.ejercicio);
+  const yearParams = Object.fromEntries(years.map((year, index) => [`year${index}`, year]));
+  const yearPlaceholders = years.map((_, index) => `@year${index}`).join(", ");
+  const rows = (await client.queryParams(
+    `SELECT ejercicio
+       FROM [CentroPodologico].[payroll].[ptu_distributions]
+      WHERE id_empresa = @id_empresa AND estado = 'C' AND ejercicio IN (${yearPlaceholders})`,
+    { id_empresa: distribution.id_empresa, ...yearParams },
+  )) as { ejercicio: number }[];
+  return new Set(rows.map((row) => row.ejercicio));
 }
 
 /**
@@ -49,13 +66,7 @@ export async function loadPtuHistoryByEmployee(
     { id_empresa: distribution.id_empresa, id_ptu_distribution: distribution.id_ptu_distribution, ...yearParams },
   )) as { ejercicio: number; id_empleado: number; ptu_final: number }[];
 
-  const closedYears = (await client.queryParams(
-    `SELECT ejercicio
-       FROM [CentroPodologico].[payroll].[ptu_distributions]
-      WHERE id_empresa = @id_empresa AND estado = 'C' AND ejercicio IN (${yearPlaceholders})`,
-    { id_empresa: distribution.id_empresa, ...yearParams },
-  )) as { ejercicio: number }[];
-  const yearsWithClosedDistribution = new Set(closedYears.map((row) => row.ejercicio));
+  const yearsWithClosedDistribution = await loadPtuClosedDistributionYears(client, distribution);
 
   const manualRows = (await client.queryParams(
     `SELECT h.ejercicio, h.id_empleado, h.importe
@@ -81,6 +92,31 @@ export async function loadPtuHistoryByEmployee(
     addEntry(row.id_empleado, { ejercicio: row.ejercicio, importe: Number(row.importe), origen: "manual" });
   }
   return historyByEmployee;
+}
+
+/**
+ * Los tres ejercicios anteriores de un trabajador, del más reciente al más antiguo, con el importe y su
+ * origen. `closedDistribution` marca los años que vienen de un reparto cerrado: ahí la captura manual no
+ * aplica, aunque el trabajador no tenga renglón en ese reparto.
+ */
+export async function loadPtuHistoryYears(
+  client: ITransactionClient,
+  distribution: Pick<IPtuDistribution, "id_ptu_distribution" | "id_empresa" | "ejercicio">,
+  id_empleado: number,
+): Promise<IPtuHistoryYear[]> {
+  // En serie: un cliente atado a una transacción no admite dos consultas a la vez.
+  const historyByEmployee = await loadPtuHistoryByEmployee(client, distribution);
+  const closedYears = await loadPtuClosedDistributionYears(client, distribution);
+  const entries = historyByEmployee.get(id_empleado) ?? [];
+  return getPtuAverageYears(distribution.ejercicio).map((ejercicio) => {
+    const entry = entries.find((candidate) => candidate.ejercicio === ejercicio);
+    return {
+      ejercicio,
+      importe: entry ? entry.importe : null,
+      origen: entry ? entry.origen : null,
+      closedDistribution: closedYears.has(ejercicio),
+    };
+  });
 }
 
 /** Trabajador que la precarga propone para un reparto, con los datos actuales del empleado. */

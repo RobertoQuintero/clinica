@@ -157,6 +157,15 @@ export interface IPtuDistributionDetail {
   log:          IPtuDistributionLogEntry[];
 }
 
+/** Un ejercicio anterior en el modal de historial: de un reparto cerrado, capturado a mano o sin dato. */
+export interface IPtuHistoryYear {
+  ejercicio:          number;
+  importe:            number | null;
+  origen:             "reparto" | "manual" | null;
+  /** Hay un reparto cerrado de la empresa para este ejercicio: solo lectura. */
+  closedDistribution: boolean;
+}
+
 /** Empleado que se puede agregar a mano a un reparto. */
 export interface IPtuAddableEmployee {
   id_empleado:           number;

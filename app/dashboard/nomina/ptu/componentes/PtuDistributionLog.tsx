@@ -8,10 +8,19 @@ interface Props {
   entries: IPtuDistributionLogEntry[];
 }
 
+const HISTORY_FIELD_PATTERN = /^ptu_ejercicio_(\d{4})$/;
+
+/** Etiqueta y tipo de un campo de la bitácora; la PTU de un ejercicio anterior lleva el año en el nombre del campo. */
+function resolveLogField(field: string): (typeof PTU_LOG_FIELD_LABELS)[string] | undefined {
+  const historyYear = HISTORY_FIELD_PATTERN.exec(field)?.[1];
+  if (historyYear) return { label: `PTU ${historyYear}`, type: "money" };
+  return PTU_LOG_FIELD_LABELS[field];
+}
+
 /** Valor de la bitácora tal como se muestra: importes con formato de moneda, tipo de persona con su nombre. */
 function formatLogValue(field: string, value: string | null): string {
   if (value === null) return "—";
-  const fieldType = PTU_LOG_FIELD_LABELS[field]?.type;
+  const fieldType = resolveLogField(field)?.type;
   if (fieldType === "money" && value !== "" && !Number.isNaN(Number(value))) return formatPayrollCurrency(Number(value));
   if (fieldType === "taxpayer" && value in PTU_TAXPAYER_TYPE_LABELS) return PTU_TAXPAYER_TYPE_LABELS[value as PtuTaxpayerType];
   return value;
@@ -20,7 +29,7 @@ function formatLogValue(field: string, value: string | null): string {
 function LogChange({ entry }: { entry: IPtuDistributionLogEntry }) {
   // Acciones sin campo (precarga, cierre…): el texto va en valor_nuevo, o no hay detalle.
   if (!entry.campo) return <span className="text-[#44474f] dark:text-zinc-400">{entry.valor_nuevo ?? "—"}</span>;
-  const label = PTU_LOG_FIELD_LABELS[entry.campo]?.label ?? entry.campo;
+  const label = resolveLogField(entry.campo)?.label ?? entry.campo;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 tabular-nums">
       <span className="text-[#44474f] dark:text-zinc-400">{label}:</span>

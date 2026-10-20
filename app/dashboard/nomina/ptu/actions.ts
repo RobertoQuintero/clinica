@@ -7,6 +7,7 @@ import type {
   IPtuDistributionDetail,
   IPtuDistributionEmployee,
   IPtuDistributionLogEntry,
+  IPtuHistoryYear,
   PtuEmployeeOrigin,
   PtuLogAction,
 } from "@/interfaces/payroll_ptu";
@@ -14,12 +15,20 @@ import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { calculatePtuDistribution } from "@/lib/payroll/ptuDistribution";
 import { PTU_LOG_ENTRIES_LIMIT } from "@/lib/payroll/constants";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { loadPtuAddableEmployees, loadPtuPreloadRows, PTU_DISTRIBUTION_SELECT } from "@/lib/payroll/ptuDistributionSql";
+import {
+  getPtuAverageYears,
+  loadPtuAddableEmployees,
+  loadPtuClosedDistributionYears,
+  loadPtuHistoryYears,
+  loadPtuPreloadRows,
+  PTU_DISTRIBUTION_SELECT,
+} from "@/lib/payroll/ptuDistributionSql";
 import { lockPtuDistribution, recalculatePtuDistribution } from "@/lib/payroll/ptuRecalculation";
 import {
   createPtuDistributionSchema,
   ptuDistributionEmployeeSchema,
   ptuDistributionIdSchema,
+  savePtuHistorySchema,
   updatePtuDistributionEmployeeSchema,
   updatePtuDistributionParametersSchema,
 } from "@/lib/payroll/ptuSchemas";
@@ -605,5 +614,128 @@ export async function removePtuDistributionEmployee(rawInput: unknown): Promise<
   } catch (error) {
     console.error("removePtuDistributionEmployee", error);
     return { ok: false, message: "No se pudo quitar al trabajador" };
+  }
+}
+
+/** Los tres ejercicios anteriores de un trabajador del reparto, con el origen de cada importe. */
+export async function getPtuHistory(rawInput: unknown): Promise<ActionResult<IPtuHistoryYear[]>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = ptuDistributionEmployeeSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const input = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, input.id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      const members = await tx.queryParams(
+        `SELECT 1 AS found FROM [CentroPodologico].[payroll].[ptu_distribution_employees]
+          WHERE id_ptu_distribution = @id_ptu_distribution AND id_empleado = @id_empleado`,
+        { id_ptu_distribution: input.id_ptu_distribution, id_empleado: input.id_empleado },
+      );
+      if (members.length === 0) return "employee_not_found" as const;
+      return loadPtuHistoryYears(tx, distribution, input.id_empleado);
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "employee_not_found") return { ok: false, message: EMPLOYEE_NOT_IN_DISTRIBUTION_MESSAGE };
+    return { ok: true, data: outcome };
+  } catch (error) {
+    console.error("getPtuHistory", error);
+    return { ok: false, message: "No se pudo cargar el historial de PTU" };
+  }
+}
+
+/**
+ * Crea, edita o borra (`importe: null`) la PTU capturada a mano de un ejercicio anterior y recalcula el
+ * reparto. Un año con reparto cerrado de la empresa no se captura: ahí manda el reparto.
+ */
+export async function savePtuHistory(rawInput: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = savePtuHistorySchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const input = parsed.data;
+
+  try {
+    const outcome = await db.transaction(async (tx) => {
+      const distribution = await lockPtuDistribution(tx, input.id_ptu_distribution, access.data.id_empresa);
+      if (!distribution) return "not_found" as const;
+      if (distribution.estado === "C") return "closed" as const;
+
+      const members = await tx.queryParams(
+        `SELECT 1 AS found FROM [CentroPodologico].[payroll].[ptu_distribution_employees] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_ptu_distribution = @id_ptu_distribution AND id_empleado = @id_empleado`,
+        { id_ptu_distribution: input.id_ptu_distribution, id_empleado: input.id_empleado },
+      );
+      if (members.length === 0) return "employee_not_found" as const;
+
+      if (!getPtuAverageYears(distribution.ejercicio).includes(input.ejercicio)) return "year_out_of_range" as const;
+      const closedYears = await loadPtuClosedDistributionYears(tx, distribution);
+      if (closedYears.has(input.ejercicio)) return "year_from_distribution" as const;
+
+      const existingRows = (await tx.queryParams(
+        `SELECT importe FROM [CentroPodologico].[payroll].[ptu_history] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_empleado = @id_empleado AND ejercicio = @ejercicio`,
+        { id_empleado: input.id_empleado, ejercicio: input.ejercicio },
+      )) as { importe: number }[];
+      const existingAmount = existingRows.length > 0 ? Number(existingRows[0].importe) : null;
+
+      const isSameAmount =
+        existingAmount === null || input.importe === null
+          ? existingAmount === input.importe
+          : Math.round(existingAmount * 100) === Math.round(input.importe * 100);
+      if (isSameAmount) return "unchanged" as const;
+
+      const now = buildDate(new Date());
+      if (input.importe === null) {
+        await tx.queryParams(
+          `DELETE FROM [CentroPodologico].[payroll].[ptu_history] WHERE [id_empleado] = @id_empleado AND [ejercicio] = @ejercicio`,
+          { id_empleado: input.id_empleado, ejercicio: input.ejercicio },
+        );
+      } else if (existingAmount === null) {
+        await tx.queryParams(
+          `INSERT INTO [CentroPodologico].[payroll].[ptu_history] ([id_empleado],[ejercicio],[importe],[captured_by],[captured_at])
+           VALUES (@id_empleado, @ejercicio, @importe, @captured_by, @captured_at)`,
+          { id_empleado: input.id_empleado, ejercicio: input.ejercicio, importe: input.importe, captured_by: access.data.id_user, captured_at: now },
+        );
+      } else {
+        await tx.queryParams(
+          `UPDATE [CentroPodologico].[payroll].[ptu_history]
+              SET [importe] = @importe, [captured_by] = @captured_by, [captured_at] = @captured_at
+            WHERE [id_empleado] = @id_empleado AND [ejercicio] = @ejercicio`,
+          { id_empleado: input.id_empleado, ejercicio: input.ejercicio, importe: input.importe, captured_by: access.data.id_user, captured_at: now },
+        );
+      }
+
+      await recalculatePtuDistribution(tx, distribution);
+      await writePtuLogEntry(tx, {
+        id_ptu_distribution: input.id_ptu_distribution,
+        id_empleado: input.id_empleado,
+        accion: "H",
+        campo: `ptu_ejercicio_${input.ejercicio}`,
+        valor_anterior: existingAmount === null ? null : String(existingAmount),
+        valor_nuevo: input.importe === null ? null : String(input.importe),
+        changed_by: access.data.id_user,
+        changed_at: now,
+      });
+      return "saved" as const;
+    });
+
+    if (outcome === "not_found") return { ok: false, message: DISTRIBUTION_NOT_FOUND_MESSAGE };
+    if (outcome === "closed") return { ok: false, message: CLOSED_DISTRIBUTION_MESSAGE };
+    if (outcome === "employee_not_found") return { ok: false, message: EMPLOYEE_NOT_IN_DISTRIBUTION_MESSAGE };
+    if (outcome === "year_out_of_range") {
+      return { ok: false, message: "Solo se captura la PTU de los tres ejercicios anteriores al del reparto" };
+    }
+    if (outcome === "year_from_distribution") {
+      return { ok: false, message: `El ejercicio ${input.ejercicio} ya tiene un reparto cerrado: se usa su PTU y no se captura a mano` };
+    }
+    if (outcome === "saved") revalidatePath(`${PTU_PATH}/${input.id_ptu_distribution}`);
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("savePtuHistory", error);
+    return { ok: false, message: "No se pudo guardar la PTU del ejercicio anterior" };
   }
 }

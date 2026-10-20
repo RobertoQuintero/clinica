@@ -1,7 +1,7 @@
 import type { IPtuDistributionEmployee } from "@/interfaces/payroll_ptu";
 import { PTU_CATEGORY_SHORT_LABELS, PTU_INELIGIBILITY_REASON_LABELS } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
-import { EditPtuEmployeeButton } from "./PtuEmployeeActions";
+import { EditPtuEmployeeButton, PtuHistoryButton } from "./PtuEmployeeActions";
 import RemovePtuEmployeeButton from "./RemovePtuEmployeeButton";
 
 interface Props {
@@ -118,6 +118,7 @@ export default function PtuDistributionEmployeesTable({ idPtuDistribution, emplo
                   {isEditable && (
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <PtuHistoryButton idPtuDistribution={idPtuDistribution} employee={employee} />
                         <EditPtuEmployeeButton idPtuDistribution={idPtuDistribution} employee={employee} />
                         {employee.origen === "M" && (
                           <RemovePtuEmployeeButton
