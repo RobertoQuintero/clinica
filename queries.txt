@@ -3022,6 +3022,39 @@ SELECT [id_perception], [clave_sat], [description]
    AND [umas_limite] = 15 AND [periodicidad_limite] = 'A';
 GO
 
+-- Spec 91: parámetros fiscales del IMSS. Se recrea el CHECK con las 16 claves.
+ALTER TABLE [payroll].[tax_parameters] DROP CONSTRAINT [CK_tax_parameters_clave];
+GO
+ALTER TABLE [payroll].[tax_parameters] ADD CONSTRAINT [CK_tax_parameters_clave] CHECK ([clave] IN (
+    'UMA_DIARIA','UMA_MENSUAL','UMA_ANUAL',
+    'SALARIO_MINIMO_GENERAL','SALARIO_MINIMO_FRONTERA',
+    'SUBSIDIO_MONTO_MENSUAL','SUBSIDIO_TOPE_INGRESO_MENSUAL','SUBSIDIO_FACTOR_DIAS_MES',
+    'DIAS_ANIO',
+    'IMSS_OBRERO_EYM_EXCEDENTE','IMSS_OBRERO_EYM_DINERO','IMSS_OBRERO_EYM_PENSIONADOS',
+    'IMSS_OBRERO_IV','IMSS_OBRERO_CEAV',
+    'IMSS_UMBRAL_EXCEDENTE_UMAS','IMSS_TOPE_SBC_UMAS'));
+GO
+
+-- Spec 91: precarga idempotente (solo inserta las claves que no tengan fila en 2026-01-01). No escribe bitácora.
+-- @seed_user_id: id_user del administrador que corre el script.
+DECLARE @seed_user_id int = 1;   -- AJUSTAR antes de correr
+INSERT INTO [CentroPodologico].[payroll].[tax_parameters] ([clave], [valor], [vigente_desde], [updated_by], [updated_at])
+SELECT seed.[clave], seed.[valor], '2026-01-01', @seed_user_id, SYSDATETIME()
+  FROM (VALUES
+        ('IMSS_OBRERO_EYM_EXCEDENTE',   0.4000),   -- % sobre el excedente de 3 UMA (art. 106)
+        ('IMSS_OBRERO_EYM_DINERO',      0.2500),   -- % sobre SBC (art. 107)
+        ('IMSS_OBRERO_EYM_PENSIONADOS', 0.3750),   -- % sobre SBC (art. 25)
+        ('IMSS_OBRERO_IV',              0.6250),   -- % sobre SBC (art. 147)
+        ('IMSS_OBRERO_CEAV',            1.1250),   -- % sobre SBC (art. 168)
+        ('IMSS_UMBRAL_EXCEDENTE_UMAS',  3.0000),   -- UMA
+        ('IMSS_TOPE_SBC_UMAS',         25.0000)    -- UMA (art. 28)
+       ) AS seed ([clave], [valor])
+ WHERE NOT EXISTS (
+        SELECT 1
+          FROM [CentroPodologico].[payroll].[tax_parameters] existing
+         WHERE existing.[clave] = seed.[clave] AND existing.[vigente_desde] = '2026-01-01');
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------

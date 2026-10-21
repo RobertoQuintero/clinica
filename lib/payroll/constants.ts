@@ -45,7 +45,7 @@ export const SHIFT_EXTENSION_HOURS_PER_DAY = 1;
 export const SHIFT_EXTENSION_PAY_MULTIPLIER = 2;
 export const SHIFT_EXTENSION_BONUS_PAGE_SIZE = 25;
 
-// Parámetros fiscales anuales (spec 69). Las 9 claves de payroll.tax_parameters, con etiqueta y unidad para la pantalla.
+// Parámetros fiscales anuales (spec 69, más las 7 del IMSS de la spec 91). Las claves de payroll.tax_parameters, con etiqueta y unidad para la pantalla.
 export const TAX_PARAMETER_KEYS: Record<TaxParameterKey, { label: string; unit: string }> = {
   UMA_DIARIA:                    { label: "UMA diaria",                        unit: "$ por día" },
   UMA_MENSUAL:                   { label: "UMA mensual",                       unit: "$ por mes" },
@@ -56,6 +56,14 @@ export const TAX_PARAMETER_KEYS: Record<TaxParameterKey, { label: string; unit: 
   SUBSIDIO_TOPE_INGRESO_MENSUAL: { label: "Subsidio para el empleo (tope de ingreso)", unit: "$ por mes" },
   SUBSIDIO_FACTOR_DIAS_MES:      { label: "Subsidio para el empleo (factor de días)",  unit: "días" },
   DIAS_ANIO:                     { label: "Días del año",                      unit: "días" },
+  // Spec 91: cuota obrera del IMSS. Tasas en porcentaje (0.4 = 0.40 %); umbral y tope en UMA.
+  IMSS_OBRERO_EYM_EXCEDENTE:     { label: "IMSS obrero: enfermedad y maternidad, excedente de 3 UMA", unit: "% del excedente" },
+  IMSS_OBRERO_EYM_DINERO:        { label: "IMSS obrero: enfermedad y maternidad, prestaciones en dinero", unit: "% del SBC" },
+  IMSS_OBRERO_EYM_PENSIONADOS:   { label: "IMSS obrero: enfermedad y maternidad, gastos médicos de pensionados", unit: "% del SBC" },
+  IMSS_OBRERO_IV:                { label: "IMSS obrero: invalidez y vida",     unit: "% del SBC" },
+  IMSS_OBRERO_CEAV:              { label: "IMSS obrero: cesantía en edad avanzada y vejez", unit: "% del SBC" },
+  IMSS_UMBRAL_EXCEDENTE_UMAS:    { label: "IMSS: umbral del excedente",        unit: "UMA" },
+  IMSS_TOPE_SBC_UMAS:            { label: "IMSS: tope del SBC",                unit: "UMA" },
 };
 export const TAX_PARAMETERS_LOG_PAGE_SIZE = 20;
 
