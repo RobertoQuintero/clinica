@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 53 (`nomina-calculo-salario`): `payroll.period_employees`, `calculatePayrollPeriod` y Procesar.
   - 54 (`nomina-detalle-percepciones-empleado`): Detalle por empleado.
