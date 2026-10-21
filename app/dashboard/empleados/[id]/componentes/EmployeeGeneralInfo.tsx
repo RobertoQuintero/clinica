@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { EMPLOYEE_SETUP_ANCHORS, PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { IEmployeeRecord } from "@/interfaces/employee";
 import { IEmployeeSchedule } from "@/interfaces/employee_schedule";
 import { formatScheduleSummary } from "../horario/scheduleFormatting";
@@ -73,8 +75,13 @@ export default function EmployeeGeneralInfo({ employee, schedule }: Props) {
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6 shadow-sm flex flex-col gap-8">
       {/* Datos Personales */}
       <div>
-        <h3 className="text-sm font-bold text-[#0b1c30] dark:text-zinc-100 mb-4 pb-2 border-b border-[#c4c6d0]/50 dark:border-zinc-700/50">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-[#0b1c30] dark:text-zinc-100 mb-4 pb-2 border-b border-[#c4c6d0]/50 dark:border-zinc-700/50">
           Datos Personales
+          <ManualHelpLink
+            moduleSlug="nomina"
+            topicSlug={PAYROLL_MANUAL_TOPICS.employeeSetup}
+            anchor={EMPLOYEE_SETUP_ANCHORS.personalData}
+          />
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-3 text-sm">
           <div className="flex flex-col gap-3">

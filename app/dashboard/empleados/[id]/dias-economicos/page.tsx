@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { EMPLOYEE_SETUP_ANCHORS, PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import EmployeeWithoutScheduleNotice from "@/app/dashboard/empleados/[id]/componentes/EmployeeWithoutScheduleNotice";
 import { getEmployeeWorkingWeekdays } from "@/app/dashboard/empleados/[id]/vacaciones/actions";
@@ -33,7 +35,14 @@ export default async function EmployeeEconomicDaysPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">Días económicos</h2>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Días económicos</h2>
+          <ManualHelpLink
+            moduleSlug="nomina"
+            topicSlug={PAYROLL_MANUAL_TOPICS.employeeSetup}
+            anchor={EMPLOYEE_SETUP_ANCHORS.economicDays}
+          />
+        </div>
         <p className="text-sm text-[#44474f] dark:text-zinc-400">
           Hasta 3 días por año calendario, en días laborables. El saldo se reinicia cada 1 de enero.
         </p>

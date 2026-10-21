@@ -3,6 +3,8 @@ import { ChevronRight, Info } from "lucide-react";
 import type { IOvertimeFilters } from "@/interfaces/payroll_overtime";
 import { readOvertimeStatus, OVERTIME_STATUS_URL_VALUES } from "@/lib/payroll/overtimeUrls";
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getOvertimePage, getOvertimeSettingsLog } from "./actions";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
@@ -43,6 +45,7 @@ export default async function OvertimePage({ searchParams }: { searchParams: Pro
         </div>
         <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
           <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Horas extra</h2>
+          <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.overtime} />
           {result.ok && result.data.period && <PayrollStatusBadge status={result.data.period.status} />}
         </div>
         <p className="text-sm text-[#44474f] dark:text-zinc-400">

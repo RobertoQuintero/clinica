@@ -7,6 +7,8 @@ import {
   BONUS_RESULT_URL_VALUES,
   readBonusResult,
 } from "@/lib/payroll/bonusUrls";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import EmployeesWithoutScheduleNotice from "../../componentes/EmployeesWithoutScheduleNotice";
 import PayrollEmptyState, { PAYROLL_LINK_BUTTON_CLASSES } from "../../componentes/PayrollEmptyState";
 import PayrollRecalculationNotice from "../../componentes/PayrollRecalculationNotice";
@@ -72,6 +74,7 @@ export default async function PunctualityBonusView({ rawSearchParams, kindTabs }
         </div>
         <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
           <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Bonos de puntualidad</h2>
+          <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.bonuses} />
           {result.ok && result.data.period && <PayrollStatusBadge status={result.data.period.status} />}
         </div>
         <p className="text-sm text-[#44474f] dark:text-zinc-400">

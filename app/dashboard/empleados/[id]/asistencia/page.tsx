@@ -1,4 +1,6 @@
 import Link from "next/link";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { EMPLOYEE_SETUP_ANCHORS, PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import {
   getEmployeeAttendanceEvents,
   getEmployeeAttendanceSummary,
@@ -94,7 +96,14 @@ export default async function EmployeeAttendancePage({ params, searchParams }: P
     <div className="flex flex-col gap-5">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">Control de Asistencias</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Control de Asistencias</h2>
+            <ManualHelpLink
+              moduleSlug="nomina"
+              topicSlug={PAYROLL_MANUAL_TOPICS.employeeSetup}
+              anchor={EMPLOYEE_SETUP_ANCHORS.attendance}
+            />
+          </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
             Checadas registradas por el checador biométrico, sin evaluación de horario ni puntualidad.
           </p>

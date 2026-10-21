@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { EMPLOYEE_SETUP_ANCHORS, PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import EmployeeWithoutScheduleNotice from "@/app/dashboard/empleados/[id]/componentes/EmployeeWithoutScheduleNotice";
 import { syncVacationEntitlements } from "@/lib/vacations/entitlementSync";
@@ -55,7 +57,14 @@ export default async function EmployeeVacationsPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">Vacaciones</h2>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Vacaciones</h2>
+          <ManualHelpLink
+            moduleSlug="nomina"
+            topicSlug={PAYROLL_MANUAL_TOPICS.employeeSetup}
+            anchor={EMPLOYEE_SETUP_ANCHORS.vacations}
+          />
+        </div>
         <p className="text-sm text-[#44474f] dark:text-zinc-400">
           Un año de derecho por aniversario, con un único bloque continuo de días. Los días no
           disfrutados quedan por pagar.

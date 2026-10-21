@@ -8,6 +8,8 @@ import {
   type SearchParamsInput,
 } from "@/lib/payroll/processUrls";
 import { addZeroToday } from "@/utils/date_helpper";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPayrollProcessPage } from "./actions";
 import ChristmasBonusDeadlineNotice from "../componentes/ChristmasBonusDeadlineNotice";
@@ -57,6 +59,7 @@ export default async function ProcesarNominaPage({
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-1 mb-1">
             <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Procesar Nómina</h2>
+            <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.processPayroll} />
             {result.ok && result.data.period && <PayrollStatusBadge status={result.data.period.status} />}
           </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
