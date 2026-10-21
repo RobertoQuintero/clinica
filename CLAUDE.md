@@ -70,6 +70,11 @@ The sections below used to live inline here but are long and only relevant when 
 - Google Calendar integration internals (service account JWT, PKCS conversion, env vars): `docs/google-calendar.md`
 - Billing / electronic invoicing (Facturapi, `BILLING` schema, API key encryption, audit log): `docs/facturacion.md`
 - Payroll (`nomina/`, `payroll` schema, payroll periods, code and date rules): `docs/nomina.md`
+- User manual / "Ayuda" section (`app/dashboard/ayuda/`, `content/manual/`, frontmatter, templates, callouts, adding a new module's manual): `docs/manual-usuario.md`
+
+### Manual de usuario (user manual)
+
+- Every module-with-a-manual screen is paired with a page under `content/manual/<modulo>/`. **Any spec that changes a screen with a manual page must update that page's content and its `updated` date in the same spec** — the manual documents the app as it stands today, not as it stood when the page was written. See `docs/manual-usuario.md` for the structure, the frontmatter, the page templates, callout boxes, capture placeholders and how to add another module's manual.
 
 ### Date/time handling (critical, mssql-specific)
 
@@ -99,4 +104,5 @@ Rules when touching any code with `fecha*`/`created_at`/date fields:
 - `hooks/` — reusable client hooks, one per file, built on `useSyncExternalStore` instead of `useEffect` + `setState`: `useIsClient` (portal guard, `false` during SSR/hydration), `useMediaQuery`, `useStorageValue` (`localStorage`/`sessionStorage` as a raw string, with a same-tab notifier and a functional updater that reads the current stored value). Check here before reading browser APIs in a component.
   - Client data loading also lives here instead of `useEffect` + `setLoading`/`setData`: `useAsyncData(key, fetcher)` (generic `Promise<T>` keyed by an array of primitives; `key = null` skips loading; exposes `data`/`error` for the current key only, derived `loading`, `reload()` that resolves once the new data lands, and `mutate(updater)` for local edits; the fetcher gets an `AbortSignal` and is read via `useEffectEvent`, so it can be inline but **every value it reads must be in the key**), `useActionData(key, action)` (same, unwrapping an `ActionResult` — `ok: false` goes to `error`), and `useDebouncedValue(value, delayMs)` (use the debounced value as the key for search-as-you-type). To seed editable form state from loaded data, adjust state during render guarded by an `initializedForKey` compared against `JSON.stringify(key)`, so a `reload()` doesn't overwrite what the user typed.
 - `lib/` — cross-cutting server-side integrations (Google Calendar, rate limiter, ZKTeco ADMS parsing in `zktecoAdms.ts`, inventory logic in `lib/inventory/`), as opposed to `utils/` which holds small pure helpers (date formatting, random ids).
+- `content/manual/<modulo>/<tema>.md` — the user-facing manual pages served under `/dashboard/ayuda` (see "Manual de usuario" above and `docs/manual-usuario.md`).
 - Path alias `@/*` maps to the repo root (see `tsconfig.json`).

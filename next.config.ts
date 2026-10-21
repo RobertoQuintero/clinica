@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   // Permite abrir el dev server a través de un Dev Tunnel de VS Code.
   allowedDevOrigins: ["*.devtunnels.ms"],
   serverExternalPackages: ["cloudinary"],
+  // El manual de usuario (spec 92) lee content/manual/** del disco en runtime; en un
+  // despliegue serverless el disco solo trae lo que Next rastrea, así que sin esto las
+  // rutas de /dashboard/ayuda darían 404 en producción.
+  outputFileTracingIncludes: {
+    "/dashboard/ayuda/**": ["./content/manual/**"],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",

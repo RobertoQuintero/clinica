@@ -1,4 +1,6 @@
 import { ChevronRight } from "lucide-react";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import {
   getCommissionTiers,
   getTreatmentCommissionSettings,
@@ -34,7 +36,10 @@ export default async function ComisionesNominaPage() {
             <ChevronRight size={14} />
             <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Comisiones</span>
           </div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mt-1 mb-1">Comisiones por consultas</h2>
+          <div className="flex items-center gap-2 mt-1 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Comisiones por consultas</h2>
+            <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.commissions} />
+          </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
             Monto fijo que recibe cada empleado según las consultas atendidas en el periodo.
           </p>

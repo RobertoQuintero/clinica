@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { EMPLOYEE_SETUP_ANCHORS, PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { formatPeriodDate } from "@/lib/payroll/periodFormat";
@@ -55,7 +57,14 @@ export default async function EmployeeImssPage({ params }: Props) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">IMSS</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">IMSS</h2>
+            <ManualHelpLink
+              moduleSlug="nomina"
+              topicSlug={PAYROLL_MANUAL_TOPICS.employeeSetup}
+              anchor={EMPLOYEE_SETUP_ANCHORS.imss}
+            />
+          </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
             Salario base de cotización (SBC) con el que se calcula la cuota obrera. Captura el mismo que se reportó en IDSE.
           </p>

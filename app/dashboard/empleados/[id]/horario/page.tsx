@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { EMPLOYEE_SETUP_ANCHORS, PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import { getEmployeeSchedule } from "./actions";
 import { calculateWeeklyHours } from "./scheduleFormatting";
@@ -37,7 +39,14 @@ export default async function EmployeeSchedulePage({ params }: Props) {
     <div className="flex flex-col gap-5">
       <div className="flex justify-between items-end gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mb-1">Horario</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Horario</h2>
+            <ManualHelpLink
+              moduleSlug="nomina"
+              topicSlug={PAYROLL_MANUAL_TOPICS.employeeSetup}
+              anchor={EMPLOYEE_SETUP_ANCHORS.schedule}
+            />
+          </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
             Días y horas de trabajo de la semana. Un día sin horario es día de descanso.
           </p>

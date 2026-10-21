@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { PTU_TAXPAYER_TYPE_LABELS } from "@/lib/payroll/constants";
 import { formatDateTimeSlashed, formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { getPtuDistributionDetail } from "../actions";
 import PreloadPtuEmployeesButton from "../componentes/PreloadPtuEmployeesButton";
 import { EditPtuDistributionButton } from "../componentes/PtuDistributionActions";
@@ -47,6 +49,7 @@ export default async function PtuDistributionPage({ params }: { params: Promise<
             <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">
               Reparto de PTU {distribution.ejercicio}
             </h2>
+            <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.profitSharing} />
             <PtuDistributionStatusBadge status={distribution.estado} />
           </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">

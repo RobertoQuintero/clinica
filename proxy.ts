@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { IAuthUser } from "@/interfaces/auth";
 import { PAYROLL_ALLOWED_ROLE_IDS } from "@/lib/payroll/constants";
+import { MANUAL_MODULES, MANUAL_VISIBLE_ROLE_IDS, canViewManualModule } from "@/lib/manual/modules";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
@@ -100,6 +101,22 @@ export const proxy = async (req: NextRequest) => {
       !PAYROLL_ALLOWED_ROLE_IDS.includes(userPayload?.id_role ?? -1)
     ) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    // Ayuda (spec 92): sin ningún manual para el rol, a /dashboard; con manual pero sin el
+    // de la URL, al índice de Ayuda. Un módulo desconocido sigue de largo: la página responde 404.
+    if (pathname.startsWith("/dashboard/ayuda")) {
+      const roleId = userPayload?.id_role ?? -1;
+      if (!MANUAL_VISIBLE_ROLE_IDS.includes(roleId)) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+      const moduleSlug = pathname.split("/")[3];
+      if (
+        moduleSlug &&
+        MANUAL_MODULES.some((manualModule) => manualModule.slug === moduleSlug) &&
+        !canViewManualModule(roleId, moduleSlug)
+      ) {
+        return NextResponse.redirect(new URL("/dashboard/ayuda", req.url));
+      }
     }
     // Solo id_role=1 e id_role=4 pueden revisar/cerrar un conteo físico de inventario
     if (

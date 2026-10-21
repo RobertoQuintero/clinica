@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import type { IPayrollEmployeeDetailFilters } from "@/interfaces/payroll_calculation";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import {
   buildPayrollProcessHref,
   readPayrollType,
@@ -77,6 +79,7 @@ export default async function PayrollEmployeeDetailPage({
           </nav>
           <div className="flex flex-wrap items-center gap-3 mt-1">
             <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Detalle de Nómina</h2>
+            <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.employeeDetail} />
             {detail && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono whitespace-nowrap border bg-[#dbe1ff] text-[#00174b] border-transparent dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700">
                 {detail.period.codigo}

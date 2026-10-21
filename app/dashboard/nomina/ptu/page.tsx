@@ -1,4 +1,6 @@
 import { ChevronRight } from "lucide-react";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { getPtuDistributions } from "./actions";
 import { NewPtuDistributionButton } from "./componentes/PtuDistributionActions";
 import PtuDistributionsTable from "./componentes/PtuDistributionsTable";
@@ -15,7 +17,10 @@ export default async function PtuNominaPage() {
             <ChevronRight size={14} />
             <span className="font-medium text-[#0b1c30] dark:text-zinc-100">PTU</span>
           </div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mt-1 mb-1">Reparto de PTU</h2>
+          <div className="flex items-center gap-2 mt-1 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Reparto de PTU</h2>
+            <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.profitSharing} />
+          </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
             Participación de los trabajadores en las utilidades, por ejercicio. Cubre a toda la empresa, sin importar la sucursal.
           </p>

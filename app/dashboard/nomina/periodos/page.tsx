@@ -1,6 +1,8 @@
 import { ChevronRight } from "lucide-react";
 import type { IPayrollPeriodFilters, PayrollPeriodStatus } from "@/interfaces/payroll_period";
 import { addZeroToday } from "@/utils/date_helpper";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { getPayrollFrequencies, getPayrollPeriodsPage } from "./actions";
 import ChristmasBonusDeadlineNotice from "../componentes/ChristmasBonusDeadlineNotice";
 import PtuPaymentDeadlineNotice from "../componentes/PtuPaymentDeadlineNotice";
@@ -58,7 +60,10 @@ export default async function PeriodosNominaPage({
             <ChevronRight size={14} />
             <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Periodos de Nómina</span>
           </div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mt-1 mb-1">Periodos de Nómina</h2>
+          <div className="flex items-center gap-2 mt-1 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Periodos de Nómina</h2>
+            <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.periods} />
+          </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
             Calendario de corte y pago de la sucursal seleccionada.
           </p>

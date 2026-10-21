@@ -1,5 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { addZeroToday } from "@/utils/date_helpper";
+import ManualHelpLink from "@/app/dashboard/componentes/ManualHelpLink";
+import { PAYROLL_MANUAL_TOPICS } from "@/lib/manual/links";
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import {
   buildYearOptions,
@@ -55,7 +57,10 @@ export default async function TaxParametersPage({ searchParams }: { searchParams
             <ChevronRight size={14} />
             <span className="font-medium text-[#0b1c30] dark:text-zinc-100">Parámetros fiscales</span>
           </div>
-          <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50 mt-1 mb-1">Parámetros fiscales</h2>
+          <div className="flex items-center gap-2 mt-1 mb-1">
+            <h2 className="text-2xl font-bold text-[#0b1c30] dark:text-zinc-50">Parámetros fiscales</h2>
+            <ManualHelpLink moduleSlug="nomina" topicSlug={PAYROLL_MANUAL_TOPICS.taxParameters} />
+          </div>
           <p className="text-sm text-[#44474f] dark:text-zinc-400">
             UMA, salario mínimo, subsidio, tarifas semanal y mensual del ISR y topes de exención que usa la nómina fiscal.
           </p>
