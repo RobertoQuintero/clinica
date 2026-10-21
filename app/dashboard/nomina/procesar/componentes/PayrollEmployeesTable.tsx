@@ -5,6 +5,7 @@ import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
 import { describeVacationPaySplit } from "@/lib/payroll/vacationPay";
+import { ImssAmountCell } from "./ImssAmountCell";
 import { IsrAmountCell } from "./IsrAmountCell";
 
 interface Props {
@@ -61,7 +62,7 @@ export default function PayrollEmployeesTable({
   const detailFilters = { idPeriod, payrollType, idPuesto, search };
   // Spec 70: solo la nómina fiscal lleva deducciones (ISR) y neto.
   const showsDeductions = payrollType === "F";
-  const columnCount = showsDeductions ? 17 : 15;
+  const columnCount = showsDeductions ? 18 : 15;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
@@ -87,6 +88,7 @@ export default function PayrollEmployeesTable({
               {showsDeductions && (
                 <>
                   <th scope="col" className="px-4 py-3 font-semibold text-right">ISR</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-right">IMSS</th>
                   <th scope="col" className="px-6 py-3 font-semibold text-right">Neto</th>
                 </>
               )}
@@ -195,6 +197,7 @@ export default function PayrollEmployeesTable({
                     {showsDeductions && (
                       <>
                         <IsrAmountCell isrStatus={employeeRow.isr_estado} isrWithheld={employeeRow.isr_retenido} />
+                        <ImssAmountCell imssStatus={employeeRow.imss_estado} imssWithheld={employeeRow.imss_retenido} />
                         <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
                           {formatPayrollCurrency(employeeRow.neto)}
                         </td>
@@ -268,6 +271,9 @@ export default function PayrollEmployeesTable({
                 <>
                   <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                     {formatPayrollCurrency(totals.importeIsr)}
+                  </td>
+                  <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                    {formatPayrollCurrency(totals.importeImss)}
                   </td>
                   <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
                     {formatPayrollCurrency(totals.totalNeto)}

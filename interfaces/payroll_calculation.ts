@@ -7,11 +7,12 @@ import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
+import type { IImssRowSummary, ImssSkipReason } from "@/interfaces/payroll_imss";
 
 export type PayrollType = "O" | "F";
 
 // Fila de la tabla de Procesar nómina: el snapshot más los datos actuales del empleado, vía JOIN.
-export interface IPayrollEmployeeRow {
+export interface IPayrollEmployeeRow extends IImssRowSummary {   // imss_estado, imss_motivo, imss_retenido (spec 91): 'X' fuera de la nómina fiscal ordinaria
   id_period_employee: number;
   id_empleado:        number;
   codigo_empleado:    string;
@@ -77,12 +78,20 @@ export interface IPayrollProcessFilters {
   search:      string;          // nombre o código, coincidencia parcial
 }
 
+// Renglones "IMSS no calculado" con el mismo motivo, con los empleados afectados para ligar a su pestaña IMSS.
+export interface IImssNotCalculatedGroup {
+  reason:    ImssSkipReason;
+  employees: number;
+  affected:  { id_empleado: number; nombre_completo: string }[];
+}
+
 export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; importeAguinaldo: number; importePtu: number; importeGravado: number; importeExento: number; totalPercepciones: number; importeIsr: number; totalNeto: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; importeAguinaldo: number; importePtu: number; importeGravado: number; importeExento: number; totalPercepciones: number; importeIsr: number; importeImss: number; totalNeto: number };   // de todo el tipo, sin filtros
   isrNotCalculated:  { reason: IsrSkipReason | Article174SkipReason; employees: number }[];   // renglones 'N' por motivo (spec 70, o ISR art. 174 en un periodo extraordinario), de todo el tipo, sin filtros
+  imssNotCalculated: IImssNotCalculatedGroup[];   // renglones 'N' por motivo (spec 91), de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
   excludedEmployees: IPayrollExcludedEmployee[];
   lastCalculatedAt:  string | null;

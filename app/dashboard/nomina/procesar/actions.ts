@@ -4,6 +4,7 @@ import db from "@/database/connection";
 import {
   IPayrollEmployeeDetail,
   IPayrollEmployeeDetailFilters,
+  IImssNotCalculatedGroup,
   IPayrollEmployeeRow,
   IPayrollEmployeeSnapshot,
   IPayrollExcludedEmployee,
@@ -17,6 +18,7 @@ import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import type { IPeriodEmployeePerception } from "@/interfaces/payroll_exemption";
 import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
+import type { ImssSkipReason } from "@/interfaces/payroll_imss";
 import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
@@ -107,6 +109,20 @@ import { revalidatePath } from "next/cache";
 /** Escapa los comodines de LIKE para que la búsqueda sea literal. */
 function escapeLikePattern(text: string): string {
   return text.replace(/[\[%_]/g, (character) => `[${character}]`);
+}
+
+/** Agrupa los renglones 'N' del IMSS por motivo, conservando el orden por motivo y por nombre del SQL. */
+function groupImssNotCalculated(
+  rows: { imss_motivo: ImssSkipReason; id_empleado: number; nombre_completo: string }[],
+): IImssNotCalculatedGroup[] {
+  const groupsByReason = new Map<ImssSkipReason, IImssNotCalculatedGroup>();
+  for (const row of rows) {
+    const group = groupsByReason.get(row.imss_motivo) ?? { reason: row.imss_motivo, employees: 0, affected: [] };
+    group.employees += 1;
+    group.affected.push({ id_empleado: row.id_empleado, nombre_completo: row.nombre_completo });
+    groupsByReason.set(row.imss_motivo, group);
+  }
+  return [...groupsByReason.values()];
 }
 
 function roundToCents(amount: number): number {
@@ -280,8 +296,9 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importePtu: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, totalNeto: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importePtu: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, importeImss: 0, totalNeto: 0 },
       isrNotCalculated: [],
+      imssNotCalculated: [],
       puestoOptions: [],
       excludedEmployees: [],
       lastCalculatedAt: null,
@@ -318,6 +335,7 @@ export async function getPayrollProcessPage(
       rows,
       totals,
       isrNotCalculatedRows,
+      imssNotCalculatedRows,
       puestoOptions,
       excludedEmployees,
       lastCalculated,
@@ -371,6 +389,7 @@ export async function getPayrollProcessPage(
                 ISNULL(article174.isr_estado, pe.isr_estado) AS isr_estado,
                 CAST(CASE WHEN article174.id_period_employee IS NOT NULL THEN article174.isr_retenido
                           ELSE pe.isr_retenido END AS float) AS isr_retenido,
+                pe.imss_estado, pe.imss_motivo, CAST(pe.imss_retenido AS float) AS imss_retenido,
                 CAST(deductions.total AS float) AS total_deducciones,
                 CAST(pe.importe_salario + pe.importe_comision + pe.importe_comision_tratamientos
                   + pe.importe_comision_productos
@@ -417,17 +436,24 @@ export async function getPayrollProcessPage(
                 CAST(ISNULL(SUM(taxes.gravado), 0) AS float) AS importe_gravado,
                 CAST(ISNULL(SUM(taxes.exento), 0) AS float) AS importe_exento,
                 CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
+                CAST(ISNULL(SUM(deductions.imss), 0) AS float) AS importe_imss,
                 CAST(ISNULL(SUM(deductions.total), 0) AS float) AS total_deducciones
            FROM [CentroPodologico].[payroll].[period_employees] pe
           CROSS APPLY (SELECT ISNULL(SUM(d.importe), 0) AS total,
-                              ISNULL(SUM(CASE WHEN d.id_deduction = @isr_deduction_id THEN d.importe END), 0) AS isr
+                              ISNULL(SUM(CASE WHEN d.id_deduction = @isr_deduction_id THEN d.importe END), 0) AS isr,
+                              ISNULL(SUM(CASE WHEN d.id_deduction = @imss_deduction_id THEN d.importe END), 0) AS imss
                          FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                         WHERE d.id_period_employee = pe.id_period_employee) AS deductions
           CROSS APPLY (SELECT ISNULL(SUM(pep.importe_gravado), 0) AS gravado, ISNULL(SUM(pep.importe_exento), 0) AS exento
                          FROM [CentroPodologico].[payroll].[period_employee_perceptions] pep
                         WHERE pep.id_period_employee = pe.id_period_employee) AS taxes
           WHERE id_period = @id_period AND tipo_nomina = @tipo_nomina`,
-        { id_period: period.id_period, tipo_nomina: filters.payrollType, isr_deduction_id: ISR_DEDUCTION_ID },
+        {
+          id_period: period.id_period,
+          tipo_nomina: filters.payrollType,
+          isr_deduction_id: ISR_DEDUCTION_ID,
+          imss_deduction_id: IMSS_DEDUCTION_ID,
+        },
       ),
       // Spec 70: renglones "ISR no calculado" por motivo, de todo el tipo (sin filtros de puesto ni búsqueda).
       db.queryParams(
@@ -445,6 +471,15 @@ export async function getPayrollProcessPage(
            ) AS not_calculated
           GROUP BY not_calculated.isr_motivo
           ORDER BY not_calculated.isr_motivo`,
+        { id_period: period.id_period, tipo_nomina: filters.payrollType },
+      ),
+      // Spec 91: renglones "IMSS no calculado" con su motivo y el empleado, de todo el tipo (sin filtros de puesto ni búsqueda).
+      db.queryParams(
+        `SELECT pe.imss_motivo, e.id_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo
+           FROM [CentroPodologico].[payroll].[period_employees] pe
+           JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
+          WHERE pe.id_period = @id_period AND pe.tipo_nomina = @tipo_nomina AND pe.imss_estado = 'N'
+          ORDER BY pe.imss_motivo, e.apellido_paterno, e.apellido_materno, e.nombre, e.id_empleado`,
         { id_period: period.id_period, tipo_nomina: filters.payrollType },
       ),
       db.queryParams(
@@ -548,6 +583,7 @@ export async function getPayrollProcessPage(
           importe_exento: toNullableNumber(row.importe_exento),
           total_percepciones: Number(row.total_percepciones),
           isr_retenido: row.isr_retenido === null ? null : Number(row.isr_retenido),
+          imss_retenido: row.imss_retenido === null ? null : Number(row.imss_retenido),
           total_deducciones: Number(row.total_deducciones),
           neto: Number(row.neto),
         })),
@@ -568,12 +604,16 @@ export async function getPayrollProcessPage(
           importeExento: Number(totals[0]?.importe_exento ?? 0),
           totalPercepciones,
           importeIsr: Number(totals[0]?.importe_isr ?? 0),
+          importeImss: Number(totals[0]?.importe_imss ?? 0),
           totalNeto: roundToCents(totalPercepciones - Number(totals[0]?.total_deducciones ?? 0)),
         },
         isrNotCalculated: (isrNotCalculatedRows as { isr_motivo: IsrSkipReason | Article174SkipReason; employees: number }[]).map((row) => ({
           reason: row.isr_motivo,
           employees: Number(row.employees),
         })),
+        imssNotCalculated: groupImssNotCalculated(
+          imssNotCalculatedRows as { imss_motivo: ImssSkipReason; id_empleado: number; nombre_completo: string }[],
+        ),
         puestoOptions: puestoOptions.map((row: { id_puesto: number; name: string }) => ({
           id_puesto: row.id_puesto,
           name: row.name,
