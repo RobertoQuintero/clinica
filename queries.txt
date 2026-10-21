@@ -3090,6 +3090,80 @@ SELECT seed.[clave], seed.[valor], '2026-01-01', @seed_user_id, SYSDATETIME()
          WHERE existing.[clave] = seed.[clave] AND existing.[vigente_desde] = '2026-01-01');
 GO
 
+-- Spec 91: estado y total del IMSS en el snapshot, como el ISR.
+-- imss_estado: 'X' no aplica (operativa, periodo E, régimen distinto de 02 o snapshot anterior a esta spec),
+--              'C' calculado, 'N' no calculado.
+ALTER TABLE [payroll].[period_employees] ADD
+    [imss_estado]   [char](1)       NOT NULL CONSTRAINT [DF_period_employees_imss_estado] DEFAULT ('X'),
+    [imss_motivo]   [varchar](30)   NULL,   -- solo 'N'
+    [imss_retenido] [decimal](12,2) NULL;   -- solo 'C'
+GO
+
+-- IS NOT NULL explícito en cada rama (lección de la spec 69).
+ALTER TABLE [payroll].[period_employees] WITH CHECK ADD CONSTRAINT [CK_period_employees_imss] CHECK (
+    ([imss_estado] = 'X' AND [imss_motivo] IS NULL AND [imss_retenido] IS NULL)
+ OR ([imss_estado] = 'N' AND [tipo_nomina] = 'F'
+        AND [imss_motivo] IS NOT NULL
+        AND [imss_motivo] IN ('missing_nss','missing_sbc','missing_uma',
+                              'missing_imss_parameters','missing_minimum_wage')
+        AND [imss_retenido] IS NULL)
+ OR ([imss_estado] = 'C' AND [tipo_nomina] = 'F'
+        AND [imss_motivo] IS NULL
+        AND [imss_retenido] IS NOT NULL AND [imss_retenido] >= 0));
+GO
+
+-- Spec 91: desglose congelado de la cuota obrera. Solo existe para filas 'C', así que todas las columnas son NOT NULL.
+CREATE TABLE [payroll].[period_employee_imss](
+    [id_period_employee]           [int]           NOT NULL,
+    -- Datos usados, con su vigencia
+    [sbc]                          [decimal](12,2) NOT NULL,
+    [sbc_vigente_desde]            [date]          NOT NULL,
+    [uma_diaria]                   [decimal](18,4) NOT NULL,
+    [uma_vigente_desde]            [date]          NOT NULL,
+    [salario_minimo]               [decimal](18,4) NOT NULL,
+    [salario_minimo_vigente_desde] [date]          NOT NULL,
+    [parametros_vigente_desde]     [date]          NOT NULL,   -- el vigente_desde más reciente de las 7 claves IMSS
+    [tope_sbc_umas]                [decimal](18,4) NOT NULL,
+    [umbral_excedente_umas]        [decimal](18,4) NOT NULL,
+    -- Bases
+    [tope_sbc]                     [decimal](12,2) NOT NULL,   -- ROUND(tope_sbc_umas × uma, 2)
+    [sbc_topado]                   [decimal](12,2) NOT NULL,   -- min(sbc, tope_sbc)
+    [umbral_excedente]             [decimal](12,2) NOT NULL,   -- ROUND(umbral_excedente_umas × uma, 2)
+    [excedente_diario]             [decimal](12,2) NOT NULL,   -- max(0, sbc_topado − umbral_excedente)
+    [dias_eym]                     [int]           NOT NULL,   -- dias + dias_falta
+    [dias_iv_ceav]                 [int]           NOT NULL,   -- dias
+    -- Ramos: tasa en % (congelada) e importe = ROUND(base × días × tasa / 100, 2)
+    [tasa_eym_excedente]           [decimal](18,4) NOT NULL,
+    [importe_eym_excedente]        [decimal](12,2) NOT NULL,
+    [tasa_eym_dinero]              [decimal](18,4) NOT NULL,
+    [importe_eym_dinero]           [decimal](12,2) NOT NULL,
+    [tasa_eym_pensionados]         [decimal](18,4) NOT NULL,
+    [importe_eym_pensionados]      [decimal](12,2) NOT NULL,
+    [tasa_iv]                      [decimal](18,4) NOT NULL,
+    [importe_iv]                   [decimal](12,2) NOT NULL,
+    [tasa_ceav]                    [decimal](18,4) NOT NULL,
+    [importe_ceav]                 [decimal](12,2) NOT NULL,
+    -- Resultado
+    [cuota_causada]                [decimal](12,2) NOT NULL,   -- suma de los 5 importes
+    [exento_salario_minimo]        [bit]           NOT NULL,   -- art. 36 LSS
+    [tope_neto]                    [decimal](12,2) NOT NULL,   -- max(0, percepciones − ISR retenido)
+    [topado_al_neto]               [bit]           NOT NULL,
+    [imss_retenido]                [decimal](12,2) NOT NULL,
+ CONSTRAINT [PK_period_employee_imss] PRIMARY KEY CLUSTERED ([id_period_employee] ASC),
+ CONSTRAINT [FK_period_employee_imss_row] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_imss] CHECK (
+        [cuota_causada] = [importe_eym_excedente] + [importe_eym_dinero] + [importe_eym_pensionados]
+                        + [importe_iv] + [importe_ceav]
+    AND [dias_iv_ceav] <= [dias_eym]
+    AND (   ([exento_salario_minimo] = 1 AND [topado_al_neto] = 0 AND [imss_retenido] = 0)
+         OR ([exento_salario_minimo] = 0 AND [topado_al_neto] = 0
+                AND [cuota_causada] <= [tope_neto] AND [imss_retenido] = [cuota_causada])
+         OR ([exento_salario_minimo] = 0 AND [topado_al_neto] = 1
+                AND [cuota_causada] >  [tope_neto] AND [imss_retenido] = [tope_neto])))
+) ON [PRIMARY]
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------

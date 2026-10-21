@@ -67,6 +67,14 @@ import {
 } from "@/lib/payroll/punctualityBonusSql";
 import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
 import {
+  IMSS_APPLY_SQL,
+  IMSS_INSERT_COLUMNS_SQL,
+  IMSS_PARAMETERS_SQL,
+  IMSS_SELECT_SQL,
+  IMSS_UPDATE_SET_SQL,
+} from "@/lib/payroll/imssSql";
+import {
+  IMSS_DEDUCTION_ID,
   ISR_DEDUCTION_ID,
   OVERTIME_DOUBLE_PERCEPTION_ID,
   OVERTIME_TRIPLE_PERCEPTION_ID,
@@ -1678,6 +1686,28 @@ export async function calculatePayrollPeriod(
        SELECT pe.[id_period_employee], ${ISR_DEDUCTION_ID}, pe.[isr_retenido]
          FROM [CentroPodologico].[payroll].[period_employees] pe
         WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[isr_estado] = 'C';
+
+       -- Spec 91: cuota obrera del IMSS de los renglones 'F'. Va después del ISR porque el tope al neto lo descuenta.
+       -- Los renglones 'O' se quedan en 'X'. El desglose y la deducción solo existen para los 'C', aunque retengan 0.
+       ${IMSS_PARAMETERS_SQL}
+
+       UPDATE pe
+          SET ${IMSS_UPDATE_SET_SQL}
+         FROM [CentroPodologico].[payroll].[period_employees] pe${IMSS_APPLY_SQL}
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F';
+
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_imss]
+         ([id_period_employee], ${IMSS_INSERT_COLUMNS_SQL})
+       SELECT pe.[id_period_employee],
+              ${IMSS_SELECT_SQL}
+         FROM [CentroPodologico].[payroll].[period_employees] pe${IMSS_APPLY_SQL}
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[imss_estado] = 'C';
+
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_deductions]
+         (id_period_employee, id_deduction, importe)
+       SELECT pe.[id_period_employee], ${IMSS_DEDUCTION_ID}, pe.[imss_retenido]
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[imss_estado] = 'C';
 
        -- Desglose y candado anti doble pago: solo los tratamientos de quien entró a la nómina operativa.
        INSERT INTO [CentroPodologico].[payroll].[period_employee_treatments]
