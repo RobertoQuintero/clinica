@@ -1,6 +1,7 @@
 import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
 import type { ExtraordinaryConcept, PayrollPeriodType } from "@/interfaces/payroll_period";
 import type { ExemptionSkipReason } from "@/interfaces/payroll_exemption";
+import type { ImssSkipReason } from "@/interfaces/payroll_imss";
 import type { IsrSkipReason } from "@/interfaces/payroll_isr";
 import type { TaxParameterKey } from "@/interfaces/payroll_tax_parameters";
 import type {
@@ -75,6 +76,28 @@ export const ISR_SKIP_REASON_LABELS: Record<IsrSkipReason, string> = {
   income_in_gap:              "El ingreso cae en un hueco de la tarifa de retención",
   missing_subsidy_parameters: "Faltan parámetros del subsidio para el empleo vigentes al fin del periodo",
   exemption_not_calculated:   "Alguna percepción no tiene su gravado y exento calculados, así que la base del ISR es desconocida",
+};
+
+// IMSS de la nómina fiscal (spec 91). id_deduction de Seguridad social en payroll.deductions (clave SAT 001).
+export const IMSS_DEDUCTION_ID = 1;
+// RH.empleados.tipo_regimen del que sí se retiene IMSS: 02 = sueldos.
+export const IMSS_CONTRIBUTION_REGIME = "02";
+// Si falta alguna vigente a fecha_fin, el motivo es missing_imss_parameters.
+export const IMSS_TAX_PARAMETER_KEYS = [
+  "IMSS_OBRERO_EYM_EXCEDENTE",
+  "IMSS_OBRERO_EYM_DINERO",
+  "IMSS_OBRERO_EYM_PENSIONADOS",
+  "IMSS_OBRERO_IV",
+  "IMSS_OBRERO_CEAV",
+  "IMSS_UMBRAL_EXCEDENTE_UMAS",
+  "IMSS_TOPE_SBC_UMAS",
+] as const satisfies readonly TaxParameterKey[];
+export const IMSS_SKIP_REASON_LABELS: Record<ImssSkipReason, string> = {
+  missing_nss:             "El empleado no tiene NSS capturado",
+  missing_sbc:             "El empleado no tiene un SBC vigente al fin del periodo",
+  missing_uma:             "Falta la UMA diaria vigente al fin del periodo",
+  missing_imss_parameters: "Falta alguna tasa o límite del IMSS vigente al fin del periodo",
+  missing_minimum_wage:    "Falta el salario mínimo general vigente al fin del periodo",
 };
 
 // Gravado/exento de la nómina fiscal (spec 73). id_perception del sueldo en el catálogo payroll.perceptions.
