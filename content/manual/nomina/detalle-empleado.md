@@ -8,25 +8,25 @@ updated: "2026-10-21"
 
 ## Para qué sirve
 
-Muestra, para un empleado y un periodo ya calculado, cada percepción y cada deducción que forma su pago.
+Muestra, para un empleado y un periodo ya calculado, cada percepción y cada deducción que forma su pago, una por una.
 
 ## Antes de empezar
 
-El periodo debe estar calculado (ver [Procesar nómina](./procesar-nomina)).
+El periodo debe estar calculado (ver [Procesar nómina](./procesar-nomina)); mientras esté en **Programada** esta pantalla solo muestra el aviso "Esta nómina aún no se calcula".
 
 ## Qué ves en la pantalla
 
-El sueldo base, cada comisión y bono que aplique, y en la nómina fiscal también el ISR y el IMSS.
+El interruptor **Operativa** / **Fiscal** cambia de vista sin salir de la pantalla. La tarjeta "Percepciones totales" lista cada percepción que cobró el empleado (sueldo, comisiones, bonos...) y su suma. En la vista fiscal se agrega la tarjeta "Deducciones", con el ISR y, en un periodo ordinario, el IMSS, y termina con el renglón **Neto a pagar**. El botón "Regresar" vuelve a Procesar nómina, y "Anterior" / "Siguiente" pasan al empleado anterior o siguiente del mismo periodo sin salir del detalle.
 
 ![Detalle de percepciones de un empleado](captura:detalle-empleado-percepciones)
 
 ## Cómo llegar al detalle
 
-Desde [Procesar nómina](./procesar-nomina), haz clic en el nombre del empleado.
+Desde [Procesar nómina](./procesar-nomina), haz clic en el nombre de un empleado de la tabla.
 
 ## Cómo calcula
 
-Cada percepción se muestra con su propia regla (por ejemplo, "N consultas x $X" para la comisión por consultas).
+Cada percepción se muestra con la regla que la generó en lenguaje simple — por ejemplo, la comisión por consultas se describe como "N consultas × $importe del rango", y las horas extra como "N horas × tarifa". El total de percepciones, el ISR, el IMSS y el neto son siempre los que se guardaron al calcular el periodo en [Procesar nómina](./procesar-nomina); si algo no cuadra, hay que recalcular el periodo desde ahí, no se puede editar desde el detalle.
 
 ## Avisos de esta pantalla
 
