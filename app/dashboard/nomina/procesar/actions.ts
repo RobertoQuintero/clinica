@@ -31,6 +31,7 @@ import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation
 import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
 import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
 import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
+import { isImssRecalculationNeeded } from "@/lib/payroll/imssRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
 import { isVacationPayRecalculationNeeded } from "@/lib/payroll/vacationPayRecalculation";
 import { isExtraordinaryRecalculationNeeded } from "@/lib/payroll/extraordinaryRecalculation";
@@ -311,6 +312,7 @@ export async function getPayrollProcessPage(
       attendanceBonusRecalculationNeeded: false,
       shiftExtensionBonusRecalculationNeeded: false,
       isrRecalculationNeeded: false,
+      imssRecalculationNeeded: false,
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
       extraordinaryRecalculationNeeded: false,
@@ -348,6 +350,7 @@ export async function getPayrollProcessPage(
       attendanceBonusRecalculationNeeded,
       shiftExtensionBonusRecalculationNeeded,
       isrRecalculationNeeded,
+      imssRecalculationNeeded,
       exemptionRecalculationNeeded,
       vacationPayRecalculationNeeded,
       extraordinaryRecalculationNeeded,
@@ -523,6 +526,7 @@ export async function getPayrollProcessPage(
       isOrdinaryPeriod ? isAttendanceBonusRecalculationNeeded(period.id_period) : false,
       isOrdinaryPeriod ? isShiftExtensionBonusRecalculationNeeded(period.id_period) : false,
       isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
+      isOrdinaryPeriod ? isImssRecalculationNeeded(period.id_period) : false,
       isExemptionRecalculationNeeded(period.id_period),
       isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
       isOrdinaryPeriod ? false : isExtraordinaryRecalculationNeeded(period.id_period),
@@ -629,6 +633,7 @@ export async function getPayrollProcessPage(
         attendanceBonusRecalculationNeeded,
         shiftExtensionBonusRecalculationNeeded,
         isrRecalculationNeeded,
+        imssRecalculationNeeded,
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
         extraordinaryRecalculationNeeded,

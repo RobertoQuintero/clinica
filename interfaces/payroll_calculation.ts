@@ -102,6 +102,7 @@ export interface IPayrollProcessPage {
   attendanceBonusRecalculationNeeded:  boolean;   // ídem, para el bono de asistencia (spec 65)
   shiftExtensionBonusRecalculationNeeded: boolean;   // ídem, para el bono por extensión de jornada (spec 68)
   isrRecalculationNeeded: boolean;   // ídem, para el ISR de la nómina fiscal (spec 70)
+  imssRecalculationNeeded: boolean;  // ídem, para el IMSS de la nómina fiscal (spec 91)
   exemptionRecalculationNeeded: boolean;   // ídem, para el gravado/exento de las percepciones fiscales (spec 73)
   vacationPayRecalculationNeeded: boolean;   // ídem, para la prima vacacional y las vacaciones pagadas (spec 78)
   extraordinaryRecalculationNeeded: boolean;   // ídem, para el aguinaldo o la PTU de un periodo extraordinario (specs 87 y 90)

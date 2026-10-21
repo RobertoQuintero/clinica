@@ -172,6 +172,10 @@ export default async function ProcesarNominaPage({
             message="Hay cálculos de ISR que no coinciden con la tarifa o los parámetros actuales. Recalcula la nómina."
           />
           <PayrollRecalculationNotice
+            recalculationNeeded={result.data.imssRecalculationNeeded}
+            message="Hay cálculos de IMSS que no coinciden con el SBC, las tasas o los parámetros actuales. Recalcula la nómina."
+          />
+          <PayrollRecalculationNotice
             recalculationNeeded={result.data.exemptionRecalculationNeeded}
             message="Hay percepciones cuyo exento no coincide con el catálogo, la UMA o lo exentado en periodos anteriores. Recalcula la nómina."
           />
