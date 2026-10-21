@@ -364,48 +364,48 @@ export interface IImssBreakdown { /* una propiedad por columna de payroll.period
 
 **Parámetros**
 
-- [ ] Después de correr el script, Parámetros fiscales (2026) muestra las 7 claves IMSS con sus valores precargados: 0.40, 0.25, 0.375, 0.625, 1.125, 3 y 25.
-- [ ] Correr el script una segunda vez no duplica filas ni falla.
-- [ ] Editar `IMSS_OBRERO_CEAV` deja una fila en `tax_parameters_log`. Guardar el mismo valor no escribe nada.
+- [x] Después de correr el script, Parámetros fiscales (2026) muestra las 7 claves IMSS con sus valores precargados: 0.40, 0.25, 0.375, 0.625, 1.125, 3 y 25.
+- [x] Correr el script una segunda vez no duplica filas ni falla.
+- [x] Editar `IMSS_OBRERO_CEAV` deja una fila en `tax_parameters_log`. Guardar el mismo valor no escribe nada.
 
 **SBC en el expediente**
 
-- [ ] El expediente muestra la pestaña "IMSS" con el SBC vigente hoy, el historial y la bitácora.
-- [ ] Agregar, editar y eliminar un SBC escribe una fila en `RH.employee_sbc_log` (`sbc_anterior` es `NULL` en un alta y `sbc_nuevo` es `NULL` en una baja). Guardar el mismo monto no escribe nada.
-- [ ] Se rechaza, con un mensaje en el modal, un `vigente_desde` repetido para el mismo empleado, un `vigente_desde` anterior a `fecha_ingreso` y un `sbc <= 0`.
-- [ ] Un SBC menor al `salario_diario_fiscal` o al salario mínimo vigente muestra el aviso ámbar y aun así se guarda.
+- [x] El expediente muestra la pestaña "IMSS" con el SBC vigente hoy, el historial y la bitácora.
+- [x] Agregar, editar y eliminar un SBC escribe una fila en `RH.employee_sbc_log` (`sbc_anterior` es `NULL` en un alta y `sbc_nuevo` es `NULL` en una baja). Guardar el mismo monto no escribe nada.
+- [x] Se rechaza, con un mensaje en el modal, un `vigente_desde` repetido para el mismo empleado, un `vigente_desde` anterior a `fecha_ingreso` y un `sbc <= 0`.
+- [x] Un SBC menor al `salario_diario_fiscal` o al salario mínimo vigente muestra el aviso ámbar y aun así se guarda.
 - [ ] Llamar a las acciones de SBC con un rol distinto de 1 y 4 devuelve `{ ok: false }` y no escribe nada.
 
 **Cálculo** (periodo ordinario, fiscal; UMA $117.31; empleado de régimen 02 con NSS)
 
-- [ ] Con SBC $530.00, 15 días y sin faltas, el desglose da EyM excedente 10.68, EyM dinero 19.88, EyM pensionados 29.81, IV 49.69 y CEAV 89.44. La cuota causada y el retenido son **199.50**.
-- [ ] Con SBC $300.00 (menor a 3 UMA), `excedente_diario` e `importe_eym_excedente` son 0.
-- [ ] Con SBC $3,500.00, `sbc_topado` = `tope_sbc` = 2,932.75.
-- [ ] Con 2 faltas injustificadas en una quincena de 15 días, `dias_eym = 15` y `dias_iv_ceav = 13`. Los retardos no cambian ninguno de los dos.
-- [ ] Si el SBC cambia a mitad del periodo, se usa para todos los días el vigente a `fecha_fin`.
-- [ ] Con `salario_diario_fiscal` igual al salario mínimo vigente, la cuota causada es mayor que 0, `exento_salario_minimo = 1`, el retenido es 0 y existe la fila de deducción `id_deduction = 1` con importe 0.
-- [ ] Si la cuota causada es mayor que percepciones − ISR retenido, el retenido es igual a ese tope, `topado_al_neto = 1` y el neto queda en 0.
-- [ ] Un empleado con régimen distinto de 02 queda en `'X'`, sin desglose ni fila de deducción.
-- [ ] Régimen 02 sin NSS queda `'N'` / `missing_nss`. Con NSS pero sin SBC vigente a `fecha_fin` queda `'N'` / `missing_sbc`. En los dos casos el periodo se calcula y no hay fila de deducción.
-- [ ] Si falta una de las 7 claves IMSS vigente a `fecha_fin`, las filas de régimen 02 quedan `'N'` / `missing_imss_parameters`.
-- [ ] La base gravable y el ISR retenido de cada fila son idénticos antes y después de esta spec.
-- [ ] Neto = total percepciones − ISR retenido − IMSS retenido.
+- [x] Con SBC $530.00, 15 días y sin faltas, el desglose da EyM excedente 10.68, EyM dinero 19.88, EyM pensionados 29.81, IV 49.69 y CEAV 89.44. La cuota causada y el retenido son **199.50**.
+- [x] Con SBC $300.00 (menor a 3 UMA), `excedente_diario` e `importe_eym_excedente` son 0.
+- [x] Con SBC $3,500.00, `sbc_topado` = `tope_sbc` = 2,932.75.
+- [x] Con 2 faltas injustificadas en una quincena de 15 días, `dias_eym = 15` y `dias_iv_ceav = 13`. Los retardos no cambian ninguno de los dos.
+- [x] Si el SBC cambia a mitad del periodo, se usa para todos los días el vigente a `fecha_fin`.
+- [x] Con `salario_diario_fiscal` igual al salario mínimo vigente, la cuota causada es mayor que 0, `exento_salario_minimo = 1`, el retenido es 0 y existe la fila de deducción `id_deduction = 1` con importe 0.
+- [x] Si la cuota causada es mayor que percepciones − ISR retenido, el retenido es igual a ese tope, `topado_al_neto = 1` y el neto queda en 0.
+- [x] Un empleado con régimen distinto de 02 queda en `'X'`, sin desglose ni fila de deducción.
+- [x] Régimen 02 sin NSS queda `'N'` / `missing_nss`. Con NSS pero sin SBC vigente a `fecha_fin` queda `'N'` / `missing_sbc`. En los dos casos el periodo se calcula y no hay fila de deducción.
+- [x] Si falta una de las 7 claves IMSS vigente a `fecha_fin`, las filas de régimen 02 quedan `'N'` / `missing_imss_parameters`.
+- [x] La base gravable y el ISR retenido de cada fila son idénticos antes y después de esta spec.
+- [x] Neto = total percepciones − ISR retenido − IMSS retenido.
 - [ ] Las filas operativas (`'O'`) y las de periodos de aguinaldo y PTU quedan en `'X'` y su neto no cambia.
-- [ ] "Revertir" y "Recalcular" eliminan el desglose y la deducción IMSS anteriores. Después de recalcular no quedan duplicados.
+- [x] "Revertir" y "Recalcular" eliminan el desglose y la deducción IMSS anteriores. Después de recalcular no quedan duplicados.
 
 **Pantallas**
 
-- [ ] La vista fiscal de Procesar muestra la columna "IMSS" entre "ISR" y "Neto": el importe en `'C'`, "No calculado" en `'N'` y "—" en `'X'`. El pie suma la columna.
-- [ ] La tarjeta "IMSS retenido" suma todo el tipo de nómina y no cambia con los filtros de puesto o búsqueda.
-- [ ] `ImssNotCalculatedNotice` muestra el conteo por motivo. Los enlaces de `missing_nss` y `missing_sbc` llevan a la pestaña IMSS del empleado y los demás a Parámetros fiscales.
-- [ ] La vista operativa de Procesar no cambia.
-- [ ] La tarjeta de deducciones del Detalle fiscal muestra la línea IMSS con los 5 ramos (base, días, tasa e importe), el SBC con su `vigente_desde`, el SBC topado, la UMA y la vigencia de las tasas. Si aplicó la exención o el tope al neto, aparece su nota.
-- [ ] Después de cambiar el SBC de un empleado de un periodo en estatus 2, Procesar muestra el aviso "Recalcula". Al recalcular, el aviso desaparece.
+- [x] La vista fiscal de Procesar muestra la columna "IMSS" entre "ISR" y "Neto": el importe en `'C'`, "No calculado" en `'N'` y "—" en `'X'`. El pie suma la columna.
+- [x] La tarjeta "IMSS retenido" suma todo el tipo de nómina y no cambia con los filtros de puesto o búsqueda.
+- [x] `ImssNotCalculatedNotice` muestra el conteo por motivo. Los enlaces de `missing_nss` y `missing_sbc` llevan a la pestaña IMSS del empleado y los demás a Parámetros fiscales.
+- [x] La vista operativa de Procesar no cambia.
+- [x] La tarjeta de deducciones del Detalle fiscal muestra la línea IMSS con los 5 ramos (base, días, tasa e importe), el SBC con su `vigente_desde`, el SBC topado, la UMA y la vigencia de las tasas. Si aplicó la exención o el tope al neto, aparece su nota.
+- [x] Después de cambiar el SBC de un empleado de un periodo en estatus 2, Procesar muestra el aviso "Recalcula". Al recalcular, el aviso desaparece.
 
 **Calidad**
 
-- [ ] `npx tsc --noEmit` termina sin errores y `npm run lint` no agrega errores ni warnings nuevos.
-- [ ] `docs/nomina.md` y `docs/rh-empleados.md` describen la spec 91, y "SDI/SBC (IMSS)" ya no aparece como pendiente.
+- [x] `npx tsc --noEmit` termina sin errores y `npm run lint` no agrega errores ni warnings nuevos.
+- [x] `docs/nomina.md` y `docs/rh-empleados.md` describen la spec 91, y "SDI/SBC (IMSS)" ya no aparece como pendiente.
 
 ## Decisiones
 
