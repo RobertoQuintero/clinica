@@ -33,32 +33,23 @@ When writing or modifying any component or page, prioritize idiomatic Next.js (A
 
 ### Data layer: SQL Server via raw SQL, no ORM
 
-- `database/connection.ts` exports a singleton `db` with `query(sql)` and `queryParams(sql, params)`. Always prefer `queryParams` for anything with user input — it maps JS values to typed SQL parameters (`sql.Bit`, `sql.Int`, `sql.DateTime2`, else `sql.NVarChar(sql.MAX)`), which is the only SQL-injection protection in place.
-- All tables live under `[CentroPodologico].[dbo]`. There is no migration tool — schema changes happen directly against the DB.
-- `queries.txt` at repo root has ad hoc SQL used during development.
+**Always use `queryParams(sql, params)`** for user input — it's the only SQL-injection protection. All tables: `[CentroPodologico].[dbo]`.
 
 ### Mutations go through Server Actions, not API routes
 
-- Almost all data mutation/reads happen via Next.js Server Actions (`"use server"` files named `actions.ts`), one per dashboard feature: `app/dashboard/<feature>/actions.ts` (citas, conteos, empleados, enlaces, facturacion, movimientos, nomina, pacientes, pedidos, productos, proveedores, recepciones, servicios, sucursales, tratamientos, usuarios, ventas) plus `app/dashboard/nomina/periodos/actions.ts`, `app/dashboard/nomina/procesar/actions.ts`, `app/dashboard/nomina/horas-extra/actions.ts`, `app/dashboard/actions.ts` and `app/actions/auth.ts`. `facturacion` is the exception to "one `actions.ts`": each of its five tabs under `[id]/` has its own (see Domain modules below).
-- `app/api/` only has two real REST routes, both out of protocol necessity rather than CRUD: `app/api/upload` (file/image upload to Cloudinary) and `app/api/asistencias/iclock/*` (ADMS/iClock webhook that ZKTeco biometric attendance devices push to — see Attendance/biometric checadores below). Don't add new REST endpoints for CRUD — follow the server-action pattern instead; a new REST route is only justified when an external system dictates the wire protocol, like the checador webhook.
-- Actions commonly return a discriminated union like `ActionResult<T> = { ok: true; data: T } | { ok: false; message: string }` (see `app/actions/auth.ts`) — follow this convention for new actions so client code can branch on `result.ok`.
-- **Validation**: use `zod` (already a dependency, see `lib/billing/schemas.ts`) to validate any input crossing a trust boundary — server action payloads coming from a form/client, and API route bodies (e.g. `app/api/asistencias/iclock/*`). Define the schema near the action/route (or in a shared `schemas.ts` for a feature, following the `lib/billing/schemas.ts` pattern) and parse before using the data, returning an `ActionResult`-style failure on a failed parse rather than letting bad input reach `queryParams`.
+- CRUD via Server Actions (`app/dashboard/<feature>/actions.ts`). `app/api/` has only `upload` and `asistencias/iclock/` (external webhooks) — no new REST endpoints for CRUD.
+- **ActionResult pattern** (see `app/actions/auth.ts`): `{ ok: true; data: T } | { ok: false; message: string }`
+- **Validation**: Use `zod` for any client input; define schemas near the action/route and parse before SQL.
 
 ### Auth & authorization
 
-- JWT-based auth using `jose`, stored in an `auth_token` cookie. Payload shape is `IAuthUser` (`interfaces/auth.ts`): includes `id_role`, `status` (approval state), `id_sucursal`, `id_empresa`, `sucursales_string` (comma-separated branch IDs the user can access).
-- `proxy.ts` (used as Next.js middleware) verifies the JWT and does route-level redirects:
-  - Unauthenticated → `/login`; authenticated-but-pending (`status` false) → `/pending`.
-  - `id_role === 5` is restricted to `/dashboard/tratamientos` only.
-  - `/dashboard/usuarios` is restricted to `id_role` 1 and 4.
-  - When adding new role-gated routes, extend `proxy.ts` rather than gating purely client-side.
-- `contexts/AuthContext.tsx` wraps client state around the server actions in `app/actions/auth.ts` (`loginAction`, `logoutAction`, `registerAction`, `getMeAction`).
-- `lib/rateLimiter.ts` implements IP/email based lockout for login and registration (thresholds/windows imported into `auth.ts`).
+- JWT via `jose`, `auth_token` cookie, payload: `IAuthUser` (`id_role`, `status`, `id_sucursal`, `sucursales_string`).
+- **Route gating in `proxy.ts`** (middleware), not client-side: `id_role === 5` → `/dashboard/tratamientos` only; `/dashboard/usuarios` → `id_role` 1 or 4.
+- `AuthContext.tsx` wraps `app/actions/auth.ts` actions. Rate limiter in `lib/rateLimiter.ts`.
 
 ### Multi-branch (sucursal) context
 
-- `contexts/SucursalContext.tsx` tracks the currently selected branch (`id_sucursal`) client-side, seeded from an initial value and persisted via `setSelectedSucursal` (`app/dashboard/sucursales/actions.ts`). If a user only has access to one branch (`sucursales_string` has one entry), that branch is forced.
-- Each branch (`sucursal`) has its own linked Google Calendar (`link_calendar` column) for scheduling citas — see `lib/googleCalendar.ts`.
+- `SucursalContext.tsx` tracks selected branch; forced if user has only one. Each branch has a Google Calendar (`link_calendar`) — see `docs/google-calendar.md`.
 
 ### Domain modules with detailed docs (loaded on demand)
 
@@ -95,14 +86,12 @@ Rules when touching any code with `fecha*`/`created_at`/date fields:
 4. **Display/formatting**: never call `new Date(dbValue)` directly on a raw DB string — normalize first (replace `" "` with `"T"`, or append `"T00:00:00"` for date-only) so the browser parses it as local time, not UTC.
 5. **New timestamps**: use `buildDate(new Date())`, not `new Date().toISOString()`. For date-only defaults use `addZeroToday(new Date())`, not `.toISOString().slice(0, 10)` (wrong around midnight due to UTC offset).
 
-### Directory conventions
+### Directory conventions (overview)
 
-- `app/dashboard/<feature>/` — one folder per feature (citas, conteos, empleados, enlaces, facturacion, movimientos, nomina, pacientes, pedidos, productos, proveedores, recepciones, servicios, sucursales, tratamientos, usuarios, ventas), each with `page.tsx`, `actions.ts`, and a `componentes/` subfolder for feature-local components. `nomina/` nests its screens one level deeper (`nomina/periodos/` and `nomina/horas-extra/` each hold their `page.tsx`, `actions.ts` and `componentes/`). A feature with a detail view nests it under `<feature>/[id]/` (see `empleados/[id]/`, tabbed via its own `layout.tsx`; `facturacion/[id]/` follows the same tabbed pattern but with one `actions.ts` per tab instead of a single shared one).
-- `app/api/asistencias/iclock/` — ADMS/iClock webhook for ZKTeco biometric checadores (see `docs/asistencias-biometricas.md`); the only other REST route besides `app/api/upload`.
-- `interfaces/` — one file per domain entity (`paciente.ts`, `cita.ts`, `tratamiento.ts`, `employee.ts`, `checador.ts`, `purchase_order.ts`, `movement.ts`, `stock_count.ts`, etc.), plain TS interfaces mirroring DB rows/DTOs.
-- `contexts/` — global client providers: `AuthContext`, `SucursalContext`, `ThemeContext`.
-- `hooks/` — reusable client hooks, one per file, built on `useSyncExternalStore` instead of `useEffect` + `setState`: `useIsClient` (portal guard, `false` during SSR/hydration), `useMediaQuery`, `useStorageValue` (`localStorage`/`sessionStorage` as a raw string, with a same-tab notifier and a functional updater that reads the current stored value). Check here before reading browser APIs in a component.
-  - Client data loading also lives here instead of `useEffect` + `setLoading`/`setData`: `useAsyncData(key, fetcher)` (generic `Promise<T>` keyed by an array of primitives; `key = null` skips loading; exposes `data`/`error` for the current key only, derived `loading`, `reload()` that resolves once the new data lands, and `mutate(updater)` for local edits; the fetcher gets an `AbortSignal` and is read via `useEffectEvent`, so it can be inline but **every value it reads must be in the key**), `useActionData(key, action)` (same, unwrapping an `ActionResult` — `ok: false` goes to `error`), and `useDebouncedValue(value, delayMs)` (use the debounced value as the key for search-as-you-type). To seed editable form state from loaded data, adjust state during render guarded by an `initializedForKey` compared against `JSON.stringify(key)`, so a `reload()` doesn't overwrite what the user typed.
-- `lib/` — cross-cutting server-side integrations (Google Calendar, rate limiter, ZKTeco ADMS parsing in `zktecoAdms.ts`, inventory logic in `lib/inventory/`), as opposed to `utils/` which holds small pure helpers (date formatting, random ids).
-- `content/manual/<modulo>/<tema>.md` — the user-facing manual pages served under `/dashboard/ayuda` (see "Manual de usuario" above and `docs/manual-usuario.md`).
-- Path alias `@/*` maps to the repo root (see `tsconfig.json`).
+- **`app/dashboard/<feature>/`** — feature structure: `page.tsx`, `actions.ts`, `componentes/` subfolder. See `[[directory-structure]]` for full layout.
+- **`interfaces/`** — one file per domain entity; plain TS interfaces mirroring DB rows.
+- **`contexts/`** — global client providers: `AuthContext`, `SucursalContext`, `ThemeContext`.
+- **`hooks/`** — reusable client hooks on `useSyncExternalStore`. Check here before reading browser APIs.
+- **`lib/`** — server-side integrations; `utils/` for small pure helpers.
+- **`content/manual/<modulo>/`** — user manual pages for `/dashboard/ayuda` (see `docs/manual-usuario.md`).
+- **Path alias** `@/*` maps to repo root.
