@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Banknote, CalendarCheck2, CalendarRange, Landmark, UsersRound, Wallet } from "lucide-react";
+import { Banknote, CalendarCheck2, CalendarRange, Landmark, ShieldCheck, UsersRound, Wallet } from "lucide-react";
 import type { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import type { IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
@@ -15,6 +15,8 @@ interface Props {
   today: string;
   /** Renglones con "ISR no calculado" (spec 70); solo se usa en la vista fiscal. */
   isrNotCalculatedEmployees: number;
+  /** Renglones con "IMSS no calculado" (spec 91); solo se usa en la vista fiscal de un periodo ordinario. */
+  imssNotCalculatedEmployees: number;
 }
 
 function describePaymentDistance(paymentDate: string, today: string): string {
@@ -49,15 +51,18 @@ export default function PayrollProcessSummaryCards({
   lastCalculatedAt,
   today,
   isrNotCalculatedEmployees,
+  imssNotCalculatedEmployees,
 }: Props) {
   // Spec 70: la vista fiscal agrega ISR y neto; con 6 tarjetas, 3 por fila.
   const showsDeductions = payrollType === "F";
   // Spec 87: en un periodo extraordinario las percepciones son solo el aguinaldo y el ISR sale del art. 174.
   const isExtraordinary = period.tipo_periodo === "E";
   const isPtu = isExtraordinary && period.concepto_extraordinario === "P";
+  // Spec 91: el IMSS solo se retiene en la nómina fiscal de periodos ordinarios.
+  const showsImss = showsDeductions && !isExtraordinary;
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${showsDeductions ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${showsImss ? "xl:grid-cols-4" : showsDeductions ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
       <SummaryCard icon={<CalendarRange size={20} />} label="Periodo">
         <span className="text-base font-semibold text-[#0b1c30] dark:text-zinc-50 truncate">
           {formatPeriodRange(period.fecha_inicio, period.fecha_fin)}
@@ -140,6 +145,22 @@ export default function PayrollProcessSummaryCards({
               </span>
             )}
           </SummaryCard>
+
+          {showsImss && (
+            <SummaryCard icon={<ShieldCheck size={20} />} label="IMSS retenido">
+              <span className="text-xl font-bold leading-tight text-[#0b1c30] dark:text-zinc-50 tabular-nums">
+                {formatPayrollCurrency(totals.importeImss)}
+              </span>
+              <span className="text-xs text-[#44474f] dark:text-zinc-400">Cuota obrera sobre el SBC del empleado</span>
+              {imssNotCalculatedEmployees > 0 && (
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  {imssNotCalculatedEmployees === 1
+                    ? "1 empleado sin IMSS calculado"
+                    : `${imssNotCalculatedEmployees} empleados sin IMSS calculado`}
+                </span>
+              )}
+            </SummaryCard>
+          )}
 
           <SummaryCard icon={<Wallet size={20} />} label="Neto a pagar">
             <span className="text-xl font-bold leading-tight text-[#0051d5] dark:text-blue-300 tabular-nums">

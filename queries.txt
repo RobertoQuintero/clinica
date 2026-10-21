@@ -1326,6 +1326,41 @@ CREATE INDEX [IX_asistencias_empleado_fecha]
     ON [RH].[asistencias] ([id_empleado], [fecha_hora])
 GO
 
+-------------------- SBC DEL EMPLEADO (spec 91) ---------------------
+-- Spec 91: historial del SBC (salario base de cotización). Una fila por empleado + vigente_desde.
+CREATE TABLE [RH].[employee_sbc](
+    [id_employee_sbc] [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]     [int]           NOT NULL,
+    [sbc]             [decimal](12,2) NOT NULL,
+    [vigente_desde]   [date]          NOT NULL,   -- fecha del movimiento en IDSE
+    [updated_by]      [int]           NOT NULL,
+    [updated_at]      [datetime2](0)  NOT NULL,   -- buildDate(new Date())
+ CONSTRAINT [PK_employee_sbc] PRIMARY KEY CLUSTERED ([id_employee_sbc] ASC),
+ CONSTRAINT [FK_employee_sbc_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [UQ_employee_sbc_vigencia] UNIQUE ([id_empleado], [vigente_desde]),
+ CONSTRAINT [CK_employee_sbc_sbc] CHECK ([sbc] > 0)
+) ON [PRIMARY]
+GO
+
+-- Spec 91: bitácora del SBC. Una fila por alta, cambio o baja (mismo patrón que tax_parameters_log).
+CREATE TABLE [RH].[employee_sbc_log](
+    [id_log]        [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]   [int]           NOT NULL,
+    [vigente_desde] [date]          NOT NULL,
+    [sbc_anterior]  [decimal](12,2) NULL,   -- NULL: alta
+    [sbc_nuevo]     [decimal](12,2) NULL,   -- NULL: baja
+    [updated_by]    [int]           NOT NULL,
+    [updated_at]    [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_employee_sbc_log] PRIMARY KEY CLUSTERED ([id_log] ASC),
+ CONSTRAINT [FK_employee_sbc_log_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado])
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_employee_sbc_log_empleado]
+    ON [RH].[employee_sbc_log] ([id_empleado], [updated_at] DESC)
+GO
+
 -------------------- CHECADORES POR SUCURSAL ---------------------
 -- spec 27 — Checadores por sucursal y alta de PIN de empleado
 --
@@ -3020,6 +3055,113 @@ SELECT [id_perception], [clave_sat], [description]
   FROM [CentroPodologico].[payroll].[perceptions]
  WHERE [clave_sat] = '003' AND [tipo_limite_exencion] = 'U'
    AND [umas_limite] = 15 AND [periodicidad_limite] = 'A';
+GO
+
+-- Spec 91: parámetros fiscales del IMSS. Se recrea el CHECK con las 16 claves.
+ALTER TABLE [payroll].[tax_parameters] DROP CONSTRAINT [CK_tax_parameters_clave];
+GO
+ALTER TABLE [payroll].[tax_parameters] ADD CONSTRAINT [CK_tax_parameters_clave] CHECK ([clave] IN (
+    'UMA_DIARIA','UMA_MENSUAL','UMA_ANUAL',
+    'SALARIO_MINIMO_GENERAL','SALARIO_MINIMO_FRONTERA',
+    'SUBSIDIO_MONTO_MENSUAL','SUBSIDIO_TOPE_INGRESO_MENSUAL','SUBSIDIO_FACTOR_DIAS_MES',
+    'DIAS_ANIO',
+    'IMSS_OBRERO_EYM_EXCEDENTE','IMSS_OBRERO_EYM_DINERO','IMSS_OBRERO_EYM_PENSIONADOS',
+    'IMSS_OBRERO_IV','IMSS_OBRERO_CEAV',
+    'IMSS_UMBRAL_EXCEDENTE_UMAS','IMSS_TOPE_SBC_UMAS'));
+GO
+
+-- Spec 91: precarga idempotente (solo inserta las claves que no tengan fila en 2026-01-01). No escribe bitácora.
+-- @seed_user_id: id_user del administrador que corre el script.
+DECLARE @seed_user_id int = 1;   -- AJUSTAR antes de correr
+INSERT INTO [CentroPodologico].[payroll].[tax_parameters] ([clave], [valor], [vigente_desde], [updated_by], [updated_at])
+SELECT seed.[clave], seed.[valor], '2026-01-01', @seed_user_id, SYSDATETIME()
+  FROM (VALUES
+        ('IMSS_OBRERO_EYM_EXCEDENTE',   0.4000),   -- % sobre el excedente de 3 UMA (art. 106)
+        ('IMSS_OBRERO_EYM_DINERO',      0.2500),   -- % sobre SBC (art. 107)
+        ('IMSS_OBRERO_EYM_PENSIONADOS', 0.3750),   -- % sobre SBC (art. 25)
+        ('IMSS_OBRERO_IV',              0.6250),   -- % sobre SBC (art. 147)
+        ('IMSS_OBRERO_CEAV',            1.1250),   -- % sobre SBC (art. 168)
+        ('IMSS_UMBRAL_EXCEDENTE_UMAS',  3.0000),   -- UMA
+        ('IMSS_TOPE_SBC_UMAS',         25.0000)    -- UMA (art. 28)
+       ) AS seed ([clave], [valor])
+ WHERE NOT EXISTS (
+        SELECT 1
+          FROM [CentroPodologico].[payroll].[tax_parameters] existing
+         WHERE existing.[clave] = seed.[clave] AND existing.[vigente_desde] = '2026-01-01');
+GO
+
+-- Spec 91: estado y total del IMSS en el snapshot, como el ISR.
+-- imss_estado: 'X' no aplica (operativa, periodo E, régimen distinto de 02 o snapshot anterior a esta spec),
+--              'C' calculado, 'N' no calculado.
+ALTER TABLE [payroll].[period_employees] ADD
+    [imss_estado]   [char](1)       NOT NULL CONSTRAINT [DF_period_employees_imss_estado] DEFAULT ('X'),
+    [imss_motivo]   [varchar](30)   NULL,   -- solo 'N'
+    [imss_retenido] [decimal](12,2) NULL;   -- solo 'C'
+GO
+
+-- IS NOT NULL explícito en cada rama (lección de la spec 69).
+ALTER TABLE [payroll].[period_employees] WITH CHECK ADD CONSTRAINT [CK_period_employees_imss] CHECK (
+    ([imss_estado] = 'X' AND [imss_motivo] IS NULL AND [imss_retenido] IS NULL)
+ OR ([imss_estado] = 'N' AND [tipo_nomina] = 'F'
+        AND [imss_motivo] IS NOT NULL
+        AND [imss_motivo] IN ('missing_nss','missing_sbc','missing_uma',
+                              'missing_imss_parameters','missing_minimum_wage')
+        AND [imss_retenido] IS NULL)
+ OR ([imss_estado] = 'C' AND [tipo_nomina] = 'F'
+        AND [imss_motivo] IS NULL
+        AND [imss_retenido] IS NOT NULL AND [imss_retenido] >= 0));
+GO
+
+-- Spec 91: desglose congelado de la cuota obrera. Solo existe para filas 'C', así que todas las columnas son NOT NULL.
+CREATE TABLE [payroll].[period_employee_imss](
+    [id_period_employee]           [int]           NOT NULL,
+    -- Datos usados, con su vigencia
+    [sbc]                          [decimal](12,2) NOT NULL,
+    [sbc_vigente_desde]            [date]          NOT NULL,
+    [uma_diaria]                   [decimal](18,4) NOT NULL,
+    [uma_vigente_desde]            [date]          NOT NULL,
+    [salario_minimo]               [decimal](18,4) NOT NULL,
+    [salario_minimo_vigente_desde] [date]          NOT NULL,
+    [parametros_vigente_desde]     [date]          NOT NULL,   -- el vigente_desde más reciente de las 7 claves IMSS
+    [tope_sbc_umas]                [decimal](18,4) NOT NULL,
+    [umbral_excedente_umas]        [decimal](18,4) NOT NULL,
+    -- Bases
+    [tope_sbc]                     [decimal](12,2) NOT NULL,   -- ROUND(tope_sbc_umas × uma, 2)
+    [sbc_topado]                   [decimal](12,2) NOT NULL,   -- min(sbc, tope_sbc)
+    [umbral_excedente]             [decimal](12,2) NOT NULL,   -- ROUND(umbral_excedente_umas × uma, 2)
+    [excedente_diario]             [decimal](12,2) NOT NULL,   -- max(0, sbc_topado − umbral_excedente)
+    [dias_eym]                     [int]           NOT NULL,   -- dias + dias_falta
+    [dias_iv_ceav]                 [int]           NOT NULL,   -- dias
+    -- Ramos: tasa en % (congelada) e importe = ROUND(base × días × tasa / 100, 2)
+    [tasa_eym_excedente]           [decimal](18,4) NOT NULL,
+    [importe_eym_excedente]        [decimal](12,2) NOT NULL,
+    [tasa_eym_dinero]              [decimal](18,4) NOT NULL,
+    [importe_eym_dinero]           [decimal](12,2) NOT NULL,
+    [tasa_eym_pensionados]         [decimal](18,4) NOT NULL,
+    [importe_eym_pensionados]      [decimal](12,2) NOT NULL,
+    [tasa_iv]                      [decimal](18,4) NOT NULL,
+    [importe_iv]                   [decimal](12,2) NOT NULL,
+    [tasa_ceav]                    [decimal](18,4) NOT NULL,
+    [importe_ceav]                 [decimal](12,2) NOT NULL,
+    -- Resultado
+    [cuota_causada]                [decimal](12,2) NOT NULL,   -- suma de los 5 importes
+    [exento_salario_minimo]        [bit]           NOT NULL,   -- art. 36 LSS
+    [tope_neto]                    [decimal](12,2) NOT NULL,   -- max(0, percepciones − ISR retenido)
+    [topado_al_neto]               [bit]           NOT NULL,
+    [imss_retenido]                [decimal](12,2) NOT NULL,
+ CONSTRAINT [PK_period_employee_imss] PRIMARY KEY CLUSTERED ([id_period_employee] ASC),
+ CONSTRAINT [FK_period_employee_imss_row] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_imss] CHECK (
+        [cuota_causada] = [importe_eym_excedente] + [importe_eym_dinero] + [importe_eym_pensionados]
+                        + [importe_iv] + [importe_ceav]
+    AND [dias_iv_ceav] <= [dias_eym]
+    AND (   ([exento_salario_minimo] = 1 AND [topado_al_neto] = 0 AND [imss_retenido] = 0)
+         OR ([exento_salario_minimo] = 0 AND [topado_al_neto] = 0
+                AND [cuota_causada] <= [tope_neto] AND [imss_retenido] = [cuota_causada])
+         OR ([exento_salario_minimo] = 0 AND [topado_al_neto] = 1
+                AND [cuota_causada] >  [tope_neto] AND [imss_retenido] = [tope_neto])))
+) ON [PRIMARY]
 GO
 
 

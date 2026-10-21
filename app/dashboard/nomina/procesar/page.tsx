@@ -16,6 +16,7 @@ import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotic
 import ChristmasBonusEmployeesTable from "./componentes/ChristmasBonusEmployeesTable";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
 import PtuPaymentEmployeesTable from "./componentes/PtuPaymentEmployeesTable";
+import ImssNotCalculatedNotice from "./componentes/ImssNotCalculatedNotice";
 import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
 import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
@@ -123,6 +124,7 @@ export default async function ProcesarNominaPage({
             lastCalculatedAt={result.data.lastCalculatedAt}
             today={today}
             isrNotCalculatedEmployees={result.data.isrNotCalculated.reduce((sum, group) => sum + group.employees, 0)}
+            imssNotCalculatedEmployees={result.data.imssNotCalculated.reduce((sum, group) => sum + group.employees, 0)}
           />
           <ExcludedEmployeesNotice
             excludedEmployees={result.data.excludedEmployees}
@@ -133,6 +135,12 @@ export default async function ProcesarNominaPage({
               isrNotCalculated={result.data.isrNotCalculated}
               fiscalYear={Number(result.data.period.fecha_fin.slice(0, 4))}
               isExtraordinary={isExtraordinary}
+            />
+          )}
+          {payrollType === "F" && !isExtraordinary && (
+            <ImssNotCalculatedNotice
+              imssNotCalculated={result.data.imssNotCalculated}
+              fiscalYear={Number(result.data.period.fecha_fin.slice(0, 4))}
             />
           )}
           <PayrollRecalculationNotice
@@ -162,6 +170,10 @@ export default async function ProcesarNominaPage({
           <PayrollRecalculationNotice
             recalculationNeeded={result.data.isrRecalculationNeeded}
             message="Hay cálculos de ISR que no coinciden con la tarifa o los parámetros actuales. Recalcula la nómina."
+          />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.imssRecalculationNeeded}
+            message="Hay cálculos de IMSS que no coinciden con el SBC, las tasas o los parámetros actuales. Recalcula la nómina."
           />
           <PayrollRecalculationNotice
             recalculationNeeded={result.data.exemptionRecalculationNeeded}
