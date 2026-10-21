@@ -66,6 +66,7 @@ export const TAX_PARAMETER_KEYS: Record<TaxParameterKey, { label: string; unit: 
   IMSS_TOPE_SBC_UMAS:            { label: "IMSS: tope del SBC",                unit: "UMA" },
 };
 export const TAX_PARAMETERS_LOG_PAGE_SIZE = 20;
+export const EMPLOYEE_SBC_LOG_PAGE_SIZE = 20;
 
 // ISR de la nómina fiscal (spec 70). id_deduction del ISR en el catálogo payroll.deductions (clave SAT 002).
 export const ISR_DEDUCTION_ID = 2;

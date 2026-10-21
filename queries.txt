@@ -1326,6 +1326,41 @@ CREATE INDEX [IX_asistencias_empleado_fecha]
     ON [RH].[asistencias] ([id_empleado], [fecha_hora])
 GO
 
+-------------------- SBC DEL EMPLEADO (spec 91) ---------------------
+-- Spec 91: historial del SBC (salario base de cotización). Una fila por empleado + vigente_desde.
+CREATE TABLE [RH].[employee_sbc](
+    [id_employee_sbc] [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]     [int]           NOT NULL,
+    [sbc]             [decimal](12,2) NOT NULL,
+    [vigente_desde]   [date]          NOT NULL,   -- fecha del movimiento en IDSE
+    [updated_by]      [int]           NOT NULL,
+    [updated_at]      [datetime2](0)  NOT NULL,   -- buildDate(new Date())
+ CONSTRAINT [PK_employee_sbc] PRIMARY KEY CLUSTERED ([id_employee_sbc] ASC),
+ CONSTRAINT [FK_employee_sbc_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [UQ_employee_sbc_vigencia] UNIQUE ([id_empleado], [vigente_desde]),
+ CONSTRAINT [CK_employee_sbc_sbc] CHECK ([sbc] > 0)
+) ON [PRIMARY]
+GO
+
+-- Spec 91: bitácora del SBC. Una fila por alta, cambio o baja (mismo patrón que tax_parameters_log).
+CREATE TABLE [RH].[employee_sbc_log](
+    [id_log]        [int] IDENTITY(1,1) NOT NULL,
+    [id_empleado]   [int]           NOT NULL,
+    [vigente_desde] [date]          NOT NULL,
+    [sbc_anterior]  [decimal](12,2) NULL,   -- NULL: alta
+    [sbc_nuevo]     [decimal](12,2) NULL,   -- NULL: baja
+    [updated_by]    [int]           NOT NULL,
+    [updated_at]    [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_employee_sbc_log] PRIMARY KEY CLUSTERED ([id_log] ASC),
+ CONSTRAINT [FK_employee_sbc_log_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado])
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_employee_sbc_log_empleado]
+    ON [RH].[employee_sbc_log] ([id_empleado], [updated_at] DESC)
+GO
+
 -------------------- CHECADORES POR SUCURSAL ---------------------
 -- spec 27 — Checadores por sucursal y alta de PIN de empleado
 --
