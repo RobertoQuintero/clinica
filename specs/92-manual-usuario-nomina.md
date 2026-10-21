@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - Ninguna spec técnica. El contenido del manual describe lo que ya construyeron las specs 51 a 91 (nómina) y las pestañas del expediente que la alimentan: 55 (usuarios vinculados), 59 (horario), 71 (datos fiscales), 76 (vacaciones), 79 (días económicos) y 91 (IMSS/SBC).
   - La spec **93** (Sucursal Demo y capturas del manual) depende de esta.
