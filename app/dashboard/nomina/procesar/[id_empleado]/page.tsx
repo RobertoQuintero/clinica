@@ -152,6 +152,10 @@ export default async function PayrollEmployeeDetailPage({
                   ) : (
                     <PayrollDeductionsCard
                       isrBreakdown={detail.snapshot}
+                      imssSnapshot={detail.snapshot}
+                      contributionRegime={detail.employee.tipo_regimen}
+                      employeeId={detail.employee.id_empleado}
+                      fiscalYear={Number(detail.period.fecha_fin.slice(0, 4))}
                       totalPerceptions={detail.totalPerceptions}
                       totalDeductions={detail.totalDeductions}
                     />

@@ -1,12 +1,19 @@
 import { CircleMinus, Info, Landmark, TriangleAlert } from "lucide-react";
+import type { IPayrollEmployeeSnapshot } from "@/interfaces/payroll_calculation";
 import type { IIsrBreakdown } from "@/interfaces/payroll_isr";
 import { describeIsrSkipReason } from "@/lib/payroll/isrCalculation";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { formatPeriodDate } from "@/lib/payroll/periodFormat";
 import { PayrollCalculationRow } from "./PayrollCalculationRow";
+import PayrollImssDeduction from "./PayrollImssDeduction";
 
 interface Props {
   isrBreakdown: IIsrBreakdown;
+  imssSnapshot: IPayrollEmployeeSnapshot;
+  /** `RH.empleados.tipo_regimen` actual del empleado (el IMSS solo aplica al 02). */
+  contributionRegime: string | null;
+  employeeId: number;
+  fiscalYear: number;
   totalPerceptions: number;
   totalDeductions: number;
 }
@@ -69,8 +76,16 @@ function IsrCalculationDetail({ isrBreakdown }: { isrBreakdown: IIsrBreakdown })
   );
 }
 
-/** Tarjeta "Deducciones" del Detalle, solo en la vista fiscal (spec 70). Hoy la única deducción es el ISR. */
-export default function PayrollDeductionsCard({ isrBreakdown, totalPerceptions, totalDeductions }: Props) {
+/** Tarjeta "Deducciones" del Detalle, solo en la vista fiscal ordinaria: el ISR (spec 70) y el IMSS (spec 91). */
+export default function PayrollDeductionsCard({
+  isrBreakdown,
+  imssSnapshot,
+  contributionRegime,
+  employeeId,
+  fiscalYear,
+  totalPerceptions,
+  totalDeductions,
+}: Props) {
   const netPay = Math.round((totalPerceptions - totalDeductions) * 100) / 100;
 
   return (
@@ -137,6 +152,18 @@ export default function PayrollDeductionsCard({ isrBreakdown, totalPerceptions, 
             )}
           </div>
         </div>
+      </div>
+
+      <div className="px-5 py-4 border-t border-[#e5e8f0] dark:border-zinc-700">
+        <PayrollImssDeduction
+          imssStatus={imssSnapshot.imss_estado}
+          imssSkipReason={imssSnapshot.imss_motivo}
+          imssWithheld={imssSnapshot.imss_retenido}
+          imssBreakdown={imssSnapshot.imss}
+          contributionRegime={contributionRegime}
+          employeeId={employeeId}
+          fiscalYear={fiscalYear}
+        />
       </div>
 
       <footer className="px-5 py-4 border-t border-[#e5e8f0] dark:border-zinc-700 bg-[#dce9ff]/50 dark:bg-zinc-800 flex flex-col gap-1.5">

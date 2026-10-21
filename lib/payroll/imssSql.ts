@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { IImssBreakdown } from "@/interfaces/payroll_imss";
 import { IMSS_CONTRIBUTION_REGIME } from "@/lib/payroll/constants";
 
 /**
@@ -201,3 +202,32 @@ export const IMSS_SELECT_SQL = IMSS_COLUMNS_SQL.map(({ expression }) => expressi
 export const IMSS_UPDATE_SET_SQL = `[imss_estado]   = imss_state.estado,
               [imss_motivo]   = imss_state.motivo,
               [imss_retenido] = CASE WHEN imss_state.estado = 'C' THEN imss_result.retenido END`;
+
+const IMSS_BREAKDOWN_DATE_COLUMNS = [
+  "sbc_vigente_desde",
+  "uma_vigente_desde",
+  "salario_minimo_vigente_desde",
+  "parametros_vigente_desde",
+] as const;
+const IMSS_BREAKDOWN_BIT_COLUMNS = ["exento_salario_minimo", "topado_al_neto"] as const;
+
+/** SELECT del desglose congelado (`payroll.period_employee_imss`, alias `i`): fechas como texto y decimales como float. */
+export const IMSS_BREAKDOWN_SELECT_SQL = IMSS_COLUMNS_SQL.map(({ column }) => {
+  if ((IMSS_BREAKDOWN_DATE_COLUMNS as readonly string[]).includes(column)) {
+    return `CONVERT(varchar(10), i.[${column}], 120) AS [${column}]`;
+  }
+  if ((IMSS_BREAKDOWN_BIT_COLUMNS as readonly string[]).includes(column)) return `i.[${column}]`;
+  return `CAST(i.[${column}] AS float) AS [${column}]`;
+}).join(",\n                    ");
+
+/** Fila de `IMSS_BREAKDOWN_SELECT_SQL` a `IImssBreakdown`: fechas como texto, bits como boolean y el resto como número. */
+export function toImssBreakdown(row: Record<string, unknown>): IImssBreakdown {
+  const breakdown: Record<string, string | number | boolean> = {};
+  for (const { column } of IMSS_COLUMNS_SQL) {
+    const value = row[column];
+    if ((IMSS_BREAKDOWN_DATE_COLUMNS as readonly string[]).includes(column)) breakdown[column] = String(value);
+    else if ((IMSS_BREAKDOWN_BIT_COLUMNS as readonly string[]).includes(column)) breakdown[column] = Boolean(value);
+    else breakdown[column] = Number(value);
+  }
+  return breakdown as unknown as IImssBreakdown;
+}

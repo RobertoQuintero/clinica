@@ -70,10 +70,12 @@ import {
 import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
 import {
   IMSS_APPLY_SQL,
+  IMSS_BREAKDOWN_SELECT_SQL,
   IMSS_INSERT_COLUMNS_SQL,
   IMSS_PARAMETERS_SQL,
   IMSS_SELECT_SQL,
   IMSS_UPDATE_SET_SQL,
+  toImssBreakdown,
 } from "@/lib/payroll/imssSql";
 import {
   IMSS_DEDUCTION_ID,
@@ -681,6 +683,7 @@ export async function getPayrollEmployeeDetail(
       discountedLatenessRows,
       storedPerceptionRows,
       article174Rows,
+      imssRows,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -689,7 +692,8 @@ export async function getPayrollEmployeeDetail(
                 ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
                 ISNULL(pu.name, '') AS nombre_puesto,
                 e.foto_url, e.activo,
-                CONVERT(varchar(10), e.fecha_ingreso, 120) AS fecha_ingreso
+                CONVERT(varchar(10), e.fecha_ingreso, 120) AS fecha_ingreso,
+                e.tipo_regimen
            FROM [CentroPodologico].[RH].[empleados] e
            LEFT JOIN [CentroPodologico].[RH].[puestos] pu ON pu.id_puesto = e.id_puesto
           WHERE e.id_empleado = @id_empleado
@@ -740,6 +744,7 @@ export async function getPayrollEmployeeDetail(
                 CAST(pe.subsidio_causado AS float)              AS subsidio_causado,
                 CAST(pe.subsidio_aplicado AS float)             AS subsidio_aplicado,
                 CAST(pe.isr_retenido AS float)                  AS isr_retenido,
+                pe.imss_estado, pe.imss_motivo, CAST(pe.imss_retenido AS float) AS imss_retenido,
                 CAST((SELECT ISNULL(SUM(d.importe), 0)
                         FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                        WHERE d.id_period_employee = pe.id_period_employee) AS float) AS total_deducciones,
@@ -888,6 +893,16 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Spec 91: desglose congelado de la cuota obrera; solo existe para los renglones fiscales en 'C'.
+      payrollType === "F"
+        ? db.queryParams(
+            `SELECT ${IMSS_BREAKDOWN_SELECT_SQL}
+               FROM [CentroPodologico].[payroll].[period_employee_imss] i
+               JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = i.id_period_employee
+              WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = 'F'`,
+            { id_period: period.id_period, id_empleado: idEmpleado },
+          )
+        : Promise.resolve([]),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -901,6 +916,7 @@ export async function getPayrollEmployeeDetail(
       foto_url: employeeRow.foto_url || null,
       activo: Boolean(employeeRow.activo),
       fecha_ingreso: employeeRow.fecha_ingreso,
+      tipo_regimen: employeeRow.tipo_regimen ?? null,
     };
 
     // Spec 78: el snapshot trae la prima y las vacaciones pagadas; buildPerceptionLines las vuelve líneas.
@@ -964,6 +980,10 @@ export async function getPayrollEmployeeDetail(
           subsidio_causado: toNullableNumber(snapshotRow.subsidio_causado),
           subsidio_aplicado: toNullableNumber(snapshotRow.subsidio_aplicado),
           isr_retenido: toNullableNumber(snapshotRow.isr_retenido),
+          imss_estado: snapshotRow.imss_estado,
+          imss_motivo: snapshotRow.imss_motivo ?? null,
+          imss_retenido: toNullableNumber(snapshotRow.imss_retenido),
+          imss: imssRows[0] ? toImssBreakdown(imssRows[0] as Record<string, unknown>) : null,
           calculated_at: snapshotRow.calculated_at,
         }
       : null;

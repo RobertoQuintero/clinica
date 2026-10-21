@@ -7,7 +7,7 @@ import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
-import type { IImssRowSummary, ImssSkipReason } from "@/interfaces/payroll_imss";
+import type { IImssBreakdown, IImssRowSummary, ImssSkipReason } from "@/interfaces/payroll_imss";
 
 export type PayrollType = "O" | "F";
 
@@ -131,7 +131,8 @@ export interface IPayrollEmployeeDetailFilters {
 }
 
 // Fila del snapshot `payroll.period_employees` para un empleado y tipo, con el desglose del ISR (spec 70).
-export interface IPayrollEmployeeSnapshot extends IIsrBreakdown {
+export interface IPayrollEmployeeSnapshot extends IIsrBreakdown, IImssRowSummary {
+  imss: IImssBreakdown | null;   // spec 91: desglose congelado; solo existe con imss_estado = 'C'
   salario_diario:  number;
   dias:            number;   // días netos pagados (calendario − dias_falta)
   dias_falta:      number;
@@ -182,6 +183,7 @@ export interface IPayrollEmployeeDetail {
     foto_url:        string | null;
     activo:          boolean;
     fecha_ingreso:   string;    // "YYYY-MM-DD"
+    tipo_regimen:    string | null;   // RH.empleados.tipo_regimen actual (spec 91: el IMSS solo aplica al 02)
   };
   // null si el empleado no está en la nómina del tipo pedido (o si el periodo sigue en estatus 1).
   snapshot:         IPayrollEmployeeSnapshot | null;
