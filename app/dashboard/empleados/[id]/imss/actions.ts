@@ -3,6 +3,7 @@
 import db from "@/database/connection";
 import { getEmployeeById } from "@/app/dashboard/empleados/actions";
 import type { IEmployeeSbc, IEmployeeSbcLogEntry } from "@/interfaces/employee_sbc";
+import type { ITaxParameter } from "@/interfaces/payroll_tax_parameters";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_SBC_LOG_PAGE_SIZE } from "@/lib/payroll/constants";
 import { buildDate } from "@/utils/date_helpper";
@@ -81,6 +82,29 @@ export async function getEmployeeSbcLog(id_empleado: number): Promise<ActionResu
   } catch (error) {
     console.error("getEmployeeSbcLog", error);
     return { ok: false, message: "No se pudo cargar la bitácora del SBC" };
+  }
+}
+
+type MinimumWageRow = Pick<ITaxParameter, "clave" | "valor" | "vigente_desde">;
+
+/** Todas las vigencias del salario mínimo general, para el aviso ámbar del modal (se compara a la vigencia capturada). */
+export async function getMinimumWageParameters(): Promise<ActionResult<MinimumWageRow[]>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  try {
+    const rows = await db.query(
+      `SELECT clave,
+              CAST(valor AS float)                     AS valor,
+              CONVERT(varchar(10), vigente_desde, 120) AS vigente_desde
+         FROM [CentroPodologico].[payroll].[tax_parameters]
+        WHERE clave = 'SALARIO_MINIMO_GENERAL'
+        ORDER BY vigente_desde`,
+    );
+    return { ok: true, data: rows as MinimumWageRow[] };
+  } catch (error) {
+    console.error("getMinimumWageParameters", error);
+    return { ok: false, message: "No se pudo cargar el salario mínimo" };
   }
 }
 
