@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -7,6 +8,7 @@ import { MANUAL_CALLOUT_LABELS } from "@/lib/manual/modules";
 import rehypeHeadingIds from "@/lib/manual/rehypeHeadingIds";
 import remarkCallouts from "@/lib/manual/remarkCallouts";
 import { buildManualHref } from "@/lib/manual/links";
+import type { IManualCapture } from "@/lib/manual/captures";
 
 type CalloutType = "note" | "tip" | "warning";
 
@@ -59,7 +61,7 @@ function ManualLink({ href, moduleSlug, children }: { href?: string; moduleSlug:
   );
 }
 
-function createManualComponents(moduleSlug: string): Components {
+function createManualComponents(moduleSlug: string, captures: Record<string, IManualCapture | null>): Components {
   return {
     div: ({ node, children, ...rest }) => {
       const calloutType = node?.properties?.["data-callout-type"];
@@ -82,9 +84,48 @@ function createManualComponents(moduleSlug: string): Components {
         {children}
       </blockquote>
     ),
+    // Un párrafo cuyo único hijo es una imagen de captura: sin <p>, porque el <figure> que
+    // devuelve `img` no es contenido de frase y no puede anidarse dentro de un <p> (hydration error).
+    p: ({ node, children }) => {
+      const meaningfulChildren = (node?.children ?? []).filter(
+        (child) => !(child.type === "text" && child.value.trim() === ""),
+      );
+      const onlyChild = meaningfulChildren.length === 1 ? meaningfulChildren[0] : null;
+      if (onlyChild && onlyChild.type === "element" && onlyChild.tagName === "img") {
+        return <>{children}</>;
+      }
+      return <p>{children}</p>;
+    },
     img: ({ src, alt }) => {
-      if (process.env.NODE_ENV !== "development") return null;
       const captureName = typeof src === "string" ? src.replace(/^captura:/, "") : "";
+      const capture = captures[captureName];
+
+      if (capture) {
+        return (
+          <figure className="my-6 flex flex-col items-center gap-2">
+            <a
+              href={capture.src}
+              target="_blank"
+              rel="noreferrer"
+              className="overflow-hidden rounded-xl border border-[#c4c6d0] shadow-sm dark:border-zinc-700"
+            >
+              <Image
+                src={capture.src}
+                width={capture.width}
+                height={capture.height}
+                alt={alt ?? ""}
+                sizes="(min-width: 1024px) 48rem, 100vw"
+                className="h-auto w-full"
+              />
+            </a>
+            {alt ? (
+              <figcaption className="text-center text-xs text-[#44474f] dark:text-zinc-400">{alt}</figcaption>
+            ) : null}
+          </figure>
+        );
+      }
+
+      if (process.env.NODE_ENV !== "development") return null;
       return (
         <span className="my-4 flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-[#c4c6d0] bg-[#eff4ff]/40 px-4 py-8 text-center dark:border-zinc-700 dark:bg-zinc-800/40">
           <Camera className="h-6 w-6 text-[#747780] dark:text-zinc-500" aria-hidden="true" />
@@ -119,10 +160,12 @@ function createManualComponents(moduleSlug: string): Components {
 interface Props {
   body: string;
   moduleSlug: string;
+  /** Capturas ya resueltas por el Server Component de la página; `null` = sin captura en el manifiesto. */
+  captures?: Record<string, IManualCapture | null>;
 }
 
 /** Renderer de Markdown del manual, en el servidor y sin JavaScript extra en el navegador. */
-export default function ManualMarkdown({ body, moduleSlug }: Props) {
+export default function ManualMarkdown({ body, moduleSlug, captures = {} }: Props) {
   return (
     <div
       className="max-w-none text-[15px] leading-relaxed text-[#0b1c30] dark:text-zinc-200
@@ -136,7 +179,7 @@ export default function ManualMarkdown({ body, moduleSlug }: Props) {
         remarkPlugins={[remarkGfm, remarkCallouts]}
         rehypePlugins={[rehypeHeadingIds]}
         urlTransform={manualUrlTransform}
-        components={createManualComponents(moduleSlug)}
+        components={createManualComponents(moduleSlug, captures)}
       >
         {body}
       </ReactMarkdown>

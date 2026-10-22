@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       <SucursalProvider initialSucursalId={initialSucursalId}>
         <Sidebar>
-          <div className="p-6">{children}</div>
+          <div data-manual-capture-content className="p-6">{children}</div>
         </Sidebar>
       </SucursalProvider>
     </div>

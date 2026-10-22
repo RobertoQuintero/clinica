@@ -76,10 +76,10 @@ Implemented with a small remark plugin, `lib/manual/remarkCallouts.ts` — no MD
 
 ## Capture placeholders
 
-`![Descripción de la captura](captura:nombre-de-archivo)` marks where a screenshot goes (spec 93 replaces it with the real image at `public/manual/<modulo>/<nombre-de-archivo>.png`). `nombre-de-archivo` follows `^[a-z0-9-]+$`.
+`![Descripción de la captura](captura:nombre-de-archivo)` marks where a screenshot goes. `nombre-de-archivo` follows `^[a-z0-9-]+$` and must match an entry in `public/manual/<modulo>/manifest.json` (spec 93; see `docs/sucursal-demo.md` for how the Nómina manifest and its 16 PNGs are generated from the Sucursal Demo).
 
-- In `npm run dev` it renders as a dashed placeholder box with a camera icon, the `alt` text and the capture name.
-- Outside development (`NODE_ENV !== "development"`) it renders nothing — a "Captura pendiente" box in production would look like a bug, not a placeholder.
+- **With a real capture** (the name is in the module's manifest): `ManualMarkdown` renders a `<figure>` — the PNG through `next/image` at its real width/height, wrapped in a link that opens it full-size in a new tab, with the `alt` text as `<figcaption>`. The page's Server Component resolves every marker's capture once via `loadManualCapture` (`lib/manual/captures.ts`) and passes the resolved map to `ManualMarkdown`; the renderer itself never reads the manifest. A standalone image markdown line is wrapped by `ManualMarkdown` in a bare paragraph; its `p` override unwraps that paragraph when the capture renders a `<figure>`, because `<figure>` is not phrasing content and nesting it inside `<p>` is invalid HTML (a hydration error) — keep that unwrap if you touch the `img`/`p` renderers.
+- **Without one** (no manifest, or the name isn't in it): in `npm run dev` it renders as a dashed placeholder box with a camera icon, the `alt` text and the capture name; outside development (`NODE_ENV !== "development"`) it renders nothing — a "Captura pendiente" box in production would look like a bug, not a placeholder.
 - Every page should carry at least one.
 
 ## Internal and screen links

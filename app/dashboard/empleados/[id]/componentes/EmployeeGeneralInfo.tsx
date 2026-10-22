@@ -72,7 +72,10 @@ export default function EmployeeGeneralInfo({ employee, schedule }: Props) {
           .join(", ");
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6 shadow-sm flex flex-col gap-8">
+    <div
+      data-manual-capture="employee-general-info"
+      className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl p-6 shadow-sm flex flex-col gap-8"
+    >
       {/* Datos Personales */}
       <div>
         <h3 className="flex items-center gap-2 text-sm font-bold text-[#0b1c30] dark:text-zinc-100 mb-4 pb-2 border-b border-[#c4c6d0]/50 dark:border-zinc-700/50">
