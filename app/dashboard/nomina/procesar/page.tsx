@@ -48,6 +48,17 @@ export default async function ProcesarNominaPage({
   // La PTU solo existe en la nómina fiscal: se ignora `tipo=operativa` de la URL.
   const payrollType = isPtuPeriod ? "F" : filters.payrollType;
 
+  // Spec 94: advertencias ámbar del modal de Aprobar. No bloquean; solo informan.
+  const isrNotCalculatedEmployees = result.ok ? result.data.isrNotCalculated.reduce((sum, group) => sum + group.employees, 0) : 0;
+  const imssNotCalculatedEmployees = result.ok ? result.data.imssNotCalculated.reduce((sum, group) => sum + group.employees, 0) : 0;
+  const approvalWarnings: string[] = result.ok
+    ? [
+        ...(isrNotCalculatedEmployees > 0 ? [`${isrNotCalculatedEmployees} empleado(s) con ISR no calculado`] : []),
+        ...(imssNotCalculatedEmployees > 0 ? [`${imssNotCalculatedEmployees} empleado(s) con IMSS no calculado`] : []),
+        ...(result.data.totals.employees === 0 ? ["El periodo no tiene ningún empleado calculado"] : []),
+      ]
+    : [];
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -76,6 +87,9 @@ export default async function ProcesarNominaPage({
             idPeriod={result.data.period.id_period}
             periodCode={result.data.period.codigo}
             status={result.data.period.status}
+            recalculationNeeded={result.data.recalculationNeeded}
+            warnings={approvalWarnings}
+            fechaPago={result.data.period.fecha_pago}
           />
         )}
       </div>
@@ -126,8 +140,8 @@ export default async function ProcesarNominaPage({
             totals={result.data.totals}
             lastCalculatedAt={result.data.lastCalculatedAt}
             today={today}
-            isrNotCalculatedEmployees={result.data.isrNotCalculated.reduce((sum, group) => sum + group.employees, 0)}
-            imssNotCalculatedEmployees={result.data.imssNotCalculated.reduce((sum, group) => sum + group.employees, 0)}
+            isrNotCalculatedEmployees={isrNotCalculatedEmployees}
+            imssNotCalculatedEmployees={imssNotCalculatedEmployees}
           />
           <ExcludedEmployeesNotice
             excludedEmployees={result.data.excludedEmployees}

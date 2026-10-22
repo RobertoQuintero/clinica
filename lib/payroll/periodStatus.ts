@@ -18,3 +18,7 @@ export function getAvailableStatusTransitions(status: PayrollPeriodStatus): Peri
 
 export const UNAPPROVE_COMMENT_MIN_LENGTH = 5;
 export const UNAPPROVE_COMMENT_MAX_LENGTH = 200;
+
+/** Mensaje del candado duro de Aprobar, compartido por la acción de servidor y el botón deshabilitado. */
+export const PERIOD_NEEDS_RECALCULATION_MESSAGE =
+  "Recalcula la nómina antes de aprobarla: el cálculo guardado ya no coincide con los datos actuales";

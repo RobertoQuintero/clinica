@@ -99,7 +99,7 @@ import {
   revertPayrollCalculationSchema,
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
-import { PERIOD_STATUS_TRANSITIONS } from "@/lib/payroll/periodStatus";
+import { PERIOD_NEEDS_RECALCULATION_MESSAGE, PERIOD_STATUS_TRANSITIONS } from "@/lib/payroll/periodStatus";
 import { loadPeriodStatusLog } from "@/lib/payroll/periodStatusLog";
 import { IPayrollPeriodStatusLogEntry } from "@/interfaces/payroll_period";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
@@ -1949,7 +1949,7 @@ export async function approvePayrollPeriod(input: unknown): Promise<ActionResult
       if (Object.values(flags).some(Boolean)) {
         return {
           ok: false,
-          message: "Recalcula la nómina antes de aprobarla: el cálculo guardado ya no coincide con los datos actuales",
+          message: PERIOD_NEEDS_RECALCULATION_MESSAGE,
         };
       }
     }

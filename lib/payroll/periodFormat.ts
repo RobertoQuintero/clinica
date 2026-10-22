@@ -28,6 +28,12 @@ export function formatPeriodDayMonth(dateString: string): string {
   return `${day} ${SHORT_MONTH_NAMES[month - 1]}`;
 }
 
+/** "2026-11-05" -> "05/11/2026". */
+export function formatDateSlashed(dateString: string): string {
+  const { year, month, day } = splitDateString(dateString);
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+}
+
 /** "14 sep – 20 sep 2026"; si el rango cruza de año, muestra el año en ambos extremos. */
 export function formatPeriodRange(startDate: string, endDate: string): string {
   const start = splitDateString(startDate);
