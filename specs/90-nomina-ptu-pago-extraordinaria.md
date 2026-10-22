@@ -80,7 +80,7 @@
 - **PTU no cobrada:** marcar como no cobrado lo de un trabajador que no se presentó y llevarlo al reparto siguiente. Sigue capturándose a mano en la spec 89.
 - Pagar a los dados de baja fuera de la nómina, o en un finiquito (spec 88).
 - Subsidio al empleo, IMSS (la PTU no integra al SBC) e ISN de CDMX.
-- Timbrado del CFDI extraordinario, recibos, dispersión y los estatus Aprobada/Pagada.
+- Timbrado del CFDI extraordinario, recibos y dispersión. (Aprobada/Pagada: construido en la spec 94.)
 - Bloquear una `fecha_pago` posterior a la fecha límite (solo se advierte).
 - Avisar cuando no existe un reparto cerrado, por ejemplo una empresa sin utilidades.
 - Cambiar las reglas del aguinaldo: la spec 87 solo se adapta al nuevo concepto.
@@ -433,7 +433,7 @@ export const PTU_PAYMENT_WARNING_DAYS = 30;
 | Bloquear "Calcular" si alguna fila pagable tiene tope 0 | Evita relajar `salario_diario > 0` y un art. 174 con ordinario 0. Corregirlo en el reparto es posible porque todavía no está bloqueado. |
 | Tabla propia `period_employee_ptu`, con `UNIQUE` sobre la fila del reparto | Liga el pago con su origen, congela el desglose para el Detalle y garantiza el pago único (patrón de la spec 57). |
 | `importe_ptu` en `period_employees` | Mismo patrón que `importe_aguinaldo`. Procesar suma desde el snapshot y el `CHECK` lo usa. |
-| "Reabrir" el reparto se bloquea solo con un periodo PTU **calculado** | Crear el periodo no toma datos del reparto. Revertir lo libera, y no hay estatus Aprobada/Pagada todavía. |
+| "Reabrir" el reparto se bloquea solo con un periodo PTU **calculado** | Crear el periodo no toma datos del reparto. Revertir lo libera. Desde la spec 94, en estatus 3 ya no se puede revertir sin desaprobar antes, y en 4 nunca. |
 | Exigir el reparto cerrado y filas pagables de la sucursal al **crear** el periodo | Evita periodos vacíos en la lista. "Calcular" revisa lo mismo otra vez. |
 | `fecha_pago` sugerida en la fecha límite; una posterior solo advierte | Pagar tarde es una multa, no algo imposible. Mismo criterio que el aguinaldo. |
 | Fecha límite por `tipo_persona` del reparto: 30-may (moral) y 29-jun (física) | LFT art. 122: 60 días después de la declaración anual (31-mar / 30-abr). El dato ya se captura en la spec 89. |
@@ -478,7 +478,7 @@ export const PTU_PAYMENT_WARNING_DAYS = 30;
 - **Concurrencia entre "Reabrir" y "Calcular".** Si se reabre el reparto mientras otra pestaña calcula, el periodo podría pagar un reparto en borrador.
   - Mitigación: las dos operaciones bloquean la fila del reparto `WITH (UPDLOCK, HOLDLOCK)`. El cálculo exige `estado = 'C'` dentro de su transacción, y la reapertura revisa `period_employee_ptu` dentro de la suya.
 - **Revertir después de pagar fuera del sistema.** Sin los estatus Aprobada/Pagada, un periodo PTU ya pagado en la realidad se puede revertir, y eso libera el reparto para reabrirlo.
-  - Mitigación: se documenta. Los estatus 3/4 de una spec futura deberán impedir revertir y reabrir.
+  - Mitigación: se documenta. Los estatus 3/4 de una spec futura deberán impedir revertir y reabrir. **Resuelto en la spec 94**: en estatus 3 ya no se puede revertir sin desaprobar antes, y en 4 no se puede en absoluto; "Reabrir" el reparto sigue bloqueado porque `findPtuDistributionPayrollUsage` usa `p.status >= 2`.
 - **Ingreso ordinario congelado.** El art. 174 usa el último salario fiscal del ejercicio de las utilidades, no el salario vigente al pagar. Esto retiene algo distinto de lo que daría el salario actual.
   - Mitigación: es la decisión tomada. Antes del primer pago, el contador o el simulador del SAT confirma al menos dos casos.
 
@@ -490,7 +490,7 @@ export const PTU_PAYMENT_WARNING_DAYS = 30;
 - Rastrear la PTU no cobrada y llevarla automáticamente al reparto siguiente.
 - Pagar la PTU de un dado de baja en el finiquito (spec 88).
 - Subsidio al empleo, IMSS e ISN de CDMX.
-- Timbrado del CFDI extraordinario, recibos, dispersión y los estatus Aprobada/Pagada.
+- Timbrado del CFDI extraordinario, recibos y dispersión. (Aprobada/Pagada: construido en la spec 94.)
 - Bloquear una `fecha_pago` posterior a la fecha límite.
 - Avisar cuando no existe un reparto cerrado.
 - Cambiar las reglas del aguinaldo.

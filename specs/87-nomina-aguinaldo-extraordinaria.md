@@ -86,7 +86,7 @@
 - Pagar en varias exhibiciones o por porcentaje (un solo periodo E al 100%).
 - Descontar faltas, incapacidades o permisos de los días del aguinaldo.
 - Subsidio al empleo (no aplica por regla), IMSS (el SBC ya integra el factor) e ISN de CDMX.
-- Timbrado del CFDI extraordinario, recibos, dispersión y los estatus Aprobada/Pagada.
+- Timbrado del CFDI extraordinario, recibos y dispersión. (Aprobada/Pagada: construido en la spec 94.)
 - Ajuste manual del importe o de los días, y ajuste anual de ISR (art. 97).
 - Otros conceptos extraordinarios (PTU).
 - Tarifas de otras frecuencias además de la semanal y la mensual.
@@ -469,7 +469,7 @@ export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string
 | Sin subsidio al empleo | Regla del doc de origen. |
 | Tarifa mensual en `tablas_retencion` con selector Semanal \| Mensual | Sin DDL nuevo; la spec 69 ya preveía cargar otras frecuencias cuando se usaran. |
 | Pago posterior al 20-dic solo advierte | Pagar tarde es una multa, no algo imposible. |
-| Aviso desde el 1-dic; se quita al **crear** el periodo E | Decisión del negocio; Aprobada/Pagada todavía no existen. |
+| Aviso desde el 1-dic; se quita al **crear** el periodo E | Decisión del negocio; Aprobada/Pagada llegaron con la spec 94 sin cambiar esto. |
 | Horas extra, Faltas, Retardos y Bonos excluyen periodos E | Esas pantallas solo tienen sentido para periodos ordinarios. |
 
 **Descartadas**
