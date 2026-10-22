@@ -26,6 +26,10 @@ export const PERIOD_ROW_SELECT = `
   p.status, p.tipo_periodo, p.concepto_extraordinario, p.created_by,
   CONVERT(varchar(19), p.created_at, 120)   AS created_at,
   CONVERT(varchar(19), p.updated_at, 120)   AS updated_at,
+  p.approved_by,
+  CONVERT(varchar(19), p.approved_at, 120)  AS approved_at,
+  p.paid_by,
+  CONVERT(varchar(19), p.paid_at, 120)      AS paid_at,
   pp.description AS frecuencia_descripcion,
   pp.clave_sat   AS frecuencia_clave_sat`;
 

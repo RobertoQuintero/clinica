@@ -68,7 +68,7 @@
 - **Exención del trabajador de salario mínimo** (horas extra 100% exentas) y cualquier regla por empleado.
 - **El límite general de previsión social** (art. 93, penúltimo párrafo) y los vales de despensa.
 - **IMSS** e integración al SBC. Es otro motor, con otras reglas; no reutiliza `importe_exento`.
-- **Tarifas de otras frecuencias**, Aprobada/Pagada, recibos y timbrado CFDI.
+- **Tarifas de otras frecuencias**, recibos y timbrado CFDI. (Aprobada/Pagada: construido en la spec 94.)
 - **Bitácora del catálogo `payroll.perceptions`.** El renglón congela la regla usada.
 - **Gravado/exento en la nómina operativa.**
 
@@ -334,7 +334,7 @@ export interface IPeriodEmployeePerception {
 - **No:** acumular por fecha de cálculo. Recalcular un periodo viejo cambiaría lo exentado según el día en que alguien apretó el botón.
 - **Sí (confirmado por el usuario, 2026-10-13):** el año y el mes del acumulado son los de `fecha_fin`, igual que la tarifa del ISR (spec 70). **No:** `fecha_pago`. Las dos fechas solo difieren en un periodo que se paga en diciembre y termina en enero. Si algún día se cambia, se cambian **las dos a la vez** (`ISR_PARAMETERS_SQL` y `EXEMPTION_APPLY_SQL`) para que la tarifa y los topes usen el mismo año.
 - **Sí:** el acumulado no filtra por sucursal ni frecuencia. El tope es por persona.
-- **No:** limitar el acumulado a periodos Aprobados o Pagados. Esos estatus todavía no existen; cuando existan, la spec del estatus 3 debe decidir si cambia el criterio.
+- **No:** limitar el acumulado a periodos Aprobados o Pagados. Esos estatus llegaron con la spec 94, que no tocó este criterio.
 - **Sí:** la periodicidad `S` solo se acepta en frecuencia semanal; en otras queda "No calculado". Partir un periodo quincenal en semanas calendario se hace cuando llegue la tarifa quincenal y haya horas extra fiscales que lo necesiten.
 - **Sí:** lo que se repite en el periodo (domingos) va en `eventos` de un solo renglón, con `UQ (id_period_employee, id_perception)`. El CFDI reporta una percepción por tipo.
 - **Sí:** si un renglón de percepción no se puede calcular, el ISR del empleado queda `'N'` / `exemption_not_calculated` en lugar de calcularse sobre una base incompleta. Mismo criterio que la spec 70: nunca un valor por defecto en silencio.
@@ -351,7 +351,7 @@ export interface IPeriodEmployeePerception {
 | **El ISR de los periodos actuales cambia** al pasar la base a la suma de renglones. | Criterio que exige las 18 columnas idénticas antes y después en `NOM-2026-S01`. |
 | **Una regla mal capturada en el catálogo** exenta de más o de menos en toda la nómina fiscal, y el catálogo no tiene bitácora. | La regla queda congelada en cada renglón, el Detalle la muestra y el aviso detecta el cambio. Una bitácora del catálogo queda para otra spec si hace falta. |
 | **Olvidar la UMA de febrero:** se sigue usando la de enero y los topes salen bajos. | El Detalle muestra `uma_vigente_desde`. Mismo riesgo que la spec 69, ya anotado en la operación anual. |
-| **Dependencia entre periodos en `A` y `M`:** recalcular un periodo anterior deja mal el exento de uno posterior ya calculado. | El aviso del posterior lo detecta (compara `exento_consumido_previo`). Cuando exista Aprobada, un periodo aprobado no se recalcula. |
+| **Dependencia entre periodos en `A` y `M`:** recalcular un periodo anterior deja mal el exento de uno posterior ya calculado. | El aviso del posterior lo detecta (compara `exento_consumido_previo`). Desde la spec 94, un periodo aprobado no se recalcula. |
 | **Dos cálculos simultáneos** de periodos del mismo empleado leen cada uno el acumulado viejo del otro. | Hoy hay un periodo por frecuencia y sucursal a la vez y el caso es raro. El aviso "Recalcula" lo detecta en el periodo posterior. |
 | **El subsidio cambia de comportamiento** cuando haya exentos: el derecho se compara con la base gravada, no con el total pagado. | Es la regla del decreto (ingresos que sirven de base para el impuesto). Confirmado por el usuario el 2026-10-13: el derecho se compara con la base gravada. |
 | **El SQL y el helper TS divergen** por redondeo. | Los dos redondean igual y en el mismo orden; hay criterios con casos de redondeo y la prueba de integración. Si difieren, manda el SQL. |

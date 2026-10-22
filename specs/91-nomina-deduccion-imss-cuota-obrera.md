@@ -106,7 +106,7 @@
 - IMSS en la nómina operativa, en periodos extraordinarios (aguinaldo, PTU) y en el finiquito (spec 88).
 - Salario mínimo de la zona fronteriza.
 - Reportar la deducción 001 en el CFDI de nómina (timbrado).
-- Bloquear la aprobación del periodo con filas `'N'`.
+- Bloquear la aprobación del periodo con filas `'N'`. La spec 94 decidió lo contrario: advertir en el modal de Aprobar, con el conteo de empleados, pero no bloquear.
 - Capturar el SBC desde el modal de alta del empleado.
 
 ## Modelo de datos
@@ -480,7 +480,7 @@ export interface IImssBreakdown { /* una propiedad por columna de payroll.period
 - IMSS en la nómina operativa, en aguinaldo, en PTU y en el finiquito (spec 88).
 - Salario mínimo fronterizo.
 - Reportar la deducción 001 en el CFDI de nómina.
-- Bloquear la aprobación con filas `'N'`.
+- Bloquear la aprobación con filas `'N'`. La spec 94 decidió advertir, no bloquear.
 - Capturar el SBC desde el modal de alta del empleado.
 
 Cada uno, si llega, va en su propia spec.

@@ -52,7 +52,7 @@
 - **IMSS** (`id_deduction = 1`): SBC, cuotas obrera y patronal.
 - **Ajuste mensual o anual del ISR**, y el prorrateo de la tarifa por días.
 - **ISR de la nómina operativa.**
-- **Bloquear la aprobación** de un periodo con renglones "ISR no calculado". Le toca a la spec que construya el estatus 3 (Aprobada).
+- **Bloquear la aprobación** de un periodo con renglones "ISR no calculado". Le toca a la spec que construya el estatus 3 (Aprobada). La spec 94 decidió lo contrario: advierte en el modal de Aprobar, en ámbar, pero no bloquea.
 - **Recibos, timbrado CFDI** y el reporte del subsidio como "otros pagos".
 - **Captura manual o ajuste a mano** del ISR de un empleado.
 - **Cambios retroactivos** en periodos aprobados o pagados.
@@ -347,7 +347,7 @@ export interface IIsrBreakdown {
 | **Los cambios a la tarifa no dejan rastro**, porque `tablas_retencion` no tiene bitácora ni `updated_at`. | El snapshot congela el tramo usado y el aviso "Recalcula" detecta cualquier diferencia. Una bitácora de la tarifa queda para otra spec si hace falta. |
 | **Olvidar capturar la UMA y el subsidio de febrero de 2027.** El resolutor seguiría usando el valor de enero de 2027 o el de 2026. | El Detalle muestra el `vigente_desde` de cada parámetro usado. Anotar la captura de enero y febrero en la operación anual. |
 | **Faltan los datos del ejercicio nuevo en enero** (subsidio de enero, tarifa del año). | El renglón queda "No calculado" con su motivo y el aviso en Procesar lo hace visible. No hay valores por defecto. |
-| **Se paga un periodo con renglones "No calculado"** (por ejemplo, uno quincenal) sin retener ISR. | El aviso en Procesar. La spec que construya el estatus 3 (Aprobada) debe bloquear la aprobación con renglones `'N'`. |
+| **Se paga un periodo con renglones "No calculado"** (por ejemplo, uno quincenal) sin retener ISR. | El aviso en Procesar. La spec 94 decidió advertir en el modal de Aprobar, con el conteo de empleados, en vez de bloquear. |
 | **`calculatePayrollPeriod` encadena un concepto más.** Un error en el `UPDATE` podría tocar otras columnas. | El `UPDATE` solo escribe las columnas nuevas de los renglones `'F'` del periodo. Hay un criterio de aceptación que compara las columnas anteriores antes y después de recalcular. |
 | **El SQL y `isrCalculation.ts` divergen** por redondeo o por la comparación del tope. | Los dos usan la misma comparación sin divisiones y el mismo orden de redondeo. Hay un criterio que exige el mismo resultado en los 5 casos y en el borde 2,646.33 / 2,646.34. Si difieren, manda el SQL. |
 | **El criterio de días del subsidio (días pagados)** podría no coincidir con lo que aplica su contador. | Es una decisión registrada. Cambiarla solo toca la expresión de `dias` en `isrSql.ts` y en el helper. |

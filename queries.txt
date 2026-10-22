@@ -3164,6 +3164,55 @@ CREATE TABLE [payroll].[period_employee_imss](
 ) ON [PRIMARY]
 GO
 
+-- Spec 94: sello de aprobación y de pago del periodo. Los periodos existentes quedan sin sello.
+ALTER TABLE [payroll].[periods] ADD
+    [approved_by] [int]          NULL,
+    [approved_at] [datetime2](0) NULL,
+    [paid_by]     [int]          NULL,
+    [paid_at]     [datetime2](0) NULL;
+GO
+ALTER TABLE [payroll].[periods] ADD
+    CONSTRAINT [FK_periods_approved_by] FOREIGN KEY ([approved_by]) REFERENCES [dbo].[users] ([id_user]),
+    CONSTRAINT [FK_periods_paid_by]     FOREIGN KEY ([paid_by])     REFERENCES [dbo].[users] ([id_user]),
+    -- El sello y el estatus no pueden contradecirse: 1 y 2 sin sello, 3 aprobado, 4 aprobado y pagado.
+    CONSTRAINT [CK_periods_sello_estatus] CHECK (
+        ([status] <= 2 AND [approved_by] IS NULL AND [approved_at] IS NULL
+                       AND [paid_by] IS NULL AND [paid_at] IS NULL)
+     OR ([status] = 3  AND [approved_by] IS NOT NULL AND [approved_at] IS NOT NULL
+                       AND [paid_by] IS NULL AND [paid_at] IS NULL)
+     OR ([status] = 4  AND [approved_by] IS NOT NULL AND [approved_at] IS NOT NULL
+                       AND [paid_by] IS NOT NULL AND [paid_at] IS NOT NULL));
+GO
+
+-- Spec 94: bitácora de cambios de estatus del periodo. Solo las tres transiciones de aprobación.
+-- Se borra junto con el periodo (que solo se puede borrar en estatus 1, donde no tiene filas).
+CREATE TABLE [payroll].[period_status_log](
+    [id_period_status_log] [int] IDENTITY(1,1) NOT NULL,
+    [id_period]            [int]           NOT NULL,
+    [status_anterior]      [tinyint]       NOT NULL,
+    [status_nuevo]         [tinyint]       NOT NULL,
+    [comentario]           [nvarchar](200) NULL,     -- obligatorio al desaprobar (3 -> 2)
+    [changed_by]           [int]           NOT NULL,
+    [changed_at]           [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_period_status_log] PRIMARY KEY CLUSTERED ([id_period_status_log] ASC),
+ CONSTRAINT [FK_period_status_log_period] FOREIGN KEY ([id_period])
+     REFERENCES [payroll].[periods] ([id_period]) ON DELETE CASCADE,
+ CONSTRAINT [FK_period_status_log_user] FOREIGN KEY ([changed_by])
+     REFERENCES [dbo].[users] ([id_user]),
+ CONSTRAINT [CK_period_status_log_transicion] CHECK (
+     ([status_anterior] = 2 AND [status_nuevo] = 3)     -- aprobar
+  OR ([status_anterior] = 3 AND [status_nuevo] = 4)     -- marcar como pagada
+  OR ([status_anterior] = 3 AND [status_nuevo] = 2)),   -- desaprobar
+ CONSTRAINT [CK_period_status_log_comentario] CHECK (
+     [status_nuevo] <> 2
+  OR ([comentario] IS NOT NULL AND LEN(LTRIM(RTRIM([comentario]))) >= 5))
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_period_status_log_period]
+    ON [payroll].[period_status_log] ([id_period], [changed_at] DESC)
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------
