@@ -27,6 +27,10 @@ export interface ISeededDemoOrganization {
   id_sucursal: number;
   id_user_demo: number;
   employeeIdsByKey: Record<string, number>;
+  /** "YYYY-MM-DD" de cada empleado, para que otros pasos no recalculen yearStart/midYear. */
+  fechaIngresoByKey: Record<string, string>;
+  /** id_user del usuario rol 2 vinculado, solo para las claves con `linkedUserRoleId !== null`. */
+  linkedUserIdsByKey: Record<string, number>;
 }
 
 function resolveHireDate(hireDate: IDemoEmployeeFixture["hireDate"], year: number): string {
@@ -217,9 +221,12 @@ export async function seedOrganization(
 
   const year = Number(buildDate(new Date()).slice(0, 4));
   const employeeIdsByKey: Record<string, number> = {};
+  const fechaIngresoByKey: Record<string, string> = {};
+  const linkedUserIdsByKey: Record<string, number> = {};
 
   for (const [index, fixture] of DEMO_EMPLOYEES.entries()) {
     const sequence = index + 1;
+    const fecha_ingreso = resolveHireDate(fixture.hireDate, year);
     // "EMP-DEMO-NNN": codigo_empleado es único en toda la tabla (UQ_empleados_codigo), no por
     // empresa, así que no puede seguir el patrón "EMP-{año}-{NNN}" de la empresa real sin arriesgar
     // una colisión con sus códigos ya existentes.
@@ -227,22 +234,23 @@ export async function seedOrganization(
       id_empresa,
       id_sucursal,
       codigo_empleado: `EMP-DEMO-${String(sequence).padStart(3, "0")}`,
-      fecha_ingreso: resolveHireDate(fixture.hireDate, year),
+      fecha_ingreso,
       cuenta_bancaria: buildFakeClabe(sequence),
     });
     employeeIdsByKey[fixture.key] = id_empleado;
+    fechaIngresoByKey[fixture.key] = fecha_ingreso;
 
     await insertEmployeeSchedule(tx, id_empleado);
     await insertEmployeeSbc(tx, {
       id_empleado,
       sbc: fixture.sbc,
-      vigente_desde: resolveHireDate(fixture.hireDate, year),
+      vigente_desde: fecha_ingreso,
       updated_by: id_user_demo,
     });
 
     if (fixture.linkedUserRoleId !== null) {
       const unreachablePassword = await bcrypt.hash(randomUUID(), 10);
-      await insertUser(tx, {
+      const id_user_linked = await insertUser(tx, {
         nombre: `${fixture.firstName} ${fixture.lastNamePaterno} ${fixture.lastNameMaterno}`.trim(),
         email: `${fixture.key}@centropodologico.test`,
         telefono: "7820000000",
@@ -252,8 +260,9 @@ export async function seedOrganization(
         id_empresa,
         id_empleado,
       });
+      linkedUserIdsByKey[fixture.key] = id_user_linked;
     }
   }
 
-  return { id_empresa, id_sucursal, id_user_demo, employeeIdsByKey };
+  return { id_empresa, id_sucursal, id_user_demo, employeeIdsByKey, fechaIngresoByKey, linkedUserIdsByKey };
 }

@@ -12,6 +12,8 @@ import {
 } from "./demo/guard";
 import { removeDemoOrganization } from "./demo/removeDemo";
 import { seedOrganization } from "./demo/seedOrganization";
+import { seedPayrollInputs } from "./demo/seedPayrollInputs";
+import { seedPeriods } from "./demo/seedPeriods";
 
 async function promptConfirmation(): Promise<string> {
   const rl = createInterface({ input: stdin, output: stdout });
@@ -56,7 +58,10 @@ async function main(): Promise<void> {
   const demoUserPasswordHash = await bcrypt.hash(demoUserPassword as string, 10);
   const seeded = await db.transaction(async (tx) => {
     await removeDemoOrganization(tx);
-    return seedOrganization(tx, demoUserPasswordHash);
+    const organization = await seedOrganization(tx, demoUserPasswordHash);
+    await seedPayrollInputs(tx, organization);
+    await seedPeriods(tx, organization);
+    return organization;
   });
 
   console.log(

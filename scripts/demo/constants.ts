@@ -87,7 +87,7 @@ export const DEMO_EMPLOYEES: readonly IDemoEmployeeFixture[] = [
     sbc: 400,
     ptuCategory: "N",
     linkedUserRoleId: 2,
-    scenarios: ["lateness"],
+    scenarios: ["lateness", "shiftExtension"],
     rfc: "LOOM880622QY4",
     curp: "LOOM880622MVZRTN05",
     nss: "23456789012",
@@ -150,7 +150,7 @@ export const DEMO_EMPLOYEES: readonly IDemoEmployeeFixture[] = [
     sbc: 520,
     ptuCategory: "C", // tope de confianza
     linkedUserRoleId: null,
-    scenarios: ["shiftExtension"],
+    scenarios: [],
     rfc: "TOGU800705DX7",
     curp: "TOGU800705HVZRRS01",
     nss: "56789012345",
