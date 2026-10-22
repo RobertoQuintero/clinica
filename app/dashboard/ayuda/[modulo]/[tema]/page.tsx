@@ -3,7 +3,19 @@ import { notFound, redirect } from "next/navigation";
 import { requireActiveUser } from "@/lib/auth/session";
 import { MANUAL_MODULES } from "@/lib/manual/modules";
 import { loadManualPage, loadManualPages } from "@/lib/manual/content";
+import { loadManualCapture, type IManualCapture } from "@/lib/manual/captures";
 import { formatManualUpdatedDate } from "@/lib/manual/dateFormat";
+
+const CAPTURE_MARKER_PATTERN = /\(captura:([a-z0-9-]+)\)/g;
+
+/** Resuelve, de una sola vez, las capturas de los marcadores `captura:<name>` del cuerpo de la página. */
+async function resolvePageCaptures(moduleSlug: string, body: string): Promise<Record<string, IManualCapture | null>> {
+  const names = [...body.matchAll(CAPTURE_MARKER_PATTERN)].map((match) => match[1]);
+  const entries = await Promise.all(
+    names.map(async (name) => [name, await loadManualCapture(moduleSlug, name)] as const),
+  );
+  return Object.fromEntries(entries);
+}
 import ManualMarkdown from "../../componentes/ManualMarkdown";
 import ManualPageIndex from "../../componentes/ManualPageIndex";
 import ManualPagerLinks from "../../componentes/ManualPagerLinks";
@@ -22,6 +34,7 @@ export default async function ManualPageDetailPage({ params }: Props) {
 
   const [page, pages] = await Promise.all([loadManualPage(modulo, tema), loadManualPages(modulo)]);
   if (!page) notFound();
+  const captures = await resolvePageCaptures(modulo, page.body);
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,7 +57,7 @@ export default async function ManualPageDetailPage({ params }: Props) {
             Actualizado: {formatManualUpdatedDate(page.updated)}
           </p>
 
-          <ManualMarkdown body={page.body} moduleSlug={modulo} />
+          <ManualMarkdown body={page.body} moduleSlug={modulo} captures={captures} />
 
           <ManualPagerLinks moduleSlug={modulo} previous={page.previous} next={page.next} />
         </div>

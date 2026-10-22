@@ -162,6 +162,43 @@ export async function removeDemoOrganization(tx: ITransactionClient): Promise<vo
     id_empresa,
   });
 
+  // -- Paso 6 (preparación): decisiones de horas extra/faltas/retardos, keyed por id_empleado
+  // (sin id_period, por diseño: sobreviven a que el periodo se borre y se cree de nuevo).
+  await tx.queryParams(
+    `DELETE oa
+       FROM [CentroPodologico].[payroll].[overtime_authorizations] oa
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = oa.[id_empleado]
+      WHERE e.[id_empresa] = @id_empresa`,
+    { id_empresa },
+  );
+  await tx.queryParams(
+    `DELETE aj
+       FROM [CentroPodologico].[payroll].[absence_justifications] aj
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = aj.[id_empleado]
+      WHERE e.[id_empresa] = @id_empresa`,
+    { id_empresa },
+  );
+  await tx.queryParams(
+    `DELETE lj
+       FROM [CentroPodologico].[payroll].[lateness_justifications] lj
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = lj.[id_empleado]
+      WHERE e.[id_empresa] = @id_empresa`,
+    { id_empresa },
+  );
+
+  // -- Paso 6 (preparación): snapshots calculados, antes de los periodos y el reparto de PTU.
+  // `payroll.period_employees` tiene en cascada todas sus tablas de desglose por concepto
+  // (comisiones, horas extra, faltas, retardos, deducciones, percepciones, IMSS, ISR art. 174 y
+  // PTU pagada); borrarla aquí basta, no hace falta nombrar cada tabla hija.
+  await tx.queryParams(
+    `DELETE pe
+       FROM [CentroPodologico].[payroll].[period_employees] pe
+       JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pe.[id_period]
+       JOIN [CentroPodologico].[dbo].[sucursales] s ON s.[id_sucursal] = p.[id_sucursal]
+      WHERE s.[id_empresa] = @id_empresa`,
+    { id_empresa },
+  );
+
   // -- Paso 4: periodos y reparto de PTU en borrador, antes de llegar a la sucursal --
   await tx.queryParams(
     `DELETE l

@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   // despliegue serverless el disco solo trae lo que Next rastrea, así que sin esto las
   // rutas de /dashboard/ayuda darían 404 en producción.
   outputFileTracingIncludes: {
-    "/dashboard/ayuda/**": ["./content/manual/**"],
+    "/dashboard/ayuda/**": ["./content/manual/**", "./public/manual/**/manifest.json"],
   },
   experimental: {
     serverActions: {

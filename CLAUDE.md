@@ -62,6 +62,7 @@ The sections below used to live inline here but are long and only relevant when 
 - Billing / electronic invoicing (Facturapi, `BILLING` schema, API key encryption, audit log): `docs/facturacion.md`
 - Payroll (`nomina/`, `payroll` schema, payroll periods, code and date rules): `docs/nomina.md`
 - User manual / "Ayuda" section (`app/dashboard/ayuda/`, `content/manual/`, frontmatter, templates, callouts, adding a new module's manual): `docs/manual-usuario.md`
+- Sucursal Demo (`npm run seed:demo`, `npm run capture:manual`, the isolated demo company that feeds the Nómina manual's screenshots): `docs/sucursal-demo.md`
 
 ### Manual de usuario (user manual)
 

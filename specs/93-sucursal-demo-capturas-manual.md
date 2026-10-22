@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 92 (`manual-usuario-nomina`): los 16 marcadores `captura:` de `content/manual/nomina/`, `ManualMarkdown` y `docs/manual-usuario.md`.
   - Las specs de nómina 51 a 91. La demo alimenta sus pantallas con datos ficticios y las calcula con su motor, sin cambiar ninguna regla.
