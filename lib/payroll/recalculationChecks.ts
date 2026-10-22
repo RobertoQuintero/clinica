@@ -32,7 +32,9 @@ export interface IRecalculationFlags {
  * no tiene horas extra, faltas, retardos, bonos, ISR de la spec 70 ni vacaciones; esos avisos
  * compararían contra un cálculo que nunca los incluyó. El del exento sí le aplica a ambos tipos.
  */
-export async function collectRecalculationFlags(period: IPayrollPeriodRow): Promise<IRecalculationFlags> {
+export async function collectRecalculationFlags(
+  period: Pick<IPayrollPeriodRow, "id_period" | "tipo_periodo">,
+): Promise<IRecalculationFlags> {
   const isOrdinaryPeriod = period.tipo_periodo === "O";
 
   const [
