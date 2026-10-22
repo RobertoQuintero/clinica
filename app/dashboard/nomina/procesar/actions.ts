@@ -100,7 +100,7 @@ import {
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
 import { PERIOD_NEEDS_RECALCULATION_MESSAGE, PERIOD_STATUS_TRANSITIONS } from "@/lib/payroll/periodStatus";
-import { loadPeriodStatusLog } from "@/lib/payroll/periodStatusLog";
+import { loadPeriodStatusLog, loadPeriodStatusStamp } from "@/lib/payroll/periodStatusLog";
 import { IPayrollPeriodStatusLogEntry } from "@/interfaces/payroll_period";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
@@ -313,6 +313,7 @@ export async function getPayrollProcessPage(
       vacationPayRecalculationNeeded: false,
       extraordinaryRecalculationNeeded: false,
       recalculationNeeded: false,
+      statusStamp: null,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -341,6 +342,7 @@ export async function getPayrollProcessPage(
         lastCalculated,
       ],
       recalculationFlags,
+      statusStamp,
     ] = await Promise.all([
       Promise.all([
       db.queryParams(
@@ -507,6 +509,8 @@ export async function getPayrollProcessPage(
       ),
       ]),
       collectRecalculationFlags(period),
+      // Spec 94: el sello solo existe desde Aprobada en adelante.
+      period.status === 3 || period.status === 4 ? loadPeriodStatusStamp(period.id_period) : Promise.resolve(null),
     ]);
     const {
       overtimeRecalculationNeeded,
@@ -629,6 +633,7 @@ export async function getPayrollProcessPage(
         vacationPayRecalculationNeeded,
         extraordinaryRecalculationNeeded,
         recalculationNeeded,
+        statusStamp,
       },
     };
   } catch (error) {

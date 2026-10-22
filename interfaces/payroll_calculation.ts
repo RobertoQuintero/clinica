@@ -1,4 +1,4 @@
-import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
+import { IPayrollPeriodRow, IPayrollPeriodStatusStamp } from "@/interfaces/payroll_period";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
@@ -107,6 +107,7 @@ export interface IPayrollProcessPage {
   vacationPayRecalculationNeeded: boolean;   // ídem, para la prima vacacional y las vacaciones pagadas (spec 78)
   extraordinaryRecalculationNeeded: boolean;   // ídem, para el aguinaldo o la PTU de un periodo extraordinario (specs 87 y 90)
   recalculationNeeded: boolean;   // spec 94: el `or` de las once banderas anteriores
+  statusStamp: IPayrollPeriodStatusStamp | null;   // spec 94: solo se consulta en estatus 3 y 4
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".

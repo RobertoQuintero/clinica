@@ -21,6 +21,8 @@ import PtuPaymentEmployeesTable from "./componentes/PtuPaymentEmployeesTable";
 import ImssNotCalculatedNotice from "./componentes/ImssNotCalculatedNotice";
 import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
 import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
+import PayrollPeriodStatusStamp from "./componentes/PayrollPeriodStatusStamp";
+import PayrollPeriodStatusLog from "./componentes/PayrollPeriodStatusLog";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
 import PayrollProcessSummaryCards from "./componentes/PayrollProcessSummaryCards";
 import PayrollProcessToolbar from "./componentes/PayrollProcessToolbar";
@@ -80,6 +82,7 @@ export default async function ProcesarNominaPage({
                 ? "Aguinaldo anual por empleado: 15 días de salario diario, proporcional a los días del año."
                 : "Salario del periodo por empleado: salario diario por los días pagados."}
           </p>
+          {result.ok && <PayrollPeriodStatusStamp statusStamp={result.data.statusStamp} />}
         </div>
         {/* En estatus 1 el botón "Calcular nómina" vive en el estado vacío. */}
         {result.ok && result.data.period && result.data.period.status !== 1 && (
@@ -93,6 +96,8 @@ export default async function ProcesarNominaPage({
           />
         )}
       </div>
+
+      {result.ok && result.data.period && <PayrollPeriodStatusLog idPeriod={result.data.period.id_period} />}
 
       <ChristmasBonusDeadlineNotice />
       <PtuPaymentDeadlineNotice />
