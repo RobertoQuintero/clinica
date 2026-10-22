@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 52 (`nomina-periodos`): `payroll.periods`, `CK_periods_status` (1..4), `PAYROLL_PERIOD_STATUS`, el listado y el badge de estatus.
   - 53 (`nomina-calculo-salario`): `calculatePayrollPeriod`, `revertPayrollCalculation`, el patrón `BEGIN TRAN` + `UPDLOCK, HOLDLOCK` y `PayrollCalculationActions`.
@@ -311,44 +311,44 @@ Las tres llaman `revalidatePayrollPaths()` al terminar. `approvePayrollPeriod` c
 
 **Transiciones**
 
-- [ ] Un periodo en estatus 2 sin avisos "Recalcula" se aprueba y queda en 3.
-- [ ] Un periodo en 3 se marca como pagada y queda en 4.
-- [ ] Un periodo en 3 se desaprueba con motivo y queda en 2, con `approved_by` y `approved_at` en `NULL`.
-- [ ] Desde 1 no se puede aprobar ni pagar; desde 2 no se puede pagar; desde 4 no se puede hacer nada. Cada intento responde con el mensaje de estatus correspondiente y no escribe nada.
+- [x] Un periodo en estatus 2 sin avisos "Recalcula" se aprueba y queda en 3.
+- [x] Un periodo en 3 se marca como pagada y queda en 4.
+- [x] Un periodo en 3 se desaprueba con motivo y queda en 2, con `approved_by` y `approved_at` en `NULL`.
+- [x] Desde 1 no se puede aprobar ni pagar; desde 2 no se puede pagar; desde 4 no se puede hacer nada. Cada intento responde con el mensaje de estatus correspondiente y no escribe nada.
 - [ ] Dos pestañas que aprueban el mismo periodo a la vez terminan con un éxito y un error de estatus, nunca con dos filas en la bitácora.
-- [ ] Un periodo de otra sucursal no se distingue de uno inexistente.
+- [x] Un periodo de otra sucursal no se distingue de uno inexistente.
 
 **Candado y advertencias**
 
-- [ ] Con cualquiera de los once avisos "Recalcula" activo, aprobar se rechaza en el servidor y el botón aparece deshabilitado con el motivo visible y accesible.
+- [x] Con cualquiera de los once avisos "Recalcula" activo, aprobar se rechaza en el servidor y el botón aparece deshabilitado con el motivo visible y accesible.
 - [ ] Al recalcular y desaparecer el aviso, el botón se habilita sin recargar a mano (el `router.refresh()` posterior a Recalcular basta).
 - [ ] Las filas fiscales en "No calculado" de ISR o IMSS, un periodo sin empleados calculados y una `fecha_pago` futura **advierten** en el modal y **no** impiden confirmar.
-- [ ] Desaprobar sin motivo, con menos de 5 caracteres útiles o con más de 200 se rechaza en `zod` y en el `CHECK`.
+- [x] Desaprobar sin motivo, con menos de 5 caracteres útiles o con más de 200 se rechaza en `zod` y en el `CHECK`.
 
 **Sello y bitácora**
 
-- [ ] `CK_periods_sello_estatus` impide cualquier combinación de estatus y sello incoherente, también escribiendo SQL a mano.
-- [ ] La bitácora guarda una fila por transición, con autor, fecha y el motivo de las desaprobaciones, y solo acepta las tres transiciones permitidas.
+- [x] `CK_periods_sello_estatus` impide cualquier combinación de estatus y sello incoherente, también escribiendo SQL a mano.
+- [x] La bitácora guarda una fila por transición, con autor, fecha y el motivo de las desaprobaciones, y solo acepta las tres transiciones permitidas.
 - [ ] El encabezado de Procesar muestra el sello de la última aprobación y, en 4, el del pago. El `<details>` del historial lista todos los cambios en orden descendente y no se muestra cuando no hay ninguno.
-- [ ] Calcular y revertir (1 ↔ 2) no escriben nada en la bitácora.
+- [x] Calcular y revertir (1 ↔ 2) no escriben nada en la bitácora.
 
 **Congelamiento**
 
-- [ ] En 3 y en 4: Recalcular, Revertir, Editar y Eliminar el periodo se rechazan tanto en la UI como llamando las acciones directamente.
+- [x] En 3 y en 4: Recalcular, Revertir, Editar y Eliminar el periodo se rechazan tanto en la UI como llamando las acciones directamente.
 - [ ] En 3 y en 4: Horas extra, Faltas y Retardos del periodo quedan de solo lectura y sus escrituras responden "El periodo ya no admite cambios".
 - [ ] En 3 y en 4: "Reabrir" un reparto de PTU usado por ese periodo sigue bloqueado.
-- [ ] Al desaprobar, todo lo anterior vuelve a estar disponible.
-- [ ] Un periodo aprobado no muestra ningún aviso "Recalcula" (las once consultas siguen filtrando `status = 2`).
+- [x] Al desaprobar, todo lo anterior vuelve a estar disponible.
+- [x] Un periodo aprobado no muestra ningún aviso "Recalcula" (las once consultas siguen filtrando `status = 2`).
 
 **Calidad**
 
-- [ ] Las tres acciones pasan por `assertPayrollAccess()` y validan con `zod`; un rol distinto de 1 y 4 recibe `{ ok: false }`.
-- [ ] La sucursal y el `id_user` salen de la sesión, nunca del cliente, y el estatus de origen se valida dentro de la lectura con `UPDLOCK, HOLDLOCK`.
-- [ ] Ninguna fecha viaja como `Date`; todas usan `buildDate` y `CONVERT(varchar(19), …, 120)`.
+- [x] Las tres acciones pasan por `assertPayrollAccess()` y validan con `zod`; un rol distinto de 1 y 4 recibe `{ ok: false }`.
+- [x] La sucursal y el `id_user` salen de la sesión, nunca del cliente, y el estatus de origen se valida dentro de la lectura con `UPDLOCK, HOLDLOCK`.
+- [x] Ninguna fecha viaja como `Date`; todas usan `buildDate` y `CONVERT(varchar(19), …, 120)`.
 - [ ] Las once comprobaciones de "Recalcula" tienen una sola copia (`collectRecalculationFlags`), usada por la pantalla y por la aprobación.
-- [ ] Los componentes nuevos (`PayrollPeriodStatusStamp`, `PayrollPeriodStatusLog`) son Server Components; el único cliente nuevo es la extensión de `PayrollCalculationActions`.
-- [ ] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
-- [ ] `docs/nomina.md` y `queries.txt` quedan actualizados; `content/manual/nomina/` **no** se toca.
+- [x] Los componentes nuevos (`PayrollPeriodStatusStamp`, `PayrollPeriodStatusLog`) son Server Components; el único cliente nuevo es la extensión de `PayrollCalculationActions`.
+- [x] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
+- [x] `docs/nomina.md` y `queries.txt` quedan actualizados; `content/manual/nomina/` **no** se toca.
 
 ## Decisiones
 
