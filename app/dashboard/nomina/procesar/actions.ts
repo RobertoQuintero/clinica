@@ -27,17 +27,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
-import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
-import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
-import { isExemptionRecalculationNeeded } from "@/lib/payroll/exemptionRecalculation";
-import { isImssRecalculationNeeded } from "@/lib/payroll/imssRecalculation";
-import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
-import { isVacationPayRecalculationNeeded } from "@/lib/payroll/vacationPayRecalculation";
-import { isExtraordinaryRecalculationNeeded } from "@/lib/payroll/extraordinaryRecalculation";
-import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
-import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
-import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
+import { collectRecalculationFlags } from "@/lib/payroll/recalculationChecks";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
@@ -316,6 +306,7 @@ export async function getPayrollProcessPage(
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
       extraordinaryRecalculationNeeded: false,
+      recalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -330,31 +321,22 @@ export async function getPayrollProcessPage(
       search: filters.search,
     });
 
-    const isOrdinaryPeriod = period.tipo_periodo === "O";
-
     // Salario del tipo seleccionado, con la misma regla de elegibilidad que usa el cálculo.
     const salaryColumn = filters.payrollType === "F" ? "e.salario_diario_fiscal" : "e.salario_diario";
 
     const [
-      rows,
-      totals,
-      isrNotCalculatedRows,
-      imssNotCalculatedRows,
-      puestoOptions,
-      excludedEmployees,
-      lastCalculated,
-      overtimeRecalculationNeeded,
-      absenceRecalculationNeeded,
-      latenessRecalculationNeeded,
-      punctualityBonusRecalculationNeeded,
-      attendanceBonusRecalculationNeeded,
-      shiftExtensionBonusRecalculationNeeded,
-      isrRecalculationNeeded,
-      imssRecalculationNeeded,
-      exemptionRecalculationNeeded,
-      vacationPayRecalculationNeeded,
-      extraordinaryRecalculationNeeded,
+      [
+        rows,
+        totals,
+        isrNotCalculatedRows,
+        imssNotCalculatedRows,
+        puestoOptions,
+        excludedEmployees,
+        lastCalculated,
+      ],
+      recalculationFlags,
     ] = await Promise.all([
+      Promise.all([
       db.queryParams(
         `SELECT pe.id_period_employee, pe.id_empleado, e.codigo_empleado,
                 ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
@@ -517,20 +499,23 @@ export async function getPayrollProcessPage(
           WHERE id_period = @id_period`,
         { id_period: period.id_period },
       ),
-      // Spec 87: un periodo extraordinario no tiene horas extra, faltas, retardos, bonos, ISR de la spec 70 ni
-      // vacaciones; esos avisos compararían contra un cálculo que nunca los incluyó. El del exento sí le aplica.
-      isOrdinaryPeriod ? isOvertimeRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? isAbsenceRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? isLatenessRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? isPunctualityBonusRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? isAttendanceBonusRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? isShiftExtensionBonusRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? isImssRecalculationNeeded(period.id_period) : false,
-      isExemptionRecalculationNeeded(period.id_period),
-      isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
-      isOrdinaryPeriod ? false : isExtraordinaryRecalculationNeeded(period.id_period),
+      ]),
+      collectRecalculationFlags(period),
     ]);
+    const {
+      overtimeRecalculationNeeded,
+      absenceRecalculationNeeded,
+      latenessRecalculationNeeded,
+      punctualityBonusRecalculationNeeded,
+      attendanceBonusRecalculationNeeded,
+      shiftExtensionBonusRecalculationNeeded,
+      isrRecalculationNeeded,
+      imssRecalculationNeeded,
+      exemptionRecalculationNeeded,
+      vacationPayRecalculationNeeded,
+      extraordinaryRecalculationNeeded,
+    } = recalculationFlags;
+    const recalculationNeeded = Object.values(recalculationFlags).some(Boolean);
 
     const totalPercepciones = roundToCents(
       Number(totals[0]?.importe_salario ?? 0) +
@@ -637,6 +622,7 @@ export async function getPayrollProcessPage(
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
         extraordinaryRecalculationNeeded,
+        recalculationNeeded,
       },
     };
   } catch (error) {
