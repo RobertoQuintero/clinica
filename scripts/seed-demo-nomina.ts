@@ -1,6 +1,8 @@
 // Entrada de `npm run seed:demo` (spec 93). Ver docs/sucursal-demo.md.
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
+import bcrypt from "bcryptjs";
+import db from "@/database/connection";
 import { addZeroToday } from "@/utils/date_helpper";
 import {
   assertDemoSeedAllowed,
@@ -8,6 +10,8 @@ import {
   checkDemoPrerequisites,
   isDemoSeedConfirmed,
 } from "./demo/guard";
+import { removeDemoOrganization } from "./demo/removeDemo";
+import { seedOrganization } from "./demo/seedOrganization";
 
 async function promptConfirmation(): Promise<string> {
   const rl = createInterface({ input: stdin, output: stdout });
@@ -19,8 +23,10 @@ async function promptConfirmation(): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  const removeOnly = process.argv.includes("--remove");
+
   assertDemoSeedAllowed();
-  assertDemoUserPasswordConfigured();
+  const demoUserPassword = removeOnly ? null : assertDemoUserPasswordConfigured();
 
   console.log(`DB_HOST: ${process.env.DB_HOST}`);
   console.log(`DB_NAME: ${process.env.DB_NAME}`);
@@ -28,6 +34,12 @@ async function main(): Promise<void> {
   const confirmation = await promptConfirmation();
   if (!isDemoSeedConfirmed(confirmation)) {
     console.log("Cancelado. No se escribió nada.");
+    return;
+  }
+
+  if (removeOnly) {
+    await db.transaction((tx) => removeDemoOrganization(tx));
+    console.log("Empresa Demo borrada.");
     return;
   }
 
@@ -41,7 +53,16 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log("Requisitos previos completos. (La siembra todavía no está implementada: llega en el paso 2.)");
+  const demoUserPasswordHash = await bcrypt.hash(demoUserPassword as string, 10);
+  const seeded = await db.transaction(async (tx) => {
+    await removeDemoOrganization(tx);
+    return seedOrganization(tx, demoUserPasswordHash);
+  });
+
+  console.log(
+    `Empresa Demo sembrada: id_empresa=${seeded.id_empresa}, id_sucursal=${seeded.id_sucursal}, ` +
+      `${Object.keys(seeded.employeeIdsByKey).length} empleados.`,
+  );
 }
 
 main().catch((error) => {
