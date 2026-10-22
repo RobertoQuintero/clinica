@@ -140,6 +140,24 @@ export const revertPayrollCalculationSchema = z.object({
   id_period: z.number().int().positive("Periodo inválido"),
 });
 
+// Spec 94: aprobar y pagar un periodo, copia de calculatePayrollPeriodSchema.
+export const approvePayrollPeriodSchema = z.object({
+  id_period: z.number().int().positive("Periodo inválido"),
+});
+
+export const payPayrollPeriodSchema = z.object({
+  id_period: z.number().int().positive("Periodo inválido"),
+});
+
+export const unapprovePayrollPeriodSchema = z.object({
+  id_period: z.number().int().positive("Periodo inválido"),
+  comentario: z
+    .string()
+    .trim()
+    .min(5, "El motivo debe tener al menos 5 caracteres")
+    .max(200, "El motivo no puede exceder 200 caracteres"),
+});
+
 export const payrollEmployeeDetailFiltersSchema = z.object({
   idEmpleado: z.number().int().positive("Empleado inválido"),
   idPeriod: z.number().int().positive("Periodo inválido"),

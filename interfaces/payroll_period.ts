@@ -1,5 +1,8 @@
 export type PayrollPeriodStatus = 1 | 2 | 3 | 4;
 
+// Spec 94: las únicas tres transiciones alcanzables desde la UI.
+export type PeriodStatusTransition = "approve" | "pay" | "unapprove";
+
 // Spec 87: 'O' ordinaria (por frecuencia), 'E' extraordinaria (aguinaldo anual).
 export type PayrollPeriodType = "O" | "E";
 
@@ -23,6 +26,11 @@ export interface IPayrollPeriod {
   created_by:        number;
   created_at:         string;   // "YYYY-MM-DD HH:mm:ss"
   updated_at:         string | null;
+  // Spec 94: sello del ciclo de vida. Null mientras el periodo no llega a ese estatus.
+  approved_by: number | null;
+  approved_at: string | null;   // "YYYY-MM-DD HH:mm:ss"
+  paid_by:     number | null;
+  paid_at:     string | null;   // "YYYY-MM-DD HH:mm:ss"
 }
 
 // Fila del listado: el periodo más la descripción de su frecuencia.
@@ -52,4 +60,21 @@ export interface IPayrollPeriodsPage {
   frequencyCounts:   { id_payment_period: number; description: string; total: number }[];
   availableYears:    number[];
   activePeriod:      IPayrollPeriodRow | null;  // tarjeta "Periodo activo en curso"
+}
+
+// Spec 94: sello con nombres resueltos, para el encabezado de Procesar.
+export interface IPayrollPeriodStatusStamp {
+  approved_by_name: string | null;
+  approved_at:      string | null;
+  paid_by_name:     string | null;
+  paid_at:          string | null;
+}
+
+export interface IPayrollPeriodStatusLogEntry {
+  id_period_status_log: number;
+  status_anterior:      PayrollPeriodStatus;
+  status_nuevo:         PayrollPeriodStatus;
+  comentario:           string | null;
+  changed_by_name:      string;
+  changed_at:           string;   // "YYYY-MM-DD HH:mm:ss"
 }

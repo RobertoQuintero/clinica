@@ -1,5 +1,5 @@
 import type { Article174SkipReason } from "@/interfaces/payroll_christmas_bonus";
-import type { ExtraordinaryConcept, PayrollPeriodType } from "@/interfaces/payroll_period";
+import type { ExtraordinaryConcept, PayrollPeriodType, PeriodStatusTransition } from "@/interfaces/payroll_period";
 import type { ExemptionSkipReason } from "@/interfaces/payroll_exemption";
 import type { ImssSkipReason } from "@/interfaces/payroll_imss";
 import type { IsrSkipReason } from "@/interfaces/payroll_isr";
@@ -117,6 +117,13 @@ export const CHRISTMAS_BONUS_YEAR_DAYS = 365;       // fijo, también en año bi
 export const CHRISTMAS_BONUS_DEADLINE_MONTH_DAY = "12-20";
 export const CHRISTMAS_BONUS_WARNING_START_MONTH_DAY = "12-01";
 export const ARTICLE_174_MONTH_DAYS_FACTOR = 30.4;  // fijado por el art. 174 RLISR
+
+// Spec 94: etiquetas de los botones de aprobación/pago en PayrollCalculationActions.
+export const PERIOD_STATUS_TRANSITION_LABELS: Record<PeriodStatusTransition, string> = {
+  approve:   "Aprobar",
+  pay:       "Marcar como pagada",
+  unapprove: "Desaprobar",
+};
 
 export const PAYROLL_PERIOD_TYPE_LABELS: Record<PayrollPeriodType, string> = {
   O: "Ordinaria",
