@@ -166,6 +166,7 @@ async function main(): Promise<void> {
       await page.goto(`${BASE_URL}${definition.path(context)}`);
       await page.addStyleTag({ content: HIDE_NEXT_DEV_INDICATOR_CSS });
       await page.waitForLoadState("networkidle");
+      if (definition.beforeCapture) await definition.beforeCapture(page);
 
       const locator =
         definition.target === "content" ? page.locator("[data-manual-capture-content]") : page.locator(definition.target.locator);

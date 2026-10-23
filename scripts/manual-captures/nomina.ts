@@ -1,5 +1,6 @@
-// Las 16 definiciones de captura del manual de Nómina (spec 93, paso 5 del plan). `name` debe
-// coincidir exactamente con el marcador `captura:<name>` de content/manual/nomina/*.md.
+// Las 19 definiciones de captura del manual de Nómina (spec 93, paso 5 del plan; spec 95 agrega
+// las tres últimas, del ciclo de aprobar/pagar). `name` debe coincidir exactamente con el
+// marcador `captura:<name>` de content/manual/nomina/*.md.
 import type { IManualCaptureContext, IManualCaptureDefinition } from "./types";
 
 const periodQuery = (context: IManualCaptureContext, state: keyof IManualCaptureContext["periodIdsByState"]) => {
@@ -121,5 +122,30 @@ export const NOMINA_MANUAL_CAPTURES: readonly IManualCaptureDefinition[] = [
     path: (context) => `/dashboard/nomina/ptu/${context.ptuDistributionId}`,
     target: "content",
     preparedState: "ptuDistributionClosed",
+  },
+  {
+    // Spec 95: semana vieja calculada que nunca se aprueba, para mostrar Recalcular/Revertir/Aprobar habilitados.
+    name: "procesar-nomina-aprobar",
+    moduleSlug: "nomina",
+    path: (context) => `/dashboard/nomina/procesar?periodo=${context.readyToApprovePeriodId}`,
+    target: { locator: '[data-manual-capture="payroll-period-header"]' },
+    preparedState: "none",
+  },
+  {
+    name: "procesar-nomina-sello",
+    moduleSlug: "nomina",
+    path: (context) => `/dashboard/nomina/procesar${periodQuery(context, "paidPeriod")}`,
+    target: { locator: '[data-manual-capture="payroll-period-header"]' },
+    preparedState: "paidPeriod",
+  },
+  {
+    name: "procesar-nomina-historial",
+    moduleSlug: "nomina",
+    path: (context) => `/dashboard/nomina/procesar${periodQuery(context, "paidPeriod")}`,
+    target: { locator: '[data-manual-capture="payroll-status-log"]' },
+    preparedState: "paidPeriod",
+    beforeCapture: async (page) => {
+      await page.locator('[data-manual-capture="payroll-status-log"] summary').click();
+    },
   },
 ];
