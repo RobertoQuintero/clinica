@@ -3,7 +3,7 @@ title: "Avisos y preguntas frecuentes"
 description: "Qué significa cada aviso de nómina y qué hacer para resolverlo."
 section: "avisos"
 order: 1
-updated: "2026-10-21"
+updated: "2026-10-23"
 ---
 
 Esta página reúne los avisos que pueden aparecer en las pantallas de nómina, qué significan y qué hacer con cada uno.
@@ -12,7 +12,7 @@ Esta página reúne los avisos que pueden aparecer en las pantallas de nómina, 
 
 Aparece en [Procesar nómina](./procesar-nomina), [Horas extra](./horas-extra), [Faltas](./faltas), [Retardos](./retardos) y [Bonos](./bonos) cuando algo cambió después del último cálculo del periodo: una hora extra autorizada o rechazada, una falta o un retardo justificado, una decisión de bono, o un cambio en los parámetros fiscales (ISR, IMSS, exenciones, vacaciones o primas) posterior al cálculo. El mensaje siempre nombra qué dejó de coincidir, por ejemplo "Hay retardos que no coinciden con el último cálculo. Recalcula la nómina."
 
-**Qué hacer:** entra a [Procesar nómina](./procesar-nomina) y presiona "Recalcular". Solo aparece con el periodo en **En cálculo**; en **Programada** todavía no hay nada que recalcular.
+**Qué hacer:** entra a [Procesar nómina](./procesar-nomina) y presiona "Recalcular". Solo aparece con el periodo en **En cálculo**; en **Programada** todavía no hay nada que recalcular. Mientras este aviso esté activo, el botón "Aprobar" aparece deshabilitado: hay que recalcular antes de poder aprobar el periodo.
 
 ![Aviso de recálculo pendiente](captura:aviso-recalcula)
 
@@ -22,7 +22,7 @@ En la tabla de [Procesar nómina](./procesar-nomina), vista fiscal, las columnas
 
 El aviso enlaza a donde se corrige: la pestaña correspondiente de [Parámetros fiscales](./parametros-fiscales) cuando falta una tarifa o un parámetro del ejercicio, o el expediente del empleado cuando le falta un dato propio (su NSS o su SBC, ver [Preparar al empleado](./preparar-empleado#imss)).
 
-**Qué hacer:** sigue el enlace del aviso ("Revisar la tarifa", "Revisar los parámetros" o el nombre del empleado), captura lo que falte y recalcula la nómina desde [Procesar nómina](./procesar-nomina). Mientras el dato falte, a ese empleado no se le retiene ISR ni IMSS en ese periodo.
+**Qué hacer:** sigue el enlace del aviso ("Revisar la tarifa", "Revisar los parámetros" o el nombre del empleado), captura lo que falte y recalcula la nómina desde [Procesar nómina](./procesar-nomina). Mientras el dato falte, a ese empleado no se le retiene ISR ni IMSS en ese periodo. Al aprobar el periodo, estos mismos empleados aparecen en el modal de aprobación como advertencia ámbar ("N empleado(s) con ISR no calculado" / "con IMSS no calculado"); esa advertencia no bloquea la aprobación.
 
 ## "N empleados sin horario definido"
 
@@ -50,8 +50,14 @@ Desde el 1 de diciembre, [Periodos](./periodos) y [Procesar nómina](./procesar-
 
 ## Preguntas frecuentes
 
-**¿Por qué no encuentro los botones "Aprobar" o "Pagar" de un periodo?**
-Todavía no existen en esta versión del módulo; un periodo solo llega hasta **En cálculo**. Ver [Conceptos básicos](./conceptos-basicos#todavia-no-disponible).
+**¿Por qué el botón "Aprobar" aparece deshabilitado?**
+Porque hay un aviso "Recalcula la nómina" activo en el periodo: el cálculo guardado ya no coincide con los datos actuales. Entra a [Procesar nómina](./procesar-nomina) y presiona "Recalcular" antes de aprobar.
+
+**¿Puedo deshacer un periodo aprobado o pagado?**
+Un periodo **Aprobada** se puede desaprobar con un motivo, y regresa a **En cálculo**. Un periodo **Pagada** es definitivo: no se puede desaprobar ni revertir. Ver [Procesar nómina](./procesar-nomina#como-desaprobar-un-periodo).
+
+**¿Por qué ya no puedo editar las faltas, los retardos o las horas extra de este periodo?**
+Porque el periodo está en **Aprobada** o **Pagada** y el cálculo quedó congelado. Para volver a editar hay que desaprobar el periodo primero desde [Procesar nómina](./procesar-nomina#como-desaprobar-un-periodo).
 
 **¿Por qué un empleado no aparece en ninguna nómina, ni siquiera en el aviso de excluidos?**
 Casi siempre porque le falta su "Periodo de pago" en Datos personales. Un empleado sin esa frecuencia capturada nunca entra a ningún periodo de esa frecuencia, y tampoco genera el aviso de excluido: hay que revisar su expediente a mano (ver [Preparar al empleado](./preparar-empleado#datos-personales)).

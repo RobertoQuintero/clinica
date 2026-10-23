@@ -3,7 +3,7 @@ title: "Retardos"
 description: "Revisar los retardos que descuentan medio día o más de la nómina."
 section: "pantallas"
 order: 7
-updated: "2026-10-21"
+updated: "2026-10-23"
 ---
 
 ## Para qué sirve
@@ -23,6 +23,9 @@ La tabla lista un retardo por fila, con las columnas **Empleado**, **Día**, **P
 ## Cómo justificar un retardo
 
 Igual que en Faltas: "Subir justificante" adjunta un comprobante, "No aplica" lo descarta con un comentario obligatorio, y "Volver a injustificado" deshace cualquiera de los dos.
+
+> [!WARNING]
+> Con el periodo en **Aprobada** o **Pagada**, la pantalla queda de solo lectura: desaparece la columna de acciones y ningún retardo se puede justificar, marcar como "No aplica" o devolver a injustificado. Para corregir algo hay que desaprobar el periodo primero (ver [Cómo desaprobar un periodo](./procesar-nomina#como-desaprobar-un-periodo)).
 
 ## Cómo calcula
 

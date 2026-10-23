@@ -3,7 +3,7 @@ title: "Repartir y pagar la PTU"
 description: "Pasos para repartir y pagar la PTU del ejercicio."
 section: "tutoriales"
 order: 3
-updated: "2026-10-21"
+updated: "2026-10-23"
 ---
 
 ## Qué vas a lograr
@@ -21,6 +21,8 @@ Necesitas la renta gravable del ejercicio, que te da el contador.
 3. Crea el periodo extraordinario de concepto PTU y calcúlalo desde [Procesar nómina](./procesar-nomina).
 
 ![Reparto de PTU cerrado](captura:tutorial-ptu-paso-1)
+
+4. Apruébalo y márcalo como pagado (ver [Cómo aprobar un periodo](./procesar-nomina#como-aprobar-un-periodo) en Procesar nómina).
 
 ## Cómo saber que quedó bien
 

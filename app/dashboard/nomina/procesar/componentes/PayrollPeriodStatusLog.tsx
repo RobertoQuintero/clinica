@@ -14,7 +14,10 @@ export default async function PayrollPeriodStatusLog({ idPeriod }: Props) {
   if (entries.length === 0) return null;
 
   return (
-    <details className="group bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden">
+    <details
+      data-manual-capture="payroll-status-log"
+      className="group bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden"
+    >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-3.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-50 hover:bg-[#f8f9ff] dark:hover:bg-zinc-800/50 transition-colors [&::-webkit-details-marker]:hidden">
         <span>
           Historial de estatus
