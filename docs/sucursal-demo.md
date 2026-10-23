@@ -1,7 +1,7 @@
 # Sucursal Demo (spec 93)
 
 A development-only demo company ("Empresa Demo" / "Sucursal Demo") that seeds fictitious payroll
-data and drives the real app with Playwright to produce the 16 screenshots the Nómina manual
+data and drives the real app with Playwright to produce the 19 screenshots the Nómina manual
 shows in place of its `captura:` markers (see "Capture placeholders" in `docs/manual-usuario.md`).
 
 ## What the demo contains
@@ -25,6 +25,13 @@ shows in place of its `captura:` markers (see "Capture placeholders" in `docs/ma
 - Every weekly period of the current year (including the in-progress one, left "Programada"), the
   year's aguinaldo period, and the year's PTU distribution in draft with its parameters set but not
   yet preloaded.
+- Spec 95: of the already-calculated weekly periods, one (the oldest) is left calculated and
+  untouched — "En cálculo" with no pending recalculation, for the approve screenshot — a second one
+  ends **Aprobada** and stays there, and a third goes through the full approve → desaprobar (with a
+  motivo) → re-approve → pay cycle and ends **Pagada**, with its four-row "Historial de estatus".
+  The most recently completed week is left alone, with a pending "Recalcula" notice and never
+  approved — approving it would freeze the Horas extra/Faltas/Retardos captures that rely on it
+  still being editable.
 
 ## The lock (`ALLOW_DEMO_SEED`, `DEMO_USER_PASSWORD`)
 
@@ -39,7 +46,7 @@ and stores it on "Usuario Demo", and `capture:manual` uses it to log in as that 
 ```bash
 npm run seed:demo              # siembra (o reconstruye) la Empresa Demo
 npm run dev                    # en otra terminal: la app real que Playwright va a manejar
-npm run capture:manual         # abre Chromium, prepara y captura las 16 pantallas
+npm run capture:manual         # abre Chromium, prepara y captura las 19 pantallas
 ```
 
 `capture:manual` reads `MANUAL_CAPTURE_BASE_URL` (default `http://localhost:3000`), so point it at
@@ -69,11 +76,17 @@ previous demo exactly as it was.
    for the whole content area, or `{ locator }` for one element — add a `data-manual-capture="..."`
    attribute to the component if there's no other reliable selector), and which `preparedState` the
    capture needs.
-3. If that `preparedState` isn't one of the four `scripts/manual-captures/prepare.ts` already
+3. If that `preparedState` isn't one of the six `scripts/manual-captures/prepare.ts` already
    produces (`latestCalculatedPeriod`, `recalculationPending`, `christmasBonusCalculated`,
-   `ptuDistributionClosed`), extend `prepareManualCaptures` to set it up and return its id in
-   `periodIdsByState`.
-4. Run `npm run capture:manual` again — it validates that every marker has a definition and every
+   `ptuDistributionClosed`, `approvedPeriod`, `paidPeriod`), extend `prepareManualCaptures` to set
+   it up and return its id in `periodIdsByState`. A capture that isn't backed by any
+   `ManualCapturePreparedState` (for example, one more "plain calculated, untouched" period) can
+   instead be added as its own field on `IManualCaptureContext`, the way `readyToApprovePeriodId`
+   is — `preparedState` is purely documentation, never read by the capture script itself.
+4. If the element needs an interaction before the photo (opening a `<details>`, for example), add
+   a `beforeCapture?: (page: Page) => Promise<void>` to its definition; it runs right after the page
+   finishes loading and before the element is measured.
+5. Run `npm run capture:manual` again — it validates that every marker has a definition and every
    definition has a marker before opening the browser, so a mismatch fails fast with the name.
 
 ## The January/February limitation

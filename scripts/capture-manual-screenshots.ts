@@ -1,9 +1,9 @@
 // Entrada de `npm run capture:manual` (spec 93). Ver docs/sucursal-demo.md.
-// 1. Valida que los 16 marcadores `captura:` de content/manual/nomina/*.md coincidan exactamente
+// 1. Valida que los 19 marcadores `captura:` de content/manual/nomina/*.md coincidan exactamente
 //    con las definiciones de scripts/manual-captures/nomina.ts.
 // 2. Abre Chromium, entra como el usuario demo.
 // 3. Corre la fase de preparación (scripts/manual-captures/prepare.ts).
-// 4. Captura las 16 pantallas y escribe public/manual/nomina/manifest.json.
+// 4. Captura las 19 pantallas y escribe public/manual/nomina/manifest.json.
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "@playwright/test";

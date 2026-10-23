@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 94 (`nomina-aprobar-pagar-periodo`): las tres transiciones, el candado del aviso "Recalcula",
     las advertencias ámbar, el sello y el "Historial de estatus". Es lo que esta spec documenta.
@@ -195,25 +195,25 @@ beforeCapture?: (page: Page) => Promise<void>;
 
 **Contenido**
 
-- [ ] Ninguna página del manual afirma que **Aprobada** o **Pagada** no están disponibles
+- [x] Ninguna página del manual afirma que **Aprobada** o **Pagada** no están disponibles
       (`grep -ri "todavía no" content/manual/nomina/` no devuelve ninguna línea sobre aprobar o
       pagar).
-- [ ] `conceptos-basicos.md` describe los cuatro estados, y la sección "Todavía no disponible"
+- [x] `conceptos-basicos.md` describe los cuatro estados, y la sección "Todavía no disponible"
       solo menciona el timbrado del CFDI, las cuotas patronales del IMSS y el finiquito.
-- [ ] `procesar-nomina.md` tiene las tres secciones "Cómo aprobar un periodo", "Cómo marcarlo como
+- [x] `procesar-nomina.md` tiene las tres secciones "Cómo aprobar un periodo", "Cómo marcarlo como
       pagado" y "Cómo desaprobar un periodo", y describe el sello y el "Historial de estatus".
-- [ ] El manual dice que **Pagada** es definitiva y que la única salida de **Aprobada** es
+- [x] El manual dice que **Pagada** es definitiva y que la única salida de **Aprobada** es
       desaprobar con motivo (en un recuadro "Atención").
-- [ ] El manual explica que **Aprobar** queda deshabilitado mientras haya un aviso "Recalcula" y
+- [x] El manual explica que **Aprobar** queda deshabilitado mientras haya un aviso "Recalcula" y
       que las advertencias ámbar no bloquean.
-- [ ] `horas-extra.md`, `faltas.md`, `retardos.md` y `detalle-empleado.md` dicen qué pasa con el
+- [x] `horas-extra.md`, `faltas.md`, `retardos.md` y `detalle-empleado.md` dicen qué pasa con el
       periodo en **Aprobada** o **Pagada** y cómo corregir.
-- [ ] Los tres tutoriales terminan en el pago del periodo.
-- [ ] Las tres preguntas frecuentes nuevas están, y la obsoleta ya no.
-- [ ] Todo botón, campo, columna, título de modal y advertencia citado existe con ese texto exacto
+- [x] Los tres tutoriales terminan en el pago del periodo.
+- [x] Las tres preguntas frecuentes nuevas están, y la obsoleta ya no.
+- [x] Todo botón, campo, columna, título de modal y advertencia citado existe con ese texto exacto
       en el código.
-- [ ] Ninguna página nombra tablas, columnas, SQL, números de spec ni ids de rol.
-- [ ] Las once páginas tocadas tienen `updated: "2026-10-23"` entre comillas; las demás conservan
+- [x] Ninguna página nombra tablas, columnas, SQL, números de spec ni ids de rol.
+- [x] Las once páginas tocadas tienen `updated: "2026-10-23"` entre comillas; las demás conservan
       su fecha.
 
 **Capturas**
@@ -228,10 +228,10 @@ beforeCapture?: (page: Page) => Promise<void>;
 
 **Calidad**
 
-- [ ] La app no cambia de comportamiento: los únicos cambios en `app/` son los dos atributos
+- [x] La app no cambia de comportamiento: los únicos cambios en `app/` son los dos atributos
       `data-manual-capture`.
-- [ ] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
-- [ ] `docs/sucursal-demo.md`, `docs/manual-usuario.md` y los comentarios de los scripts dicen 19.
+- [x] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
+- [x] `docs/sucursal-demo.md`, `docs/manual-usuario.md` y los comentarios de los scripts dicen 19.
 
 ## Decisiones
 
