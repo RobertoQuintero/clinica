@@ -3,7 +3,7 @@ title: "Periodos"
 description: "Crear, editar y eliminar los periodos de pago de la sucursal."
 section: "pantallas"
 order: 1
-updated: "2026-10-21"
+updated: "2026-10-23"
 ---
 
 ## Para qué sirve
@@ -26,7 +26,7 @@ El botón "Nuevo periodo de nómina" abre un formulario. Primero se elige el "Ti
 
 ## Cómo editar o eliminar un periodo
 
-Mientras un periodo esté en estado **Programada**, sus acciones muestran un lápiz y un bote de basura: el lápiz solo deja cambiar las cuatro fechas, y el bote de basura lo elimina por completo. Ninguno de los dos está disponible una vez que el periodo pasa a **En cálculo**.
+Un periodo pasa por los estados **Programada**, **En cálculo**, **Aprobada** y **Pagada** (ver [Conceptos básicos](./conceptos-basicos#los-estados-de-un-periodo)). El lápiz y el bote de basura solo existen mientras el periodo esté en **Programada**: el lápiz deja cambiar las cuatro fechas, y el bote de basura lo elimina por completo. Ninguno de los dos vuelve a aparecer una vez que el periodo pasa a **En cálculo**, **Aprobada** o **Pagada**; a partir de ahí las acciones son las de [Procesar nómina](./procesar-nomina).
 
 ## Cómo calcula
 

@@ -3,7 +3,7 @@ title: "Horas extra"
 description: "Revisar y autorizar las horas extra detectadas por las checadas."
 section: "pantallas"
 order: 5
-updated: "2026-10-21"
+updated: "2026-10-23"
 ---
 
 ## Para qué sirve
@@ -23,6 +23,9 @@ La tabla lista un día por fila, con las columnas **Empleado**, **Día**, **Hora
 ## Cómo decidir un día
 
 El botón de la fila abre un modal con tres opciones: "Autorizar" (se puede ajustar el número de horas), "Rechazar" o, si ya tiene una decisión, "Volver a pendiente".
+
+> [!WARNING]
+> Con el periodo en **Aprobada** o **Pagada**, la pantalla queda de solo lectura: desaparece la columna de acciones y ningún día se puede autorizar, rechazar o devolver a pendiente. Para corregir algo hay que desaprobar el periodo primero (ver [Cómo desaprobar un periodo](./procesar-nomina#como-desaprobar-un-periodo)).
 
 ## Cómo calcula
 

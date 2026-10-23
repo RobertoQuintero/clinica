@@ -3,7 +3,7 @@ title: "Pagar el aguinaldo"
 description: "Pasos para pagar el aguinaldo anual de los empleados."
 section: "tutoriales"
 order: 2
-updated: "2026-10-21"
+updated: "2026-10-23"
 ---
 
 ## Qué vas a lograr
@@ -21,6 +21,8 @@ El aguinaldo se paga en un periodo extraordinario de concepto "Aguinaldo"; créa
 3. Revisa el monto de cada empleado antes de la fecha límite del 20 de diciembre.
 
 ![Periodo extraordinario de aguinaldo calculado](captura:tutorial-aguinaldo-paso-1)
+
+4. Apruébalo y márcalo como pagado (ver [Cómo aprobar un periodo](./procesar-nomina#como-aprobar-un-periodo) en Procesar nómina).
 
 ## Cómo saber que quedó bien
 
