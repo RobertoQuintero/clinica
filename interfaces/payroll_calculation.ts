@@ -71,6 +71,14 @@ export interface IPayrollExcludedEmployee {
   nombre_completo: string;
 }
 
+// Spec 96: empleado elegible hoy que no tiene fila en el cálculo guardado, por tipo de nómina.
+export interface IPayrollMissingEmployee {
+  id_empleado:     number;
+  codigo_empleado: string;
+  nombre_completo: string;
+  tipo_nomina:     PayrollType;   // 'O' u 'F': de cuál de las dos nóminas falta
+}
+
 export interface IPayrollProcessFilters {
   idPeriod:    number | null;   // null: periodo activo en curso, o el más reciente
   payrollType: PayrollType;     // URL: tipo=operativa|fiscal
@@ -106,7 +114,10 @@ export interface IPayrollProcessPage {
   exemptionRecalculationNeeded: boolean;   // ídem, para el gravado/exento de las percepciones fiscales (spec 73)
   vacationPayRecalculationNeeded: boolean;   // ídem, para la prima vacacional y las vacaciones pagadas (spec 78)
   extraordinaryRecalculationNeeded: boolean;   // ídem, para el aguinaldo o la PTU de un periodo extraordinario (specs 87 y 90)
-  recalculationNeeded: boolean;   // spec 94: el `or` de las once banderas anteriores
+  // Spec 96: empleados elegibles hoy sin fila en el cálculo guardado. A diferencia de `excludedEmployees`,
+  // trae siempre los dos tipos de nómina: el candado que alimenta es del periodo completo.
+  missingEmployees: IPayrollMissingEmployee[];
+  recalculationNeeded: boolean;   // spec 94: el `or` de las doce banderas anteriores (spec 96 añadió la doceava)
   statusStamp: IPayrollPeriodStatusStamp | null;   // spec 94: solo se consulta en estatus 3 y 4
 }
 

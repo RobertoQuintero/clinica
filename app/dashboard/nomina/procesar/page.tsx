@@ -17,6 +17,7 @@ import PtuPaymentDeadlineNotice from "../componentes/PtuPaymentDeadlineNotice";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
 import ChristmasBonusEmployeesTable from "./componentes/ChristmasBonusEmployeesTable";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
+import MissingEmployeesNotice from "./componentes/MissingEmployeesNotice";
 import PtuPaymentEmployeesTable from "./componentes/PtuPaymentEmployeesTable";
 import ImssNotCalculatedNotice from "./componentes/ImssNotCalculatedNotice";
 import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
@@ -91,6 +92,7 @@ export default async function ProcesarNominaPage({
             periodCode={result.data.period.codigo}
             status={result.data.period.status}
             recalculationNeeded={result.data.recalculationNeeded}
+            hasMissingEmployees={result.data.missingEmployees.length > 0}
             warnings={approvalWarnings}
             fechaPago={result.data.period.fecha_pago}
           />
@@ -152,6 +154,7 @@ export default async function ProcesarNominaPage({
             excludedEmployees={result.data.excludedEmployees}
             payrollType={payrollType}
           />
+          <MissingEmployeesNotice missingEmployees={result.data.missingEmployees} />
           {payrollType === "F" && (
             <IsrNotCalculatedNotice
               isrNotCalculated={result.data.isrNotCalculated}

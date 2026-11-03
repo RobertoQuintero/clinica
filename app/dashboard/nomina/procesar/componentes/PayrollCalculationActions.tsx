@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, Calculator, CheckCircle2, RefreshCw, RotateCcw, Undo2, type LucideIcon } from "lucide-react";
+import { Banknote, Calculator, CheckCircle2, RefreshCw, RotateCcw, Undo2, Unlock, type LucideIcon } from "lucide-react";
 import type { PayrollPeriodStatus } from "@/interfaces/payroll_period";
 import {
+  PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
   PERIOD_NEEDS_RECALCULATION_MESSAGE,
-  UNAPPROVE_COMMENT_MAX_LENGTH,
-  UNAPPROVE_COMMENT_MIN_LENGTH,
+  STATUS_COMMENT_MAX_LENGTH,
+  STATUS_COMMENT_MIN_LENGTH,
 } from "@/lib/payroll/periodStatus";
 import { formatDateSlashed } from "@/lib/payroll/periodFormat";
 import { addZeroToday } from "@/utils/date_helpper";
@@ -15,6 +16,7 @@ import {
   approvePayrollPeriod,
   calculatePayrollPeriod,
   payPayrollPeriod,
+  reopenPayrollPeriod,
   revertPayrollCalculation,
   unapprovePayrollPeriod,
 } from "../actions";
@@ -25,13 +27,15 @@ interface Props {
   status: PayrollPeriodStatus;
   /** Spec 94: algún aviso "Recalcula" sigue activo; deshabilita Aprobar. */
   recalculationNeeded?: boolean;
+  /** Spec 96: hay empleados elegibles fuera del cálculo; deshabilita Marcar como pagada. */
+  hasMissingEmployees?: boolean;
   /** Spec 94: advertencias ámbar del modal de Aprobar (ISR/IMSS no calculado, periodo sin empleados). */
   warnings?: string[];
   /** Spec 94: fecha de pago del periodo ("YYYY-MM-DD"), para advertir en el modal de Pagar si aún no llega. */
   fechaPago?: string | null;
 }
 
-type CalculationAction = "calculate" | "recalculate" | "revert" | "approve" | "pay" | "unapprove";
+type CalculationAction = "calculate" | "recalculate" | "revert" | "approve" | "pay" | "unapprove" | "reopen";
 
 interface ActionCopy {
   buttonLabel: string;
@@ -109,13 +113,26 @@ const ACTION_COPY: Record<CalculationAction, ActionCopy> = {
     errorFallback: "Error inesperado al desaprobar el periodo",
     isDestructive: true,
   },
+  reopen: {
+    buttonLabel: "Reabrir periodo",
+    icon: Unlock,
+    title: (periodCode) => `¿Reabrir ${periodCode}?`,
+    description: "El periodo regresa a En cálculo y pierde el sello de aprobación y de pago. Escribe el motivo.",
+    confirmLabel: "Reabrir periodo",
+    pendingLabel: "Reabriendo…",
+    errorFallback: "Error inesperado al reabrir el periodo",
+    isDestructive: true,
+  },
 };
+
+const REOPEN_WARNING =
+  "Al recalcular, los montos de todos los empleados pueden cambiar; la dispersión ya hecha se corrige fuera del sistema.";
 
 const ACTIONS_BY_STATUS: Partial<Record<PayrollPeriodStatus, CalculationAction[]>> = {
   1: ["calculate"],
   2: ["recalculate", "revert", "approve"],
   3: ["unapprove", "pay"],
-  4: [],
+  4: ["reopen"],
 };
 
 const BUTTON_CLASSES = {
@@ -130,6 +147,7 @@ export default function PayrollCalculationActions({
   periodCode,
   status,
   recalculationNeeded = false,
+  hasMissingEmployees = false,
   warnings = [],
   fechaPago = null,
 }: Props) {
@@ -152,8 +170,9 @@ export default function PayrollCalculationActions({
   if (!availableActions || availableActions.length === 0) return null;
 
   const trimmedComentario = comentario.trim();
-  const isUnapproveCommentValid =
-    trimmedComentario.length >= UNAPPROVE_COMMENT_MIN_LENGTH && trimmedComentario.length <= UNAPPROVE_COMMENT_MAX_LENGTH;
+  const isCommentValid =
+    trimmedComentario.length >= STATUS_COMMENT_MIN_LENGTH && trimmedComentario.length <= STATUS_COMMENT_MAX_LENGTH;
+  const requiresComment = (action: CalculationAction | null) => action === "unapprove" || action === "reopen";
 
   // Spec 94: al pagar, advierte si la fecha de pago programada todavía no llega (no bloquea).
   const paymentDateWarning =
@@ -169,7 +188,7 @@ export default function PayrollCalculationActions({
 
   async function handleConfirm() {
     if (!pendingAction) return;
-    if (pendingAction === "unapprove" && !isUnapproveCommentValid) return;
+    if (requiresComment(pendingAction) && !isCommentValid) return;
     setIsRunning(true);
     setErrorMessage(null);
     try {
@@ -183,7 +202,9 @@ export default function PayrollCalculationActions({
               ? await payPayrollPeriod(input)
               : pendingAction === "unapprove"
                 ? await unapprovePayrollPeriod({ ...input, comentario: trimmedComentario })
-                : await calculatePayrollPeriod(input);
+                : pendingAction === "reopen"
+                  ? await reopenPayrollPeriod({ ...input, comentario: trimmedComentario })
+                  : await calculatePayrollPeriod(input);
       if (!result.ok) {
         setErrorMessage(result.message);
         return;
@@ -198,21 +219,35 @@ export default function PayrollCalculationActions({
   }
 
   const pendingCopy = pendingAction ? ACTION_COPY[pendingAction] : null;
-  const modalWarnings = pendingAction === "approve" ? warnings : pendingAction === "pay" && paymentDateWarning ? [paymentDateWarning] : [];
+  const modalWarnings =
+    pendingAction === "approve"
+      ? warnings
+      : pendingAction === "pay" && paymentDateWarning
+        ? [paymentDateWarning]
+        : pendingAction === "reopen"
+          ? [REOPEN_WARNING]
+          : [];
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
         {availableActions.map((action, index) => {
           const { buttonLabel, icon: ActionIcon } = ACTION_COPY[action];
-          const isApproveBlocked = action === "approve" && recalculationNeeded;
+          const blockedReasonId =
+            action === "approve" && recalculationNeeded
+              ? "payroll-approve-blocked-reason"
+              : action === "pay" && hasMissingEmployees
+                ? "payroll-pay-blocked-reason"
+                : null;
+          const blockedMessage =
+            action === "approve" ? PERIOD_NEEDS_RECALCULATION_MESSAGE : PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE;
           return (
             <div key={action} className="flex flex-col items-start gap-1.5">
               <button
                 type="button"
                 onClick={() => openDialog(action)}
-                disabled={isApproveBlocked}
-                aria-describedby={isApproveBlocked ? "payroll-approve-blocked-reason" : undefined}
+                disabled={blockedReasonId !== null}
+                aria-describedby={blockedReasonId ?? undefined}
                 className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                   index === 0 ? BUTTON_CLASSES.primary : BUTTON_CLASSES.secondary
                 }`}
@@ -220,9 +255,9 @@ export default function PayrollCalculationActions({
                 <ActionIcon size={16} />
                 {buttonLabel}
               </button>
-              {isApproveBlocked && (
-                <p id="payroll-approve-blocked-reason" className="max-w-xs text-xs text-[#44474f] dark:text-zinc-400">
-                  {PERIOD_NEEDS_RECALCULATION_MESSAGE}
+              {blockedReasonId && (
+                <p id={blockedReasonId} className="max-w-xs text-xs text-[#44474f] dark:text-zinc-400">
+                  {blockedMessage}
                 </p>
               )}
             </div>
@@ -256,21 +291,21 @@ export default function PayrollCalculationActions({
               </ul>
             )}
 
-            {pendingAction === "unapprove" && (
+            {requiresComment(pendingAction) && (
               <div className="mt-3">
-                <label htmlFor="payroll-unapprove-comentario" className="text-sm font-medium text-[#0b1c30] dark:text-zinc-100">
+                <label htmlFor="payroll-status-comentario" className="text-sm font-medium text-[#0b1c30] dark:text-zinc-100">
                   Motivo
                 </label>
                 <textarea
-                  id="payroll-unapprove-comentario"
+                  id="payroll-status-comentario"
                   value={comentario}
                   onChange={(event) => setComentario(event.target.value)}
-                  maxLength={UNAPPROVE_COMMENT_MAX_LENGTH}
+                  maxLength={STATUS_COMMENT_MAX_LENGTH}
                   rows={3}
                   className="mt-1 w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-[#0b1c30] dark:text-zinc-100"
                 />
                 <p className="mt-1 text-xs text-[#747780] dark:text-zinc-500">
-                  {trimmedComentario.length}/{UNAPPROVE_COMMENT_MAX_LENGTH} (mínimo {UNAPPROVE_COMMENT_MIN_LENGTH})
+                  {trimmedComentario.length}/{STATUS_COMMENT_MAX_LENGTH} (mínimo {STATUS_COMMENT_MIN_LENGTH})
                 </p>
               </div>
             )}
@@ -292,7 +327,7 @@ export default function PayrollCalculationActions({
               <button
                 type="button"
                 onClick={handleConfirm}
-                disabled={isRunning || (pendingAction === "unapprove" && !isUnapproveCommentValid)}
+                disabled={isRunning || (requiresComment(pendingAction) && !isCommentValid)}
                 className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 transition-colors ${
                   pendingCopy.isDestructive ? "bg-[#ba1a1a] hover:bg-[#ba1a1a]/90" : "bg-[#0051d5] hover:bg-[#003ea7]"
                 }`}

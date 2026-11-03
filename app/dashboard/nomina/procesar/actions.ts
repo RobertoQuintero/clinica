@@ -27,7 +27,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { collectRecalculationFlags } from "@/lib/payroll/recalculationChecks";
+import { collectRecalculationFlags, isAnyRecalculationFlagActive } from "@/lib/payroll/recalculationChecks";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
@@ -96,10 +96,16 @@ import {
   payPayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
   payrollProcessFiltersSchema,
+  reopenPayrollPeriodSchema,
   revertPayrollCalculationSchema,
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
-import { PERIOD_NEEDS_RECALCULATION_MESSAGE, PERIOD_STATUS_TRANSITIONS } from "@/lib/payroll/periodStatus";
+import {
+  PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
+  PERIOD_NEEDS_RECALCULATION_MESSAGE,
+  PERIOD_STATUS_TRANSITIONS,
+} from "@/lib/payroll/periodStatus";
+import { loadMissingEligibleEmployees } from "@/lib/payroll/missingEmployeesRecalculation";
 import { loadPeriodStatusLog, loadPeriodStatusStamp } from "@/lib/payroll/periodStatusLog";
 import { IPayrollPeriodStatusLogEntry } from "@/interfaces/payroll_period";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
@@ -312,6 +318,7 @@ export async function getPayrollProcessPage(
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
       extraordinaryRecalculationNeeded: false,
+      missingEmployees: [],
       recalculationNeeded: false,
       statusStamp: null,
     };
@@ -524,8 +531,9 @@ export async function getPayrollProcessPage(
       exemptionRecalculationNeeded,
       vacationPayRecalculationNeeded,
       extraordinaryRecalculationNeeded,
+      missingEligibleEmployees: missingEmployees,
     } = recalculationFlags;
-    const recalculationNeeded = Object.values(recalculationFlags).some(Boolean);
+    const recalculationNeeded = isAnyRecalculationFlagActive(recalculationFlags);
 
     const totalPercepciones = roundToCents(
       Number(totals[0]?.importe_salario ?? 0) +
@@ -632,6 +640,7 @@ export async function getPayrollProcessPage(
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
         extraordinaryRecalculationNeeded,
+        missingEmployees,
         recalculationNeeded,
         statusStamp,
       },
@@ -1122,6 +1131,8 @@ const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
 const PERIOD_NOT_APPROVABLE_MARKER = "PERIOD_NOT_APPROVABLE";
 const PERIOD_NOT_PAYABLE_MARKER = "PERIOD_NOT_PAYABLE";
 const PERIOD_NOT_UNAPPROVABLE_MARKER = "PERIOD_NOT_UNAPPROVABLE";
+// Spec 96: reabrir un periodo pagado.
+const PERIOD_NOT_REOPENABLE_MARKER = "PERIOD_NOT_REOPENABLE";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
 const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha_tipo";
@@ -1146,6 +1157,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(PERIOD_NOT_UNAPPROVABLE_MARKER)) {
     return "El periodo no existe en esta sucursal o ya no está en estatus Aprobada";
+  }
+  if (sqlError.message?.includes(PERIOD_NOT_REOPENABLE_MARKER)) {
+    return "El periodo no existe en esta sucursal o ya no está en estatus Pagada";
   }
   if (sqlError.message?.includes(TREATMENT_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó alguno de estos tratamientos al mismo tiempo. Intenta de nuevo.";
@@ -1942,16 +1956,16 @@ export async function approvePayrollPeriod(input: unknown): Promise<ActionResult
 
   try {
     const periodRows = await db.queryParams(
-      `SELECT id_period, tipo_periodo FROM [CentroPodologico].[payroll].[periods]
+      `SELECT id_period, id_sucursal, id_payment_period,
+              CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
+              tipo_periodo, concepto_extraordinario
+         FROM [CentroPodologico].[payroll].[periods]
         WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
       { id_period: parsed.data.id_period, id_sucursal },
     );
     if (periodRows[0]) {
-      const flags = await collectRecalculationFlags({
-        id_period: parsed.data.id_period,
-        tipo_periodo: periodRows[0].tipo_periodo,
-      });
-      if (Object.values(flags).some(Boolean)) {
+      const flags = await collectRecalculationFlags(periodRows[0]);
+      if (isAnyRecalculationFlagActive(flags)) {
         return {
           ok: false,
           message: PERIOD_NEEDS_RECALCULATION_MESSAGE,
@@ -2004,6 +2018,22 @@ export async function payPayrollPeriod(input: unknown): Promise<ActionResult<nul
   }
 
   try {
+    // Spec 96: un periodo con empleados elegibles fuera del cálculo no se puede pagar.
+    const periodRows = await db.queryParams(
+      `SELECT id_period, id_sucursal, id_payment_period,
+              CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
+              tipo_periodo, concepto_extraordinario
+         FROM [CentroPodologico].[payroll].[periods]
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
+      { id_period: parsed.data.id_period, id_sucursal },
+    );
+    if (periodRows[0]) {
+      const missingEligibleEmployees = await loadMissingEligibleEmployees(periodRows[0]);
+      if (missingEligibleEmployees.length > 0) {
+        return { ok: false, message: PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE };
+      }
+    }
+
     const { from, to } = PERIOD_STATUS_TRANSITIONS.pay;
     const changedAt = buildDate(new Date());
     await db.queryParams(
@@ -2084,6 +2114,62 @@ export async function unapprovePayrollPeriod(input: unknown): Promise<ActionResu
     return { ok: true, data: null };
   } catch (error) {
     console.error("unapprovePayrollPeriod", error);
+    return { ok: false, message: describePayrollCalculationError(error) };
+  }
+}
+
+/**
+ * Reabrir (solo estatus 4 → 2, spec 96): revierte un periodo pagado a En cálculo, limpiando
+ * los cuatro campos de sello (aprobación y pago) y exigiendo un motivo. El sello que se pierde
+ * en `periods` queda conservado en la bitácora.
+ */
+export async function reopenPayrollPeriod(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user } = access.data;
+
+  const parsed = reopenPayrollPeriodSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  try {
+    const { from, to } = PERIOD_STATUS_TRANSITIONS.reopen;
+    const changedAt = buildDate(new Date());
+    await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       IF NOT EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = ${from}
+       )
+         THROW 50005, '${PERIOD_NOT_REOPENABLE_MARKER}', 1;
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET status = ${to}, approved_by = NULL, approved_at = NULL,
+              paid_by = NULL, paid_at = NULL,
+              updated_at = CAST(@changed_at AS datetime2(0))
+        WHERE id_period = @id_period;
+
+       INSERT INTO [CentroPodologico].[payroll].[period_status_log]
+         (id_period, status_anterior, status_nuevo, comentario, changed_by, changed_at)
+       VALUES (@id_period, ${from}, ${to}, @comentario, @changed_by, @changed_at);
+
+       COMMIT;`,
+      {
+        id_period: parsed.data.id_period,
+        id_sucursal,
+        comentario: parsed.data.comentario,
+        changed_by: id_user,
+        changed_at: changedAt,
+      },
+    );
+
+    revalidatePayrollPaths();
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("reopenPayrollPeriod", error);
     return { ok: false, message: describePayrollCalculationError(error) };
   }
 }

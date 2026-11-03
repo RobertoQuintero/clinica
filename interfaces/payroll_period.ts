@@ -1,7 +1,7 @@
 export type PayrollPeriodStatus = 1 | 2 | 3 | 4;
 
-// Spec 94: las únicas tres transiciones alcanzables desde la UI.
-export type PeriodStatusTransition = "approve" | "pay" | "unapprove";
+// Spec 96: la cuarta transición del ciclo de vida del periodo.
+export type PeriodStatusTransition = "approve" | "pay" | "unapprove" | "reopen";
 
 // Spec 87: 'O' ordinaria (por frecuencia), 'E' extraordinaria (aguinaldo anual).
 export type PayrollPeriodType = "O" | "E";

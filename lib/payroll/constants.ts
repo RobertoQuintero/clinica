@@ -123,6 +123,7 @@ export const PERIOD_STATUS_TRANSITION_LABELS: Record<PeriodStatusTransition, str
   approve:   "Aprobar",
   pay:       "Marcar como pagada",
   unapprove: "Desaprobar",
+  reopen:    "Reabrir periodo",
 };
 
 export const PAYROLL_PERIOD_TYPE_LABELS: Record<PayrollPeriodType, string> = {
