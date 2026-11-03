@@ -216,6 +216,10 @@ export default async function ProcesarNominaPage({
                 : "Hay aguinaldos cuyo salario, fecha de ingreso o ISR del art. 174 no coinciden con el último cálculo. Recalcula la nómina."
             }
           />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.pendingDaysRecalculationNeeded}
+            message="Hay días pendientes de pago que no coinciden con el último cálculo. Recalcula la nómina."
+          />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState
               title="Este periodo aún no se calcula"

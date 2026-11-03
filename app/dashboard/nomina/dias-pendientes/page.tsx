@@ -3,6 +3,7 @@ import { ChevronRight, Info } from "lucide-react";
 import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/lib/payroll/processUrls";
 import PayrollEmptyState, { PAYROLL_LINK_BUTTON_CLASSES } from "../componentes/PayrollEmptyState";
 import PayrollPeriodFilterToolbar from "../componentes/PayrollPeriodFilterToolbar";
+import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPendingDaysPage } from "./actions";
 import CapturePendingDaysButton from "./componentes/PendingDayPaymentModal";
@@ -93,6 +94,11 @@ export default async function PendingDaysPage({ searchParams }: { searchParams: 
               />
             )}
           </div>
+
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.recalculationNeeded}
+            message="Hay días pendientes de pago que no coinciden con el último cálculo. Recalcula la nómina."
+          />
 
           <PendingDaysSummaryCards summary={result.data.summary} />
 

@@ -326,6 +326,7 @@ export async function getPayrollProcessPage(
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
       extraordinaryRecalculationNeeded: false,
+      pendingDaysRecalculationNeeded: false,
       missingEmployees: [],
       recalculationNeeded: false,
       statusStamp: null,
@@ -539,6 +540,7 @@ export async function getPayrollProcessPage(
       exemptionRecalculationNeeded,
       vacationPayRecalculationNeeded,
       extraordinaryRecalculationNeeded,
+      pendingDaysRecalculationNeeded,
       missingEligibleEmployees: missingEmployees,
     } = recalculationFlags;
     const recalculationNeeded = isAnyRecalculationFlagActive(recalculationFlags);
@@ -651,6 +653,7 @@ export async function getPayrollProcessPage(
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
         extraordinaryRecalculationNeeded,
+        pendingDaysRecalculationNeeded,
         missingEmployees,
         recalculationNeeded,
         statusStamp,

@@ -56,4 +56,5 @@ export interface IPendingDaysPagePayload {
   totalRows:       number;
   summary:         IPendingDaysSummary;
   activeEmployees: IPendingDaysActiveEmployee[];   // para el buscador del modal
+  recalculationNeeded: boolean;   // aviso "Recalcula" (spec 97); solo puede ser true en estatus 2
 }

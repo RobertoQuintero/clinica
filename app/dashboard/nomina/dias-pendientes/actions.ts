@@ -9,6 +9,7 @@ import {
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { normalizeSearchText } from "@/lib/payroll/listHelpers";
+import { isPendingDaysRecalculationNeeded } from "@/lib/payroll/pendingDaysRecalculation";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { sumPendingDays } from "@/lib/payroll/pendingDaysPay";
 import {
@@ -81,11 +82,13 @@ export async function getPendingDaysPage(filters: unknown): Promise<ActionResult
       totalRows: 0,
       summary: { capturedDays: 0, totalOperativa: 0, totalFiscal: 0 },
       activeEmployees: activeEmployees as IPendingDaysActiveEmployee[],
+      recalculationNeeded: false,
     };
     if (!period) return { ok: true, data: emptyPayload };
 
-    const rawRows = (await db.queryParams(
-      `SELECT pdp.id_pending_day_payment, pdp.id_period, pdp.id_empleado,
+    const [rawRowsResult, recalculationNeeded] = await Promise.all([
+      db.queryParams(
+        `SELECT pdp.id_pending_day_payment, pdp.id_period, pdp.id_empleado,
               e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
               CONVERT(varchar(10), pdp.fecha, 120) AS fecha,
               pdp.tarifa_operativa, pdp.tarifa_fiscal, pdp.motivo,
@@ -110,8 +113,11 @@ export async function getPendingDaysPage(filters: unknown): Promise<ActionResult
          ) paid ON paid.id_empleado = pdp.id_empleado AND paid.fecha = pdp.fecha
         WHERE pdp.id_period = @id_period
         ORDER BY pdp.fecha DESC, nombre_completo`,
-      { id_sucursal, id_period: period.id_period },
-    )) as IPendingDayPaymentSqlRow[];
+        { id_sucursal, id_period: period.id_period },
+      ),
+      period.status === 2 ? isPendingDaysRecalculationNeeded(period.id_period) : Promise.resolve(false),
+    ]);
+    const rawRows = rawRowsResult as IPendingDayPaymentSqlRow[];
 
     const allRows: IPendingDayPaymentRow[] = rawRows.map((row) => ({
       ...row,
@@ -139,6 +145,7 @@ export async function getPendingDaysPage(filters: unknown): Promise<ActionResult
         rows: filteredRows.slice(pageStart, pageStart + PENDING_DAYS_PAGE_SIZE),
         totalRows: filteredRows.length,
         summary: { capturedDays: allRows.length, totalOperativa: totals.totalOperativa, totalFiscal: totals.totalFiscal },
+        recalculationNeeded,
       },
     };
   } catch (error) {
