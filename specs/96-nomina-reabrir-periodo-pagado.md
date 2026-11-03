@@ -288,12 +288,12 @@ export async function reopenPayrollPeriod(input: unknown): Promise<ActionResult<
 **Transición Reabrir**
 
 - [ ] Un periodo en estatus 4 se reabre con motivo y queda en 2, con `approved_by`, `approved_at`, `paid_by` y `paid_at` en `NULL`.
-- [ ] Desde 1, 2 y 3 no se puede reabrir: cada intento responde "ya no está en estatus Pagada" y no escribe nada.
-- [ ] Reabrir sin motivo, con menos de 5 caracteres útiles o con más de 200 se rechaza en `zod` y en `CK_period_status_log_comentario`.
-- [ ] Un periodo de otra sucursal no se distingue de uno inexistente.
-- [ ] Dos pestañas que reabren el mismo periodo a la vez terminan con un éxito y un error de estatus, nunca con dos filas en la bitácora.
-- [ ] El estatus 4 muestra exactamente un botón, Reabrir, y ya no un encabezado sin acciones.
-- [ ] Un rol distinto de 1 y 4 recibe `{ ok: false }` al llamar la acción directamente.
+- [x] Desde 1, 2 y 3 no se puede reabrir: cada intento responde "ya no está en estatus Pagada" y no escribe nada.
+- [x] Reabrir sin motivo, con menos de 5 caracteres útiles o con más de 200 se rechaza en `zod` y en `CK_period_status_log_comentario`.
+- [x] Un periodo de otra sucursal no se distingue de uno inexistente.
+- [x] Dos pestañas que reabren el mismo periodo a la vez terminan con un éxito y un error de estatus, nunca con dos filas en la bitácora.
+- [x] El estatus 4 muestra exactamente un botón, Reabrir, y ya no un encabezado sin acciones.
+- [x] Un rol distinto de 1 y 4 recibe `{ ok: false }` al llamar la acción directamente.
 
 **Detección de empleados faltantes**
 
@@ -303,21 +303,21 @@ export async function reopenPayrollPeriod(input: unknown): Promise<ActionResult<
 - [ ] Recalcular vacía el aviso y el empleado aparece en la tabla con sus días, su salario y su ISR.
 - [ ] Un periodo de aguinaldo detecta faltantes aunque no tengan `id_periodo_pago`; un periodo de PTU nunca muestra el aviso.
 - [ ] Un empleado que **sí** está en el cálculo y hoy ya no es elegible (dado de baja, salario puesto en 0, transferido de sucursal) **no** aparece en el aviso.
-- [ ] Un empleado sin salario capturado para el tipo sigue saliendo en el aviso de excluidos y **no** en el nuevo; los dos avisos no se contradicen ni se duplican.
+- [x] Un empleado sin salario capturado para el tipo sigue saliendo en el aviso de excluidos y **no** en el nuevo; los dos avisos no se contradicen ni se duplican.
 
 **Candados**
 
-- [ ] Con un faltante, Aprobar se rechaza en el servidor y el botón aparece deshabilitado con el motivo visible y accesible.
-- [ ] Con un faltante, Pagar se rechaza en el servidor con `PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE` y el botón aparece deshabilitado con el motivo.
+- [x] Con un faltante, Aprobar se rechaza en el servidor y el botón aparece deshabilitado con el motivo visible y accesible.
+- [x] Con un faltante, Pagar se rechaza en el servidor con `PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE` y el botón aparece deshabilitado con el motivo.
 - [ ] Desaprobar, recalcular y volver a aprobar habilita el pago sin recargar a mano.
-- [ ] Las once comprobaciones anteriores siguen bloqueando Aprobar igual que antes, y ninguna de ellas bloquea Pagar.
+- [x] Las once comprobaciones anteriores siguen bloqueando Aprobar igual que antes, y ninguna de ellas bloquea Pagar.
 
 **Sello y bitácora**
 
-- [ ] La bitácora acepta `4 → 2` y sigue rechazando `4 → 3`, `4 → 1` y cualquier otro par.
+- [x] La bitácora acepta `4 → 2` y sigue rechazando `4 → 3`, `4 → 1` y cualquier otro par.
 - [ ] Tras aprobar, pagar y reabrir, el historial muestra las tres filas en orden descendente, con el motivo de la reapertura, y el encabezado ya no muestra ningún sello.
 - [ ] `CK_periods_sello_estatus` sigue impidiendo cualquier combinación incoherente de estatus y sello, también escribiendo SQL a mano, sin haber sido modificado.
-- [ ] Calcular, recalcular y revertir (1 ↔ 2) siguen sin escribir en la bitácora.
+- [x] Calcular, recalcular y revertir (1 ↔ 2) siguen sin escribir en la bitácora.
 
 **Descongelamiento y recálculo**
 
@@ -328,13 +328,13 @@ export async function reopenPayrollPeriod(input: unknown): Promise<ActionResult<
 
 **Calidad**
 
-- [ ] La acción pasa por `assertPayrollAccess()` y valida con `zod`; la sucursal y el `id_user` salen de la sesión, nunca del cliente, y el estatus de origen se valida dentro de la lectura con `UPDLOCK, HOLDLOCK`.
-- [ ] Ninguna fecha viaja como `Date`; todas usan `buildDate` y `CONVERT(varchar(19), …, 120)`.
-- [ ] La detección tiene **una sola copia** y reutiliza las mismas constantes de elegibilidad que el `INSERT` del cálculo, sin reescribir sus condiciones.
-- [ ] El único componente cliente modificado es `PayrollCalculationActions`; `MissingEmployeesNotice` es Server Component.
-- [ ] El motivo de Desaprobar y el de Reabrir comparten un solo schema y un solo par de constantes de longitud.
-- [ ] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
-- [ ] `docs/nomina.md` y `queries.txt` quedan actualizados; `content/manual/nomina/` **no** se toca.
+- [x] La acción pasa por `assertPayrollAccess()` y valida con `zod`; la sucursal y el `id_user` salen de la sesión, nunca del cliente, y el estatus de origen se valida dentro de la lectura con `UPDLOCK, HOLDLOCK`.
+- [x] Ninguna fecha viaja como `Date`; todas usan `buildDate` y `CONVERT(varchar(19), …, 120)`.
+- [x] La detección tiene **una sola copia** y reutiliza las mismas constantes de elegibilidad que el `INSERT` del cálculo, sin reescribir sus condiciones.
+- [x] El único componente cliente modificado es `PayrollCalculationActions`; `MissingEmployeesNotice` es Server Component.
+- [x] El motivo de Desaprobar y el de Reabrir comparten un solo schema y un solo par de constantes de longitud.
+- [x] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
+- [x] `docs/nomina.md` y `queries.txt` quedan actualizados; `content/manual/nomina/` **no** se toca.
 
 ## Decisiones
 

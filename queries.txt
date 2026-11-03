@@ -3225,6 +3225,34 @@ ALTER TABLE [payroll].[period_status_log] ADD
   OR ([status_anterior] = 4 AND [status_nuevo] = 2));   -- reabrir (spec 96)
 GO
 
+-- Spec 96: diagnóstico a mano -- empleados elegibles sin fila en period_employees, en todos los
+-- periodos actualmente en estatus 3 (Aprobada) o 4 (Pagada). El aviso en pantalla (missingEligibleEmployees)
+-- solo corre en 2 y 3, así que un periodo ya pagado con esta omisión no se ve en ninguna parte; esta consulta
+-- es el único lugar donde se detecta. Encontrado el caso, la corrección es Reabrir el periodo y recalcular.
+SELECT p.[id_period], p.[codigo], p.[id_sucursal],
+       e.[id_empleado], e.[codigo_empleado], salary.[tipo_nomina]
+  FROM [CentroPodologico].[payroll].[periods] p
+ CROSS JOIN [CentroPodologico].[RH].[empleados] e
+ CROSS APPLY (VALUES ('O', e.[salario_diario]), ('F', e.[salario_diario_fiscal]))
+             AS salary ([tipo_nomina], [salario_diario])
+ WHERE p.[status] IN (3, 4)
+   AND NOT (p.[tipo_periodo] = 'E' AND p.[concepto_extraordinario] = 'P')          -- la PTU no entra
+   AND salary.[salario_diario] > 0
+   AND e.[status] = 1 AND e.[activo] = 1
+   AND e.[id_sucursal] = p.[id_sucursal]
+   AND (
+         (p.[tipo_periodo] = 'E' AND p.[concepto_extraordinario] = 'A'            -- aguinaldo: sin exigir id_periodo_pago
+          AND e.[fecha_ingreso] <= p.[fecha_fin])
+      OR (NOT (p.[tipo_periodo] = 'E' AND p.[concepto_extraordinario] = 'A')      -- ordinario: exige la misma frecuencia
+          AND e.[id_periodo_pago] = p.[id_payment_period] AND e.[fecha_ingreso] <= p.[fecha_fin])
+       )
+   AND NOT EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[period_employees] pe
+          WHERE pe.[id_period] = p.[id_period] AND pe.[id_empleado] = e.[id_empleado]
+            AND pe.[tipo_nomina] = salary.[tipo_nomina]
+       )
+ ORDER BY p.[codigo], e.[apellido_paterno], e.[apellido_materno], e.[nombre], salary.[tipo_nomina];
+
 
 
 ------------ OTROS PAGOS -----------------------
