@@ -58,5 +58,13 @@ export const deletePendingDayPaymentSchema = z.object({
   id_period: z.number().int().positive("Periodo inválido"),
 });
 
+/** Filtros de `getPendingDaysPage`, ya leídos de la URL por `readPendingDaysSearchParams`. */
+export const pendingDaysPageFiltersSchema = z.object({
+  idPeriod: z.number().int().positive().nullable(),
+  search: z.string(),
+  page: z.number().int().positive(),
+});
+
 export type CreatePendingDayPaymentsInput = z.infer<typeof createPendingDayPaymentsSchema>;
 export type DeletePendingDayPaymentInput = z.infer<typeof deletePendingDayPaymentSchema>;
+export type PendingDaysPageFilters = z.infer<typeof pendingDaysPageFiltersSchema>;

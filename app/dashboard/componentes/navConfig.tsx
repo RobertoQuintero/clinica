@@ -25,6 +25,7 @@ import {
   Percent,
   AlarmClockPlus,
   CalendarX2,
+  CalendarPlus,
   AlarmClock,
   Award,
   Scale,
@@ -118,6 +119,12 @@ export const NAV_LINKS: NavLink[] = [
         href: "/dashboard/nomina/retardos",
         label: "Retardos",
         icon: AlarmClock,
+        excludeRoles: [2, 3, 5, 6],
+      },
+      {
+        href: "/dashboard/nomina/dias-pendientes",
+        label: "Días pendientes",
+        icon: CalendarPlus,
         excludeRoles: [2, 3, 5, 6],
       },
       {

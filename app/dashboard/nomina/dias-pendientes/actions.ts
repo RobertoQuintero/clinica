@@ -1,11 +1,22 @@
 "use server";
 
 import db from "@/database/connection";
+import {
+  IPendingDayPaymentRow,
+  IPendingDaysActiveEmployee,
+  IPendingDaysPagePayload,
+} from "@/interfaces/payroll_pending_days";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
+import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
+import { normalizeSearchText } from "@/lib/payroll/listHelpers";
+import { resolvePeriod } from "@/lib/payroll/period";
+import { sumPendingDays } from "@/lib/payroll/pendingDaysPay";
 import {
   createPendingDayPaymentsSchema,
   deletePendingDayPaymentSchema,
+  pendingDaysPageFiltersSchema,
 } from "@/lib/payroll/pendingDaysSchemas";
+import { PENDING_DAYS_PAGE_SIZE } from "@/lib/payroll/constants";
 import { buildDate } from "@/utils/date_helpper";
 import { revalidatePath } from "next/cache";
 
@@ -14,6 +25,126 @@ const PENDING_DAYS_PATH = "/dashboard/nomina/dias-pendientes";
 function revalidatePayrollPaths() {
   revalidatePath(PENDING_DAYS_PATH);
   revalidatePath("/dashboard/nomina/procesar");
+}
+
+type IPendingDayPaymentSqlRow = Omit<IPendingDayPaymentRow, "sin_salario_operativa" | "sin_salario_fiscal"> & {
+  sin_salario_operativa: number;
+  sin_salario_fiscal: number;
+};
+
+/**
+ * Lista de capturas del periodo (empleado, fecha, tarifas, motivo, autor), con el periodo de la fecha (si
+ * cae dentro de uno ordinario de la sucursal) y el periodo que ya la pagó (si está en el desglose).
+ * El resumen se calcula sin el buscador y después se aplican la búsqueda y la paginación.
+ */
+export async function getPendingDaysPage(filters: unknown): Promise<ActionResult<IPendingDaysPagePayload>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal } = access.data;
+
+  const parsedFilters = pendingDaysPageFiltersSchema.safeParse(filters);
+  if (!parsedFilters.success) {
+    return { ok: false, message: parsedFilters.error.issues[0]?.message ?? "Filtros inválidos" };
+  }
+  const { idPeriod, search: rawSearch, page } = parsedFilters.data;
+
+  try {
+    const [period, periodOptions, activeEmployees] = await Promise.all([
+      resolvePeriod(id_sucursal, idPeriod, { ordinaryOnly: true }),
+      db.queryParams(
+        `SELECT p.id_period, p.codigo,
+                CONVERT(varchar(10), p.fecha_inicio, 120) AS fecha_inicio,
+                CONVERT(varchar(10), p.fecha_fin, 120)    AS fecha_fin,
+                p.status
+           FROM [CentroPodologico].[payroll].[periods] p
+          WHERE p.id_sucursal = @id_sucursal AND p.tipo_periodo = 'O'
+          ORDER BY p.fecha_inicio DESC, p.id_period DESC`,
+        { id_sucursal },
+      ),
+      db.queryParams(
+        `SELECT e.id_empleado, e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
+                CONVERT(varchar(10), e.fecha_ingreso, 120) AS fecha_ingreso,
+                ISNULL(e.salario_diario, 0)        AS salario_diario,
+                ISNULL(e.salario_diario_fiscal, 0) AS salario_diario_fiscal
+           FROM [CentroPodologico].[RH].[empleados] e
+          WHERE e.status = 1 AND e.activo = 1 AND e.id_sucursal = @id_sucursal
+          ORDER BY e.apellido_paterno, e.apellido_materno, e.nombre, e.id_empleado`,
+        { id_sucursal },
+      ),
+    ]);
+
+    const emptyPayload: IPendingDaysPagePayload = {
+      period,
+      periodOptions: periodOptions as IPendingDaysPagePayload["periodOptions"],
+      canCapture: false,
+      rows: [],
+      totalRows: 0,
+      summary: { capturedDays: 0, totalOperativa: 0, totalFiscal: 0 },
+      activeEmployees: activeEmployees as IPendingDaysActiveEmployee[],
+    };
+    if (!period) return { ok: true, data: emptyPayload };
+
+    const rawRows = (await db.queryParams(
+      `SELECT pdp.id_pending_day_payment, pdp.id_period, pdp.id_empleado,
+              e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
+              CONVERT(varchar(10), pdp.fecha, 120) AS fecha,
+              pdp.tarifa_operativa, pdp.tarifa_fiscal, pdp.motivo,
+              CONVERT(varchar(19), pdp.created_at, 120) AS created_at,
+              ISNULL(cu.nombre, '') AS capturado_por,
+              p2.codigo AS periodo_de_la_fecha, p2.status AS estatus_de_la_fecha,
+              paid.pagado_en,
+              CASE WHEN ISNULL(e.salario_diario, 0) <= 0 THEN 1 ELSE 0 END AS sin_salario_operativa,
+              CASE WHEN ISNULL(e.salario_diario_fiscal, 0) <= 0 THEN 1 ELSE 0 END AS sin_salario_fiscal
+         FROM [CentroPodologico].[payroll].[pending_day_payments] pdp
+         JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pdp.id_empleado
+         LEFT JOIN [CentroPodologico].[dbo].[users] cu ON cu.id_user = pdp.created_by
+         LEFT JOIN [CentroPodologico].[payroll].[periods] p2
+           ON p2.id_sucursal = @id_sucursal AND p2.tipo_periodo = 'O'
+          AND pdp.fecha BETWEEN p2.fecha_inicio AND p2.fecha_fin
+         LEFT JOIN (
+           SELECT pepd.id_empleado, pepd.fecha, MIN(p3.codigo) AS pagado_en
+             FROM [CentroPodologico].[payroll].[period_employee_pending_days] pepd
+             JOIN [CentroPodologico].[payroll].[period_employees] pe3 ON pe3.id_period_employee = pepd.id_period_employee
+             JOIN [CentroPodologico].[payroll].[periods] p3 ON p3.id_period = pe3.id_period
+            GROUP BY pepd.id_empleado, pepd.fecha
+         ) paid ON paid.id_empleado = pdp.id_empleado AND paid.fecha = pdp.fecha
+        WHERE pdp.id_period = @id_period
+        ORDER BY pdp.fecha DESC, nombre_completo`,
+      { id_sucursal, id_period: period.id_period },
+    )) as IPendingDayPaymentSqlRow[];
+
+    const allRows: IPendingDayPaymentRow[] = rawRows.map((row) => ({
+      ...row,
+      sin_salario_operativa: Boolean(row.sin_salario_operativa),
+      sin_salario_fiscal: Boolean(row.sin_salario_fiscal),
+    }));
+
+    const totals = sumPendingDays(allRows);
+
+    const search = normalizeSearchText(rawSearch.trim());
+    const filteredRows = allRows.filter(
+      (row) =>
+        search === "" ||
+        normalizeSearchText(row.nombre_completo).includes(search) ||
+        normalizeSearchText(row.codigo_empleado).includes(search),
+    );
+
+    const pageStart = (page - 1) * PENDING_DAYS_PAGE_SIZE;
+
+    return {
+      ok: true,
+      data: {
+        ...emptyPayload,
+        canCapture: period.status === 1 || period.status === 2,
+        rows: filteredRows.slice(pageStart, pageStart + PENDING_DAYS_PAGE_SIZE),
+        totalRows: filteredRows.length,
+        summary: { capturedDays: allRows.length, totalOperativa: totals.totalOperativa, totalFiscal: totals.totalFiscal },
+      },
+    };
+  } catch (error) {
+    console.error("getPendingDaysPage", error);
+    return { ok: false, message: "No se pudieron cargar los días pendientes de pago" };
+  }
 }
 
 const PENDING_DAY_PERIOD_NOT_WRITABLE_MARKER = "PENDING_DAY_PERIOD_NOT_WRITABLE";
