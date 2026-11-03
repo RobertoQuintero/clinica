@@ -147,6 +147,12 @@ export const EXTRAORDINARY_PERIOD_SAT_KEY = "99";
 export const EXTRAORDINARY_PERIOD_CODE_LETTER = "E";
 export const MONTHLY_WITHHOLDING_SAT_KEY = "05";
 
+// Spec 97: días ya trabajados que no se pagaron, capturados a mano y pagados en un periodo ordinario.
+export const PENDING_DAYS_PERCEPTION_ID = 15;   // 001, 'N' 100% gravada
+export const PENDING_DAY_MOTIVE_MIN_LENGTH = 5;
+export const PENDING_DAY_MOTIVE_MAX_LENGTH = 200;
+export const PENDING_DAYS_PAGE_SIZE = 25;
+
 export const ARTICLE_174_SKIP_REASON_LABELS: Record<Article174SkipReason, string> = {
   no_monthly_withholding_table: "No hay tarifa mensual de ISR para el año",
   income_in_gap:                "El ingreso cae en un hueco de la tarifa mensual",
@@ -163,6 +169,7 @@ export const PERCEPTION_LINE_KEY_BY_ID: Record<number, string> = {
   [PAID_VACATION_PERCEPTION_ID]:    "vacaciones_pagadas",
   [CHRISTMAS_BONUS_PERCEPTION_ID]:  "aguinaldo",
   [PTU_PERCEPTION_ID]:              "ptu",
+  [PENDING_DAYS_PERCEPTION_ID]:     "dias_pendientes",
 };
 export const EXEMPTION_SKIP_REASON_LABELS: Record<ExemptionSkipReason, string> = {
   missing_uma:           "No hay UMA diaria vigente al fin del periodo",

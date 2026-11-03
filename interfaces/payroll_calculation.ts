@@ -54,6 +54,8 @@ export interface IPayrollEmployeeRow extends IImssRowSummary {   // imss_estado,
   importe_aguinaldo:  number;
   importe_ptu:        number;         // spec 90; 0 salvo en un periodo extraordinario de PTU
   ptu:                IPtuPaymentBreakdown | null;   // spec 90: desglose congelado de la PTU; null fuera de un periodo PTU
+  dias_pendientes:    number;         // spec 97; días ya trabajados capturados y pagados en este periodo
+  importe_dias_pendientes: number;
   importe_gravado:    number | null;  // spec 87: gravado del aguinaldo; null en operativa o con el exento sin calcular
   importe_exento:     number | null;
   total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia + importe_bono_extension + importe_aguinaldo, calculado en el SELECT
@@ -184,6 +186,8 @@ export interface IPayrollEmployeeSnapshot extends IIsrBreakdown, IImssRowSummary
   importe_aguinaldo:             number;
   importe_ptu:                   number;            // spec 90; 0 salvo en un periodo extraordinario de PTU
   ptu:                           IPtuPaymentBreakdown | null;   // spec 90: desglose congelado; null fuera de un periodo PTU
+  dias_pendientes:               number;            // spec 97; días ya trabajados capturados y pagados en este periodo
+  importe_dias_pendientes:       number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 

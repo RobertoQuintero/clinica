@@ -588,6 +588,9 @@ export async function getPayrollProcessPage(
           importe_aguinaldo: Number(row.importe_aguinaldo),
           importe_ptu: Number(row.importe_ptu),
           ptu: toPtuPaymentBreakdown(row as unknown as IPtuPaymentRowColumns),
+          // spec 97 paso 8 los lee del snapshot; mientras tanto el SELECT no los trae.
+          dias_pendientes: Number(row.dias_pendientes ?? 0),
+          importe_dias_pendientes: Number(row.importe_dias_pendientes ?? 0),
           importe_gravado: toNullableNumber(row.importe_gravado),
           importe_exento: toNullableNumber(row.importe_exento),
           total_percepciones: Number(row.total_percepciones),
@@ -972,6 +975,9 @@ export async function getPayrollEmployeeDetail(
           importe_aguinaldo: Number(snapshotRow.importe_aguinaldo),
           importe_ptu: Number(snapshotRow.importe_ptu),
           ptu: toPtuPaymentBreakdown(snapshotRow as IPtuPaymentRowColumns),
+          // spec 97 paso 6 los lee del snapshot; mientras tanto el SELECT no los trae.
+          dias_pendientes: Number(snapshotRow.dias_pendientes ?? 0),
+          importe_dias_pendientes: Number(snapshotRow.importe_dias_pendientes ?? 0),
           isr_estado: snapshotRow.isr_estado,
           isr_motivo: snapshotRow.isr_motivo ?? null,
           isr_base_gravable: toNullableNumber(snapshotRow.isr_base_gravable),
