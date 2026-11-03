@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { STATUS_COMMENT_MAX_LENGTH, STATUS_COMMENT_MIN_LENGTH } from "./periodStatus";
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -149,13 +150,21 @@ export const payPayrollPeriodSchema = z.object({
   id_period: z.number().int().positive("Periodo inválido"),
 });
 
+// Spec 96: el motivo de Desaprobar y el de Reabrir comparten un solo schema.
+const periodStatusCommentSchema = z
+  .string()
+  .trim()
+  .min(STATUS_COMMENT_MIN_LENGTH, `El motivo debe tener al menos ${STATUS_COMMENT_MIN_LENGTH} caracteres`)
+  .max(STATUS_COMMENT_MAX_LENGTH, `El motivo no puede exceder ${STATUS_COMMENT_MAX_LENGTH} caracteres`);
+
 export const unapprovePayrollPeriodSchema = z.object({
   id_period: z.number().int().positive("Periodo inválido"),
-  comentario: z
-    .string()
-    .trim()
-    .min(5, "El motivo debe tener al menos 5 caracteres")
-    .max(200, "El motivo no puede exceder 200 caracteres"),
+  comentario: periodStatusCommentSchema,
+});
+
+export const reopenPayrollPeriodSchema = z.object({
+  id_period: z.number().int().positive("Periodo inválido"),
+  comentario: periodStatusCommentSchema,
 });
 
 export const payrollEmployeeDetailFiltersSchema = z.object({

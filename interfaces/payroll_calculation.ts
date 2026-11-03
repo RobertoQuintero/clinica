@@ -71,6 +71,14 @@ export interface IPayrollExcludedEmployee {
   nombre_completo: string;
 }
 
+// Spec 96: empleado elegible hoy que no tiene fila en el cálculo guardado, por tipo de nómina.
+export interface IPayrollMissingEmployee {
+  id_empleado:     number;
+  codigo_empleado: string;
+  nombre_completo: string;
+  tipo_nomina:     PayrollType;   // 'O' u 'F': de cuál de las dos nóminas falta
+}
+
 export interface IPayrollProcessFilters {
   idPeriod:    number | null;   // null: periodo activo en curso, o el más reciente
   payrollType: PayrollType;     // URL: tipo=operativa|fiscal

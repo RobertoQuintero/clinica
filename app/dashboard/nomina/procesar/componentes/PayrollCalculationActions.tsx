@@ -6,8 +6,8 @@ import { Banknote, Calculator, CheckCircle2, RefreshCw, RotateCcw, Undo2, type L
 import type { PayrollPeriodStatus } from "@/interfaces/payroll_period";
 import {
   PERIOD_NEEDS_RECALCULATION_MESSAGE,
-  UNAPPROVE_COMMENT_MAX_LENGTH,
-  UNAPPROVE_COMMENT_MIN_LENGTH,
+  STATUS_COMMENT_MAX_LENGTH,
+  STATUS_COMMENT_MIN_LENGTH,
 } from "@/lib/payroll/periodStatus";
 import { formatDateSlashed } from "@/lib/payroll/periodFormat";
 import { addZeroToday } from "@/utils/date_helpper";
@@ -153,7 +153,7 @@ export default function PayrollCalculationActions({
 
   const trimmedComentario = comentario.trim();
   const isUnapproveCommentValid =
-    trimmedComentario.length >= UNAPPROVE_COMMENT_MIN_LENGTH && trimmedComentario.length <= UNAPPROVE_COMMENT_MAX_LENGTH;
+    trimmedComentario.length >= STATUS_COMMENT_MIN_LENGTH && trimmedComentario.length <= STATUS_COMMENT_MAX_LENGTH;
 
   // Spec 94: al pagar, advierte si la fecha de pago programada todavía no llega (no bloquea).
   const paymentDateWarning =
@@ -265,12 +265,12 @@ export default function PayrollCalculationActions({
                   id="payroll-unapprove-comentario"
                   value={comentario}
                   onChange={(event) => setComentario(event.target.value)}
-                  maxLength={UNAPPROVE_COMMENT_MAX_LENGTH}
+                  maxLength={STATUS_COMMENT_MAX_LENGTH}
                   rows={3}
                   className="mt-1 w-full rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-[#0b1c30] dark:text-zinc-100"
                 />
                 <p className="mt-1 text-xs text-[#747780] dark:text-zinc-500">
-                  {trimmedComentario.length}/{UNAPPROVE_COMMENT_MAX_LENGTH} (mínimo {UNAPPROVE_COMMENT_MIN_LENGTH})
+                  {trimmedComentario.length}/{STATUS_COMMENT_MAX_LENGTH} (mínimo {STATUS_COMMENT_MIN_LENGTH})
                 </p>
               </div>
             )}
