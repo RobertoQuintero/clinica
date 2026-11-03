@@ -114,6 +114,7 @@ import {
   PERIOD_STATUS_TRANSITIONS,
 } from "@/lib/payroll/periodStatus";
 import { loadMissingEligibleEmployees } from "@/lib/payroll/missingEmployeesRecalculation";
+import { loadPendingDaysNotCovered } from "@/lib/payroll/pendingDaysNotCovered";
 import { loadPeriodStatusLog, loadPeriodStatusStamp } from "@/lib/payroll/periodStatusLog";
 import { IPayrollPeriodStatusLogEntry } from "@/interfaces/payroll_period";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
@@ -309,7 +310,7 @@ export async function getPayrollProcessPage(
       period,
       periodOptions: periodOptions as IPayrollProcessPage["periodOptions"],
       rows: [],
-      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importePtu: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, importeImss: 0, totalNeto: 0 },
+      totals: { employees: 0, importeSalario: 0, importeComision: 0, importeComisionTratamientos: 0, importeComisionProductos: 0, importeHorasExtra: 0, importeBonoPuntualidad: 0, importeBonoAsistencia: 0, importeBonoExtension: 0, importeVacaciones: 0, importeAguinaldo: 0, importePtu: 0, importeDiasPendientes: 0, importeGravado: 0, importeExento: 0, totalPercepciones: 0, importeIsr: 0, importeImss: 0, totalNeto: 0 },
       isrNotCalculated: [],
       imssNotCalculated: [],
       puestoOptions: [],
@@ -328,6 +329,7 @@ export async function getPayrollProcessPage(
       extraordinaryRecalculationNeeded: false,
       pendingDaysRecalculationNeeded: false,
       missingEmployees: [],
+      pendingDaysNotCovered: [],
       recalculationNeeded: false,
       statusStamp: null,
     };
@@ -358,6 +360,7 @@ export async function getPayrollProcessPage(
         lastCalculated,
       ],
       recalculationFlags,
+      pendingDaysNotCovered,
       statusStamp,
     ] = await Promise.all([
       Promise.all([
@@ -382,6 +385,7 @@ export async function getPayrollProcessPage(
                 pe.dias_vacaciones_pagadas, CAST(pe.importe_vacaciones_pagadas AS float) AS importe_vacaciones_pagadas,
                 pe.dias_aguinaldo, CAST(pe.importe_aguinaldo AS float) AS importe_aguinaldo,
                 CAST(pe.importe_ptu AS float) AS importe_ptu,
+                pe.dias_pendientes, CAST(pe.importe_dias_pendientes AS float) AS importe_dias_pendientes,
                 ptu.id_ptu_distribution AS ptu_id_ptu_distribution, ptu.ejercicio_reparto AS ptu_ejercicio_reparto,
                 ptu.dias AS ptu_dias_trabajados, CAST(ptu.ptu_dias AS float) AS ptu_ptu_dias,
                 CAST(ptu.ptu_salario AS float) AS ptu_ptu_salario, CAST(ptu.ptu_bruto AS float) AS ptu_ptu_bruto,
@@ -395,7 +399,7 @@ export async function getPayrollProcessPage(
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
                   + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
-                  + pe.importe_aguinaldo + pe.importe_ptu AS total_percepciones,
+                  + pe.importe_aguinaldo + pe.importe_ptu + pe.importe_dias_pendientes AS total_percepciones,
                 -- Spec 87: en un periodo extraordinario el ISR vive en el desglose del art. 174, no en las columnas isr_*.
                 ISNULL(article174.isr_estado, pe.isr_estado) AS isr_estado,
                 CAST(CASE WHEN article174.id_period_employee IS NOT NULL THEN article174.isr_retenido
@@ -408,7 +412,7 @@ export async function getPayrollProcessPage(
                   + pe.importe_bono_puntualidad + pe.importe_bono_asistencia
                   + pe.importe_bono_extension
                   + pe.importe_prima_vacacional + pe.importe_vacaciones_pagadas
-                  + pe.importe_aguinaldo + pe.importe_ptu - deductions.total AS float) AS neto,
+                  + pe.importe_aguinaldo + pe.importe_ptu + pe.importe_dias_pendientes - deductions.total AS float) AS neto,
                 CONVERT(varchar(19), pe.calculated_at, 120) AS calculated_at
            FROM [CentroPodologico].[payroll].[period_employees] pe
            JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
@@ -444,6 +448,7 @@ export async function getPayrollProcessPage(
                 CAST(ISNULL(SUM(importe_prima_vacacional + importe_vacaciones_pagadas), 0) AS float) AS importe_vacaciones,
                 CAST(ISNULL(SUM(importe_aguinaldo), 0) AS float) AS importe_aguinaldo,
                 CAST(ISNULL(SUM(importe_ptu), 0) AS float) AS importe_ptu,
+                CAST(ISNULL(SUM(importe_dias_pendientes), 0) AS float) AS importe_dias_pendientes,
                 CAST(ISNULL(SUM(taxes.gravado), 0) AS float) AS importe_gravado,
                 CAST(ISNULL(SUM(taxes.exento), 0) AS float) AS importe_exento,
                 CAST(ISNULL(SUM(deductions.isr), 0) AS float) AS importe_isr,
@@ -525,6 +530,7 @@ export async function getPayrollProcessPage(
       ),
       ]),
       collectRecalculationFlags(period),
+      loadPendingDaysNotCovered(period.id_period),
       // Spec 94: el sello solo existe desde Aprobada en adelante.
       period.status === 3 || period.status === 4 ? loadPeriodStatusStamp(period.id_period) : Promise.resolve(null),
     ]);
@@ -556,7 +562,8 @@ export async function getPayrollProcessPage(
         Number(totals[0]?.importe_bono_extension ?? 0) +
         Number(totals[0]?.importe_vacaciones ?? 0) +
         Number(totals[0]?.importe_aguinaldo ?? 0) +
-        Number(totals[0]?.importe_ptu ?? 0),
+        Number(totals[0]?.importe_ptu ?? 0) +
+        Number(totals[0]?.importe_dias_pendientes ?? 0),
     );
 
     return {
@@ -598,7 +605,6 @@ export async function getPayrollProcessPage(
           importe_aguinaldo: Number(row.importe_aguinaldo),
           importe_ptu: Number(row.importe_ptu),
           ptu: toPtuPaymentBreakdown(row as unknown as IPtuPaymentRowColumns),
-          // spec 97 paso 8 los lee del snapshot; mientras tanto el SELECT no los trae.
           dias_pendientes: Number(row.dias_pendientes ?? 0),
           importe_dias_pendientes: Number(row.importe_dias_pendientes ?? 0),
           importe_gravado: toNullableNumber(row.importe_gravado),
@@ -622,6 +628,7 @@ export async function getPayrollProcessPage(
           importeVacaciones: Number(totals[0]?.importe_vacaciones ?? 0),
           importeAguinaldo: Number(totals[0]?.importe_aguinaldo ?? 0),
           importePtu: Number(totals[0]?.importe_ptu ?? 0),
+          importeDiasPendientes: Number(totals[0]?.importe_dias_pendientes ?? 0),
           importeGravado: Number(totals[0]?.importe_gravado ?? 0),
           importeExento: Number(totals[0]?.importe_exento ?? 0),
           totalPercepciones,
@@ -655,6 +662,7 @@ export async function getPayrollProcessPage(
         extraordinaryRecalculationNeeded,
         pendingDaysRecalculationNeeded,
         missingEmployees,
+        pendingDaysNotCovered,
         recalculationNeeded,
         statusStamp,
       },

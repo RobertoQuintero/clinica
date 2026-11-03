@@ -62,7 +62,7 @@ export default function PayrollEmployeesTable({
   const detailFilters = { idPeriod, payrollType, idPuesto, search };
   // Spec 70: solo la nómina fiscal lleva deducciones (ISR) y neto.
   const showsDeductions = payrollType === "F";
-  const columnCount = showsDeductions ? 18 : 15;
+  const columnCount = showsDeductions ? 19 : 16;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
@@ -84,6 +84,7 @@ export default function PayrollEmployeesTable({
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono punt.</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono asist.</th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">Bono ext.</th>
+              <th scope="col" className="px-4 py-3 font-semibold text-right">Días pendientes</th>
               <th scope="col" className="px-6 py-3 font-semibold text-right">Total percepciones</th>
               {showsDeductions && (
                 <>
@@ -191,6 +192,10 @@ export default function PayrollEmployeesTable({
                           : null
                       }
                     />
+                    <CommissionAmountCell
+                      amount={employeeRow.importe_dias_pendientes}
+                      countLabel={describeCount(employeeRow.dias_pendientes, "día", "días")}
+                    />
                     <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
                       {formatPayrollCurrency(employeeRow.total_percepciones)}
                     </td>
@@ -257,6 +262,9 @@ export default function PayrollEmployeesTable({
               </td>
               <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
                 {formatPayrollCurrency(totals.importeBonoExtension)}
+              </td>
+              <td className="px-4 py-4 text-right text-sm font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-100">
+                {formatPayrollCurrency(totals.importeDiasPendientes)}
               </td>
               <td
                 className={`px-6 py-4 text-right tabular-nums ${

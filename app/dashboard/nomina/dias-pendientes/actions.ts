@@ -9,6 +9,7 @@ import {
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
 import { normalizeSearchText } from "@/lib/payroll/listHelpers";
+import { loadPendingDaysNotCovered } from "@/lib/payroll/pendingDaysNotCovered";
 import { isPendingDaysRecalculationNeeded } from "@/lib/payroll/pendingDaysRecalculation";
 import { resolvePeriod } from "@/lib/payroll/period";
 import { sumPendingDays } from "@/lib/payroll/pendingDaysPay";
@@ -83,10 +84,11 @@ export async function getPendingDaysPage(filters: unknown): Promise<ActionResult
       summary: { capturedDays: 0, totalOperativa: 0, totalFiscal: 0 },
       activeEmployees: activeEmployees as IPendingDaysActiveEmployee[],
       recalculationNeeded: false,
+      notCovered: [],
     };
     if (!period) return { ok: true, data: emptyPayload };
 
-    const [rawRowsResult, recalculationNeeded] = await Promise.all([
+    const [rawRowsResult, recalculationNeeded, notCovered] = await Promise.all([
       db.queryParams(
         `SELECT pdp.id_pending_day_payment, pdp.id_period, pdp.id_empleado,
               e.codigo_empleado, ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
@@ -116,6 +118,7 @@ export async function getPendingDaysPage(filters: unknown): Promise<ActionResult
         { id_sucursal, id_period: period.id_period },
       ),
       period.status === 2 ? isPendingDaysRecalculationNeeded(period.id_period) : Promise.resolve(false),
+      loadPendingDaysNotCovered(period.id_period),
     ]);
     const rawRows = rawRowsResult as IPendingDayPaymentSqlRow[];
 
@@ -146,6 +149,7 @@ export async function getPendingDaysPage(filters: unknown): Promise<ActionResult
         totalRows: filteredRows.length,
         summary: { capturedDays: allRows.length, totalOperativa: totals.totalOperativa, totalFiscal: totals.totalFiscal },
         recalculationNeeded,
+        notCovered,
       },
     };
   } catch (error) {

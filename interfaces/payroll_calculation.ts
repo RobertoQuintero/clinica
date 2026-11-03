@@ -100,7 +100,7 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; importeAguinaldo: number; importePtu: number; importeGravado: number; importeExento: number; totalPercepciones: number; importeIsr: number; importeImss: number; totalNeto: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; importeAguinaldo: number; importePtu: number; importeDiasPendientes: number; importeGravado: number; importeExento: number; totalPercepciones: number; importeIsr: number; importeImss: number; totalNeto: number };   // de todo el tipo, sin filtros
   isrNotCalculated:  { reason: IsrSkipReason | Article174SkipReason; employees: number }[];   // renglones 'N' por motivo (spec 70, o ISR art. 174 en un periodo extraordinario), de todo el tipo, sin filtros
   imssNotCalculated: IImssNotCalculatedGroup[];   // renglones 'N' por motivo (spec 91), de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
@@ -121,6 +121,7 @@ export interface IPayrollProcessPage {
   // Spec 96: empleados elegibles hoy sin fila en el cálculo guardado. A diferencia de `excludedEmployees`,
   // trae siempre los dos tipos de nómina: el candado que alimenta es del periodo completo.
   missingEmployees: IPayrollMissingEmployee[];
+  pendingDaysNotCovered: IPayrollMissingEmployee[];   // spec 97; informativo, no bloquea nada
   recalculationNeeded: boolean;   // spec 94: el `or` de las trece banderas anteriores (spec 97 añadió la treceava)
   statusStamp: IPayrollPeriodStatusStamp | null;   // spec 94: solo se consulta en estatus 3 y 4
 }

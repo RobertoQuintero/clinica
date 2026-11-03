@@ -1,5 +1,5 @@
 import type { IPayrollPeriod, PayrollPeriodStatus } from "@/interfaces/payroll_period";
-import type { PayrollType } from "@/interfaces/payroll_calculation";
+import type { IPayrollMissingEmployee, PayrollType } from "@/interfaces/payroll_calculation";
 
 /** Una captura de un día pendiente, con lo que la pantalla necesita mostrar (spec 97). */
 export interface IPendingDayPaymentRow {
@@ -57,4 +57,5 @@ export interface IPendingDaysPagePayload {
   summary:         IPendingDaysSummary;
   activeEmployees: IPendingDaysActiveEmployee[];   // para el buscador del modal
   recalculationNeeded: boolean;   // aviso "Recalcula" (spec 97); solo puede ser true en estatus 2
+  notCovered: IPayrollMissingEmployee[];   // aviso "capturas que no se pagarán" (spec 97); informativo
 }

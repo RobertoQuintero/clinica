@@ -4,6 +4,7 @@ import { readPositiveInteger, readSingleParam, type SearchParamsInput } from "@/
 import PayrollEmptyState, { PAYROLL_LINK_BUTTON_CLASSES } from "../componentes/PayrollEmptyState";
 import PayrollPeriodFilterToolbar from "../componentes/PayrollPeriodFilterToolbar";
 import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotice";
+import PendingDaysNotCoveredNotice from "../componentes/PendingDaysNotCoveredNotice";
 import { PayrollStatusBadge } from "../periodos/componentes/PayrollBadges";
 import { getPendingDaysPage } from "./actions";
 import CapturePendingDaysButton from "./componentes/PendingDayPaymentModal";
@@ -99,6 +100,7 @@ export default async function PendingDaysPage({ searchParams }: { searchParams: 
             recalculationNeeded={result.data.recalculationNeeded}
             message="Hay días pendientes de pago que no coinciden con el último cálculo. Recalcula la nómina."
           />
+          <PendingDaysNotCoveredNotice notCovered={result.data.notCovered} />
 
           <PendingDaysSummaryCards summary={result.data.summary} />
 
