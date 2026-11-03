@@ -27,7 +27,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
 import { EMPLOYEE_FULL_NAME_SQL } from "@/lib/payroll/employeeName";
-import { collectRecalculationFlags } from "@/lib/payroll/recalculationChecks";
+import { collectRecalculationFlags, isAnyRecalculationFlagActive } from "@/lib/payroll/recalculationChecks";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
@@ -312,6 +312,7 @@ export async function getPayrollProcessPage(
       exemptionRecalculationNeeded: false,
       vacationPayRecalculationNeeded: false,
       extraordinaryRecalculationNeeded: false,
+      missingEmployees: [],
       recalculationNeeded: false,
       statusStamp: null,
     };
@@ -524,8 +525,9 @@ export async function getPayrollProcessPage(
       exemptionRecalculationNeeded,
       vacationPayRecalculationNeeded,
       extraordinaryRecalculationNeeded,
+      missingEligibleEmployees: missingEmployees,
     } = recalculationFlags;
-    const recalculationNeeded = Object.values(recalculationFlags).some(Boolean);
+    const recalculationNeeded = isAnyRecalculationFlagActive(recalculationFlags);
 
     const totalPercepciones = roundToCents(
       Number(totals[0]?.importe_salario ?? 0) +
@@ -632,6 +634,7 @@ export async function getPayrollProcessPage(
         exemptionRecalculationNeeded,
         vacationPayRecalculationNeeded,
         extraordinaryRecalculationNeeded,
+        missingEmployees,
         recalculationNeeded,
         statusStamp,
       },
@@ -1942,16 +1945,16 @@ export async function approvePayrollPeriod(input: unknown): Promise<ActionResult
 
   try {
     const periodRows = await db.queryParams(
-      `SELECT id_period, tipo_periodo FROM [CentroPodologico].[payroll].[periods]
+      `SELECT id_period, id_sucursal, id_payment_period,
+              CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
+              tipo_periodo, concepto_extraordinario
+         FROM [CentroPodologico].[payroll].[periods]
         WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
       { id_period: parsed.data.id_period, id_sucursal },
     );
     if (periodRows[0]) {
-      const flags = await collectRecalculationFlags({
-        id_period: parsed.data.id_period,
-        tipo_periodo: periodRows[0].tipo_periodo,
-      });
-      if (Object.values(flags).some(Boolean)) {
+      const flags = await collectRecalculationFlags(periodRows[0]);
+      if (isAnyRecalculationFlagActive(flags)) {
         return {
           ok: false,
           message: PERIOD_NEEDS_RECALCULATION_MESSAGE,

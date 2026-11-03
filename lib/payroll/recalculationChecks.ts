@@ -1,5 +1,6 @@
 import "server-only";
 
+import { IPayrollMissingEmployee } from "@/interfaces/payroll_calculation";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
 import { isAttendanceBonusRecalculationNeeded } from "@/lib/payroll/attendanceBonusRecalculation";
@@ -8,6 +9,7 @@ import { isExtraordinaryRecalculationNeeded } from "@/lib/payroll/extraordinaryR
 import { isImssRecalculationNeeded } from "@/lib/payroll/imssRecalculation";
 import { isIsrRecalculationNeeded } from "@/lib/payroll/isrRecalculation";
 import { isLatenessRecalculationNeeded } from "@/lib/payroll/latenessRecalculation";
+import { loadMissingEligibleEmployees } from "@/lib/payroll/missingEmployeesRecalculation";
 import { isOvertimeRecalculationNeeded } from "@/lib/payroll/overtimeRecalculation";
 import { isPunctualityBonusRecalculationNeeded } from "@/lib/payroll/punctualityBonusRecalculation";
 import { isShiftExtensionBonusRecalculationNeeded } from "@/lib/payroll/shiftExtensionBonusRecalculation";
@@ -25,16 +27,22 @@ export interface IRecalculationFlags {
   exemptionRecalculationNeeded: boolean;
   vacationPayRecalculationNeeded: boolean;
   extraordinaryRecalculationNeeded: boolean;
+  missingEligibleEmployees: IPayrollMissingEmployee[];   // spec 96; vacío = nada que recalcular
 }
 
+type PeriodForRecalculationChecks = Pick<
+  IPayrollPeriodRow,
+  "id_period" | "id_sucursal" | "id_payment_period" | "fecha_fin" | "tipo_periodo" | "concepto_extraordinario"
+>;
+
 /**
- * Las once comprobaciones de "Recalcula", en una sola copia (spec 94). Un periodo extraordinario
+ * Las doce comprobaciones de "Recalcula", en una sola copia (specs 94 y 96). Un periodo extraordinario
  * no tiene horas extra, faltas, retardos, bonos, ISR de la spec 70 ni vacaciones; esos avisos
- * compararían contra un cálculo que nunca los incluyó. El del exento sí le aplica a ambos tipos.
+ * compararían contra un cálculo que nunca los incluyó. El del exento sí le aplica a ambos tipos, y
+ * el de empleados faltantes aplica a ordinarios y aguinaldo (no a PTU, que `loadMissingEligibleEmployees`
+ * ya descarta).
  */
-export async function collectRecalculationFlags(
-  period: Pick<IPayrollPeriodRow, "id_period" | "tipo_periodo">,
-): Promise<IRecalculationFlags> {
+export async function collectRecalculationFlags(period: PeriodForRecalculationChecks): Promise<IRecalculationFlags> {
   const isOrdinaryPeriod = period.tipo_periodo === "O";
 
   const [
@@ -49,6 +57,7 @@ export async function collectRecalculationFlags(
     exemptionRecalculationNeeded,
     vacationPayRecalculationNeeded,
     extraordinaryRecalculationNeeded,
+    missingEligibleEmployees,
   ] = await Promise.all([
     isOrdinaryPeriod ? isOvertimeRecalculationNeeded(period.id_period) : false,
     isOrdinaryPeriod ? isAbsenceRecalculationNeeded(period.id_period) : false,
@@ -61,6 +70,7 @@ export async function collectRecalculationFlags(
     isExemptionRecalculationNeeded(period.id_period),
     isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
     isOrdinaryPeriod ? false : isExtraordinaryRecalculationNeeded(period.id_period),
+    loadMissingEligibleEmployees(period),
   ]);
 
   return {
@@ -75,5 +85,12 @@ export async function collectRecalculationFlags(
     exemptionRecalculationNeeded,
     vacationPayRecalculationNeeded,
     extraordinaryRecalculationNeeded,
+    missingEligibleEmployees,
   };
+}
+
+/** `IRecalculationFlags.recalculationNeeded`-equivalente: el `or` de las doce banderas (spec 96). */
+export function isAnyRecalculationFlagActive(flags: IRecalculationFlags): boolean {
+  const { missingEligibleEmployees, ...booleanFlags } = flags;
+  return Object.values(booleanFlags).some(Boolean) || missingEligibleEmployees.length > 0;
 }
