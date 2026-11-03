@@ -89,6 +89,12 @@ import {
 import { resolvePeriod } from "@/lib/payroll/period";
 import { NOT_ON_PAID_LEAVE_CONDITION } from "@/lib/payroll/paidLeaveExclusionSql";
 import { VACATION_PAY_EVENTS_SQL } from "@/lib/payroll/vacationPaySql";
+import {
+  PENDING_DAYS_APPLY_SQL,
+  PENDING_DAYS_COLUMNS_SQL,
+  PENDING_DAYS_SELECT_SQL,
+  PENDING_DAYS_TEMP_TABLE_SQL,
+} from "@/lib/payroll/pendingDaysSql";
 import { getCommissionTiers } from "../comisiones/actions";
 import {
   approvePayrollPeriodSchema,
@@ -1145,6 +1151,7 @@ const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_emplea
 const ABSENCE_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_absences_empleado_fecha_tipo";
 const LATENESS_ALREADY_DISCOUNTED_CONSTRAINT = "UQ_period_employee_lateness_empleado_fecha_tipo";
 const VACATION_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_vacations_entitlement_concepto_tipo";
+const PENDING_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_pending_days_empleado_fecha_tipo";
 
 /** Traduce los errores de SQL Server de calcular/revertir nómina a un mensaje en español. */
 function describePayrollCalculationError(error: unknown): string {
@@ -1184,6 +1191,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(VACATION_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó la prima o las vacaciones de este empleado al mismo tiempo. Intenta de nuevo.";
+  }
+  if (sqlError.message?.includes(PENDING_DAY_ALREADY_PAID_CONSTRAINT)) {
+    return "Otro cálculo tomó algunos de estos días al mismo tiempo. Intenta de nuevo.";
   }
   if (sqlError.number === 2627 || sqlError.number === 2601 || sqlError.number === 1205) {
     return "Otro usuario modificó la nómina al mismo tiempo. Intenta de nuevo";
@@ -1504,6 +1514,10 @@ export async function calculatePayrollPeriod(
                              AND pev.[concepto] = ev.[concepto]
                              AND pev.[tipo_nomina] = salary.[tipo_nomina]);
 
+       -- Spec 97: días pendientes de pago capturados para este periodo, por tipo de nómina. Compartido con el
+       -- aviso "Recalcula" (lib/payroll/pendingDaysSql.ts): si diverge del espejo en TypeScript, manda este SQL.
+       ${PENDING_DAYS_TEMP_TABLE_SQL}
+
        -- Spec 62: faltas injustificadas del periodo. Un día es falta si el empleado con control de faltas (usuario
        -- podólogo activo) tiene horario ese día de la semana ISO, el día es anterior a hoy y no es anterior a su fecha de ingreso,
        -- y no hay ninguna checada ni justificación. Hoy llega como parámetro: nunca se usa GETDATE().
@@ -1595,6 +1609,7 @@ export async function calculatePayrollPeriod(
           ${ATTENDANCE_BONUS_INSERT_COLUMNS_SQL},
           ${SHIFT_EXTENSION_BONUS_INSERT_COLUMNS_SQL},
           dias_prima_vacacional, importe_prima_vacacional, dias_vacaciones_pagadas, importe_vacaciones_pagadas,
+          ${PENDING_DAYS_COLUMNS_SQL},
           calculated_by, calculated_at)
        SELECT @id_period, e.id_empleado, salary.tipo_nomina, salary.salario_diario, net.dias, absences.dias_falta,
               lateness_days.dias_retardo, lateness_days.dias_retardo_sin_tope,
@@ -1612,6 +1627,7 @@ export async function calculatePayrollPeriod(
               ${ATTENDANCE_BONUS_SELECT_SQL},
               ${SHIFT_EXTENSION_BONUS_SELECT_SQL},
               vacation.dias_prima, vacation.importe_prima, vacation.dias_pagadas, vacation.importe_pagadas,
+              ${PENDING_DAYS_SELECT_SQL},
               @calculated_by, CAST(@calculated_at AS datetime2(0))
          FROM [CentroPodologico].[RH].[empleados] e
          LEFT JOIN [CentroPodologico].[payroll].[treatment_commission_settings] treatment_settings
@@ -1719,7 +1735,7 @@ export async function calculatePayrollPeriod(
                  ISNULL(SUM(CASE WHEN vp.[concepto] = 'D' THEN vp.[importe] END), 0) AS importe_pagadas
             FROM #vacation_pay vp
            WHERE vp.[id_empleado] = e.[id_empleado] AND vp.[tipo_nomina] = salary.tipo_nomina
-        ) AS vacation${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
+        ) AS vacation${PENDING_DAYS_APPLY_SQL}${PUNCTUALITY_BONUS_APPLY_SQL}${ATTENDANCE_BONUS_APPLY_SQL}${SHIFT_EXTENSION_BONUS_APPLY_SQL}
         WHERE ${ELIGIBLE_EMPLOYEE_BASE_CONDITIONS}
           AND salary.salario_diario > 0;
 
@@ -1843,6 +1859,16 @@ export async function calculatePayrollPeriod(
          FROM #vacation_pay vp
          JOIN [CentroPodologico].[payroll].[period_employees] pe
            ON pe.[id_period] = @id_period AND pe.[id_empleado] = vp.[id_empleado] AND pe.[tipo_nomina] = vp.[tipo_nomina];
+
+       -- Spec 97: desglose y candado de pago único de días pendientes, por tipo de nómina: cada día se une al
+       -- renglón de su tipo. Un empleado sin renglón de ese tipo (salario en 0) ni paga ni bloquea el día en ese tipo.
+       INSERT INTO [CentroPodologico].[payroll].[period_employee_pending_days]
+         (id_period_employee, id_empleado, fecha, tipo_nomina, tarifa_diaria, importe, motivo)
+       SELECT pe.[id_period_employee], pd.[id_empleado], pd.[fecha], pd.[tipo_nomina], pd.[tarifa_diaria],
+              ROUND(pd.[tarifa_diaria], 2), pd.[motivo]
+         FROM #pending_days pd
+         JOIN [CentroPodologico].[payroll].[period_employees] pe
+           ON pe.[id_period] = @id_period AND pe.[id_empleado] = pd.[id_empleado] AND pe.[tipo_nomina] = pd.[tipo_nomina];
 
        -- Spec 62: desglose y candado de faltas. Cada falta se descuenta una vez por tipo de nómina ('O' y 'F'): se
        -- omiten las que otro periodo ya descontó para ese mismo tipo (el mismo criterio que cuenta dias_falta arriba).
