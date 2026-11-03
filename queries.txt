@@ -3213,6 +3213,18 @@ CREATE NONCLUSTERED INDEX [IX_period_status_log_period]
     ON [payroll].[period_status_log] ([id_period], [changed_at] DESC)
 GO
 
+-- Spec 96: la bitácora acepta la cuarta transición, reabrir un periodo pagado (4 -> 2).
+-- Se recrea el CHECK completo porque SQL Server no permite modificarlo en su lugar.
+ALTER TABLE [payroll].[period_status_log] DROP CONSTRAINT [CK_period_status_log_transicion];
+GO
+ALTER TABLE [payroll].[period_status_log] ADD
+    CONSTRAINT [CK_period_status_log_transicion] CHECK (
+     ([status_anterior] = 2 AND [status_nuevo] = 3)     -- aprobar
+  OR ([status_anterior] = 3 AND [status_nuevo] = 4)     -- marcar como pagada
+  OR ([status_anterior] = 3 AND [status_nuevo] = 2)     -- desaprobar
+  OR ([status_anterior] = 4 AND [status_nuevo] = 2));   -- reabrir (spec 96)
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------
