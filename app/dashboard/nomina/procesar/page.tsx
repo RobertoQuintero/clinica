@@ -92,6 +92,7 @@ export default async function ProcesarNominaPage({
             periodCode={result.data.period.codigo}
             status={result.data.period.status}
             recalculationNeeded={result.data.recalculationNeeded}
+            hasMissingEmployees={result.data.missingEmployees.length > 0}
             warnings={approvalWarnings}
             fechaPago={result.data.period.fecha_pago}
           />

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Banknote, Calculator, CheckCircle2, RefreshCw, RotateCcw, Undo2, type LucideIcon } from "lucide-react";
 import type { PayrollPeriodStatus } from "@/interfaces/payroll_period";
 import {
+  PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
   PERIOD_NEEDS_RECALCULATION_MESSAGE,
   STATUS_COMMENT_MAX_LENGTH,
   STATUS_COMMENT_MIN_LENGTH,
@@ -25,6 +26,8 @@ interface Props {
   status: PayrollPeriodStatus;
   /** Spec 94: algún aviso "Recalcula" sigue activo; deshabilita Aprobar. */
   recalculationNeeded?: boolean;
+  /** Spec 96: hay empleados elegibles fuera del cálculo; deshabilita Marcar como pagada. */
+  hasMissingEmployees?: boolean;
   /** Spec 94: advertencias ámbar del modal de Aprobar (ISR/IMSS no calculado, periodo sin empleados). */
   warnings?: string[];
   /** Spec 94: fecha de pago del periodo ("YYYY-MM-DD"), para advertir en el modal de Pagar si aún no llega. */
@@ -130,6 +133,7 @@ export default function PayrollCalculationActions({
   periodCode,
   status,
   recalculationNeeded = false,
+  hasMissingEmployees = false,
   warnings = [],
   fechaPago = null,
 }: Props) {
@@ -205,14 +209,21 @@ export default function PayrollCalculationActions({
       <div className="flex flex-wrap items-center gap-2">
         {availableActions.map((action, index) => {
           const { buttonLabel, icon: ActionIcon } = ACTION_COPY[action];
-          const isApproveBlocked = action === "approve" && recalculationNeeded;
+          const blockedReasonId =
+            action === "approve" && recalculationNeeded
+              ? "payroll-approve-blocked-reason"
+              : action === "pay" && hasMissingEmployees
+                ? "payroll-pay-blocked-reason"
+                : null;
+          const blockedMessage =
+            action === "approve" ? PERIOD_NEEDS_RECALCULATION_MESSAGE : PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE;
           return (
             <div key={action} className="flex flex-col items-start gap-1.5">
               <button
                 type="button"
                 onClick={() => openDialog(action)}
-                disabled={isApproveBlocked}
-                aria-describedby={isApproveBlocked ? "payroll-approve-blocked-reason" : undefined}
+                disabled={blockedReasonId !== null}
+                aria-describedby={blockedReasonId ?? undefined}
                 className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                   index === 0 ? BUTTON_CLASSES.primary : BUTTON_CLASSES.secondary
                 }`}
@@ -220,9 +231,9 @@ export default function PayrollCalculationActions({
                 <ActionIcon size={16} />
                 {buttonLabel}
               </button>
-              {isApproveBlocked && (
-                <p id="payroll-approve-blocked-reason" className="max-w-xs text-xs text-[#44474f] dark:text-zinc-400">
-                  {PERIOD_NEEDS_RECALCULATION_MESSAGE}
+              {blockedReasonId && (
+                <p id={blockedReasonId} className="max-w-xs text-xs text-[#44474f] dark:text-zinc-400">
+                  {blockedMessage}
                 </p>
               )}
             </div>

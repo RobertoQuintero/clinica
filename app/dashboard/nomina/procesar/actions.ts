@@ -99,7 +99,12 @@ import {
   revertPayrollCalculationSchema,
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
-import { PERIOD_NEEDS_RECALCULATION_MESSAGE, PERIOD_STATUS_TRANSITIONS } from "@/lib/payroll/periodStatus";
+import {
+  PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
+  PERIOD_NEEDS_RECALCULATION_MESSAGE,
+  PERIOD_STATUS_TRANSITIONS,
+} from "@/lib/payroll/periodStatus";
+import { loadMissingEligibleEmployees } from "@/lib/payroll/missingEmployeesRecalculation";
 import { loadPeriodStatusLog, loadPeriodStatusStamp } from "@/lib/payroll/periodStatusLog";
 import { IPayrollPeriodStatusLogEntry } from "@/interfaces/payroll_period";
 import { addZeroToday, buildDate } from "@/utils/date_helpper";
@@ -2007,6 +2012,22 @@ export async function payPayrollPeriod(input: unknown): Promise<ActionResult<nul
   }
 
   try {
+    // Spec 96: un periodo con empleados elegibles fuera del cálculo no se puede pagar.
+    const periodRows = await db.queryParams(
+      `SELECT id_period, id_sucursal, id_payment_period,
+              CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
+              tipo_periodo, concepto_extraordinario
+         FROM [CentroPodologico].[payroll].[periods]
+        WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
+      { id_period: parsed.data.id_period, id_sucursal },
+    );
+    if (periodRows[0]) {
+      const missingEligibleEmployees = await loadMissingEligibleEmployees(periodRows[0]);
+      if (missingEligibleEmployees.length > 0) {
+        return { ok: false, message: PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE };
+      }
+    }
+
     const { from, to } = PERIOD_STATUS_TRANSITIONS.pay;
     const changedAt = buildDate(new Date());
     await db.queryParams(
