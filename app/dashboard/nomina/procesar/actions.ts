@@ -23,6 +23,7 @@ import { IsrSkipReason } from "@/interfaces/payroll_isr";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
 import { ICommissionTier } from "@/interfaces/payroll_commission";
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
+import type { IPayrollPendingDayRow } from "@/interfaces/payroll_pending_days";
 import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commission";
 import { IPayrollPaidTreatment } from "@/interfaces/payroll_treatment_commission";
 import { ActionResult, assertPayrollAccess } from "@/lib/payroll/access";
@@ -74,6 +75,7 @@ import {
   OVERTIME_DOUBLE_PERCEPTION_ID,
   OVERTIME_TRIPLE_PERCEPTION_ID,
   PAID_VACATION_PERCEPTION_ID,
+  PENDING_DAYS_PERCEPTION_ID,
   PERCEPTION_LINE_KEY_BY_ID,
   SALARY_PERCEPTION_ID,
   VACATION_PREMIUM_PERCEPTION_ID,
@@ -699,6 +701,7 @@ export async function getPayrollEmployeeDetail(
       paidTreatmentRows,
       soldProductRows,
       overtimeDayRows,
+      pendingDayRows,
       discountedAbsenceRows,
       discountedLatenessRows,
       storedPerceptionRows,
@@ -765,6 +768,7 @@ export async function getPayrollEmployeeDetail(
                 CAST(pe.subsidio_aplicado AS float)             AS subsidio_aplicado,
                 CAST(pe.isr_retenido AS float)                  AS isr_retenido,
                 pe.imss_estado, pe.imss_motivo, CAST(pe.imss_retenido AS float) AS imss_retenido,
+                pe.dias_pendientes, CAST(pe.importe_dias_pendientes AS float) AS importe_dias_pendientes,
                 CAST((SELECT ISNULL(SUM(d.importe), 0)
                         FROM [CentroPodologico].[payroll].[period_employee_deductions] d
                        WHERE d.id_period_employee = pe.id_period_employee) AS float) AS total_deducciones,
@@ -839,6 +843,19 @@ export async function getPayrollEmployeeDetail(
           WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina
             AND o.tipo_nomina = @tipo_nomina
           ORDER BY o.fecha`,
+        { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
+      ),
+      // Spec 97: días pendientes de pago pagados en el renglón del tipo seleccionado; existen en operativa y en fiscal.
+      // El motivo congelado aquí sobrevive a que la captura se borre.
+      db.queryParams(
+        `SELECT CONVERT(varchar(10), pd.fecha, 120) AS fecha, pd.tipo_nomina,
+                CAST(pd.tarifa_diaria AS float) AS tarifa_diaria, CAST(pd.importe AS float) AS importe, pd.motivo
+           FROM [CentroPodologico].[payroll].[period_employee_pending_days] pd
+           JOIN [CentroPodologico].[payroll].[period_employees] pe
+             ON pe.id_period_employee = pd.id_period_employee
+          WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado AND pe.tipo_nomina = @tipo_nomina
+            AND pd.tipo_nomina = @tipo_nomina
+          ORDER BY pd.fecha`,
         { id_period: period.id_period, id_empleado: idEmpleado, tipo_nomina: payrollType },
       ),
       // Faltas descontadas en el renglón del tipo seleccionado (spec 62); existen en operativa y en fiscal.
@@ -981,7 +998,6 @@ export async function getPayrollEmployeeDetail(
           importe_aguinaldo: Number(snapshotRow.importe_aguinaldo),
           importe_ptu: Number(snapshotRow.importe_ptu),
           ptu: toPtuPaymentBreakdown(snapshotRow as IPtuPaymentRowColumns),
-          // spec 97 paso 6 los lee del snapshot; mientras tanto el SELECT no los trae.
           dias_pendientes: Number(snapshotRow.dias_pendientes ?? 0),
           importe_dias_pendientes: Number(snapshotRow.importe_dias_pendientes ?? 0),
           isr_estado: snapshotRow.isr_estado,
@@ -1056,6 +1072,16 @@ export async function getPayrollEmployeeDetail(
         }))
       : [];
 
+    const pendingDays: IPayrollPendingDayRow[] = snapshot
+      ? pendingDayRows.map((row: IPayrollPendingDayRow) => ({
+          fecha: row.fecha,
+          tipo_nomina: row.tipo_nomina,
+          tarifa_diaria: Number(row.tarifa_diaria),
+          importe: Number(row.importe),
+          motivo: row.motivo,
+        }))
+      : [];
+
     const discountedAbsences: IPayrollDiscountedAbsence[] = snapshot
       ? discountedAbsenceRows.map((row: IPayrollDiscountedAbsence) => ({ fecha: row.fecha }))
       : [];
@@ -1118,6 +1144,7 @@ export async function getPayrollEmployeeDetail(
         paidTreatments,
         soldProducts,
         overtimeDays,
+        pendingDays,
         discountedAbsences,
         discountedLateness,
         navigation: {
@@ -1769,7 +1796,12 @@ export async function calculatePayrollPeriod(
        UNION ALL
        SELECT pe.[id_period_employee], ${PAID_VACATION_PERCEPTION_ID}, pe.[importe_vacaciones_pagadas], NULL
          FROM [CentroPodologico].[payroll].[period_employees] pe
-        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_vacaciones_pagadas] > 0;
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_vacaciones_pagadas] > 0
+       UNION ALL
+       -- Spec 97: días pendientes de pago, 100% gravada (clave SAT 001, 'N').
+       SELECT pe.[id_period_employee], ${PENDING_DAYS_PERCEPTION_ID}, pe.[importe_dias_pendientes], NULL
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+        WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[importe_dias_pendientes] > 0;
 
        ${EXEMPTION_PARAMETERS_SQL}
 

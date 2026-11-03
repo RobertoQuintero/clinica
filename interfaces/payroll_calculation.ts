@@ -4,6 +4,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
+import type { IPayrollPendingDayRow } from "@/interfaces/payroll_pending_days";
 import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
@@ -218,6 +219,7 @@ export interface IPayrollEmployeeDetail {
   overtimeDays:     IPayrollOvertimeDay[];      // [] en fiscal o sin días pagados
   discountedAbsences: IPayrollDiscountedAbsence[];  // [] si no hay faltas descontadas
   discountedLateness: IPayrollDiscountedLateness[]; // [] si no hay retardos descontados
+  pendingDays:        IPayrollPendingDayRow[];      // [] sin días pendientes pagados en este renglón
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;

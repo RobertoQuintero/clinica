@@ -22,6 +22,7 @@ import PayrollArticle174IsrCard from "./componentes/PayrollArticle174IsrCard";
 import PayrollDeductionsCard from "./componentes/PayrollDeductionsCard";
 import PayrollPaidTreatmentsList from "./componentes/PayrollPaidTreatmentsList";
 import PayrollOvertimeDaysList from "./componentes/PayrollOvertimeDaysList";
+import PayrollPendingDaysList from "./componentes/PayrollPendingDaysList";
 import PayrollAbsencesList from "./componentes/PayrollAbsencesList";
 import PayrollLatenessList from "./componentes/PayrollLatenessList";
 import PayrollSoldProductsList from "./componentes/PayrollSoldProductsList";
@@ -169,6 +170,7 @@ export default async function PayrollEmployeeDetailPage({
                   <PayrollPaidTreatmentsList paidTreatments={detail.paidTreatments} />
                   <PayrollSoldProductsList soldProducts={detail.soldProducts} />
                   <PayrollOvertimeDaysList overtimeDays={detail.overtimeDays} />
+                  <PayrollPendingDaysList pendingDays={detail.pendingDays} />
                   <PayrollAbsencesList discountedAbsences={detail.discountedAbsences} />
                   <PayrollLatenessList discountedLateness={detail.discountedLateness} />
                 </>
