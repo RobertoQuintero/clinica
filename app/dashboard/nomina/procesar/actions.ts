@@ -96,6 +96,7 @@ import {
   payPayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
   payrollProcessFiltersSchema,
+  reopenPayrollPeriodSchema,
   revertPayrollCalculationSchema,
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
@@ -1130,6 +1131,8 @@ const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
 const PERIOD_NOT_APPROVABLE_MARKER = "PERIOD_NOT_APPROVABLE";
 const PERIOD_NOT_PAYABLE_MARKER = "PERIOD_NOT_PAYABLE";
 const PERIOD_NOT_UNAPPROVABLE_MARKER = "PERIOD_NOT_UNAPPROVABLE";
+// Spec 96: reabrir un periodo pagado.
+const PERIOD_NOT_REOPENABLE_MARKER = "PERIOD_NOT_REOPENABLE";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
 const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha_tipo";
@@ -1154,6 +1157,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(PERIOD_NOT_UNAPPROVABLE_MARKER)) {
     return "El periodo no existe en esta sucursal o ya no está en estatus Aprobada";
+  }
+  if (sqlError.message?.includes(PERIOD_NOT_REOPENABLE_MARKER)) {
+    return "El periodo no existe en esta sucursal o ya no está en estatus Pagada";
   }
   if (sqlError.message?.includes(TREATMENT_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó alguno de estos tratamientos al mismo tiempo. Intenta de nuevo.";
@@ -2108,6 +2114,62 @@ export async function unapprovePayrollPeriod(input: unknown): Promise<ActionResu
     return { ok: true, data: null };
   } catch (error) {
     console.error("unapprovePayrollPeriod", error);
+    return { ok: false, message: describePayrollCalculationError(error) };
+  }
+}
+
+/**
+ * Reabrir (solo estatus 4 → 2, spec 96): revierte un periodo pagado a En cálculo, limpiando
+ * los cuatro campos de sello (aprobación y pago) y exigiendo un motivo. El sello que se pierde
+ * en `periods` queda conservado en la bitácora.
+ */
+export async function reopenPayrollPeriod(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user } = access.data;
+
+  const parsed = reopenPayrollPeriodSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  try {
+    const { from, to } = PERIOD_STATUS_TRANSITIONS.reopen;
+    const changedAt = buildDate(new Date());
+    await db.queryParams(
+      `SET XACT_ABORT ON;
+       BEGIN TRAN;
+
+       IF NOT EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = ${from}
+       )
+         THROW 50005, '${PERIOD_NOT_REOPENABLE_MARKER}', 1;
+
+       UPDATE [CentroPodologico].[payroll].[periods]
+          SET status = ${to}, approved_by = NULL, approved_at = NULL,
+              paid_by = NULL, paid_at = NULL,
+              updated_at = CAST(@changed_at AS datetime2(0))
+        WHERE id_period = @id_period;
+
+       INSERT INTO [CentroPodologico].[payroll].[period_status_log]
+         (id_period, status_anterior, status_nuevo, comentario, changed_by, changed_at)
+       VALUES (@id_period, ${from}, ${to}, @comentario, @changed_by, @changed_at);
+
+       COMMIT;`,
+      {
+        id_period: parsed.data.id_period,
+        id_sucursal,
+        comentario: parsed.data.comentario,
+        changed_by: id_user,
+        changed_at: changedAt,
+      },
+    );
+
+    revalidatePayrollPaths();
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("reopenPayrollPeriod", error);
     return { ok: false, message: describePayrollCalculationError(error) };
   }
 }
