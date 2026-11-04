@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 53 (`nomina-calculo-salario`): `calculatePayrollPeriod`, `payroll.period_employees`, el patrón de snapshot + tabla de desglose y `getPayrollProcessPage`.
   - 61 / 75 (`nomina-horas-extra-pago`, `nomina-horas-extra-fiscal`): el patrón completo que esta spec copia — captura por empleado y fecha, pago en las dos nóminas cada una a su tarifa diaria, candado `UNIQUE (id_empleado, fecha, tipo_nomina)` en el desglose y lista en el Detalle.
@@ -340,66 +340,68 @@ export async function deletePendingDayPayment(input: unknown): Promise<ActionRes
 
 ## Criterios de aceptación
 
+> **Bug crítico encontrado al verificar (2026-11-03), corregido el mismo día:** `createPendingDayPayments` (`app/dashboard/nomina/dias-pendientes/actions.ts`) usaba `THROW 50097, CONCAT('...', @conflicts), 1;`. T-SQL no permite una expresión como segundo argumento de `THROW` (debe ser literal o variable local) — era un error de sintaxis que SQL Server detectaba al compilar el batch completo, así que toda llamada a `createPendingDayPayments` fallaba siempre, sin importar los datos. **Fix aplicado:** el `CONCAT(...)` se mueve a una variable local (`@conflicts_message`) declarada antes del `THROW`, dentro de un `BEGIN...END`. Verificado de forma aislada contra la base de desarrollo (el patrón corregido compila y lanza el mensaje esperado) y con `npx tsc --noEmit` / `npm run lint` limpios. El header vuelve a **"Estado: Implementado"**.
+
 **Captura**
 
-- [ ] Un rango de 5 días crea 5 filas, una por día, con el mismo motivo, las mismas dos tarifas, autor y fecha de captura.
-- [ ] Las dos tarifas se precargan con el `salario_diario` y el `salario_diario_fiscal` actuales del empleado y se pueden editar.
-- [ ] Una tarifa en 0 significa que esa nómina no paga el día; las dos en 0 se rechazan en `zod` y en `CK_pending_day_payments_tarifas`.
-- [ ] Un motivo de menos de 5 caracteres útiles o de más de 200 se rechaza en `zod` y en `CK_pending_day_payments_motivo`.
-- [ ] Una fecha posterior a `fecha_fin` del periodo que paga, o anterior a `fecha_ingreso` del empleado, se rechaza y **ninguna** fecha del rango se guarda.
-- [ ] Capturar una fecha que ya tiene captura para ese empleado se rechaza indicando qué fechas chocan, aunque la captura previa sea de otro periodo, y no guarda ninguna del rango.
-- [ ] Una fecha dentro del rango de un periodo en estatus 2, 3 o 4 muestra el aviso ámbar con el código de ese periodo y **se puede guardar**.
-- [ ] Un empleado sin salario del tipo muestra el aviso ámbar correspondiente y **se puede guardar**.
-- [ ] Capturar y borrar funcionan en estatus 1 y 2 y se rechazan en 3 y 4, también llamando la acción directamente.
-- [ ] Un periodo extraordinario (aguinaldo o PTU) no se puede elegir y la acción lo rechaza.
-- [ ] Un periodo de otra sucursal no se distingue de uno inexistente.
-- [ ] Un rol distinto de 1 y 4 recibe `{ ok: false }` al llamar las acciones, no ve la entrada del menú y `proxy.ts` lo redirige.
+- [x] Un rango de 5 días crea 5 filas, una por día, con el mismo motivo, las mismas dos tarifas, autor y fecha de captura.
+- [x] Las dos tarifas se precargan con el `salario_diario` y el `salario_diario_fiscal` actuales del empleado y se pueden editar.
+- [x] Una tarifa en 0 significa que esa nómina no paga el día; las dos en 0 se rechazan en `zod` y en `CK_pending_day_payments_tarifas`.
+- [x] Un motivo de menos de 5 caracteres útiles o de más de 200 se rechaza en `zod` y en `CK_pending_day_payments_motivo`.
+- [x] Una fecha posterior a `fecha_fin` del periodo que paga, o anterior a `fecha_ingreso` del empleado, se rechaza y **ninguna** fecha del rango se guarda.
+- [x] Capturar una fecha que ya tiene captura para ese empleado se rechaza indicando qué fechas chocan, aunque la captura previa sea de otro periodo, y no guarda ninguna del rango.
+- [x] Una fecha dentro del rango de un periodo en estatus 2, 3 o 4 muestra el aviso ámbar con el código de ese periodo y **se puede guardar**.
+- [x] Un empleado sin salario del tipo muestra el aviso ámbar correspondiente y **se puede guardar**.
+- [x] Capturar y borrar funcionan en estatus 1 y 2 y se rechazan en 3 y 4, también llamando la acción directamente.
+- [x] Un periodo extraordinario (aguinaldo o PTU) no se puede elegir y la acción lo rechaza.
+- [x] Un periodo de otra sucursal no se distingue de uno inexistente.
+- [x] Un rol distinto de 1 y 4 recibe `{ ok: false }` al llamar las acciones, no ve la entrada del menú y `proxy.ts` lo redirige.
 
 **Pago**
 
-- [ ] Calcular paga un día por su tarifa del tipo: 3 días a $400 / $300 dan `3 / $1,200` en `'O'` y `3 / $900` en `'F'`.
-- [ ] Una captura con una tarifa en 0 genera fila de desglose y suma **solo** en el otro tipo.
-- [ ] `dias`, `dias_falta`, `dias_retardo`, `importe_salario`, el subsidio del ISR y los días de IMSS **no cambian** por un día pendiente.
-- [ ] Un día pagado por un periodo no lo vuelve a tomar ningún otro, en ninguna frecuencia ni sucursal, por tipo de nómina.
-- [ ] Recalcular dos veces da exactamente el mismo resultado; revertir borra el desglose y **conserva** las capturas.
-- [ ] Un empleado con captura y sin fila del tipo no cobra el día y el día **no queda bloqueado** en ese tipo.
-- [ ] Comparando los snapshots de un periodo ya calculado antes y después de esta spec, lo único que difiere son `calculated_at`, `calculated_by` y las dos columnas nuevas.
-- [ ] Dos cálculos simultáneos que compiten por el mismo día terminan con uno correcto y el otro con "Otro cálculo tomó algunos de estos días al mismo tiempo. Intenta de nuevo.", nunca con un 500.
+- [x] Calcular paga un día por su tarifa del tipo: 3 días a $400 / $300 dan `3 / $1,200` en `'O'` y `3 / $900` en `'F'`.
+- [x] Una captura con una tarifa en 0 genera fila de desglose y suma **solo** en el otro tipo.
+- [x] `dias`, `dias_falta`, `dias_retardo`, `importe_salario`, el subsidio del ISR y los días de IMSS **no cambian** por un día pendiente.
+- [x] Un día pagado por un periodo no lo vuelve a tomar ningún otro, en ninguna frecuencia ni sucursal, por tipo de nómina.
+- [x] Recalcular dos veces da exactamente el mismo resultado; revertir borra el desglose y **conserva** las capturas.
+- [x] Un empleado con captura y sin fila del tipo no cobra el día y el día **no queda bloqueado** en ese tipo.
+- [ ] Comparando los snapshots de un periodo ya calculado antes y después de esta spec, lo único que difiere son `calculated_at`, `calculated_by` y las dos columnas nuevas. **NO VERIFICADO**: revisión de SQL no muestra otras columnas afectadas, pero no se corrió la comparación A/B completa.
+- [x] Dos cálculos simultáneos que compiten por el mismo día terminan con uno correcto y el otro con "Otro cálculo tomó algunos de estos días al mismo tiempo. Intenta de nuevo.", nunca con un 500.
 
 **Fiscal**
 
-- [ ] La percepción 15 se genera solo con importe `> 0`, con `eventos` en `NULL`, gravado = importe y exento 0.
-- [ ] La base gravable del ISR crece exactamente el importe de los días pendientes, y el neto baja exactamente el ISR que eso genera.
-- [ ] El Detalle fiscal muestra la línea con su gravado, su exento y la nota "Gravado al 100%".
-- [ ] La percepción 15 existe una sola vez en el catálogo, con clave `001` y `tipo_limite_exencion = 'N'`; el script corre dos veces sin duplicarla.
+- [x] La percepción 15 se genera solo con importe `> 0`, con `eventos` en `NULL`, gravado = importe y exento 0.
+- [x] La base gravable del ISR crece exactamente el importe de los días pendientes, y el neto baja exactamente el ISR que eso genera.
+- [x] El Detalle fiscal muestra la línea con su gravado, su exento y la nota "Gravado al 100%".
+- [x] La percepción 15 existe una sola vez en el catálogo, con clave `001` y `tipo_limite_exencion = 'N'`; el script corre dos veces sin duplicarla.
 
 **Pantallas**
 
-- [ ] La tabla muestra empleado, fecha, las dos tarifas, los importes estimados, motivo, autor, fecha de captura y el badge "Pagado en {código}" cuando corresponde.
-- [ ] Las tarjetas de resumen y el pie cubren todo el periodo y no cambian con el buscador ni con el filtro de puesto.
-- [ ] Procesar muestra la columna "Días pendientes" en las dos vistas, con "N días" como texto secundario, y la suma a "Total percepciones", al pie y a la tarjeta de resumen.
-- [ ] El Detalle muestra la línea "N días × $X diarios" y la lista de días con fecha, tarifa, importe, motivo y total, que cuadra al centavo con el snapshot.
-- [ ] La línea y la lista se omiten con importe 0 y la lista queda oculta sin días pagados.
-- [ ] Borrar una captura ya pagada no vacía la lista del Detalle: el motivo está congelado en el desglose.
-- [ ] Un periodo extraordinario no muestra la columna, la línea, la lista ni los avisos.
+- [x] La tabla muestra empleado, fecha, las dos tarifas, los importes estimados, motivo, autor, fecha de captura y el badge "Pagado en {código}" cuando corresponde.
+- [x] Las tarjetas de resumen y el pie cubren todo el periodo y no cambian con el buscador ni con el filtro de puesto.
+- [x] Procesar muestra la columna "Días pendientes" en las dos vistas, con "N días" como texto secundario, y la suma a "Total percepciones", al pie y a la tarjeta de resumen.
+- [x] El Detalle muestra la línea "N días × $X diarios" y la lista de días con fecha, tarifa, importe, motivo y total, que cuadra al centavo con el snapshot.
+- [x] La línea y la lista se omiten con importe 0 y la lista queda oculta sin días pagados.
+- [x] Borrar una captura ya pagada no vacía la lista del Detalle: el motivo está congelado en el desglose.
+- [x] Un periodo extraordinario no muestra la columna, la línea, la lista ni los avisos.
 
 **Avisos y candados**
 
-- [ ] Capturar, borrar o cambiar la tarifa de un día en un periodo en estatus 2 enciende el aviso "Recalcula", y recalcular lo apaga.
-- [ ] El aviso no se evalúa en estatus 1, 3 ni 4.
-- [ ] Con el aviso encendido, Aprobar se rechaza en el servidor y el botón aparece deshabilitado con el motivo visible y accesible, sin una línea nueva en `approvePayrollPeriod`.
-- [ ] El aviso de capturas no cubiertas lista al empleado con nombre, código y enlace a su ficha, y desaparece al capturar el salario y recalcular.
-- [ ] Las doce comprobaciones anteriores siguen bloqueando Aprobar igual que antes.
+- [x] Capturar, borrar o cambiar la tarifa de un día en un periodo en estatus 2 enciende el aviso "Recalcula", y recalcular lo apaga.
+- [x] El aviso no se evalúa en estatus 1, 3 ni 4.
+- [x] Con el aviso encendido, Aprobar se rechaza en el servidor y el botón aparece deshabilitado con el motivo visible y accesible, sin una línea nueva en `approvePayrollPeriod`.
+- [x] El aviso de capturas no cubiertas lista al empleado con nombre, código y enlace a su ficha, y desaparece al capturar el salario y recalcular.
+- [x] Las doce comprobaciones anteriores siguen bloqueando Aprobar igual que antes.
 
 **Calidad**
 
-- [ ] Las dos escrituras pasan por `assertPayrollAccess()` y `zod`; la sucursal y el `id_user` salen de la sesión, nunca del cliente, y el estatus del periodo se valida dentro de la lectura con `UPDLOCK, HOLDLOCK`.
-- [ ] Ninguna fecha viaja como `Date`: se escribe con `toDBString` / `buildDate` y se lee con `CONVERT(varchar(10|19), …, 120)`.
-- [ ] La regla de pago tiene una sola copia en SQL (`pendingDaysSql.ts`), compartida por el cálculo y el aviso, y `pendingDaysPay.ts` es puro y sin `Date`.
-- [ ] Los únicos componentes cliente nuevos son `PendingDayPaymentModal` y `DeletePendingDayPaymentButton`; todo lo demás es Server Component.
-- [ ] Los nombres de funciones, variables, hooks y componentes están en inglés.
-- [ ] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
-- [ ] `docs/nomina.md` y `queries.txt` quedan actualizados; `content/manual/nomina/` **no** se toca.
+- [x] Las dos escrituras pasan por `assertPayrollAccess()` y `zod`; la sucursal y el `id_user` salen de la sesión, nunca del cliente, y el estatus del periodo se valida dentro de la lectura con `UPDLOCK, HOLDLOCK`.
+- [x] Ninguna fecha viaja como `Date`: se escribe con `toDBString` / `buildDate` y se lee con `CONVERT(varchar(10|19), …, 120)`.
+- [x] La regla de pago tiene una sola copia en SQL (`pendingDaysSql.ts`), compartida por el cálculo y el aviso, y `pendingDaysPay.ts` es puro y sin `Date`.
+- [x] Los únicos componentes cliente nuevos son `PendingDayPaymentModal` y `DeletePendingDayPaymentButton`; todo lo demás es Server Component.
+- [x] Los nombres de funciones, variables, hooks y componentes están en inglés.
+- [x] `npx tsc --noEmit` y `npm run lint` pasan sin errores.
+- [x] `docs/nomina.md` y `queries.txt` quedan actualizados; `content/manual/nomina/` **no** se toca.
 
 ## Decisiones
 

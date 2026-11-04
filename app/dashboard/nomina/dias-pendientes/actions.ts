@@ -233,8 +233,12 @@ export async function createPendingDayPayments(input: unknown): Promise<ActionRe
         WHERE id_empleado = @id_empleado
           AND fecha BETWEEN CAST(@fecha_desde AS date) AND CAST(@fecha_hasta AS date);
 
+       DECLARE @conflicts_message nvarchar(max);
        IF @conflicts IS NOT NULL
-         THROW 50097, CONCAT('${PENDING_DAY_ALREADY_CAPTURED_MARKER}:', @conflicts), 1;
+       BEGIN
+         SET @conflicts_message = CONCAT('${PENDING_DAY_ALREADY_CAPTURED_MARKER}:', @conflicts);
+         THROW 50097, @conflicts_message, 1;
+       END
 
        ;WITH dates AS (
          SELECT CAST(@fecha_desde AS date) AS fecha
