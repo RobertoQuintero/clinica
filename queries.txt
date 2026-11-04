@@ -3255,6 +3255,123 @@ SELECT p.[id_period], p.[codigo], p.[id_sucursal],
 
 
 
+-- Spec 97: captura manual de días ya trabajados que no se pagaron.
+-- Lleva id_period: la fecha cae fuera del rango del periodo, así que el cálculo no puede
+-- encontrarla por fecha; la captura declara qué periodo la paga.
+CREATE TABLE [payroll].[pending_day_payments](
+    [id_pending_day_payment] [int] IDENTITY(1,1) NOT NULL,
+    [id_period]        [int]            NOT NULL,   -- periodo que la pagará
+    [id_empleado]      [int]            NOT NULL,
+    [fecha]            [date]           NOT NULL,   -- el día trabajado que se debe
+    [tarifa_operativa] [decimal](12,2)  NOT NULL,   -- 0 = no se paga en la operativa
+    [tarifa_fiscal]    [decimal](12,2)  NOT NULL,   -- 0 = no se paga en la fiscal
+    [motivo]           [nvarchar](200)  NOT NULL,
+    [created_by]       [int]            NOT NULL,
+    [created_at]       [datetime2](0)   NOT NULL,   -- buildDate(new Date())
+ CONSTRAINT [PK_pending_day_payments] PRIMARY KEY CLUSTERED ([id_pending_day_payment] ASC),
+ -- Un día se debe una sola vez en toda la historia, sea cual sea el periodo que lo pague.
+ CONSTRAINT [UQ_pending_day_payments_empleado_fecha] UNIQUE ([id_empleado], [fecha]),
+ CONSTRAINT [FK_pending_day_payments_period] FOREIGN KEY ([id_period])
+     REFERENCES [payroll].[periods] ([id_period]) ON DELETE CASCADE,
+ CONSTRAINT [FK_pending_day_payments_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_pending_day_payments_tarifas] CHECK (
+     [tarifa_operativa] >= 0 AND [tarifa_fiscal] >= 0
+     AND ([tarifa_operativa] > 0 OR [tarifa_fiscal] > 0)),
+ CONSTRAINT [CK_pending_day_payments_motivo] CHECK (LEN(LTRIM(RTRIM([motivo]))) >= 5)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_pending_day_payments_period]
+    ON [payroll].[pending_day_payments] ([id_period], [id_empleado], [fecha])
+GO
+
+-- Spec 97: dos columnas de snapshot, por tipo de nómina.
+ALTER TABLE [payroll].[period_employees] ADD
+    [dias_pendientes]          [smallint]      NOT NULL CONSTRAINT [DF_period_employees_dias_pend]    DEFAULT (0),
+    [importe_dias_pendientes]  [decimal](12,2) NOT NULL CONSTRAINT [DF_period_employees_imp_dias_pend] DEFAULT (0)
+GO
+ALTER TABLE [payroll].[period_employees] WITH CHECK
+    ADD CONSTRAINT [CK_period_employees_dias_pendientes] CHECK (
+        [dias_pendientes] >= 0 AND [importe_dias_pendientes] >= 0
+        AND ([dias_pendientes] > 0 OR [importe_dias_pendientes] = 0))
+GO
+
+-- Spec 97: desglose de los días pendientes pagados, por renglón de nómina.
+-- UNIQUE(id_empleado, fecha, tipo_nomina) impide el doble pago en toda la historia (spec 75).
+-- Sin FK a pending_day_payments: borrar una captura no debe chocar con un día ya pagado.
+CREATE TABLE [payroll].[period_employee_pending_days](
+    [id_period_employee_pending_day] [int] IDENTITY(1,1) NOT NULL,
+    [id_period_employee] [int]           NOT NULL,
+    [id_empleado]        [int]           NOT NULL,   -- redundante, necesario para el UNIQUE
+    [fecha]              [date]          NOT NULL,
+    [tipo_nomina]        [char](1)       NOT NULL,   -- 'O' | 'F', copiado del renglón
+    [tarifa_diaria]      [decimal](12,2) NOT NULL,   -- congelada de la captura al calcular
+    [importe]            [decimal](12,2) NOT NULL,   -- ROUND(tarifa_diaria, 2)
+    [motivo]             [nvarchar](200) NOT NULL,   -- congelado: la captura se puede borrar
+ CONSTRAINT [PK_period_employee_pending_days] PRIMARY KEY CLUSTERED ([id_period_employee_pending_day] ASC),
+ CONSTRAINT [UQ_period_employee_pending_days_empleado_fecha_tipo]
+     UNIQUE ([id_empleado], [fecha], [tipo_nomina]),
+ CONSTRAINT [FK_period_employee_pending_days_period_employee] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_pending_days_tipo] CHECK ([tipo_nomina] IN ('O','F')),
+ CONSTRAINT [CK_period_employee_pending_days_valores] CHECK (
+     [tarifa_diaria] > 0 AND [importe] > 0)
+) ON [PRIMARY]
+GO
+
+CREATE NONCLUSTERED INDEX [IX_period_employee_pending_days_period_employee]
+    ON [payroll].[period_employee_pending_days] ([id_period_employee])
+GO
+
+-- Spec 97: percepción 15 "Días pendientes de pago" (001, 'N', 100% gravada). Idempotente.
+-- Solo datos: copia is_billed y status de la 1. @id_gravado = id de "Gravado" en cat_taxed_exempt.
+SET XACT_ABORT ON;
+BEGIN TRAN;
+
+DECLARE @id_gravado smallint = 1;
+
+-- La 1 tiene que ser el sueldo; si no, nada de esto aplica.
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions]
+                WHERE [id_perception] = 1 AND [clave_sat] = '001' AND [tipo_limite_exencion] = 'N')
+    THROW 50097, 'La percepción 1 no es el sueldo (001, N). Revisa el catálogo antes de seguir.', 1;
+
+-- El 15 está libre o ya es la de días pendientes de pago (segunda corrida); nunca se pisa otra fila.
+IF EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions]
+            WHERE [id_perception] = 15
+              AND NOT ([clave_sat] = '001' AND [description] = 'Días pendientes de pago'))
+    THROW 50097, 'id_perception 15 ya está ocupado por otra percepción. Decide el id a mano.', 1;
+
+IF NOT EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[perceptions] WHERE [id_perception] = 15)
+    INSERT INTO [CentroPodologico].[payroll].[perceptions]
+           ([id_perception], [clave_sat], [description], [id_taxed_exempt], [exempt_limit],
+            [is_billed], [status],
+            [tipo_limite_exencion], [umas_limite], [porcentaje_exento], [periodicidad_limite])
+    SELECT 15, '001', 'Días pendientes de pago', @id_gravado, NULL,
+           salary.[is_billed], salary.[status],
+           'N', NULL, NULL, NULL
+      FROM [CentroPodologico].[payroll].[perceptions] salary
+     WHERE salary.[id_perception] = 1;
+
+COMMIT;
+GO
+
+-- Spec 97: diagnóstico a mano -- capturas sin fila en period_employee_pending_days de
+-- periodos en estatus 3 (Aprobada) o 4 (Pagada): días capturados que nunca se pagaron.
+SELECT pd.[id_pending_day_payment], pd.[id_period], p.[codigo], p.[status],
+       pd.[id_empleado], e.[codigo_empleado], pd.[fecha], pd.[tarifa_operativa], pd.[tarifa_fiscal]
+  FROM [CentroPodologico].[payroll].[pending_day_payments] pd
+  JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pd.[id_period]
+  JOIN [CentroPodologico].[RH].[empleados] e ON e.[id_empleado] = pd.[id_empleado]
+ WHERE p.[status] IN (3, 4)
+   AND NOT EXISTS (
+         SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_pending_days] d
+          WHERE d.[id_empleado] = pd.[id_empleado] AND d.[fecha] = pd.[fecha]
+       )
+ ORDER BY p.[codigo], e.[apellido_paterno], e.[apellido_materno], e.[nombre], pd.[fecha];
+
+
+
 ------------ OTROS PAGOS -----------------------
 
 CREATE TABLE [payroll].[other_payments](

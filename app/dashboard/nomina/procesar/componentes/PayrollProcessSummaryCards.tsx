@@ -116,7 +116,8 @@ export default function PayrollProcessSummaryCards({
           {formatPayrollCurrency(totals.importeVacaciones)} + bono puntualidad{" "}
           {formatPayrollCurrency(totals.importeBonoPuntualidad)} + bono asistencia{" "}
           {formatPayrollCurrency(totals.importeBonoAsistencia)} + bono extensión{" "}
-          {formatPayrollCurrency(totals.importeBonoExtension)}
+          {formatPayrollCurrency(totals.importeBonoExtension)} + días pendientes{" "}
+          {formatPayrollCurrency(totals.importeDiasPendientes)}
         </span>
         )}
         <span className="text-xs text-[#44474f] dark:text-zinc-400">

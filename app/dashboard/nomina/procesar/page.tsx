@@ -18,6 +18,7 @@ import PayrollRecalculationNotice from "../componentes/PayrollRecalculationNotic
 import ChristmasBonusEmployeesTable from "./componentes/ChristmasBonusEmployeesTable";
 import ExcludedEmployeesNotice from "./componentes/ExcludedEmployeesNotice";
 import MissingEmployeesNotice from "./componentes/MissingEmployeesNotice";
+import PendingDaysNotCoveredNotice from "../componentes/PendingDaysNotCoveredNotice";
 import PtuPaymentEmployeesTable from "./componentes/PtuPaymentEmployeesTable";
 import ImssNotCalculatedNotice from "./componentes/ImssNotCalculatedNotice";
 import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
@@ -155,6 +156,7 @@ export default async function ProcesarNominaPage({
             payrollType={payrollType}
           />
           <MissingEmployeesNotice missingEmployees={result.data.missingEmployees} />
+          <PendingDaysNotCoveredNotice notCovered={result.data.pendingDaysNotCovered} />
           {payrollType === "F" && (
             <IsrNotCalculatedNotice
               isrNotCalculated={result.data.isrNotCalculated}
@@ -215,6 +217,10 @@ export default async function ProcesarNominaPage({
                 ? "Hay cálculos de ISR del art. 174 de la PTU que no coinciden con la tarifa mensual actual. Recalcula la nómina."
                 : "Hay aguinaldos cuyo salario, fecha de ingreso o ISR del art. 174 no coinciden con el último cálculo. Recalcula la nómina."
             }
+          />
+          <PayrollRecalculationNotice
+            recalculationNeeded={result.data.pendingDaysRecalculationNeeded}
+            message="Hay días pendientes de pago que no coinciden con el último cálculo. Recalcula la nómina."
           />
           {result.data.period.status === 1 ? (
             <PayrollEmptyState

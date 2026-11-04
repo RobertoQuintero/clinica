@@ -4,6 +4,7 @@ import { IPayrollSoldProduct } from "@/interfaces/payroll_product_sales_commissi
 import { IPayrollOvertimeDay } from "@/interfaces/payroll_overtime";
 import { IPayrollDiscountedAbsence } from "@/interfaces/payroll_absence";
 import { IPayrollDiscountedLateness } from "@/interfaces/payroll_lateness";
+import type { IPayrollPendingDayRow } from "@/interfaces/payroll_pending_days";
 import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces/payroll_christmas_bonus";
 import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
@@ -54,6 +55,8 @@ export interface IPayrollEmployeeRow extends IImssRowSummary {   // imss_estado,
   importe_aguinaldo:  number;
   importe_ptu:        number;         // spec 90; 0 salvo en un periodo extraordinario de PTU
   ptu:                IPtuPaymentBreakdown | null;   // spec 90: desglose congelado de la PTU; null fuera de un periodo PTU
+  dias_pendientes:    number;         // spec 97; días ya trabajados capturados y pagados en este periodo
+  importe_dias_pendientes: number;
   importe_gravado:    number | null;  // spec 87: gravado del aguinaldo; null en operativa o con el exento sin calcular
   importe_exento:     number | null;
   total_percepciones: number;  // importe_salario + las tres comisiones + importe_horas_extra + importe_bono_puntualidad + importe_bono_asistencia + importe_bono_extension + importe_aguinaldo, calculado en el SELECT
@@ -97,7 +100,7 @@ export interface IPayrollProcessPage {
   period:            IPayrollPeriodRow | null;
   periodOptions:     Pick<IPayrollPeriodRow, "id_period" | "codigo" | "fecha_inicio" | "fecha_fin" | "status">[];
   rows:              IPayrollEmployeeRow[];                           // ya filtradas por puesto y búsqueda
-  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; importeAguinaldo: number; importePtu: number; importeGravado: number; importeExento: number; totalPercepciones: number; importeIsr: number; importeImss: number; totalNeto: number };   // de todo el tipo, sin filtros
+  totals:            { employees: number; importeSalario: number; importeComision: number; importeComisionTratamientos: number; importeComisionProductos: number; importeHorasExtra: number; importeBonoPuntualidad: number; importeBonoAsistencia: number; importeBonoExtension: number; importeVacaciones: number; importeAguinaldo: number; importePtu: number; importeDiasPendientes: number; importeGravado: number; importeExento: number; totalPercepciones: number; importeIsr: number; importeImss: number; totalNeto: number };   // de todo el tipo, sin filtros
   isrNotCalculated:  { reason: IsrSkipReason | Article174SkipReason; employees: number }[];   // renglones 'N' por motivo (spec 70, o ISR art. 174 en un periodo extraordinario), de todo el tipo, sin filtros
   imssNotCalculated: IImssNotCalculatedGroup[];   // renglones 'N' por motivo (spec 91), de todo el tipo, sin filtros
   puestoOptions:     { id_puesto: number; name: string }[];
@@ -114,10 +117,12 @@ export interface IPayrollProcessPage {
   exemptionRecalculationNeeded: boolean;   // ídem, para el gravado/exento de las percepciones fiscales (spec 73)
   vacationPayRecalculationNeeded: boolean;   // ídem, para la prima vacacional y las vacaciones pagadas (spec 78)
   extraordinaryRecalculationNeeded: boolean;   // ídem, para el aguinaldo o la PTU de un periodo extraordinario (specs 87 y 90)
+  pendingDaysRecalculationNeeded: boolean;   // ídem, para los días pendientes de pago (spec 97)
   // Spec 96: empleados elegibles hoy sin fila en el cálculo guardado. A diferencia de `excludedEmployees`,
   // trae siempre los dos tipos de nómina: el candado que alimenta es del periodo completo.
   missingEmployees: IPayrollMissingEmployee[];
-  recalculationNeeded: boolean;   // spec 94: el `or` de las doce banderas anteriores (spec 96 añadió la doceava)
+  pendingDaysNotCovered: IPayrollMissingEmployee[];   // spec 97; informativo, no bloquea nada
+  recalculationNeeded: boolean;   // spec 94: el `or` de las trece banderas anteriores (spec 97 añadió la treceava)
   statusStamp: IPayrollPeriodStatusStamp | null;   // spec 94: solo se consulta en estatus 3 y 4
 }
 
@@ -184,6 +189,8 @@ export interface IPayrollEmployeeSnapshot extends IIsrBreakdown, IImssRowSummary
   importe_aguinaldo:             number;
   importe_ptu:                   number;            // spec 90; 0 salvo en un periodo extraordinario de PTU
   ptu:                           IPtuPaymentBreakdown | null;   // spec 90: desglose congelado; null fuera de un periodo PTU
+  dias_pendientes:               number;            // spec 97; días ya trabajados capturados y pagados en este periodo
+  importe_dias_pendientes:       number;
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 
@@ -214,6 +221,7 @@ export interface IPayrollEmployeeDetail {
   overtimeDays:     IPayrollOvertimeDay[];      // [] en fiscal o sin días pagados
   discountedAbsences: IPayrollDiscountedAbsence[];  // [] si no hay faltas descontadas
   discountedLateness: IPayrollDiscountedLateness[]; // [] si no hay retardos descontados
+  pendingDays:        IPayrollPendingDayRow[];      // [] sin días pendientes pagados en este renglón
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;

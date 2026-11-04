@@ -11,6 +11,7 @@ import { describeTreatmentCommission } from "@/lib/payroll/treatmentCommission";
 import type { ExtraordinaryConcept } from "@/interfaces/payroll_period";
 import { describeChristmasBonus } from "@/lib/payroll/christmasBonus";
 import { describePtuPayment } from "@/lib/payroll/ptuPayment";
+import { describePendingDays } from "@/lib/payroll/pendingDaysPay";
 import { VACATION_PREMIUM_PERCENT } from "@/lib/payroll/constants";
 
 /** Qué se paga en el periodo: "O" ordinario, "A" aguinaldo o "P" PTU (concepto de un periodo extraordinario). */
@@ -121,6 +122,8 @@ export function buildPerceptionLines(
     | "importe_aguinaldo"
     | "importe_ptu"
     | "ptu"
+    | "dias_pendientes"
+    | "importe_dias_pendientes"
   >,
   fechaIngreso: string,
   fechaInicio: string,
@@ -267,6 +270,21 @@ export function buildPerceptionLines(
       description: shiftExtensionBonus.description,
       note: null,
       amount: shiftExtensionBonus.amount,
+    });
+  }
+
+  // Spec 97: el importe es siempre el congelado; la tarifa mostrada es el promedio diario de las capturas
+  // pagadas (pueden tener tarifas distintas entre sí). El desglose por día vive en PayrollPendingDaysList.
+  if (snapshot.importe_dias_pendientes > 0) {
+    lines.push({
+      key: "dias_pendientes",
+      label: "Días pendientes de pago",
+      description: describePendingDays(
+        snapshot.dias_pendientes,
+        snapshot.importe_dias_pendientes / snapshot.dias_pendientes,
+      ),
+      note: null,
+      amount: snapshot.importe_dias_pendientes,
     });
   }
 
