@@ -3370,6 +3370,43 @@ SELECT pd.[id_pending_day_payment], pd.[id_period], p.[codigo], p.[status],
        )
  ORDER BY p.[codigo], e.[apellido_paterno], e.[apellido_materno], e.[nombre], pd.[fecha];
 
+-- Spec 98: recibo de CFDI de nómina. Una fila "vigente" por fila fiscal y por modo (Test/Live);
+-- un reintento sobrescribe, nunca se acumulan intentos. El estado 'P' reserva antes de llamar a
+-- Facturapi (sin idempotencia propia) para que dos clics no generen dos CFDI.
+CREATE TABLE [payroll].[period_employee_cfdi](
+    [id_period_employee_cfdi] [int]           IDENTITY(1,1) NOT NULL,
+    [id_period_employee]      [int]           NOT NULL,   -- FK -> period_employees, solo filas 'F' (validado en la action)
+    [livemode]                [bit]           NOT NULL,   -- modo de la organización al timbrar
+    [estado]                  [char](1)       NOT NULL,   -- 'P' en proceso, 'T' timbrado, 'E' error
+    [org_uid]                 [nvarchar](255) NOT NULL,   -- emisor con el que se timbró; las descargas usan este
+    [facturapi_id]            [nvarchar](50)  NULL,
+    [uuid]                    [char](36)      NULL,
+    [serie]                   [nvarchar](25)  NULL,       -- siempre 'NOM'
+    [folio]                   [int]           NULL,
+    [total]                   [decimal](12,2) NULL,
+    [fecha_timbrado]          [datetime2](0)  NULL,       -- hora local CDMX, escrita como string con toDBString
+    [mensaje_error]           [nvarchar](1000) NULL,
+    [stamped_by]              [int]           NOT NULL,   -- usuario del último intento
+    [created_at]              [datetime2](0)  NOT NULL,   -- buildDate(new Date())
+    [updated_at]              [datetime2](0)  NOT NULL,
+ CONSTRAINT [PK_period_employee_cfdi] PRIMARY KEY CLUSTERED ([id_period_employee_cfdi] ASC),
+ CONSTRAINT [UQ_period_employee_cfdi] UNIQUE ([id_period_employee], [livemode]),
+ CONSTRAINT [FK_period_employee_cfdi_period_employee] FOREIGN KEY ([id_period_employee])
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_cfdi_estado] CHECK ([estado] IN ('P','T','E')),
+ CONSTRAINT [CK_period_employee_cfdi_coherencia] CHECK (
+     ([estado] = 'T' AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
+         AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL)
+     OR ([estado] = 'E' AND [mensaje_error] IS NOT NULL AND [uuid] IS NULL)
+     OR ([estado] = 'P' AND [uuid] IS NULL AND [mensaje_error] IS NULL))
+) ON [PRIMARY]
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_period_employee_cfdi_uuid]
+    ON [payroll].[period_employee_cfdi] ([uuid])
+    WHERE [uuid] IS NOT NULL
+GO
+
 
 
 ------------ OTROS PAGOS -----------------------
