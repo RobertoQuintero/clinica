@@ -262,9 +262,10 @@ each one:
 | `org.update_customization` | `updateOrganizationCustomization`; also `setDefaultProductAction` (spec 34) | `[id]/customize/actions.ts` |
 | `org.update_payroll_issuer` | `updatePayrollIssuerData` (spec 72) | `app/dashboard/facturacion/actions.ts` |
 | `org.set_payroll_issuer` | `setPayrollIssuer` (spec 72, `detail` = `{ active, deactivated_uid }`) | `app/dashboard/facturacion/actions.ts` |
+| `payroll_receipt.stamp` | `stampPayrollReceipt` (spec 98, `completePayrollReceipt`; `detail` = `{ id_period, id_empleado, facturapi_id, folio }`) | `app/dashboard/nomina/procesar/actions.ts` (via `lib/payroll/cfdi/payrollCfdiRepository.ts`) |
 
 `detail` must never contain key material or the CSD password. The catalog is complete as
-of spec 72 (the two `org.*_payroll_issuer` actions were added there) — a future spec that adds a new mutation should extend
+of spec 98 (`payroll_receipt.stamp` was added there) — a future spec that adds a new mutation should extend
 `BillingAuditAction` (`lib/billing/organizationsRepository.ts`) and this table together.
 
 ## `getOrgClient` contract
