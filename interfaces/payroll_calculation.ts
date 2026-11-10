@@ -124,6 +124,8 @@ export interface IPayrollProcessPage {
   pendingDaysNotCovered: IPayrollMissingEmployee[];   // spec 97; informativo, no bloquea nada
   recalculationNeeded: boolean;   // spec 94: el `or` de las trece banderas anteriores (spec 97 añadió la treceava)
   statusStamp: IPayrollPeriodStatusStamp | null;   // spec 94: solo se consulta en estatus 3 y 4
+  // Spec 98: candado de Reabrir. Solo se consulta en estatus 4; `false` en cualquier otro.
+  hasStampedLiveReceipts: boolean;
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".

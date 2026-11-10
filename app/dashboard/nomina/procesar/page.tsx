@@ -96,6 +96,7 @@ export default async function ProcesarNominaPage({
             hasMissingEmployees={result.data.missingEmployees.length > 0}
             warnings={approvalWarnings}
             fechaPago={result.data.period.fecha_pago}
+            hasStampedLiveReceipts={result.data.hasStampedLiveReceipts}
           />
         )}
       </div>

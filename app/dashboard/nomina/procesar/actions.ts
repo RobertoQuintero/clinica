@@ -122,6 +122,7 @@ import {
   completePayrollReceipt,
   failPayrollReceipt,
   hasActiveCertificate,
+  hasLiveStampedReceipts,
   loadPayrollCfdiReceipt,
   loadPayrollStampingQueue,
   loadPayrollStampingSource,
@@ -353,6 +354,7 @@ export async function getPayrollProcessPage(
       pendingDaysNotCovered: [],
       recalculationNeeded: false,
       statusStamp: null,
+      hasStampedLiveReceipts: false,
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -383,6 +385,7 @@ export async function getPayrollProcessPage(
       recalculationFlags,
       pendingDaysNotCovered,
       statusStamp,
+      hasStampedLiveReceipts,
     ] = await Promise.all([
       Promise.all([
       db.queryParams(
@@ -554,6 +557,8 @@ export async function getPayrollProcessPage(
       loadPendingDaysNotCovered(period.id_period),
       // Spec 94: el sello solo existe desde Aprobada en adelante.
       period.status === 3 || period.status === 4 ? loadPeriodStatusStamp(period.id_period) : Promise.resolve(null),
+      // Spec 98: el candado de Reabrir solo importa en estatus 4.
+      period.status === 4 ? hasLiveStampedReceipts(period.id_period) : Promise.resolve(false),
     ]);
     const {
       overtimeRecalculationNeeded,
@@ -686,6 +691,7 @@ export async function getPayrollProcessPage(
         pendingDaysNotCovered,
         recalculationNeeded,
         statusStamp,
+        hasStampedLiveReceipts,
       },
     };
   } catch (error) {
@@ -1204,6 +1210,8 @@ const PERIOD_NOT_PAYABLE_MARKER = "PERIOD_NOT_PAYABLE";
 const PERIOD_NOT_UNAPPROVABLE_MARKER = "PERIOD_NOT_UNAPPROVABLE";
 // Spec 96: reabrir un periodo pagado.
 const PERIOD_NOT_REOPENABLE_MARKER = "PERIOD_NOT_REOPENABLE";
+// Spec 98: candado de Reabrir cuando el periodo tiene recibos Live timbrados.
+const PERIOD_HAS_STAMPED_RECEIPTS_MARKER = "PERIOD_HAS_STAMPED_RECEIPTS";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
 const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha_tipo";
@@ -1232,6 +1240,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(PERIOD_NOT_REOPENABLE_MARKER)) {
     return "El periodo no existe en esta sucursal o ya no está en estatus Pagada";
+  }
+  if (sqlError.message?.includes(PERIOD_HAS_STAMPED_RECEIPTS_MARKER)) {
+    return "El periodo tiene recibos timbrados; cancélalos antes de reabrir";
   }
   if (sqlError.message?.includes(TREATMENT_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó alguno de estos tratamientos al mismo tiempo. Intenta de nuevo.";
@@ -2241,6 +2252,15 @@ export async function reopenPayrollPeriod(input: unknown): Promise<ActionResult<
           WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = ${from}
        )
          THROW 50005, '${PERIOD_NOT_REOPENABLE_MARKER}', 1;
+
+       -- Spec 98: un recibo Live vigente ampara un pago ante el SAT; Test no cuenta (se borra por cascada abajo).
+       IF EXISTS (
+         SELECT 1
+           FROM [CentroPodologico].[payroll].[period_employee_cfdi] cfdi
+           JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = cfdi.id_period_employee
+          WHERE pe.id_period = @id_period AND cfdi.estado = 'T' AND cfdi.livemode = 1
+       )
+         THROW 50006, '${PERIOD_HAS_STAMPED_RECEIPTS_MARKER}', 1;
 
        UPDATE [CentroPodologico].[payroll].[periods]
           SET status = ${to}, approved_by = NULL, approved_at = NULL,

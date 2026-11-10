@@ -28,3 +28,7 @@ export const PERIOD_NEEDS_RECALCULATION_MESSAGE =
 /** Mensaje del candado nuevo al pagar, compartido por la acción y por el botón deshabilitado. */
 export const PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE =
   "Hay empleados elegibles fuera del cálculo: desaprueba el periodo, recalcula y vuelve a aprobarlo antes de pagarlo";
+
+/** Spec 98: candado de Reabrir, compartido por la acción y por el botón deshabilitado. */
+export const PERIOD_HAS_STAMPED_RECEIPTS_MESSAGE =
+  "El periodo tiene recibos timbrados; cancélalos antes de reabrir";
