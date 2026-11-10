@@ -37,3 +37,11 @@ export interface PayrollCfdiRowState {
   reasons?: PayrollStampingBlockReason[];
   receipt?: IPayrollCfdiReceipt;
 }
+
+/** El emisor que timbraría hoy, para la confirmación de "Timbrar pendientes" y el aviso de la tabla. */
+export interface PayrollIssuerSummary {
+  active:         boolean;
+  hasCertificate: boolean;
+  name:           string | null;
+  isLive:         boolean;
+}

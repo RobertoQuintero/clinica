@@ -75,6 +75,7 @@ import {
   OVERTIME_DOUBLE_PERCEPTION_ID,
   OVERTIME_TRIPLE_PERCEPTION_ID,
   PAID_VACATION_PERCEPTION_ID,
+  PAYROLL_RECEIPT_STALE_RETRY_MARKER,
   PENDING_DAYS_PERCEPTION_ID,
   PERCEPTION_LINE_KEY_BY_ID,
   SALARY_PERCEPTION_ID,
@@ -124,6 +125,7 @@ import {
   hasActiveCertificate,
   hasLiveStampedReceipts,
   loadPayrollCfdiReceipt,
+  loadPeriodPayrollCfdiOverview,
   loadPayrollStampingQueue,
   loadPayrollStampingSource,
   reservePayrollReceipt,
@@ -355,6 +357,8 @@ export async function getPayrollProcessPage(
       recalculationNeeded: false,
       statusStamp: null,
       hasStampedLiveReceipts: false,
+      cfdiStates: new Map(),
+      payrollIssuer: { active: false, hasCertificate: false, name: null, isLive: false },
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -386,6 +390,7 @@ export async function getPayrollProcessPage(
       pendingDaysNotCovered,
       statusStamp,
       hasStampedLiveReceipts,
+      cfdiOverview,
     ] = await Promise.all([
       Promise.all([
       db.queryParams(
@@ -559,6 +564,10 @@ export async function getPayrollProcessPage(
       period.status === 3 || period.status === 4 ? loadPeriodStatusStamp(period.id_period) : Promise.resolve(null),
       // Spec 98: el candado de Reabrir solo importa en estatus 4.
       period.status === 4 ? hasLiveStampedReceipts(period.id_period) : Promise.resolve(false),
+      // Spec 98: la columna "CFDI" solo existe en la nómina fiscal.
+      filters.payrollType === "F"
+        ? loadPeriodPayrollCfdiOverview(period.id_period, id_sucursal)
+        : Promise.resolve({ states: new Map<number, PayrollCfdiRowState>(), issuer: emptyPage.payrollIssuer }),
     ]);
     const {
       overtimeRecalculationNeeded,
@@ -692,6 +701,8 @@ export async function getPayrollProcessPage(
         recalculationNeeded,
         statusStamp,
         hasStampedLiveReceipts,
+        cfdiStates: cfdiOverview.states,
+        payrollIssuer: cfdiOverview.issuer,
       },
     };
   } catch (error) {
@@ -2303,9 +2314,6 @@ export async function getPayrollPeriodStatusLog(idPeriod: number): Promise<Actio
     return { ok: false, message: "No se pudo cargar el historial de estatus" };
   }
 }
-
-/** Marcador devuelto cuando hay una `'P'` atascada (> 10 min): la UI debe confirmar antes de reintentar. */
-export const PAYROLL_RECEIPT_STALE_RETRY_MARKER = "PAYROLL_RECEIPT_STALE_RETRY";
 
 /**
  * Timbra el CFDI de nómina (tipo `N`, complemento `nomina`) de la fila fiscal de un empleado en un

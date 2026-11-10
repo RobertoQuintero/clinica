@@ -18,7 +18,12 @@ import type {
   PayrollCfdiPerceptionLine,
   PayrollCfdiSource,
 } from "@/lib/payroll/cfdi/payrollCfdiPayload";
-import type { IPayrollCfdiReceipt, PayrollCfdiRowState, PayrollCfdiStatus } from "@/interfaces/payroll_cfdi";
+import type {
+  IPayrollCfdiReceipt,
+  PayrollCfdiRowState,
+  PayrollCfdiStatus,
+  PayrollIssuerSummary,
+} from "@/interfaces/payroll_cfdi";
 import type { PayrollPeriodStatus, PayrollPeriodType } from "@/interfaces/payroll_period";
 
 const SCHEMA_TABLE_CFDI = "[CentroPodologico].[payroll].[period_employee_cfdi]";
@@ -475,6 +480,13 @@ interface PayrollCfdiStateRow {
   state:            PayrollCfdiRowState;
 }
 
+const NO_PAYROLL_ISSUER_SUMMARY: PayrollIssuerSummary = { active: false, hasCertificate: false, name: null, isLive: false };
+
+interface PayrollCfdiStateRowsResult {
+  rows:   PayrollCfdiStateRow[];
+  issuer: PayrollIssuerSummary;
+}
+
 /**
  * Estado "CFDI" de cada fila fiscal del periodo, en el orden de la tabla de Procesar: bloqueos
  * vía `getPayrollStampingBlockReasons` + el recibo del modo vigente de la organización emisora.
@@ -483,7 +495,7 @@ interface PayrollCfdiStateRow {
 async function loadPeriodPayrollCfdiStateRows(
   idPeriod: number,
   idSucursal: number
-): Promise<PayrollCfdiStateRow[]> {
+): Promise<PayrollCfdiStateRowsResult> {
   const periodRows = await db.queryParams(
     `SELECT [tipo_periodo], [status], [id_empresa]
        FROM [CentroPodologico].[payroll].[periods] p
@@ -492,7 +504,7 @@ async function loadPeriodPayrollCfdiStateRows(
     { id_period: idPeriod, id_sucursal: idSucursal }
   );
   const periodRow = periodRows[0];
-  if (!periodRow) return [];
+  if (!periodRow) return { rows: [], issuer: NO_PAYROLL_ISSUER_SUMMARY };
 
   const periodType = periodRow.tipo_periodo as PayrollPeriodType;
   const periodStatus = Number(periodRow.status) as PayrollPeriodStatus;
@@ -522,9 +534,12 @@ async function loadPeriodPayrollCfdiStateRows(
     getPayrollIssuerUid(db, idEmpresa),
   ]);
 
-  const issuer = payrollIssuerUid ? await getOrganizationByUid(db, payrollIssuerUid, idEmpresa) : null;
-  const hasCertificate = issuer ? await hasActiveCertificate(issuer.uid) : false;
-  const currentLivemode = Boolean(issuer?.is_live);
+  const issuerRecord = payrollIssuerUid ? await getOrganizationByUid(db, payrollIssuerUid, idEmpresa) : null;
+  const hasCertificate = issuerRecord ? await hasActiveCertificate(issuerRecord.uid) : false;
+  const currentLivemode = Boolean(issuerRecord?.is_live);
+  const issuerSummary: PayrollIssuerSummary = issuerRecord
+    ? { active: true, hasCertificate, name: issuerRecord.name ?? issuerRecord.legal_name, isLive: issuerRecord.is_live }
+    : NO_PAYROLL_ISSUER_SUMMARY;
 
   const stateRows: PayrollCfdiStateRow[] = [];
   for (const row of rows) {
@@ -551,7 +566,7 @@ async function loadPeriodPayrollCfdiStateRows(
       isrEstado: row.isr_estado as string | null,
       imssEstado: row.imss_estado as string | null,
       hasUncalculatedExemption: Boolean(row.has_uncalculated_exemption),
-      payrollIssuer: payrollIssuerUid ? { active: true, hasCertificate } : { active: false, hasCertificate: false },
+      payrollIssuer: issuerSummary,
     });
 
     const receipts = receiptsByRow.get(idPeriodEmployee) ?? [];
@@ -566,16 +581,22 @@ async function loadPeriodPayrollCfdiStateRows(
 
     stateRows.push({ idPeriodEmployee, idEmpleado: Number(row.id_empleado), state });
   }
-  return stateRows;
+  return { rows: stateRows, issuer: issuerSummary };
 }
 
-/** Estado "CFDI" de cada fila fiscal del periodo, para la columna de Procesar. */
-export async function loadPeriodPayrollCfdiStates(
-  idPeriod: number,
-  idSucursal: number
-): Promise<Map<number, PayrollCfdiRowState>> {
-  const rows = await loadPeriodPayrollCfdiStateRows(idPeriod, idSucursal);
-  return new Map(rows.map((row) => [row.idPeriodEmployee, row.state]));
+export interface PayrollCfdiOverview {
+  states: Map<number, PayrollCfdiRowState>;
+  issuer: PayrollIssuerSummary;
+}
+
+/**
+ * Estado "CFDI" de cada fila fiscal del periodo (para la columna de Procesar) y el emisor que
+ * timbraría hoy (para el aviso de la tabla y la confirmación de "Timbrar pendientes"). Una sola
+ * llamada a Facturapi para todo el periodo.
+ */
+export async function loadPeriodPayrollCfdiOverview(idPeriod: number, idSucursal: number): Promise<PayrollCfdiOverview> {
+  const { rows, issuer } = await loadPeriodPayrollCfdiStateRows(idPeriod, idSucursal);
+  return { states: new Map(rows.map((row) => [row.idPeriodEmployee, row.state])), issuer };
 }
 
 /**
@@ -583,7 +604,7 @@ export async function loadPeriodPayrollCfdiStates(
  * en el orden de la tabla de Procesar: lo que recorre "Timbrar pendientes".
  */
 export async function loadPayrollStampingQueue(idPeriod: number, idSucursal: number): Promise<number[]> {
-  const rows = await loadPeriodPayrollCfdiStateRows(idPeriod, idSucursal);
+  const { rows } = await loadPeriodPayrollCfdiStateRows(idPeriod, idSucursal);
   return rows
     .filter((row) => row.state.status === "pendiente" || row.state.status === "error")
     .map((row) => row.idEmpleado);

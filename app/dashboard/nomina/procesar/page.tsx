@@ -23,6 +23,8 @@ import PtuPaymentEmployeesTable from "./componentes/PtuPaymentEmployeesTable";
 import ImssNotCalculatedNotice from "./componentes/ImssNotCalculatedNotice";
 import IsrNotCalculatedNotice from "./componentes/IsrNotCalculatedNotice";
 import PayrollCalculationActions from "./componentes/PayrollCalculationActions";
+import PayrollStampPendingButton from "./componentes/PayrollStampPendingButton";
+import PayrollCfdiIssuerNotice from "./componentes/PayrollCfdiIssuerNotice";
 import PayrollPeriodStatusStamp from "./componentes/PayrollPeriodStatusStamp";
 import PayrollPeriodStatusLog from "./componentes/PayrollPeriodStatusLog";
 import PayrollEmployeesTable from "./componentes/PayrollEmployeesTable";
@@ -88,16 +90,26 @@ export default async function ProcesarNominaPage({
         </div>
         {/* En estatus 1 el botón "Calcular nómina" vive en el estado vacío. */}
         {result.ok && result.data.period && result.data.period.status !== 1 && (
-          <PayrollCalculationActions
-            idPeriod={result.data.period.id_period}
-            periodCode={result.data.period.codigo}
-            status={result.data.period.status}
-            recalculationNeeded={result.data.recalculationNeeded}
-            hasMissingEmployees={result.data.missingEmployees.length > 0}
-            warnings={approvalWarnings}
-            fechaPago={result.data.period.fecha_pago}
-            hasStampedLiveReceipts={result.data.hasStampedLiveReceipts}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <PayrollCalculationActions
+              idPeriod={result.data.period.id_period}
+              periodCode={result.data.period.codigo}
+              status={result.data.period.status}
+              recalculationNeeded={result.data.recalculationNeeded}
+              hasMissingEmployees={result.data.missingEmployees.length > 0}
+              warnings={approvalWarnings}
+              fechaPago={result.data.period.fecha_pago}
+              hasStampedLiveReceipts={result.data.hasStampedLiveReceipts}
+            />
+            {/* Spec 98: solo timbra un periodo ordinario ya pagado, en su vista fiscal. */}
+            {result.data.period.status === 4 && !isExtraordinary && payrollType === "F" && (
+              <PayrollStampPendingButton
+                idPeriod={result.data.period.id_period}
+                periodCode={result.data.period.codigo}
+                payrollIssuer={result.data.payrollIssuer}
+              />
+            )}
+          </div>
         )}
       </div>
 
@@ -170,6 +182,9 @@ export default async function ProcesarNominaPage({
               imssNotCalculated={result.data.imssNotCalculated}
               fiscalYear={Number(result.data.period.fecha_fin.slice(0, 4))}
             />
+          )}
+          {payrollType === "F" && !isExtraordinary && (
+            <PayrollCfdiIssuerNotice payrollIssuer={result.data.payrollIssuer} />
           )}
           <PayrollRecalculationNotice
             recalculationNeeded={result.data.overtimeRecalculationNeeded}
@@ -269,6 +284,7 @@ export default async function ProcesarNominaPage({
               search={filters.search}
               totals={result.data.totals}
               hasActiveFilters={filters.idPuesto !== null || filters.search !== ""}
+              cfdiStates={result.data.cfdiStates}
             />
           )}
         </>
