@@ -15,11 +15,11 @@ interface Props {
  */
 const TABS = (orgId: string) => [
   { href: `/dashboard/facturacion/${orgId}/general`, label: "General" },
-  { href: `/dashboard/facturacion/${orgId}/customers`, label: "Clientes" },
-  { href: `/dashboard/facturacion/${orgId}/products`, label: "Productos" },
-  { href: `/dashboard/facturacion/${orgId}/invoices`, label: "Facturas" },
+  // { href: `/dashboard/facturacion/${orgId}/customers`, label: "Clientes" },
+  // { href: `/dashboard/facturacion/${orgId}/products`, label: "Productos" },
+  // { href: `/dashboard/facturacion/${orgId}/invoices`, label: "Facturas" },
   { href: `/dashboard/facturacion/${orgId}/customize`, label: "Personalizar" },
-  { href: `/dashboard/facturacion/${orgId}/pending`, label: "Por facturar" },
+  // { href: `/dashboard/facturacion/${orgId}/pending`, label: "Por facturar" },
 ];
 
 export default function OrgTabs({ orgId }: Props) {

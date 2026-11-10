@@ -100,17 +100,11 @@ function buildOvertimeNodes(overtimeDays: PayrollCfdiOvertimeDay[]) {
   return nodes;
 }
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 /** El cuerpo de `invoices.create`: tipo `N`, `customer` en línea, serie `NOM`, complemento `nomina`. */
 export function buildPayrollCfdiPayload(source: PayrollCfdiSource): Record<string, unknown> {
   const receiverName = normalizeReceiverName(source.receptor.nombreCompleto);
 
   const perceptionLines = source.perceptions.filter((perception) => perception.importe > 0);
-  const totalGravado = round2(perceptionLines.reduce((sum, line) => sum + line.importeGravado, 0));
-  const totalExento = round2(perceptionLines.reduce((sum, line) => sum + line.importeExento, 0));
 
   const percepcion = perceptionLines.map((line) => ({
     tipo_percepcion: line.claveSat,
@@ -130,18 +124,16 @@ export function buildPayrollCfdiPayload(source: PayrollCfdiSource): Record<strin
   if (source.isrRetenido > 0) {
     deduccion.push({ tipo_deduccion: "002", clave: "002", concepto: "ISR", importe: source.isrRetenido });
   }
-  const totalImpuestosRetenidos = round2(source.isrRetenido);
-  const totalOtrasDeducciones = round2(source.imssRetenido);
-
-  const otrosPagos = source.subsidioConDerecho
-    ? [{
-        tipo_otro_pago: "002",
-        clave: "002",
-        concepto: "Subsidio para el empleo",
-        importe: 0,
-        subsidio_al_empleo: source.subsidioCausado,
-      }]
-    : [];
+  // El nodo SubsidioAlEmpleo se declara siempre en nómina ordinaria, incluso con subsidio causado
+  // $0 por rebasar el tope de la tabla (`subsidioConDerecho` falso): el PAC rechaza el timbrado si
+  // el OtroPago 002 no aparece.
+  const otrosPagos = [{
+    tipo_otro_pago: "002",
+    clave: "002",
+    concepto: "Subsidio para el empleo",
+    importe: 0,
+    subsidio_causado: source.subsidioCausado,
+  }];
 
   return {
     type: "N",
@@ -184,16 +176,9 @@ export function buildPayrollCfdiPayload(source: PayrollCfdiSource): Record<strin
           clave_ent_fed: source.receptor.claveEntFed,
         },
         percepciones: {
-          total_sueldos: totalGravado,
-          total_gravado: totalGravado,
-          total_exento: totalExento,
           percepcion,
         },
-        deducciones: {
-          total_otras_deducciones: totalOtrasDeducciones,
-          total_impuestos_retenidos: totalImpuestosRetenidos,
-          deduccion,
-        },
+        deducciones: deduccion,
         otros_pagos: otrosPagos,
       },
     }],

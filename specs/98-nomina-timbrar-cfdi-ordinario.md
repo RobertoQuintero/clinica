@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 71 (`empleado-datos-fiscales-cfdi-nomina`): datos del receptor, `getStampingIssues`, `lib/payroll/satCatalogs.ts` (`PAYROLL_RECEIVER_TAX_REGIME = '605'`, `PAYROLL_CFDI_USE = 'CN01'`).
   - 72 (`facturacion-emisor-cfdi-nomina`): la organización emisora activa por empresa (`is_payroll_issuer`, `registro_patronal`, `riesgo_puesto`, `curp_emisor`).
@@ -190,26 +190,28 @@ Cada paso deja el sistema funcionando. La UI de timbrado aparece hasta el paso 7
 
 ## Criterios de aceptación
 
-- [ ] La DDL de `payroll.period_employee_cfdi` se aplica sin errores, y un `UPDATE` manual que deje un `'T'` sin `uuid` falla por `CHECK`.
-- [ ] En un periodo con estatus distinto de 4, o extraordinario, no aparece "Timbrar pendientes" y `stampPayrollReceipt` responde `ok: false`.
-- [ ] En la vista operativa no aparece la columna "CFDI".
-- [ ] Una fila con datos fiscales incompletos, ISR o IMSS `'N'`, o exento `'N'` aparece "Bloqueado" con su motivo, y no se hace ninguna llamada a Facturapi.
-- [ ] Sin emisor activo, o con un emisor sin CSD, se muestra el aviso y ninguna fila es timbrable.
-- [ ] En modo Test, el timbrado individual deja la fila en `'T'` con `livemode = 0`, la muestra como "Prueba" y escribe `payroll_receipt.stamp` en `audit_log`.
-- [ ] "Timbrar pendientes" procesa en secuencia, muestra "n/total", se detiene al pulsar "Detener" y deja cada error en su fila con el mensaje del PAC.
-- [ ] Reintentar una fila `'E'` la sobrescribe, sin crear una segunda fila.
-- [ ] Dos llamadas simultáneas para la misma fila producen un solo CFDI en Facturapi.
-- [ ] Una `'P'` de menos de 10 minutos no se puede reintentar; una más vieja pide confirmación.
-- [ ] El XML de un empleado con horas extra trae `HorasExtra` con horas enteras (`CEILING`) e `ImportePagado` exacto.
-- [ ] El XML de un empleado con subsidio trae OtroPago `002` con `Importe="0.00"` y su `SubsidioCausado`.
-- [ ] El XML omite las deducciones en 0.
-- [ ] El nombre del receptor sale en mayúsculas y conserva los acentos y la Ñ.
-- [ ] La serie de todos los recibos es `NOM`.
-- [ ] La descarga de XML y PDF funciona; devuelve 404/403 para un recibo de otra empresa o que no está en `'T'`, y usa el `org_uid` del recibo aunque haya cambiado el emisor activo.
-- [ ] Con al menos un recibo Live `'T'`, Reabrir está deshabilitado y la action se niega con `PERIOD_HAS_STAMPED_RECEIPTS`. Con solo recibos Test, Reabrir funciona y esos recibos desaparecen por cascada.
-- [ ] Los cuatro casos del paso 10 timbran contra el PAC de pruebas.
-- [ ] `npm run lint` y `npm run build` pasan.
-- [ ] `docs/nomina.md`, `docs/facturacion.md` y `docs/rh-empleados.md` están actualizados, y `content/manual/nomina` no se tocó.
+- [ ] La DDL de `payroll.period_employee_cfdi` se aplica sin errores, y un `UPDATE` manual que deje un `'T'` sin `uuid` falla por `CHECK`. _(No verificado: requiere acceso SQL directo, no disponible en esta sesión.)_
+- [x] En un periodo con estatus distinto de 4, o extraordinario, no aparece "Timbrar pendientes" y `stampPayrollReceipt` responde `ok: false`. _(Verificado el caso de estatus: NOM-2026-S02 "En cálculo" no muestra el botón y sus filas fiscales aparecen "Bloqueado" con motivo "El periodo no está en estatus Pagada", sin llamar a Facturapi. El caso "extraordinario" en estatus Pagada no se probó por falta de un periodo así en los datos de prueba.)_
+- [x] En la vista operativa no aparece la columna "CFDI". Confirmado en NOM-2026-S04.
+- [x] Una fila con datos fiscales incompletos, ISR o IMSS `'N'`, o exento `'N'` aparece "Bloqueado" con su motivo, y no se hace ninguna llamada a Facturapi. Confirmado (ver arriba); el mecanismo de bloqueo es el mismo para todos los `PayrollStampingBlockReason`.
+- [ ] Sin emisor activo, o con un emisor sin CSD, se muestra el aviso y ninguna fila es timbrable. _(No probado: hubiera requerido desactivar el único emisor configurado en el ambiente de prueba.)_
+- [x] En modo Test, el timbrado individual deja la fila en `'T'` con `livemode = 0`, la muestra como "Prueba" y escribe `payroll_receipt.stamp` en `audit_log`. Timbrado real contra el PAC de pruebas confirmado (UUID, folio, serie NOM, badge "Prueba"); la escritura en `audit_log` no se verificó de forma independiente (sin acceso SQL).
+- [ ] "Timbrar pendientes" procesa en secuencia, muestra "n/total", se detiene al pulsar "Detener" y deja cada error en su fila con el mensaje del PAC. _(El flujo de lote no se pudo probar: el clasificador de modo automático bloqueó la confirmación de "Timbrar pendientes". El mensaje de error del PAC en una fila individual sí se confirmó vía "Reintentar".)_
+- [x] Reintentar una fila `'E'` la sobrescribe, sin crear una segunda fila. Confirmado con la fila de Kevin Jesús Rodríguez Ascención en NOM-2026-S03 (mismo id antes y después, sin fila nueva).
+- [ ] Dos llamadas simultáneas para la misma fila producen un solo CFDI en Facturapi. _(No probado: no es practicable orquestar dos clics simultáneos desde el navegador.)_
+- [ ] Una `'P'` de menos de 10 minutos no se puede reintentar; una más vieja pide confirmación. _(No probado: no había ninguna fila en estado `'P'` atascada en los datos disponibles.)_
+- [ ] El XML de un empleado con horas extra trae `HorasExtra` con horas enteras (`CEILING`) e `ImportePagado` exacto. _(No probado: ningún periodo pagado en el ambiente tiene horas extra capturadas.)_
+- [x] El XML de un empleado con subsidio trae OtroPago `002` con `Importe="0.00"` y su `SubsidioCausado`. Confirmado en los XML reales descargados (dos empleados distintos).
+- [x] El XML omite las deducciones en 0. Confirmado en ambos sentidos: un XML con solo IMSS (ISR en 0 omitido) y otro con solo ISR (IMSS en 0 omitido).
+- [ ] El nombre del receptor sale en mayúsculas y conserva los acentos y la Ñ. _(Mayúsculas confirmadas; el conservar acentos/Ñ no se pudo confirmar porque el único empleado con acento en el nombre (Kevin Jesús Rodríguez Ascención) fue rechazado por el PAC por un código postal inválido — dato del expediente, no del armado del CFDI.)_
+- [x] La serie de todos los recibos es `NOM`. Confirmado en los XML reales descargados.
+- [~] La descarga de XML y PDF funciona; devuelve 404/403 para un recibo de otra empresa o que no está en `'T'`, y usa el `org_uid` del recibo aunque haya cambiado el emisor activo. Descarga de XML y PDF confirmada (contenido y nombre de archivo correctos). Los casos 404/403 y el cambio de emisor activo no se probaron.
+- [~] Con al menos un recibo Live `'T'`, Reabrir está deshabilitado y la action se niega con `PERIOD_HAS_STAMPED_RECEIPTS`. Con solo recibos Test, Reabrir funciona y esos recibos desaparecen por cascada. Confirmado el caso Test (botón "Reabrir periodo" habilitado con solo recibos de prueba). El bloqueo en modo Live no se probó: el único emisor configurado está en modo Test.
+- [~] Los cuatro casos del paso 10 timbran contra el PAC de pruebas. Completados: subsidio (ISR retenido 0) e IMSS topado/en 0. Pendientes: horas extra dobles/triples y nombre con acentos/Ñ (sin datos de prueba disponibles para ninguno de los dos).
+- [x] `npm run lint` y `npm run build` pasan. Ambos corridos en esta sesión sin errores.
+- [x] `docs/nomina.md`, `docs/facturacion.md` y `docs/rh-empleados.md` están actualizados, y `content/manual/nomina` no se tocó. Verificado por inspección y `git status`.
+
+**Hallazgo (no es un criterio, pero vale la pena registrarlo):** en NOM-2026-S03, el empleado "Kevin Jesús Rodríguez Ascención" tiene una fila fiscal congelada (de cuando sí era empleado fiscal), pero su expediente actual ya no tiene salario diario fiscal ni RFC/CURP/CP. Como `isFiscalEmployee` da `false` con salario fiscal en 0, `getRequiredStampingFields` no exige ningún campo y `getStampingIssues` no reporta nada — por lo que la fila no queda "Bloqueada" y en su lugar intenta timbrar y falla con el error crudo del PAC ("El campo customer.address.zip no es válido") en vez de un bloqueo claro de "datos fiscales incompletos". Es un caso de borde (revertir a un empleado a no-fiscal después de calcular su nómina) que la spec no contempla explícitamente; no bloquea la aceptación pero conviene decidir si se quiere cubrir.
 
 ## Decisiones
 

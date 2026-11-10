@@ -33,7 +33,7 @@ const SCHEMA_TABLE_PERIOD_EMPLOYEES = "[CentroPodologico].[payroll].[period_empl
 export const STALE_RESERVATION_MINUTES = 10;
 
 const RECEIPT_SELECT_COLUMNS = `
-  [id_period_employee_cfdi], [id_period_employee], [livemode], [estado], [org_uid],
+  [id_period_employee_cfdi], cfdi.[id_period_employee], [livemode], [estado], [org_uid],
   [facturapi_id], [uuid], [serie], [folio], CAST([total] AS float) AS total,
   CONVERT(varchar(19), [fecha_timbrado], 120) AS fecha_timbrado,
   [mensaje_error], [stamped_by],
@@ -446,8 +446,8 @@ export async function loadPayrollCfdiReceiptForDownload(
 export async function loadPayrollCfdiReceipt(idPeriodEmployee: number): Promise<IPayrollCfdiReceipt | null> {
   const rows = await db.queryParams(
     `SELECT ${RECEIPT_SELECT_COLUMNS}
-       FROM ${SCHEMA_TABLE_CFDI}
-      WHERE [id_period_employee] = @id_period_employee
+       FROM ${SCHEMA_TABLE_CFDI} cfdi
+      WHERE cfdi.[id_period_employee] = @id_period_employee
       ORDER BY [livemode] DESC, [updated_at] DESC`,
     { id_period_employee: idPeriodEmployee }
   );
@@ -497,7 +497,7 @@ async function loadPeriodPayrollCfdiStateRows(
   idSucursal: number
 ): Promise<PayrollCfdiStateRowsResult> {
   const periodRows = await db.queryParams(
-    `SELECT [tipo_periodo], [status], [id_empresa]
+    `SELECT p.[tipo_periodo], p.[status], s.[id_empresa]
        FROM [CentroPodologico].[payroll].[periods] p
        JOIN [CentroPodologico].[dbo].[sucursales] s ON s.id_sucursal = p.id_sucursal
       WHERE p.id_period = @id_period AND p.id_sucursal = @id_sucursal`,
