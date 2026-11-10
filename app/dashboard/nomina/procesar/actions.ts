@@ -756,6 +756,7 @@ export async function getPayrollEmployeeDetail(
       storedPerceptionRows,
       article174Rows,
       imssRows,
+      cfdiOverview,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -775,7 +776,7 @@ export async function getPayrollEmployeeDetail(
         { id_empleado: idEmpleado, id_sucursal: period.id_sucursal, id_period: period.id_period },
       ),
       db.queryParams(
-        `SELECT pe.salario_diario, pe.dias, pe.dias_falta,
+        `SELECT pe.id_period_employee, pe.salario_diario, pe.dias, pe.dias_falta,
                 pe.dias_retardo, pe.dias_retardo_sin_tope, pe.importe_salario,
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_por_tratamiento, pe.importe_comision_tratamientos,
@@ -989,6 +990,10 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Spec 98: solo en la vista fiscal de un periodo ordinario; una sola llamada a Facturapi.
+      payrollType === "F" && period.tipo_periodo === "O"
+        ? loadPeriodPayrollCfdiOverview(period.id_period, id_sucursal)
+        : Promise.resolve(null),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -1178,6 +1183,9 @@ export async function getPayrollEmployeeDetail(
 
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
+    const cfdi = snapshotRow && cfdiOverview ? cfdiOverview.states.get(Number(snapshotRow.id_period_employee)) ?? null : null;
+    const payrollIssuer = cfdiOverview?.issuer ?? null;
+
     return {
       ok: true,
       data: {
@@ -1196,6 +1204,8 @@ export async function getPayrollEmployeeDetail(
         pendingDays,
         discountedAbsences,
         discountedLateness,
+        cfdi,
+        payrollIssuer,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,

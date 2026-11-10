@@ -229,6 +229,9 @@ export interface IPayrollEmployeeDetail {
   discountedAbsences: IPayrollDiscountedAbsence[];  // [] si no hay faltas descontadas
   discountedLateness: IPayrollDiscountedLateness[]; // [] si no hay retardos descontados
   pendingDays:        IPayrollPendingDayRow[];      // [] sin días pendientes pagados en este renglón
+  // Spec 98: estado del CFDI y el emisor vigente; null fuera de la vista fiscal de un periodo ordinario.
+  cfdi:               PayrollCfdiRowState | null;
+  payrollIssuer:      PayrollIssuerSummary | null;
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;
