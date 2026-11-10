@@ -75,6 +75,7 @@ import {
   OVERTIME_DOUBLE_PERCEPTION_ID,
   OVERTIME_TRIPLE_PERCEPTION_ID,
   PAID_VACATION_PERCEPTION_ID,
+  PAYROLL_RECEIPT_STALE_RETRY_MARKER,
   PENDING_DAYS_PERCEPTION_ID,
   PERCEPTION_LINE_KEY_BY_ID,
   SALARY_PERCEPTION_ID,
@@ -104,10 +105,33 @@ import {
   payPayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
   payrollProcessFiltersSchema,
+  payrollStampingQueueSchema,
   reopenPayrollPeriodSchema,
   revertPayrollCalculationSchema,
+  stampPayrollReceiptSchema,
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
+import { getOrgClient } from "@/lib/billing/facturapiClient";
+import { toUserMessage } from "@/lib/billing/errors";
+import { getOrganizationByUid } from "@/lib/billing/organizationsRepository";
+import { buildPayrollCfdiPayload } from "@/lib/payroll/cfdi/payrollCfdiPayload";
+import {
+  getPayrollStampingBlockReasons,
+  PAYROLL_STAMPING_BLOCK_REASON_LABELS,
+} from "@/lib/payroll/cfdi/payrollStampingBlockers";
+import {
+  completePayrollReceipt,
+  failPayrollReceipt,
+  hasActiveCertificate,
+  hasLiveStampedReceipts,
+  loadPayrollCfdiReceipt,
+  loadPeriodPayrollCfdiOverview,
+  loadPayrollStampingQueue,
+  loadPayrollStampingSource,
+  reservePayrollReceipt,
+  toPayrollCfdiSource,
+} from "@/lib/payroll/cfdi/payrollCfdiRepository";
+import type { PayrollCfdiRowState } from "@/interfaces/payroll_cfdi";
 import {
   PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
   PERIOD_NEEDS_RECALCULATION_MESSAGE,
@@ -332,6 +356,9 @@ export async function getPayrollProcessPage(
       pendingDaysNotCovered: [],
       recalculationNeeded: false,
       statusStamp: null,
+      hasStampedLiveReceipts: false,
+      cfdiStates: new Map(),
+      payrollIssuer: { active: false, hasCertificate: false, name: null, isLive: false },
     };
     if (!period) return { ok: true, data: emptyPage };
 
@@ -362,6 +389,8 @@ export async function getPayrollProcessPage(
       recalculationFlags,
       pendingDaysNotCovered,
       statusStamp,
+      hasStampedLiveReceipts,
+      cfdiOverview,
     ] = await Promise.all([
       Promise.all([
       db.queryParams(
@@ -533,6 +562,12 @@ export async function getPayrollProcessPage(
       loadPendingDaysNotCovered(period.id_period),
       // Spec 94: el sello solo existe desde Aprobada en adelante.
       period.status === 3 || period.status === 4 ? loadPeriodStatusStamp(period.id_period) : Promise.resolve(null),
+      // Spec 98: el candado de Reabrir solo importa en estatus 4.
+      period.status === 4 ? hasLiveStampedReceipts(period.id_period) : Promise.resolve(false),
+      // Spec 98: la columna "CFDI" solo existe en la nómina fiscal.
+      filters.payrollType === "F"
+        ? loadPeriodPayrollCfdiOverview(period.id_period, id_sucursal)
+        : Promise.resolve({ states: new Map<number, PayrollCfdiRowState>(), issuer: emptyPage.payrollIssuer }),
     ]);
     const {
       overtimeRecalculationNeeded,
@@ -665,6 +700,9 @@ export async function getPayrollProcessPage(
         pendingDaysNotCovered,
         recalculationNeeded,
         statusStamp,
+        hasStampedLiveReceipts,
+        cfdiStates: cfdiOverview.states,
+        payrollIssuer: cfdiOverview.issuer,
       },
     };
   } catch (error) {
@@ -718,6 +756,7 @@ export async function getPayrollEmployeeDetail(
       storedPerceptionRows,
       article174Rows,
       imssRows,
+      cfdiOverview,
     ] = await Promise.all([
       // Cuenta como encontrado si es de la sucursal del periodo o si tiene snapshot en el periodo
       // (cubre a quien cambió de sucursal después del cálculo).
@@ -737,7 +776,7 @@ export async function getPayrollEmployeeDetail(
         { id_empleado: idEmpleado, id_sucursal: period.id_sucursal, id_period: period.id_period },
       ),
       db.queryParams(
-        `SELECT pe.salario_diario, pe.dias, pe.dias_falta,
+        `SELECT pe.id_period_employee, pe.salario_diario, pe.dias, pe.dias_falta,
                 pe.dias_retardo, pe.dias_retardo_sin_tope, pe.importe_salario,
                 pe.consultas_atendidas, pe.importe_comision,
                 pe.tratamientos_onicomicosis, pe.importe_por_tratamiento, pe.importe_comision_tratamientos,
@@ -951,6 +990,10 @@ export async function getPayrollEmployeeDetail(
             { id_period: period.id_period, id_empleado: idEmpleado },
           )
         : Promise.resolve([]),
+      // Spec 98: solo en la vista fiscal de un periodo ordinario; una sola llamada a Facturapi.
+      payrollType === "F" && period.tipo_periodo === "O"
+        ? loadPeriodPayrollCfdiOverview(period.id_period, id_sucursal)
+        : Promise.resolve(null),
     ]);
 
     const employeeRow = employeeRows[0];
@@ -1140,6 +1183,9 @@ export async function getPayrollEmployeeDetail(
 
     const navigationRow = snapshot ? navigationRows[0] : undefined;
 
+    const cfdi = snapshotRow && cfdiOverview ? cfdiOverview.states.get(Number(snapshotRow.id_period_employee)) ?? null : null;
+    const payrollIssuer = cfdiOverview?.issuer ?? null;
+
     return {
       ok: true,
       data: {
@@ -1158,6 +1204,8 @@ export async function getPayrollEmployeeDetail(
         pendingDays,
         discountedAbsences,
         discountedLateness,
+        cfdi,
+        payrollIssuer,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,
@@ -1183,6 +1231,8 @@ const PERIOD_NOT_PAYABLE_MARKER = "PERIOD_NOT_PAYABLE";
 const PERIOD_NOT_UNAPPROVABLE_MARKER = "PERIOD_NOT_UNAPPROVABLE";
 // Spec 96: reabrir un periodo pagado.
 const PERIOD_NOT_REOPENABLE_MARKER = "PERIOD_NOT_REOPENABLE";
+// Spec 98: candado de Reabrir cuando el periodo tiene recibos Live timbrados.
+const PERIOD_HAS_STAMPED_RECEIPTS_MARKER = "PERIOD_HAS_STAMPED_RECEIPTS";
 const TREATMENT_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_treatments_tratamiento";
 const PRODUCT_SALE_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_product_sales_linea";
 const OVERTIME_DAY_ALREADY_PAID_CONSTRAINT = "UQ_period_employee_overtime_empleado_fecha_tipo";
@@ -1211,6 +1261,9 @@ function describePayrollCalculationError(error: unknown): string {
   }
   if (sqlError.message?.includes(PERIOD_NOT_REOPENABLE_MARKER)) {
     return "El periodo no existe en esta sucursal o ya no está en estatus Pagada";
+  }
+  if (sqlError.message?.includes(PERIOD_HAS_STAMPED_RECEIPTS_MARKER)) {
+    return "El periodo tiene recibos timbrados; cancélalos antes de reabrir";
   }
   if (sqlError.message?.includes(TREATMENT_ALREADY_PAID_CONSTRAINT)) {
     return "Otro cálculo tomó alguno de estos tratamientos al mismo tiempo. Intenta de nuevo.";
@@ -2221,6 +2274,15 @@ export async function reopenPayrollPeriod(input: unknown): Promise<ActionResult<
        )
          THROW 50005, '${PERIOD_NOT_REOPENABLE_MARKER}', 1;
 
+       -- Spec 98: un recibo Live vigente ampara un pago ante el SAT; Test no cuenta (se borra por cascada abajo).
+       IF EXISTS (
+         SELECT 1
+           FROM [CentroPodologico].[payroll].[period_employee_cfdi] cfdi
+           JOIN [CentroPodologico].[payroll].[period_employees] pe ON pe.id_period_employee = cfdi.id_period_employee
+          WHERE pe.id_period = @id_period AND cfdi.estado = 'T' AND cfdi.livemode = 1
+       )
+         THROW 50006, '${PERIOD_HAS_STAMPED_RECEIPTS_MARKER}', 1;
+
        UPDATE [CentroPodologico].[payroll].[periods]
           SET status = ${to}, approved_by = NULL, approved_at = NULL,
               paid_by = NULL, paid_at = NULL,
@@ -2260,5 +2322,138 @@ export async function getPayrollPeriodStatusLog(idPeriod: number): Promise<Actio
   } catch (error) {
     console.error("getPayrollPeriodStatusLog", error);
     return { ok: false, message: "No se pudo cargar el historial de estatus" };
+  }
+}
+
+/**
+ * Timbra el CFDI de nómina (tipo `N`, complemento `nomina`) de la fila fiscal de un empleado en un
+ * periodo ordinario pagado (spec 98). Valida sin llamar a Facturapi, reserva el recibo en `'P'`
+ * (el `UNIQUE` evita duplicados ante dos clics), llama a `invoices.create` fuera de la transacción
+ * y cierra en `'T'` o `'E'`.
+ */
+export async function stampPayrollReceipt(input: unknown): Promise<ActionResult<PayrollCfdiRowState>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user, id_empresa } = access.data;
+
+  const parsed = stampPayrollReceiptSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { idPeriod, idEmpleado, confirmStaleRetry } = parsed.data;
+
+  try {
+    const rowLookup = await db.queryParams(
+      `SELECT pe.id_period_employee
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+         JOIN [CentroPodologico].[payroll].[periods] p ON p.id_period = pe.id_period
+        WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado
+          AND pe.tipo_nomina = 'F' AND p.id_sucursal = @id_sucursal`,
+      { id_period: idPeriod, id_empleado: idEmpleado, id_sucursal }
+    );
+    const idPeriodEmployee = rowLookup[0]?.id_period_employee ? Number(rowLookup[0].id_period_employee) : null;
+    if (!idPeriodEmployee) {
+      return { ok: false, message: "El empleado no tiene una fila fiscal en este periodo" };
+    }
+
+    const source = await loadPayrollStampingSource(idPeriodEmployee, id_empresa);
+    if (!source) {
+      return { ok: false, message: "El empleado no tiene una fila fiscal en este periodo" };
+    }
+
+    const hasCertificate = source.payrollIssuerUid ? await hasActiveCertificate(source.payrollIssuerUid) : false;
+    const reasons = getPayrollStampingBlockReasons({
+      periodType: source.periodType,
+      periodStatus: source.periodStatus,
+      employee: source.employee,
+      branchStateKey: source.branchStateKey,
+      isrEstado: source.isrEstado,
+      imssEstado: source.imssEstado,
+      hasUncalculatedExemption: source.hasUncalculatedExemption,
+      payrollIssuer: source.payrollIssuerUid
+        ? { active: true, hasCertificate }
+        : { active: false, hasCertificate: false },
+    });
+    if (reasons.length > 0) {
+      return { ok: false, message: PAYROLL_STAMPING_BLOCK_REASON_LABELS[reasons[0]] };
+    }
+
+    // Nunca null aquí: sin emisor, `reasons` ya trae "no_payroll_issuer" arriba.
+    const issuer = await getOrganizationByUid(db, source.payrollIssuerUid as string, id_empresa);
+    if (!issuer) {
+      return { ok: false, message: "El emisor de nómina ya no existe" };
+    }
+    const livemode = issuer.is_live;
+
+    const reservation = await db.transaction((tx) =>
+      reservePayrollReceipt(tx, idPeriodEmployee, livemode, issuer.uid, id_user, confirmStaleRetry ?? false)
+    );
+
+    if (reservation.status === "already_stamped") {
+      return { ok: false, message: "Este recibo ya está timbrado" };
+    }
+    if (reservation.status === "in_progress") {
+      return { ok: false, message: "Este recibo ya se está timbrando" };
+    }
+    if (reservation.status === "stale_needs_confirmation") {
+      return { ok: false, message: PAYROLL_RECEIPT_STALE_RETRY_MARKER };
+    }
+
+    const payload = buildPayrollCfdiPayload(toPayrollCfdiSource(source));
+
+    try {
+      const client = await getOrgClient(issuer.uid, id_empresa);
+      const invoice = await client.invoices.create(payload);
+
+      await db.transaction((tx) =>
+        completePayrollReceipt(tx, {
+          idReceipt: reservation.idReceipt,
+          facturapiId: invoice.id,
+          uuid: invoice.uuid,
+          folio: Number(invoice.folio_number),
+          total: invoice.total,
+          idEmpresa: id_empresa,
+          idUser: id_user,
+          orgUid: issuer.uid,
+          livemode,
+          idPeriod,
+          idEmpleado,
+        })
+      );
+    } catch (stampError) {
+      const rawMessage = stampError instanceof Error ? stampError.message : String(stampError);
+      await failPayrollReceipt(reservation.idReceipt, rawMessage);
+      revalidatePayrollPaths();
+      return { ok: false, message: toUserMessage(stampError) };
+    }
+
+    revalidatePayrollPaths();
+    const receipt = await loadPayrollCfdiReceipt(idPeriodEmployee);
+    if (!receipt) {
+      return { ok: false, message: "El CFDI se timbró pero no se pudo recargar su estado" };
+    }
+    return { ok: true, data: { status: livemode ? "timbrado" : "prueba", receipt } };
+  } catch (error) {
+    console.error("stampPayrollReceipt", error);
+    return { ok: false, message: "No se pudo timbrar el CFDI" };
+  }
+}
+
+/** `id_empleado` de las filas timbrables pendientes del periodo, para "Timbrar pendientes". */
+export async function getPayrollStampingQueue(input: unknown): Promise<ActionResult<number[]>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  const parsed = payrollStampingQueueSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  try {
+    const queue = await loadPayrollStampingQueue(parsed.data.idPeriod, access.data.id_sucursal);
+    return { ok: true, data: queue };
+  } catch (error) {
+    console.error("getPayrollStampingQueue", error);
+    return { ok: false, message: "No se pudo cargar la cola de timbrado" };
   }
 }

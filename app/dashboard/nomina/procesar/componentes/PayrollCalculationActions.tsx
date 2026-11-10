@@ -6,6 +6,7 @@ import { Banknote, Calculator, CheckCircle2, RefreshCw, RotateCcw, Undo2, Unlock
 import type { PayrollPeriodStatus } from "@/interfaces/payroll_period";
 import {
   PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
+  PERIOD_HAS_STAMPED_RECEIPTS_MESSAGE,
   PERIOD_NEEDS_RECALCULATION_MESSAGE,
   STATUS_COMMENT_MAX_LENGTH,
   STATUS_COMMENT_MIN_LENGTH,
@@ -33,6 +34,8 @@ interface Props {
   warnings?: string[];
   /** Spec 94: fecha de pago del periodo ("YYYY-MM-DD"), para advertir en el modal de Pagar si aún no llega. */
   fechaPago?: string | null;
+  /** Spec 98: el periodo tiene al menos un recibo Live timbrado; deshabilita Reabrir. */
+  hasStampedLiveReceipts?: boolean;
 }
 
 type CalculationAction = "calculate" | "recalculate" | "revert" | "approve" | "pay" | "unapprove" | "reopen";
@@ -150,6 +153,7 @@ export default function PayrollCalculationActions({
   hasMissingEmployees = false,
   warnings = [],
   fechaPago = null,
+  hasStampedLiveReceipts = false,
 }: Props) {
   const router = useRouter();
   const [pendingAction, setPendingAction] = useState<CalculationAction | null>(null);
@@ -238,9 +242,15 @@ export default function PayrollCalculationActions({
               ? "payroll-approve-blocked-reason"
               : action === "pay" && hasMissingEmployees
                 ? "payroll-pay-blocked-reason"
-                : null;
+                : action === "reopen" && hasStampedLiveReceipts
+                  ? "payroll-reopen-blocked-reason"
+                  : null;
           const blockedMessage =
-            action === "approve" ? PERIOD_NEEDS_RECALCULATION_MESSAGE : PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE;
+            action === "approve"
+              ? PERIOD_NEEDS_RECALCULATION_MESSAGE
+              : action === "pay"
+                ? PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE
+                : PERIOD_HAS_STAMPED_RECEIPTS_MESSAGE;
           return (
             <div key={action} className="flex flex-col items-start gap-1.5">
               <button

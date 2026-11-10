@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import type { IPayrollEmployeeRow, IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
+import type { PayrollCfdiRowState } from "@/interfaces/payroll_cfdi";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
 import { describeVacationPaySplit } from "@/lib/payroll/vacationPay";
 import { ImssAmountCell } from "./ImssAmountCell";
 import { IsrAmountCell } from "./IsrAmountCell";
+import PayrollCfdiStatusCell from "./PayrollCfdiStatusCell";
 
 interface Props {
   rows: IPayrollEmployeeRow[];
@@ -17,6 +19,8 @@ interface Props {
   /** Totales de todo el tipo: no cambian con los filtros de puesto y búsqueda. */
   totals: IPayrollProcessPage["totals"];
   hasActiveFilters: boolean;
+  /** Spec 98: estado "CFDI" por `id_period_employee`; solo se pasa en la nómina fiscal. */
+  cfdiStates?: Map<number, PayrollCfdiRowState>;
 }
 
 /** Importe de una comisión con su conteo ("3 consultas") como texto secundario; sin conteo si es 0. */
@@ -57,12 +61,13 @@ export default function PayrollEmployeesTable({
   search,
   totals,
   hasActiveFilters,
+  cfdiStates,
 }: Props) {
   // El detalle conserva los filtros para "Regresar" y para Anterior / Siguiente.
   const detailFilters = { idPeriod, payrollType, idPuesto, search };
   // Spec 70: solo la nómina fiscal lleva deducciones (ISR) y neto.
   const showsDeductions = payrollType === "F";
-  const columnCount = showsDeductions ? 19 : 16;
+  const columnCount = showsDeductions ? 20 : 16;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-[#c4c6d0] dark:border-zinc-700 rounded-xl overflow-hidden shadow-sm">
@@ -91,6 +96,7 @@ export default function PayrollEmployeesTable({
                   <th scope="col" className="px-4 py-3 font-semibold text-right">ISR</th>
                   <th scope="col" className="px-4 py-3 font-semibold text-right">IMSS</th>
                   <th scope="col" className="px-6 py-3 font-semibold text-right">Neto</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-right">CFDI</th>
                 </>
               )}
               <th scope="col" className="w-12 pr-4 py-3">
@@ -206,6 +212,11 @@ export default function PayrollEmployeesTable({
                         <td className="px-6 py-3.5 text-sm text-right font-semibold tabular-nums text-[#0b1c30] dark:text-zinc-50">
                           {formatPayrollCurrency(employeeRow.neto)}
                         </td>
+                        <PayrollCfdiStatusCell
+                          state={cfdiStates?.get(employeeRow.id_period_employee)}
+                          idPeriod={idPeriod}
+                          idEmpleado={employeeRow.id_empleado}
+                        />
                       </>
                     )}
                     <td className="pr-4 py-3.5 text-right">
@@ -286,6 +297,7 @@ export default function PayrollEmployeesTable({
                   <td className="px-6 py-4 text-right text-base font-bold tabular-nums text-[#0051d5] dark:text-blue-300">
                     {formatPayrollCurrency(totals.totalNeto)}
                   </td>
+                  <td aria-hidden />
                 </>
               )}
               <td aria-hidden />

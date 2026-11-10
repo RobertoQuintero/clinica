@@ -46,6 +46,14 @@ export const SHIFT_EXTENSION_HOURS_PER_DAY = 1;
 export const SHIFT_EXTENSION_PAY_MULTIPLIER = 2;
 export const SHIFT_EXTENSION_BONUS_PAGE_SIZE = 25;
 
+/**
+ * Spec 98: `stampPayrollReceipt` devuelve este mensaje cuando hay una `'P'` atascada (> 10 min)
+ * que necesita confirmación antes de reintentarse. Vive aquí (no en `actions.ts`) porque un
+ * archivo `"use server"` solo puede exportar funciones async; los componentes cliente que
+ * comparan contra este marcador lo importan de aquí.
+ */
+export const PAYROLL_RECEIPT_STALE_RETRY_MARKER = "PAYROLL_RECEIPT_STALE_RETRY";
+
 // Parámetros fiscales anuales (spec 69, más las 7 del IMSS de la spec 91). Las claves de payroll.tax_parameters, con etiqueta y unidad para la pantalla.
 export const TAX_PARAMETER_KEYS: Record<TaxParameterKey, { label: string; unit: string }> = {
   UMA_DIARIA:                    { label: "UMA diaria",                        unit: "$ por día" },

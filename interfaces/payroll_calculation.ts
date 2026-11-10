@@ -9,6 +9,7 @@ import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces
 import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
 import type { IImssBreakdown, IImssRowSummary, ImssSkipReason } from "@/interfaces/payroll_imss";
+import type { PayrollCfdiRowState, PayrollIssuerSummary } from "@/interfaces/payroll_cfdi";
 
 export type PayrollType = "O" | "F";
 
@@ -124,6 +125,12 @@ export interface IPayrollProcessPage {
   pendingDaysNotCovered: IPayrollMissingEmployee[];   // spec 97; informativo, no bloquea nada
   recalculationNeeded: boolean;   // spec 94: el `or` de las trece banderas anteriores (spec 97 añadió la treceava)
   statusStamp: IPayrollPeriodStatusStamp | null;   // spec 94: solo se consulta en estatus 3 y 4
+  // Spec 98: candado de Reabrir. Solo se consulta en estatus 4; `false` en cualquier otro.
+  hasStampedLiveReceipts: boolean;
+  // Spec 98: estado "CFDI" de cada fila fiscal y el emisor que timbraría hoy. Solo se consultan
+  // en la nómina fiscal (`tipo=fiscal`); vacíos en la operativa, donde la columna no aparece.
+  cfdiStates: Map<number, PayrollCfdiRowState>;
+  payrollIssuer: PayrollIssuerSummary;
 }
 
 // Una línea de la tarjeta "Percepciones totales": "sueldo_base" o "comision_consultas".
@@ -222,6 +229,9 @@ export interface IPayrollEmployeeDetail {
   discountedAbsences: IPayrollDiscountedAbsence[];  // [] si no hay faltas descontadas
   discountedLateness: IPayrollDiscountedLateness[]; // [] si no hay retardos descontados
   pendingDays:        IPayrollPendingDayRow[];      // [] sin días pendientes pagados en este renglón
+  // Spec 98: estado del CFDI y el emisor vigente; null fuera de la vista fiscal de un periodo ordinario.
+  cfdi:               PayrollCfdiRowState | null;
+  payrollIssuer:      PayrollIssuerSummary | null;
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;
