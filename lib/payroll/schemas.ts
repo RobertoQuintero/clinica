@@ -167,6 +167,17 @@ export const reopenPayrollPeriodSchema = z.object({
   comentario: periodStatusCommentSchema,
 });
 
+// Spec 98: timbrar el CFDI de nómina de una fila fiscal.
+export const stampPayrollReceiptSchema = z.object({
+  idPeriod: z.number().int().positive("Periodo inválido"),
+  idEmpleado: z.number().int().positive("Empleado inválido"),
+  confirmStaleRetry: z.boolean().optional(),
+});
+
+export const payrollStampingQueueSchema = z.object({
+  idPeriod: z.number().int().positive("Periodo inválido"),
+});
+
 export const payrollEmployeeDetailFiltersSchema = z.object({
   idEmpleado: z.number().int().positive("Empleado inválido"),
   idPeriod: z.number().int().positive("Periodo inválido"),

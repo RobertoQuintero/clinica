@@ -436,15 +436,21 @@ export async function loadPeriodPayrollCfdiReceipts(idPeriod: number): Promise<M
   return receiptsByRow;
 }
 
+interface PayrollCfdiStateRow {
+  idPeriodEmployee: number;
+  idEmpleado:       number;
+  state:            PayrollCfdiRowState;
+}
+
 /**
- * Estado "CFDI" de cada fila fiscal del periodo (columna de Procesar): bloqueos vía
- * `getPayrollStampingBlockReasons` + el recibo del modo vigente de la organización emisora.
+ * Estado "CFDI" de cada fila fiscal del periodo, en el orden de la tabla de Procesar: bloqueos
+ * vía `getPayrollStampingBlockReasons` + el recibo del modo vigente de la organización emisora.
  * Una sola llamada a Facturapi (el CSD) para todo el periodo, no una por fila.
  */
-export async function loadPeriodPayrollCfdiStates(
+async function loadPeriodPayrollCfdiStateRows(
   idPeriod: number,
   idSucursal: number
-): Promise<Map<number, PayrollCfdiRowState>> {
+): Promise<PayrollCfdiStateRow[]> {
   const periodRows = await db.queryParams(
     `SELECT [tipo_periodo], [status], [id_empresa]
        FROM [CentroPodologico].[payroll].[periods] p
@@ -453,7 +459,7 @@ export async function loadPeriodPayrollCfdiStates(
     { id_period: idPeriod, id_sucursal: idSucursal }
   );
   const periodRow = periodRows[0];
-  if (!periodRow) return new Map();
+  if (!periodRow) return [];
 
   const periodType = periodRow.tipo_periodo as PayrollPeriodType;
   const periodStatus = Number(periodRow.status) as PayrollPeriodStatus;
@@ -461,7 +467,7 @@ export async function loadPeriodPayrollCfdiStates(
 
   const [rows, receiptsByRow, payrollIssuerUid] = await Promise.all([
     db.queryParams(
-      `SELECT pe.id_period_employee,
+      `SELECT pe.id_period_employee, pe.id_empleado,
               pe.isr_estado, pe.imss_estado,
               e.rfc, e.curp, e.nss, e.salario_diario_fiscal, e.id_periodo_pago,
               e.codigo_postal_fiscal, e.tipo_regimen, e.tipo_contrato, e.tipo_jornada,
@@ -475,7 +481,8 @@ export async function loadPeriodPayrollCfdiStates(
          JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
          JOIN [CentroPodologico].[dbo].[sucursales] s ON s.id_sucursal = e.id_sucursal
          LEFT JOIN [CentroPodologico].[dbo].[Cat_states] st ON st.id_state = s.id_state
-        WHERE pe.id_period = @id_period AND pe.tipo_nomina = 'F'`,
+        WHERE pe.id_period = @id_period AND pe.tipo_nomina = 'F'
+        ORDER BY e.apellido_paterno, e.apellido_materno, e.nombre, pe.id_empleado`,
       { id_period: idPeriod }
     ),
     loadPeriodPayrollCfdiReceipts(idPeriod),
@@ -486,7 +493,7 @@ export async function loadPeriodPayrollCfdiStates(
   const hasCertificate = issuer ? await hasActiveCertificate(issuer.uid) : false;
   const currentLivemode = Boolean(issuer?.is_live);
 
-  const states = new Map<number, PayrollCfdiRowState>();
+  const stateRows: PayrollCfdiStateRow[] = [];
   for (const row of rows) {
     const idPeriodEmployee = Number(row.id_period_employee);
     const employee: StampingEmployeeInput = {
@@ -517,23 +524,36 @@ export async function loadPeriodPayrollCfdiStates(
     const receipts = receiptsByRow.get(idPeriodEmployee) ?? [];
     const currentReceipt = receipts.find((receipt) => receipt.livemode === currentLivemode) ?? null;
 
-    if (reasons.length > 0) {
-      states.set(idPeriodEmployee, { status: "bloqueado", reasons });
-      continue;
-    }
-    if (!currentReceipt) {
-      states.set(idPeriodEmployee, { status: "pendiente" });
-      continue;
-    }
-    if (currentReceipt.estado === "P") {
-      states.set(idPeriodEmployee, { status: "en_proceso", receipt: currentReceipt });
-    } else if (currentReceipt.estado === "E") {
-      states.set(idPeriodEmployee, { status: "error", receipt: currentReceipt });
-    } else {
-      states.set(idPeriodEmployee, { status: currentLivemode ? "timbrado" : "prueba", receipt: currentReceipt });
-    }
+    const state: PayrollCfdiRowState =
+      reasons.length > 0 ? { status: "bloqueado", reasons }
+      : !currentReceipt ? { status: "pendiente" }
+      : currentReceipt.estado === "P" ? { status: "en_proceso", receipt: currentReceipt }
+      : currentReceipt.estado === "E" ? { status: "error", receipt: currentReceipt }
+      : { status: currentLivemode ? "timbrado" : "prueba", receipt: currentReceipt };
+
+    stateRows.push({ idPeriodEmployee, idEmpleado: Number(row.id_empleado), state });
   }
-  return states;
+  return stateRows;
+}
+
+/** Estado "CFDI" de cada fila fiscal del periodo, para la columna de Procesar. */
+export async function loadPeriodPayrollCfdiStates(
+  idPeriod: number,
+  idSucursal: number
+): Promise<Map<number, PayrollCfdiRowState>> {
+  const rows = await loadPeriodPayrollCfdiStateRows(idPeriod, idSucursal);
+  return new Map(rows.map((row) => [row.idPeriodEmployee, row.state]));
+}
+
+/**
+ * `id_empleado` de las filas timbrables pendientes (sin recibo del modo vigente, o en `'E'`),
+ * en el orden de la tabla de Procesar: lo que recorre "Timbrar pendientes".
+ */
+export async function loadPayrollStampingQueue(idPeriod: number, idSucursal: number): Promise<number[]> {
+  const rows = await loadPeriodPayrollCfdiStateRows(idPeriod, idSucursal);
+  return rows
+    .filter((row) => row.state.status === "pendiente" || row.state.status === "error")
+    .map((row) => row.idEmpleado);
 }
 
 /** Candado de Reabrir (spec 96): `true` si el periodo tiene al menos un recibo Live vigente timbrado. */

@@ -45,3 +45,15 @@ export function getPayrollStampingBlockReasons(
 
   return reasons;
 }
+
+/** Texto en español por motivo, para el tooltip de "Bloqueado" y el mensaje de la action. */
+export const PAYROLL_STAMPING_BLOCK_REASON_LABELS: Record<PayrollStampingBlockReason, string> = {
+  employee_fiscal_data: "Faltan o son inválidos los datos fiscales del empleado",
+  isr_not_calculated: "El ISR del periodo no está calculado",
+  imss_not_calculated: "El IMSS del periodo no está calculado",
+  exemption_not_calculated: "Alguna percepción quedó sin gravado/exento calculado",
+  no_payroll_issuer: "No hay un emisor de nómina activo en la empresa",
+  issuer_without_certificate: "El emisor de nómina no tiene un certificado (CSD) vigente",
+  period_not_paid: "El periodo no está en estatus Pagada",
+  period_not_ordinary: "El periodo no es ordinario",
+};

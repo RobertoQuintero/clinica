@@ -104,10 +104,31 @@ import {
   payPayrollPeriodSchema,
   payrollEmployeeDetailFiltersSchema,
   payrollProcessFiltersSchema,
+  payrollStampingQueueSchema,
   reopenPayrollPeriodSchema,
   revertPayrollCalculationSchema,
+  stampPayrollReceiptSchema,
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
+import { getOrgClient } from "@/lib/billing/facturapiClient";
+import { toUserMessage } from "@/lib/billing/errors";
+import { getOrganizationByUid } from "@/lib/billing/organizationsRepository";
+import { buildPayrollCfdiPayload } from "@/lib/payroll/cfdi/payrollCfdiPayload";
+import {
+  getPayrollStampingBlockReasons,
+  PAYROLL_STAMPING_BLOCK_REASON_LABELS,
+} from "@/lib/payroll/cfdi/payrollStampingBlockers";
+import {
+  completePayrollReceipt,
+  failPayrollReceipt,
+  hasActiveCertificate,
+  loadPayrollCfdiReceipt,
+  loadPayrollStampingQueue,
+  loadPayrollStampingSource,
+  reservePayrollReceipt,
+  toPayrollCfdiSource,
+} from "@/lib/payroll/cfdi/payrollCfdiRepository";
+import type { PayrollCfdiRowState } from "@/interfaces/payroll_cfdi";
 import {
   PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
   PERIOD_NEEDS_RECALCULATION_MESSAGE,
@@ -2260,5 +2281,141 @@ export async function getPayrollPeriodStatusLog(idPeriod: number): Promise<Actio
   } catch (error) {
     console.error("getPayrollPeriodStatusLog", error);
     return { ok: false, message: "No se pudo cargar el historial de estatus" };
+  }
+}
+
+/** Marcador devuelto cuando hay una `'P'` atascada (> 10 min): la UI debe confirmar antes de reintentar. */
+export const PAYROLL_RECEIPT_STALE_RETRY_MARKER = "PAYROLL_RECEIPT_STALE_RETRY";
+
+/**
+ * Timbra el CFDI de nómina (tipo `N`, complemento `nomina`) de la fila fiscal de un empleado en un
+ * periodo ordinario pagado (spec 98). Valida sin llamar a Facturapi, reserva el recibo en `'P'`
+ * (el `UNIQUE` evita duplicados ante dos clics), llama a `invoices.create` fuera de la transacción
+ * y cierra en `'T'` o `'E'`.
+ */
+export async function stampPayrollReceipt(input: unknown): Promise<ActionResult<PayrollCfdiRowState>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_sucursal, id_user, id_empresa } = access.data;
+
+  const parsed = stampPayrollReceiptSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { idPeriod, idEmpleado, confirmStaleRetry } = parsed.data;
+
+  try {
+    const rowLookup = await db.queryParams(
+      `SELECT pe.id_period_employee
+         FROM [CentroPodologico].[payroll].[period_employees] pe
+         JOIN [CentroPodologico].[payroll].[periods] p ON p.id_period = pe.id_period
+        WHERE pe.id_period = @id_period AND pe.id_empleado = @id_empleado
+          AND pe.tipo_nomina = 'F' AND p.id_sucursal = @id_sucursal`,
+      { id_period: idPeriod, id_empleado: idEmpleado, id_sucursal }
+    );
+    const idPeriodEmployee = rowLookup[0]?.id_period_employee ? Number(rowLookup[0].id_period_employee) : null;
+    if (!idPeriodEmployee) {
+      return { ok: false, message: "El empleado no tiene una fila fiscal en este periodo" };
+    }
+
+    const source = await loadPayrollStampingSource(idPeriodEmployee, id_empresa);
+    if (!source) {
+      return { ok: false, message: "El empleado no tiene una fila fiscal en este periodo" };
+    }
+
+    const hasCertificate = source.payrollIssuerUid ? await hasActiveCertificate(source.payrollIssuerUid) : false;
+    const reasons = getPayrollStampingBlockReasons({
+      periodType: source.periodType,
+      periodStatus: source.periodStatus,
+      employee: source.employee,
+      branchStateKey: source.branchStateKey,
+      isrEstado: source.isrEstado,
+      imssEstado: source.imssEstado,
+      hasUncalculatedExemption: source.hasUncalculatedExemption,
+      payrollIssuer: source.payrollIssuerUid
+        ? { active: true, hasCertificate }
+        : { active: false, hasCertificate: false },
+    });
+    if (reasons.length > 0) {
+      return { ok: false, message: PAYROLL_STAMPING_BLOCK_REASON_LABELS[reasons[0]] };
+    }
+
+    // Nunca null aquí: sin emisor, `reasons` ya trae "no_payroll_issuer" arriba.
+    const issuer = await getOrganizationByUid(db, source.payrollIssuerUid as string, id_empresa);
+    if (!issuer) {
+      return { ok: false, message: "El emisor de nómina ya no existe" };
+    }
+    const livemode = issuer.is_live;
+
+    const reservation = await db.transaction((tx) =>
+      reservePayrollReceipt(tx, idPeriodEmployee, livemode, issuer.uid, id_user, confirmStaleRetry ?? false)
+    );
+
+    if (reservation.status === "already_stamped") {
+      return { ok: false, message: "Este recibo ya está timbrado" };
+    }
+    if (reservation.status === "in_progress") {
+      return { ok: false, message: "Este recibo ya se está timbrando" };
+    }
+    if (reservation.status === "stale_needs_confirmation") {
+      return { ok: false, message: PAYROLL_RECEIPT_STALE_RETRY_MARKER };
+    }
+
+    const payload = buildPayrollCfdiPayload(toPayrollCfdiSource(source));
+
+    try {
+      const client = await getOrgClient(issuer.uid, id_empresa);
+      const invoice = await client.invoices.create(payload);
+
+      await db.transaction((tx) =>
+        completePayrollReceipt(tx, {
+          idReceipt: reservation.idReceipt,
+          facturapiId: invoice.id,
+          uuid: invoice.uuid,
+          folio: Number(invoice.folio_number),
+          total: invoice.total,
+          idEmpresa: id_empresa,
+          idUser: id_user,
+          orgUid: issuer.uid,
+          livemode,
+          idPeriod,
+          idEmpleado,
+        })
+      );
+    } catch (stampError) {
+      const rawMessage = stampError instanceof Error ? stampError.message : String(stampError);
+      await failPayrollReceipt(reservation.idReceipt, rawMessage);
+      revalidatePayrollPaths();
+      return { ok: false, message: toUserMessage(stampError) };
+    }
+
+    revalidatePayrollPaths();
+    const receipt = await loadPayrollCfdiReceipt(idPeriodEmployee);
+    if (!receipt) {
+      return { ok: false, message: "El CFDI se timbró pero no se pudo recargar su estado" };
+    }
+    return { ok: true, data: { status: livemode ? "timbrado" : "prueba", receipt } };
+  } catch (error) {
+    console.error("stampPayrollReceipt", error);
+    return { ok: false, message: "No se pudo timbrar el CFDI" };
+  }
+}
+
+/** `id_empleado` de las filas timbrables pendientes del periodo, para "Timbrar pendientes". */
+export async function getPayrollStampingQueue(input: unknown): Promise<ActionResult<number[]>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+
+  const parsed = payrollStampingQueueSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  try {
+    const queue = await loadPayrollStampingQueue(parsed.data.idPeriod, access.data.id_sucursal);
+    return { ok: true, data: queue };
+  } catch (error) {
+    console.error("getPayrollStampingQueue", error);
+    return { ok: false, message: "No se pudo cargar la cola de timbrado" };
   }
 }
