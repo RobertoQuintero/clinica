@@ -2386,7 +2386,7 @@ export async function stampPayrollReceipt(input: unknown): Promise<ActionResult<
     const livemode = issuer.is_live;
 
     const reservation = await db.transaction((tx) =>
-      reservePayrollReceipt(tx, idPeriodEmployee, livemode, issuer.uid, id_user, confirmStaleRetry ?? false)
+      reservePayrollReceipt(tx, idPeriodEmployee, idPeriod, idEmpleado, livemode, issuer.uid, id_user, confirmStaleRetry ?? false)
     );
 
     if (reservation.status === "already_stamped") {
