@@ -404,6 +404,39 @@ export async function failPayrollReceipt(idReceipt: number, mensajeError: string
 // Lecturas para la UI (Procesar y Detalle) y el candado de Reabrir
 // ---------------------------------------------------------------------------
 
+export interface PayrollCfdiDownloadTarget {
+  receipt:        IPayrollCfdiReceipt;
+  codigoEmpleado: string;
+}
+
+/**
+ * El recibo timbrado para descargar su XML/PDF, con el tenant ya validado por el `JOIN` hasta
+ * `RH.empleados.id_empresa`. `null` si no existe, no es de esta empresa, o no está en `'T'`.
+ */
+export async function loadPayrollCfdiReceiptForDownload(
+  idReceipt: number,
+  idEmpresa: number
+): Promise<PayrollCfdiDownloadTarget | null> {
+  const rows = await db.queryParams(
+    `SELECT cfdi.[id_period_employee_cfdi], cfdi.[id_period_employee], cfdi.[livemode], cfdi.[estado],
+            cfdi.[org_uid], cfdi.[facturapi_id], cfdi.[uuid], cfdi.[serie], cfdi.[folio],
+            CAST(cfdi.[total] AS float) AS total,
+            CONVERT(varchar(19), cfdi.[fecha_timbrado], 120) AS fecha_timbrado,
+            cfdi.[mensaje_error], cfdi.[stamped_by],
+            CONVERT(varchar(19), cfdi.[created_at], 120) AS created_at,
+            CONVERT(varchar(19), cfdi.[updated_at], 120) AS updated_at,
+            e.codigo_empleado
+       FROM ${SCHEMA_TABLE_CFDI} cfdi
+       JOIN ${SCHEMA_TABLE_PERIOD_EMPLOYEES} pe ON pe.id_period_employee = cfdi.id_period_employee
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
+      WHERE cfdi.id_period_employee_cfdi = @id_receipt AND e.id_empresa = @id_empresa AND cfdi.estado = 'T'`,
+    { id_receipt: idReceipt, id_empresa: idEmpresa }
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return { receipt: normalizeReceiptRow(row), codigoEmpleado: row.codigo_empleado as string };
+}
+
 /** El recibo vigente (de cualquier modo) de una fila, el más reciente si hay de los dos. */
 export async function loadPayrollCfdiReceipt(idPeriodEmployee: number): Promise<IPayrollCfdiReceipt | null> {
   const rows = await db.queryParams(

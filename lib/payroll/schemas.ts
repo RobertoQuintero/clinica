@@ -178,6 +178,11 @@ export const payrollStampingQueueSchema = z.object({
   idPeriod: z.number().int().positive("Periodo inválido"),
 });
 
+/** Parámetro de ruta de `/api/nomina/cfdi/[id]/xml|pdf`. */
+export const payrollCfdiDownloadParamsSchema = z.object({
+  id: z.coerce.number().int().positive("Recibo inválido"),
+});
+
 export const payrollEmployeeDetailFiltersSchema = z.object({
   idEmpleado: z.number().int().positive("Empleado inválido"),
   idPeriod: z.number().int().positive("Periodo inválido"),
