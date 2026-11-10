@@ -507,7 +507,8 @@ export type BillingAuditAction =
   | "org.update_customization"
   | "org.update_payroll_issuer"
   | "org.set_payroll_issuer"
-  | "payroll_receipt.stamp";
+  | "payroll_receipt.stamp"
+  | "payroll_receipt.cancel";
 
 export interface INewAuditEntry {
   id_empresa: number;
