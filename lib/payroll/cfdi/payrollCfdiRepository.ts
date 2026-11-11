@@ -441,9 +441,10 @@ export interface PayrollCfdiDownloadTarget {
 }
 
 /**
- * El recibo para descargar su XML/PDF, con el tenant ya validado por el `JOIN` hasta
- * `RH.empleados.id_empresa`. `null` si no existe, no es de esta empresa, o está cancelado (`'C'`);
- * el acuse de un cancelado se descarga aparte (spec 99).
+ * El recibo para descargar su XML/PDF/acuse, con el tenant ya validado por el `JOIN` hasta
+ * `RH.empleados.id_empresa`. `null` si no existe o no es de esta empresa. El XML y el PDF
+ * responden para `'T'`, `'X'` y `'C'`; el acuse solo para `'C'` (spec 99) — cada ruta valida
+ * el `estado` del recibo devuelto según lo que le toca servir.
  */
 export async function loadPayrollCfdiReceiptForDownload(
   idReceipt: number,
@@ -465,8 +466,7 @@ export async function loadPayrollCfdiReceiptForDownload(
             e.codigo_empleado
        FROM ${SCHEMA_TABLE_CFDI} cfdi
        JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = cfdi.id_empleado
-      WHERE cfdi.id_period_employee_cfdi = @id_receipt AND e.id_empresa = @id_empresa
-        AND cfdi.estado <> 'C'`,
+      WHERE cfdi.id_period_employee_cfdi = @id_receipt AND e.id_empresa = @id_empresa`,
     { id_receipt: idReceipt, id_empresa: idEmpresa }
   );
   const row = rows[0];

@@ -9,7 +9,7 @@ import { loadPayrollCfdiReceiptForDownload } from "@/lib/payroll/cfdi/payrollCfd
 
 export const runtime = "nodejs";
 
-/** Descarga el PDF del CFDI de nómina (spec 98). Mismo patrón que `xml/route.ts` de al lado. */
+/** Descarga el PDF del CFDI de nómina (spec 98). Responde para `'T'`, `'X'` y `'C'` (spec 99). Mismo patrón que `xml/route.ts` de al lado. */
 export const GET = async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   let id_empresa: number;
   try {

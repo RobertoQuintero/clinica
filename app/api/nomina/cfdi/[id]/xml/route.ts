@@ -10,10 +10,10 @@ import { loadPayrollCfdiReceiptForDownload } from "@/lib/payroll/cfdi/payrollCfd
 export const runtime = "nodejs";
 
 /**
- * Descarga el XML del CFDI de nómina (spec 98). Mismo patrón que el PDF de facturas
- * (spec 30): rol 1/4 y `id_empresa` validados dentro del handler, nunca en `proxy.ts`
- * (su `matcher` no cubre `/api/*`), y el modo se resuelve dentro de `getOrgClient` a
- * partir del `org_uid` guardado en el recibo, no del emisor activo hoy.
+ * Descarga el XML del CFDI de nómina (spec 98). Responde para `'T'`, `'X'` y `'C'` (spec 99).
+ * Mismo patrón que el PDF de facturas (spec 30): rol 1/4 y `id_empresa` validados dentro del
+ * handler, nunca en `proxy.ts` (su `matcher` no cubre `/api/*`), y el modo se resuelve dentro
+ * de `getOrgClient` a partir del `org_uid` guardado en el recibo, no del emisor activo hoy.
  */
 export const GET = async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
   let id_empresa: number;
