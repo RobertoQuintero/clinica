@@ -32,6 +32,17 @@ const SCHEMA_TABLE_PERIOD_EMPLOYEES = "[CentroPodologico].[payroll].[period_empl
 /** Una `'P'` más vieja que esto se considera atascada: solo se reintenta con confirmación. */
 export const STALE_RESERVATION_MINUTES = 10;
 
+/**
+ * Spec 99: limpieza explícita antes de cada `DELETE FROM period_employees` de `procesar/actions.ts`
+ * (cuatro lugares). Esos batches ya borran `period_employees` con `DELETE ... WHERE id_period = @id_period`
+ * dentro de su propio `BEGIN TRAN`, así que esta línea se interpola en el mismo batch, antes de esa
+ * instrucción -- no es una llamada aparte, para que corra en la misma transacción. Preserva los recibos
+ * ya cancelados (`'C'`), que sobreviven gracias a `ON DELETE SET NULL`; borra el resto ('P','T','E','X')
+ * para conservar el comportamiento actual.
+ */
+export const DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL = `
+       DELETE FROM ${SCHEMA_TABLE_CFDI} WHERE [id_period] = @id_period AND [estado] <> 'C';`;
+
 const RECEIPT_SELECT_COLUMNS = `
   [id_period_employee_cfdi], cfdi.[id_period_employee], cfdi.[id_period], cfdi.[id_empleado],
   [livemode], [estado], [org_uid],

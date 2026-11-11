@@ -121,6 +121,7 @@ import {
 } from "@/lib/payroll/cfdi/payrollStampingBlockers";
 import {
   completePayrollReceipt,
+  DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL,
   failPayrollReceipt,
   hasActiveCertificate,
   hasLiveStampedReceipts,
@@ -1321,6 +1322,7 @@ async function calculateExtraordinaryPayrollPeriod(
           AND tipo_periodo = 'E' AND concepto_extraordinario = 'A';
        IF @id_payment_period IS NULL
          THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
+       ${DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL}
 
        DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
        ${CHRISTMAS_BONUS_SNAPSHOT_SQL}
@@ -1395,6 +1397,7 @@ async function calculatePtuPaymentPeriod(
           AND tipo_periodo = 'E' AND concepto_extraordinario = 'P';
        IF @id_payment_period IS NULL
          THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
+       ${DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL}
 
        DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
        ${PTU_PAYMENT_SNAPSHOT_SQL}
@@ -1487,6 +1490,7 @@ export async function calculatePayrollPeriod(
         WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status IN (1, 2);
        IF @id_payment_period IS NULL
          THROW 50003, '${PERIOD_NOT_CALCULABLE_MARKER}', 1;
+       ${DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL}
 
        -- El cascade de period_employee_treatments y period_employee_product_sales libera lo que este periodo tenía pagado.
        DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
@@ -2043,6 +2047,7 @@ export async function revertPayrollCalculation(input: unknown): Promise<ActionRe
           WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = 2
        )
          THROW 50004, '${PERIOD_NOT_REVERTIBLE_MARKER}', 1;
+       ${DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL}
 
        DELETE FROM [CentroPodologico].[payroll].[period_employees] WHERE id_period = @id_period;
 
