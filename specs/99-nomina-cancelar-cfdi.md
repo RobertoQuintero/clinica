@@ -2,7 +2,7 @@
 
 ## Header
 
-- **Estado:** Aprobado
+- **Estado:** Implementado
 - **Depende de:**
   - 98 (`nomina-timbrar-cfdi-ordinario`): de ahí sale la tabla `payroll.period_employee_cfdi`, el repositorio `lib/payroll/cfdi/payrollCfdiRepository.ts`, `PayrollCfdiStatusCell`, `PayrollCfdiCard`, las descargas `app/api/nomina/cfdi/[id]/*` y el candado `PERIOD_HAS_STAMPED_RECEIPTS`. Esta spec cierra su pendiente "Cancelación".
   - 30 / 33 (facturas y CSD): `getOrgClient(uid, idEmpresa)`, más `CancelInvoiceSchema` y `CANCELLATION_MOTIVE_OPTIONS` como referencia del patrón de cancelación.
@@ -221,23 +221,23 @@ Cada paso deja el sistema funcionando. La UI de cancelación aparece hasta el pa
 
 ## Criterios de aceptación
 
-- [ ] La migración se aplica sin errores sobre datos existentes, y todos los recibos actuales quedan con `id_period`/`id_empleado` llenos.
-- [ ] Un `UPDATE` manual que deje un `'C'` sin `motivo_cancelacion`, o un `'T'` con `id_period_employee` en `NULL`, falla por `CHECK`.
-- [ ] El timbrado de la spec 98 (individual y en lote) funciona igual que antes.
-- [ ] Un recibo `'T'` muestra "Cancelar" en la celda CFDI y en `PayrollCfdiCard`; uno en `'P'` o `'E'`, no.
-- [ ] El selector de motivo solo ofrece `02` y `03`, y la action rechaza cualquier otro con `ok: false`.
-- [ ] En Live, el botón de confirmar está deshabilitado hasta escribir el folio exacto, y la action rechaza un `confirmFolio` incorrecto.
-- [ ] En Test, cancelar deja la fila en `'C'`, escribe `payroll_receipt.cancel` en `audit_log`, y la celda vuelve a "Pendiente".
-- [ ] Si Facturapi responde con error, la fila sigue en `'T'`, sin columnas de cancelación, y el mensaje se muestra en el diálogo.
-- [ ] En una fila `'X'`, "Consultar estado" la pasa a `'C'` o la regresa a `'T'` según la respuesta de Facturapi.
-- [ ] Después de cancelar, el empleado se puede volver a timbrar sin reabrir. Queda una fila `'T'` nueva y la `'C'` intacta.
-- [ ] Con un recibo Live en `'T'` o `'X'`, Reabrir está bloqueado. Si todos los Live están en `'C'`, Reabrir funciona.
-- [ ] Al reabrir y recalcular, los recibos `'C'` sobreviven (`id_period_employee` en `NULL`) y los demás se borran.
-- [ ] El Detalle lista los recibos cancelados del periodo con UUID, folio, motivo, fecha y usuario.
-- [ ] El acuse descarga un XML para recibos `'C'`, y responde 404 para otro estado o para un recibo de otra empresa. El XML y el PDF originales se siguen descargando en `'C'`.
-- [ ] Los cuatro casos del paso 11 se completan contra el PAC de pruebas.
-- [ ] `npm run lint` y `npm run build` pasan.
-- [ ] `docs/nomina.md` y `docs/facturacion.md` están actualizados, y `content/manual/nomina` no se tocó.
+- [x] La migración se aplica sin errores sobre datos existentes, y todos los recibos actuales quedan con `id_period`/`id_empleado` llenos. (bloque `ALTER` en orden correcto en `queries.txt`; confirmado en vivo: la app funciona sobre la BD ya migrada, sin recibos huérfanos)
+- [ ] Un `UPDATE` manual que deje un `'C'` sin `motivo_cancelacion`, o un `'T'` con `id_period_employee` en `NULL`, falla por `CHECK`. (verificado solo lógicamente contra el DDL; no se ejecutó el `UPDATE` real en la BD)
+- [x] El timbrado de la spec 98 (individual y en lote) funciona igual que antes. (confirmado en vivo: filas `'P'` siguen mostrando "Timbrar", "Timbrar pendientes" sigue presente)
+- [x] Un recibo `'T'` muestra "Cancelar" en la celda CFDI y en `PayrollCfdiCard`; uno en `'P'` o `'E'`, no. (confirmado en vivo en Procesar nómina)
+- [x] El selector de motivo solo ofrece `02` y `03`, y la action rechaza cualquier otro con `ok: false`. (confirmado en vivo el diálogo; el rechazo zod confirmado por lectura de código)
+- [ ] En Live, el botón de confirmar está deshabilitado hasta escribir el folio exacto, y la action rechaza un `confirmFolio` incorrecto. (no hay recibos Live en este entorno de pruebas; solo verificado por lectura de código, no probado en vivo)
+- [x] En Test, cancelar deja la fila en `'C'`, escribe `payroll_receipt.cancel` en `audit_log`, y la celda vuelve a "Pendiente". (`completePayrollCancellation` corregido para que `detail` incluya `{ id_period, id_empleado, facturapi_id, folio, motivo }`, pasando `motive`/`receipt.facturapi_id`/`receipt.folio` desde los dos call-sites en `app/dashboard/nomina/procesar/actions.ts`)
+- [ ] Si Facturapi responde con error, la fila sigue en `'T'`, sin columnas de cancelación, y el mensaje se muestra en el diálogo. (no se forzó un error de Facturapi en vivo; solo verificado por lectura de código)
+- [ ] En una fila `'X'`, "Consultar estado" la pasa a `'C'` o la regresa a `'T'` según la respuesta de Facturapi. (no se reprodujo un estado `'X'` real contra el PAC de pruebas en esta sesión; solo verificado por lectura de código)
+- [x] Después de cancelar, el empleado se puede volver a timbrar sin reabrir. Queda una fila `'T'` nueva y la `'C'` intacta. (probado en vivo: se canceló el recibo de prueba de Victoria Lorena Romero Leyva, la fila volvió a "Pendiente" y el recibo cancelado sigue en "Recibos cancelados" del Detalle)
+- [ ] Con un recibo Live en `'T'` o `'X'`, Reabrir está bloqueado. Si todos los Live están en `'C'`, Reabrir funciona. (no hay recibos Live en este entorno; solo verificado por lectura de código, `hasLiveStampedReceipts` filtra `estado IN ('T','X') AND livemode = 1`)
+- [ ] Al reabrir y recalcular, los recibos `'C'` sobreviven (`id_period_employee` en `NULL`) y los demás se borran. (no se ejecutó un reabrir+recalcular real en esta verificación para no alterar datos del periodo de prueba; solo verificado por lectura de código)
+- [x] El Detalle lista los recibos cancelados del periodo con UUID, folio, motivo, fecha y usuario. (confirmado en vivo en `PayrollCfdiCard`, sección "Recibos cancelados")
+- [x] El acuse descarga un XML para recibos `'C'`, y responde 404 para otro estado o para un recibo de otra empresa. El XML y el PDF originales se siguen descargando en `'C'`. (probado en vivo con `curl`: `/api/nomina/cfdi/{id}/acuse` → 200 solo para los recibos `'C'` (9 y 10), 404 para el resto; `/xml` y `/pdf` → 200 también en `'C'`)
+- [ ] Los cuatro casos del paso 11 se completan contra el PAC de pruebas. (solo se completó una cancelación con motivo `02` + descarga de acuse + retimbrado sin reabrir; no se probó el caso con motivo `03` ni el de reabrir/recalcular con un cancelado)
+- [x] `npm run lint` y `npm run build` pasan.
+- [x] `docs/nomina.md` y `docs/facturacion.md` están actualizados, y `content/manual/nomina` no se tocó. (`docs/nomina.md` ok, `content/manual/nomina` intacto, y `docs/facturacion.md:266` ahora coincide con el código real tras corregir el `detail` del `audit_log`)
 
 ## Decisiones
 

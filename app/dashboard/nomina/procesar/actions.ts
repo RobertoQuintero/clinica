@@ -144,7 +144,7 @@ import {
   revertPayrollCancellation,
   toPayrollCfdiSource,
 } from "@/lib/payroll/cfdi/payrollCfdiRepository";
-import type { PayrollCfdiRowState } from "@/interfaces/payroll_cfdi";
+import type { PayrollCfdiRowState, PayrollCfdiCancellationMotive } from "@/interfaces/payroll_cfdi";
 import {
   PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE,
   PERIOD_NEEDS_RECALCULATION_MESSAGE,
@@ -2544,6 +2544,9 @@ export async function cancelPayrollReceipt(input: unknown): Promise<ActionResult
             livemode: receipt.livemode,
             idPeriod: receipt.id_period,
             idEmpleado: receipt.id_empleado,
+            facturapiId: receipt.facturapi_id as string,
+            folio: receipt.folio as number | null,
+            motive: motive as PayrollCfdiCancellationMotive,
           })
         );
         revalidatePayrollEmployeeDetail(receipt.id_empleado);
@@ -2607,6 +2610,9 @@ export async function refreshPayrollCancellationStatus(input: unknown): Promise<
           livemode: receipt.livemode,
           idPeriod: receipt.id_period,
           idEmpleado: receipt.id_empleado,
+          facturapiId: receipt.facturapi_id as string,
+          folio: receipt.folio as number | null,
+          motive: receipt.motivo_cancelacion as PayrollCfdiCancellationMotive,
         })
       );
       revalidatePayrollEmployeeDetail(receipt.id_empleado);

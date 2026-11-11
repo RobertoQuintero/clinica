@@ -707,14 +707,17 @@ export async function reservePayrollCancellation(
 }
 
 export interface CompletePayrollCancellationInput {
-  idReceipt:  number;
-  idEmpresa:  number;
-  idUser:     number;
-  orgUid:     string;
-  uuid:       string;
-  livemode:   boolean;
-  idPeriod:   number;
-  idEmpleado: number;
+  idReceipt:   number;
+  idEmpresa:   number;
+  idUser:      number;
+  orgUid:      string;
+  uuid:        string;
+  livemode:    boolean;
+  idPeriod:    number;
+  idEmpleado:  number;
+  facturapiId: string;
+  folio:       number | null;
+  motive:      PayrollCfdiCancellationMotive;
 }
 
 /** Cierra la cancelación en `'C'` y escribe `payroll_receipt.cancel` en la misma transacción. */
@@ -740,6 +743,9 @@ export async function completePayrollCancellation(
     detail: JSON.stringify({
       id_period: input.idPeriod,
       id_empleado: input.idEmpleado,
+      facturapi_id: input.facturapiId,
+      folio: input.folio,
+      motivo: input.motive,
     }),
   });
 }
