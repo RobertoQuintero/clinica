@@ -20,6 +20,8 @@ import type {
 } from "@/lib/payroll/cfdi/payrollCfdiPayload";
 import type {
   IPayrollCfdiReceipt,
+  PayrollCfdiCancelledReceipt,
+  PayrollCfdiCancellationMotive,
   PayrollCfdiRowState,
   PayrollCfdiStatus,
   PayrollIssuerSummary,
@@ -657,4 +659,133 @@ export async function hasLiveStampedReceipts(idPeriod: number): Promise<boolean>
     { id_period: idPeriod }
   );
   return rows.length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Cancelación del recibo ('T' -> 'X' -> 'C', o 'X' -> 'T' si el SAT la rechaza)
+// ---------------------------------------------------------------------------
+
+export type ReservePayrollCancellationResult =
+  | { status: "reserved"; receipt: IPayrollCfdiReceipt }
+  | { status: "not_found" }
+  | { status: "not_cancellable" };
+
+/**
+ * Reserva la cancelación con `UPDLOCK`, igual candado que el timbrado: se niega si la fila no
+ * existe o no está en `'T'` (ya cancelada, en proceso, o nunca timbrada). Devuelve el recibo tal
+ * como estaba antes de pasar a `'X'` -- `org_uid`/`facturapi_id` son los que la server action usa
+ * para llamar a Facturapi con el emisor guardado en el recibo, no el activo.
+ */
+export async function reservePayrollCancellation(
+  tx: ITransactionClient,
+  idReceipt: number,
+  motive: PayrollCfdiCancellationMotive,
+  userId: number
+): Promise<ReservePayrollCancellationResult> {
+  const rows = await tx.queryParams(
+    `SELECT ${RECEIPT_SELECT_COLUMNS}
+       FROM ${SCHEMA_TABLE_CFDI} cfdi WITH (UPDLOCK, HOLDLOCK)
+      WHERE cfdi.[id_period_employee_cfdi] = @id_receipt`,
+    { id_receipt: idReceipt }
+  );
+  const row = rows[0];
+  if (!row) return { status: "not_found" };
+
+  const receipt = normalizeReceiptRow(row);
+  if (receipt.estado !== "T") return { status: "not_cancellable" };
+
+  const now = buildDate(new Date());
+  await tx.queryParams(
+    `UPDATE ${SCHEMA_TABLE_CFDI}
+        SET [estado] = 'X', [motivo_cancelacion] = @motive, [cancelacion_solicitada_at] = @now,
+            [cancelled_by] = @cancelled_by, [updated_at] = @now
+      WHERE [id_period_employee_cfdi] = @id`,
+    { id: idReceipt, motive, now, cancelled_by: userId }
+  );
+
+  return { status: "reserved", receipt };
+}
+
+export interface CompletePayrollCancellationInput {
+  idReceipt:  number;
+  idEmpresa:  number;
+  idUser:     number;
+  orgUid:     string;
+  uuid:       string;
+  livemode:   boolean;
+  idPeriod:   number;
+  idEmpleado: number;
+}
+
+/** Cierra la cancelación en `'C'` y escribe `payroll_receipt.cancel` en la misma transacción. */
+export async function completePayrollCancellation(
+  tx: ITransactionClient,
+  input: CompletePayrollCancellationInput
+): Promise<void> {
+  const now = buildDate(new Date());
+  await tx.queryParams(
+    `UPDATE ${SCHEMA_TABLE_CFDI}
+        SET [estado] = 'C', [fecha_cancelacion] = @now, [updated_at] = @now
+      WHERE [id_period_employee_cfdi] = @id`,
+    { id: input.idReceipt, now }
+  );
+
+  await writeAuditEntry(tx, {
+    id_empresa: input.idEmpresa,
+    id_user: input.idUser,
+    action: "payroll_receipt.cancel",
+    org_uid: input.orgUid,
+    target_id: input.uuid,
+    mode: input.livemode ? "live" : "test",
+    detail: JSON.stringify({
+      id_period: input.idPeriod,
+      id_empleado: input.idEmpleado,
+    }),
+  });
+}
+
+/**
+ * Revierte `'X'` -> `'T'` cuando Facturapi rechaza la cancelación o la llamada falla, y limpia
+ * las columnas de cancelación -- la fila queda exactamente como antes de intentar cancelarla.
+ */
+export async function revertPayrollCancellation(idReceipt: number): Promise<void> {
+  const now = buildDate(new Date());
+  await db.queryParams(
+    `UPDATE ${SCHEMA_TABLE_CFDI}
+        SET [estado] = 'T', [motivo_cancelacion] = NULL, [cancelacion_solicitada_at] = NULL,
+            [cancelled_by] = NULL, [updated_at] = @now
+      WHERE [id_period_employee_cfdi] = @id`,
+    { id: idReceipt, now }
+  );
+}
+
+/**
+ * Historial de recibos cancelados de un empleado en un periodo, para el Detalle: UUID, serie-folio,
+ * motivo, fecha y quién canceló. El tenant se valida con el `JOIN` hasta `RH.empleados`.
+ */
+export async function loadCancelledPayrollReceipts(
+  idPeriod: number,
+  idEmpleado: number,
+  idEmpresa: number
+): Promise<PayrollCfdiCancelledReceipt[]> {
+  const rows = await db.queryParams(
+    `SELECT cfdi.[uuid], cfdi.[folio], cfdi.[livemode], cfdi.[motivo_cancelacion],
+            CONVERT(varchar(19), cfdi.[fecha_cancelacion], 120) AS fecha_cancelacion,
+            u.[nombre] AS cancelled_by_name
+       FROM ${SCHEMA_TABLE_CFDI} cfdi
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = cfdi.id_empleado
+       LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = cfdi.[cancelled_by]
+      WHERE cfdi.[id_period] = @id_period AND cfdi.[id_empleado] = @id_empleado
+        AND cfdi.[estado] = 'C' AND e.[id_empresa] = @id_empresa
+      ORDER BY cfdi.[fecha_cancelacion] DESC`,
+    { id_period: idPeriod, id_empleado: idEmpleado, id_empresa: idEmpresa }
+  );
+  return rows.map((row) => ({
+    uuid: row.uuid as string,
+    serieFolio: `NOM-${row.folio}`,
+    livemode: Boolean(row.livemode),
+    motivoCancelacion: row.motivo_cancelacion as PayrollCfdiCancellationMotive,
+    fechaCancelacion: row.fecha_cancelacion as string,
+    cancelledByName: (row.cancelled_by_name as string | null) ?? "—",
+  }));
 }
