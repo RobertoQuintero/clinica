@@ -67,6 +67,7 @@ export interface PayrollIssuerSummary {
 
 /** Recibo cancelado de un periodo, para el historial del Detalle del empleado (spec 99). */
 export interface PayrollCfdiCancelledReceipt {
+  idReceipt:          number;          // id_period_employee_cfdi, para los links de XML/PDF/acuse
   uuid:               string;
   serieFolio:         string;          // "NOM-{folio}"
   livemode:           boolean;

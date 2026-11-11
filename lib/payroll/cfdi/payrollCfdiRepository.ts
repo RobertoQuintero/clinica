@@ -769,7 +769,7 @@ export async function loadCancelledPayrollReceipts(
   idEmpresa: number
 ): Promise<PayrollCfdiCancelledReceipt[]> {
   const rows = await db.queryParams(
-    `SELECT cfdi.[uuid], cfdi.[folio], cfdi.[livemode], cfdi.[motivo_cancelacion],
+    `SELECT cfdi.[id_period_employee_cfdi], cfdi.[uuid], cfdi.[folio], cfdi.[livemode], cfdi.[motivo_cancelacion],
             CONVERT(varchar(19), cfdi.[fecha_cancelacion], 120) AS fecha_cancelacion,
             u.[nombre] AS cancelled_by_name
        FROM ${SCHEMA_TABLE_CFDI} cfdi
@@ -781,6 +781,7 @@ export async function loadCancelledPayrollReceipts(
     { id_period: idPeriod, id_empleado: idEmpleado, id_empresa: idEmpresa }
   );
   return rows.map((row) => ({
+    idReceipt: Number(row.id_period_employee_cfdi),
     uuid: row.uuid as string,
     serieFolio: `NOM-${row.folio}`,
     livemode: Boolean(row.livemode),

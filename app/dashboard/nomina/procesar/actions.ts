@@ -133,6 +133,7 @@ import {
   failPayrollReceipt,
   hasActiveCertificate,
   hasLiveStampedReceipts,
+  loadCancelledPayrollReceipts,
   loadPayrollCfdiReceipt,
   loadPayrollCfdiReceiptForDownload,
   loadPeriodPayrollCfdiOverview,
@@ -732,7 +733,7 @@ export async function getPayrollEmployeeDetail(
 ): Promise<ActionResult<IPayrollEmployeeDetail | null>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
-  const { id_sucursal } = access.data;
+  const { id_sucursal, id_empresa } = access.data;
 
   const parsed = payrollEmployeeDetailFiltersSchema.safeParse(filters);
   if (!parsed.success) {
@@ -1197,6 +1198,9 @@ export async function getPayrollEmployeeDetail(
 
     const cfdi = snapshotRow && cfdiOverview ? cfdiOverview.states.get(Number(snapshotRow.id_period_employee)) ?? null : null;
     const payrollIssuer = cfdiOverview?.issuer ?? null;
+    const cancelledReceipts = cfdiOverview
+      ? await loadCancelledPayrollReceipts(period.id_period, idEmpleado, id_empresa)
+      : [];
 
     return {
       ok: true,
@@ -1218,6 +1222,7 @@ export async function getPayrollEmployeeDetail(
         discountedLateness,
         cfdi,
         payrollIssuer,
+        cancelledReceipts,
         navigation: {
           previousEmployeeId: navigationRow?.previous_employee_id ?? null,
           nextEmployeeId: navigationRow?.next_employee_id ?? null,
