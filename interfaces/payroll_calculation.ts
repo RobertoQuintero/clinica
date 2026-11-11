@@ -9,7 +9,7 @@ import type { Article174SkipReason, IArticle174IsrBreakdown } from "@/interfaces
 import type { IPtuPaymentBreakdown } from "@/interfaces/payroll_ptu";
 import { IIsrBreakdown, IsrSkipReason, IsrStatus } from "@/interfaces/payroll_isr";
 import type { IImssBreakdown, IImssRowSummary, ImssSkipReason } from "@/interfaces/payroll_imss";
-import type { PayrollCfdiRowState, PayrollIssuerSummary } from "@/interfaces/payroll_cfdi";
+import type { PayrollCfdiCancelledReceipt, PayrollCfdiRowState, PayrollIssuerSummary } from "@/interfaces/payroll_cfdi";
 
 export type PayrollType = "O" | "F";
 
@@ -232,6 +232,8 @@ export interface IPayrollEmployeeDetail {
   // Spec 98: estado del CFDI y el emisor vigente; null fuera de la vista fiscal de un periodo ordinario.
   cfdi:               PayrollCfdiRowState | null;
   payrollIssuer:      PayrollIssuerSummary | null;
+  // Spec 99: historial de recibos cancelados del periodo; [] fuera de la vista fiscal de un periodo ordinario.
+  cancelledReceipts:  PayrollCfdiCancelledReceipt[];
   navigation: {
     previousEmployeeId: number | null;
     nextEmployeeId:     number | null;

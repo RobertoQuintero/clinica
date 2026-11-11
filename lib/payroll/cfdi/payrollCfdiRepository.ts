@@ -20,6 +20,8 @@ import type {
 } from "@/lib/payroll/cfdi/payrollCfdiPayload";
 import type {
   IPayrollCfdiReceipt,
+  PayrollCfdiCancelledReceipt,
+  PayrollCfdiCancellationMotive,
   PayrollCfdiRowState,
   PayrollCfdiStatus,
   PayrollIssuerSummary,
@@ -32,11 +34,27 @@ const SCHEMA_TABLE_PERIOD_EMPLOYEES = "[CentroPodologico].[payroll].[period_empl
 /** Una `'P'` más vieja que esto se considera atascada: solo se reintenta con confirmación. */
 export const STALE_RESERVATION_MINUTES = 10;
 
+/**
+ * Spec 99: limpieza explícita antes de cada `DELETE FROM period_employees` de `procesar/actions.ts`
+ * (cuatro lugares). Esos batches ya borran `period_employees` con `DELETE ... WHERE id_period = @id_period`
+ * dentro de su propio `BEGIN TRAN`, así que esta línea se interpola en el mismo batch, antes de esa
+ * instrucción -- no es una llamada aparte, para que corra en la misma transacción. Preserva los recibos
+ * ya cancelados (`'C'`), que sobreviven gracias a `ON DELETE SET NULL`; borra el resto ('P','T','E','X')
+ * para conservar el comportamiento actual.
+ */
+export const DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL = `
+       DELETE FROM ${SCHEMA_TABLE_CFDI} WHERE [id_period] = @id_period AND [estado] <> 'C';`;
+
 const RECEIPT_SELECT_COLUMNS = `
-  [id_period_employee_cfdi], cfdi.[id_period_employee], [livemode], [estado], [org_uid],
+  [id_period_employee_cfdi], cfdi.[id_period_employee], cfdi.[id_period], cfdi.[id_empleado],
+  [livemode], [estado], [org_uid],
   [facturapi_id], [uuid], [serie], [folio], CAST([total] AS float) AS total,
   CONVERT(varchar(19), [fecha_timbrado], 120) AS fecha_timbrado,
   [mensaje_error], [stamped_by],
+  [motivo_cancelacion],
+  CONVERT(varchar(19), [cancelacion_solicitada_at], 120) AS cancelacion_solicitada_at,
+  CONVERT(varchar(19), [fecha_cancelacion], 120) AS fecha_cancelacion,
+  [cancelled_by],
   CONVERT(varchar(19), [created_at], 120) AS created_at,
   CONVERT(varchar(19), [updated_at], 120) AS updated_at
 `;
@@ -294,13 +312,18 @@ export type ReservePayrollReceiptResult =
   | { status: "stale_needs_confirmation" };
 
 /**
- * Reserva el recibo en `'P'` dentro de una transacción corta: el `UNIQUE (id_period_employee,
- * livemode)` es lo que impide que dos clics o dos pestañas timbren el mismo recibo dos veces.
- * `confirmStaleRetry` solo importa cuando ya hay una `'P'` de más de `STALE_RESERVATION_MINUTES`.
+ * Reserva el recibo en `'P'` dentro de una transacción corta: el índice filtrado
+ * `UX_period_employee_cfdi_vigente (id_period_employee, livemode) WHERE estado IN ('P','T','E','X')`
+ * es lo que impide que dos clics o dos pestañas timbren el mismo recibo dos veces. Los recibos
+ * ya cancelados (`'C'`) se ignoran: tras cancelar, el siguiente timbrado inserta una fila nueva,
+ * la cancelada no se toca. `confirmStaleRetry` solo importa cuando ya hay una `'P'` de más de
+ * `STALE_RESERVATION_MINUTES`.
  */
 export async function reservePayrollReceipt(
   tx: ITransactionClient,
   idPeriodEmployee: number,
+  idPeriod: number,
+  idEmpleado: number,
   livemode: boolean,
   orgUid: string,
   userId: number,
@@ -310,7 +333,8 @@ export async function reservePayrollReceipt(
     `SELECT [id_period_employee_cfdi], [estado],
             DATEDIFF(MINUTE, [updated_at], SYSDATETIME()) AS minutes_since_update
        FROM ${SCHEMA_TABLE_CFDI} WITH (UPDLOCK, HOLDLOCK)
-      WHERE [id_period_employee] = @id_period_employee AND [livemode] = @livemode`,
+      WHERE [id_period_employee] = @id_period_employee AND [livemode] = @livemode
+        AND [estado] <> 'C'`,
     { id_period_employee: idPeriodEmployee, livemode }
   );
   const existing = existingRows[0] as { id_period_employee_cfdi: number; estado: PayrollCfdiStatus; minutes_since_update: number } | undefined;
@@ -319,10 +343,12 @@ export async function reservePayrollReceipt(
   if (!existing) {
     const inserted = await tx.queryParams(
       `INSERT INTO ${SCHEMA_TABLE_CFDI}
-         ([id_period_employee], [livemode], [estado], [org_uid], [stamped_by], [created_at], [updated_at])
+         ([id_period_employee], [id_period], [id_empleado], [livemode], [estado], [org_uid],
+          [stamped_by], [created_at], [updated_at])
          OUTPUT INSERTED.[id_period_employee_cfdi]
-       VALUES (@id_period_employee, @livemode, 'P', @org_uid, @stamped_by, @now, @now)`,
-      { id_period_employee: idPeriodEmployee, livemode, org_uid: orgUid, stamped_by: userId, now }
+       VALUES (@id_period_employee, @id_period, @id_empleado, @livemode, 'P', @org_uid,
+               @stamped_by, @now, @now)`,
+      { id_period_employee: idPeriodEmployee, id_period: idPeriod, id_empleado: idEmpleado, livemode, org_uid: orgUid, stamped_by: userId, now }
     );
     return { status: "reserved", idReceipt: Number(inserted[0].id_period_employee_cfdi) };
   }
@@ -415,26 +441,32 @@ export interface PayrollCfdiDownloadTarget {
 }
 
 /**
- * El recibo timbrado para descargar su XML/PDF, con el tenant ya validado por el `JOIN` hasta
- * `RH.empleados.id_empresa`. `null` si no existe, no es de esta empresa, o no está en `'T'`.
+ * El recibo para descargar su XML/PDF/acuse, con el tenant ya validado por el `JOIN` hasta
+ * `RH.empleados.id_empresa`. `null` si no existe o no es de esta empresa. El XML y el PDF
+ * responden para `'T'`, `'X'` y `'C'`; el acuse solo para `'C'` (spec 99) — cada ruta valida
+ * el `estado` del recibo devuelto según lo que le toca servir.
  */
 export async function loadPayrollCfdiReceiptForDownload(
   idReceipt: number,
   idEmpresa: number
 ): Promise<PayrollCfdiDownloadTarget | null> {
   const rows = await db.queryParams(
-    `SELECT cfdi.[id_period_employee_cfdi], cfdi.[id_period_employee], cfdi.[livemode], cfdi.[estado],
+    `SELECT cfdi.[id_period_employee_cfdi], cfdi.[id_period_employee], cfdi.[id_period], cfdi.[id_empleado],
+            cfdi.[livemode], cfdi.[estado],
             cfdi.[org_uid], cfdi.[facturapi_id], cfdi.[uuid], cfdi.[serie], cfdi.[folio],
             CAST(cfdi.[total] AS float) AS total,
             CONVERT(varchar(19), cfdi.[fecha_timbrado], 120) AS fecha_timbrado,
             cfdi.[mensaje_error], cfdi.[stamped_by],
+            cfdi.[motivo_cancelacion],
+            CONVERT(varchar(19), cfdi.[cancelacion_solicitada_at], 120) AS cancelacion_solicitada_at,
+            CONVERT(varchar(19), cfdi.[fecha_cancelacion], 120) AS fecha_cancelacion,
+            cfdi.[cancelled_by],
             CONVERT(varchar(19), cfdi.[created_at], 120) AS created_at,
             CONVERT(varchar(19), cfdi.[updated_at], 120) AS updated_at,
             e.codigo_empleado
        FROM ${SCHEMA_TABLE_CFDI} cfdi
-       JOIN ${SCHEMA_TABLE_PERIOD_EMPLOYEES} pe ON pe.id_period_employee = cfdi.id_period_employee
-       JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = pe.id_empleado
-      WHERE cfdi.id_period_employee_cfdi = @id_receipt AND e.id_empresa = @id_empresa AND cfdi.estado = 'T'`,
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = cfdi.id_empleado
+      WHERE cfdi.id_period_employee_cfdi = @id_receipt AND e.id_empresa = @id_empresa`,
     { id_receipt: idReceipt, id_empresa: idEmpresa }
   );
   const row = rows[0];
@@ -442,34 +474,36 @@ export async function loadPayrollCfdiReceiptForDownload(
   return { receipt: normalizeReceiptRow(row), codigoEmpleado: row.codigo_empleado as string };
 }
 
-/** El recibo vigente (de cualquier modo) de una fila, el más reciente si hay de los dos. */
+/** El recibo vigente (de cualquier modo) de una fila, el más reciente si hay de los dos. Ignora los cancelados. */
 export async function loadPayrollCfdiReceipt(idPeriodEmployee: number): Promise<IPayrollCfdiReceipt | null> {
   const rows = await db.queryParams(
     `SELECT ${RECEIPT_SELECT_COLUMNS}
        FROM ${SCHEMA_TABLE_CFDI} cfdi
-      WHERE cfdi.[id_period_employee] = @id_period_employee
+      WHERE cfdi.[id_period_employee] = @id_period_employee AND cfdi.[estado] <> 'C'
       ORDER BY [livemode] DESC, [updated_at] DESC`,
     { id_period_employee: idPeriodEmployee }
   );
   return rows[0] ? normalizeReceiptRow(rows[0]) : null;
 }
 
-/** Los recibos (Test y Live) de todas las filas fiscales del periodo, para la columna "CFDI". */
+/** Los recibos vigentes (Test y Live) de todas las filas fiscales del periodo, para la columna "CFDI". */
 export async function loadPeriodPayrollCfdiReceipts(idPeriod: number): Promise<Map<number, IPayrollCfdiReceipt[]>> {
   const rows = await db.queryParams(
     `SELECT ${RECEIPT_SELECT_COLUMNS}
        FROM ${SCHEMA_TABLE_CFDI} cfdi
        JOIN ${SCHEMA_TABLE_PERIOD_EMPLOYEES} pe ON pe.id_period_employee = cfdi.id_period_employee
-      WHERE pe.id_period = @id_period`,
+      WHERE pe.id_period = @id_period AND cfdi.[estado] <> 'C'`,
     { id_period: idPeriod }
   );
 
   const receiptsByRow = new Map<number, IPayrollCfdiReceipt[]>();
   for (const row of rows) {
     const receipt = normalizeReceiptRow(row);
-    const existing = receiptsByRow.get(receipt.id_period_employee) ?? [];
+    // El JOIN a period_employees garantiza id_period_employee no nulo para estas filas vigentes.
+    const idPeriodEmployee = receipt.id_period_employee as number;
+    const existing = receiptsByRow.get(idPeriodEmployee) ?? [];
     existing.push(receipt);
-    receiptsByRow.set(receipt.id_period_employee, existing);
+    receiptsByRow.set(idPeriodEmployee, existing);
   }
   return receiptsByRow;
 }
@@ -577,6 +611,7 @@ async function loadPeriodPayrollCfdiStateRows(
       : !currentReceipt ? { status: "pendiente" }
       : currentReceipt.estado === "P" ? { status: "en_proceso", receipt: currentReceipt }
       : currentReceipt.estado === "E" ? { status: "error", receipt: currentReceipt }
+      : currentReceipt.estado === "X" ? { status: "cancelacion_en_proceso", receipt: currentReceipt }
       : { status: currentLivemode ? "timbrado" : "prueba", receipt: currentReceipt };
 
     stateRows.push({ idPeriodEmployee, idEmpleado: Number(row.id_empleado), state });
@@ -610,14 +645,154 @@ export async function loadPayrollStampingQueue(idPeriod: number, idSucursal: num
     .map((row) => row.idEmpleado);
 }
 
-/** Candado de Reabrir (spec 96): `true` si el periodo tiene al menos un recibo Live vigente timbrado. */
+/**
+ * Candado de Reabrir (spec 96/99): `true` si el periodo tiene al menos un recibo Live timbrado
+ * (`'T'`) o con la cancelación en proceso (`'X'`) -- mientras el SAT no la confirme, el CFDI
+ * sigue vigente. Si todos los Live ya están en `'C'`, Reabrir queda habilitado.
+ */
 export async function hasLiveStampedReceipts(idPeriod: number): Promise<boolean> {
   const rows = await db.queryParams(
     `SELECT TOP 1 1 AS found
        FROM ${SCHEMA_TABLE_CFDI} cfdi
        JOIN ${SCHEMA_TABLE_PERIOD_EMPLOYEES} pe ON pe.id_period_employee = cfdi.id_period_employee
-      WHERE pe.id_period = @id_period AND cfdi.estado = 'T' AND cfdi.livemode = 1`,
+      WHERE pe.id_period = @id_period AND cfdi.estado IN ('T','X') AND cfdi.livemode = 1`,
     { id_period: idPeriod }
   );
   return rows.length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Cancelación del recibo ('T' -> 'X' -> 'C', o 'X' -> 'T' si el SAT la rechaza)
+// ---------------------------------------------------------------------------
+
+export type ReservePayrollCancellationResult =
+  | { status: "reserved"; receipt: IPayrollCfdiReceipt }
+  | { status: "not_found" }
+  | { status: "not_cancellable" };
+
+/**
+ * Reserva la cancelación con `UPDLOCK`, igual candado que el timbrado: se niega si la fila no
+ * existe o no está en `'T'` (ya cancelada, en proceso, o nunca timbrada). Devuelve el recibo tal
+ * como estaba antes de pasar a `'X'` -- `org_uid`/`facturapi_id` son los que la server action usa
+ * para llamar a Facturapi con el emisor guardado en el recibo, no el activo.
+ */
+export async function reservePayrollCancellation(
+  tx: ITransactionClient,
+  idReceipt: number,
+  motive: PayrollCfdiCancellationMotive,
+  userId: number
+): Promise<ReservePayrollCancellationResult> {
+  const rows = await tx.queryParams(
+    `SELECT ${RECEIPT_SELECT_COLUMNS}
+       FROM ${SCHEMA_TABLE_CFDI} cfdi WITH (UPDLOCK, HOLDLOCK)
+      WHERE cfdi.[id_period_employee_cfdi] = @id_receipt`,
+    { id_receipt: idReceipt }
+  );
+  const row = rows[0];
+  if (!row) return { status: "not_found" };
+
+  const receipt = normalizeReceiptRow(row);
+  if (receipt.estado !== "T") return { status: "not_cancellable" };
+
+  const now = buildDate(new Date());
+  await tx.queryParams(
+    `UPDATE ${SCHEMA_TABLE_CFDI}
+        SET [estado] = 'X', [motivo_cancelacion] = @motive, [cancelacion_solicitada_at] = @now,
+            [cancelled_by] = @cancelled_by, [updated_at] = @now
+      WHERE [id_period_employee_cfdi] = @id`,
+    { id: idReceipt, motive, now, cancelled_by: userId }
+  );
+
+  return { status: "reserved", receipt };
+}
+
+export interface CompletePayrollCancellationInput {
+  idReceipt:   number;
+  idEmpresa:   number;
+  idUser:      number;
+  orgUid:      string;
+  uuid:        string;
+  livemode:    boolean;
+  idPeriod:    number;
+  idEmpleado:  number;
+  facturapiId: string;
+  folio:       number | null;
+  motive:      PayrollCfdiCancellationMotive;
+}
+
+/** Cierra la cancelación en `'C'` y escribe `payroll_receipt.cancel` en la misma transacción. */
+export async function completePayrollCancellation(
+  tx: ITransactionClient,
+  input: CompletePayrollCancellationInput
+): Promise<void> {
+  const now = buildDate(new Date());
+  await tx.queryParams(
+    `UPDATE ${SCHEMA_TABLE_CFDI}
+        SET [estado] = 'C', [fecha_cancelacion] = @now, [updated_at] = @now
+      WHERE [id_period_employee_cfdi] = @id`,
+    { id: input.idReceipt, now }
+  );
+
+  await writeAuditEntry(tx, {
+    id_empresa: input.idEmpresa,
+    id_user: input.idUser,
+    action: "payroll_receipt.cancel",
+    org_uid: input.orgUid,
+    target_id: input.uuid,
+    mode: input.livemode ? "live" : "test",
+    detail: JSON.stringify({
+      id_period: input.idPeriod,
+      id_empleado: input.idEmpleado,
+      facturapi_id: input.facturapiId,
+      folio: input.folio,
+      motivo: input.motive,
+    }),
+  });
+}
+
+/**
+ * Revierte `'X'` -> `'T'` cuando Facturapi rechaza la cancelación o la llamada falla, y limpia
+ * las columnas de cancelación -- la fila queda exactamente como antes de intentar cancelarla.
+ */
+export async function revertPayrollCancellation(idReceipt: number): Promise<void> {
+  const now = buildDate(new Date());
+  await db.queryParams(
+    `UPDATE ${SCHEMA_TABLE_CFDI}
+        SET [estado] = 'T', [motivo_cancelacion] = NULL, [cancelacion_solicitada_at] = NULL,
+            [cancelled_by] = NULL, [updated_at] = @now
+      WHERE [id_period_employee_cfdi] = @id`,
+    { id: idReceipt, now }
+  );
+}
+
+/**
+ * Historial de recibos cancelados de un empleado en un periodo, para el Detalle: UUID, serie-folio,
+ * motivo, fecha y quién canceló. El tenant se valida con el `JOIN` hasta `RH.empleados`.
+ */
+export async function loadCancelledPayrollReceipts(
+  idPeriod: number,
+  idEmpleado: number,
+  idEmpresa: number
+): Promise<PayrollCfdiCancelledReceipt[]> {
+  const rows = await db.queryParams(
+    `SELECT cfdi.[id_period_employee_cfdi], cfdi.[uuid], cfdi.[folio], cfdi.[livemode], cfdi.[motivo_cancelacion],
+            CONVERT(varchar(19), cfdi.[fecha_cancelacion], 120) AS fecha_cancelacion,
+            u.[nombre] AS cancelled_by_name
+       FROM ${SCHEMA_TABLE_CFDI} cfdi
+       JOIN [CentroPodologico].[RH].[empleados] e ON e.id_empleado = cfdi.id_empleado
+       LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = cfdi.[cancelled_by]
+      WHERE cfdi.[id_period] = @id_period AND cfdi.[id_empleado] = @id_empleado
+        AND cfdi.[estado] = 'C' AND e.[id_empresa] = @id_empresa
+      ORDER BY cfdi.[fecha_cancelacion] DESC`,
+    { id_period: idPeriod, id_empleado: idEmpleado, id_empresa: idEmpresa }
+  );
+  return rows.map((row) => ({
+    idReceipt: Number(row.id_period_employee_cfdi),
+    uuid: row.uuid as string,
+    serieFolio: `NOM-${row.folio}`,
+    livemode: Boolean(row.livemode),
+    motivoCancelacion: row.motivo_cancelacion as PayrollCfdiCancellationMotive,
+    fechaCancelacion: row.fecha_cancelacion as string,
+    cancelledByName: (row.cancelled_by_name as string | null) ?? "—",
+  }));
 }

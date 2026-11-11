@@ -170,8 +170,10 @@ export default async function PayrollEmployeeDetailPage({
                 <PayrollCfdiCard
                   cfdi={detail.cfdi}
                   payrollIssuer={detail.payrollIssuer}
+                  cancelledReceipts={detail.cancelledReceipts}
                   idPeriod={idPeriod}
                   idEmpleado={idEmpleado}
+                  employeeName={detail.employee.nombre_completo}
                   fiscalYear={Number(detail.period.fecha_fin.slice(0, 4))}
                 />
               )}

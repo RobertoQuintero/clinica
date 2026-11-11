@@ -3370,41 +3370,182 @@ SELECT pd.[id_pending_day_payment], pd.[id_period], p.[codigo], p.[status],
        )
  ORDER BY p.[codigo], e.[apellido_paterno], e.[apellido_materno], e.[nombre], pd.[fecha];
 
--- Spec 98: recibo de CFDI de nómina. Una fila "vigente" por fila fiscal y por modo (Test/Live);
--- un reintento sobrescribe, nunca se acumulan intentos. El estado 'P' reserva antes de llamar a
--- Facturapi (sin idempotencia propia) para que dos clics no generen dos CFDI.
+-- Spec 98/99: recibo de CFDI de nómina. Hay a lo más un recibo "vigente" por fila fiscal y por
+-- modo (Test/Live) -- UX_period_employee_cfdi_vigente -- y puede haber cualquier número de
+-- cancelados ('C'). El estado 'P' reserva antes de llamar a Facturapi (sin idempotencia propia)
+-- para que dos clics no generen dos CFDI; 'X' hace lo mismo para la cancelación.
+-- id_period_employee puede ser NULL: un recibo 'C' sobrevive al recálculo del periodo (spec 99),
+-- por eso también guarda id_period/id_empleado, que no dependen de esa fila.
 CREATE TABLE [payroll].[period_employee_cfdi](
-    [id_period_employee_cfdi] [int]           IDENTITY(1,1) NOT NULL,
-    [id_period_employee]      [int]           NOT NULL,   -- FK -> period_employees, solo filas 'F' (validado en la action)
-    [livemode]                [bit]           NOT NULL,   -- modo de la organización al timbrar
-    [estado]                  [char](1)       NOT NULL,   -- 'P' en proceso, 'T' timbrado, 'E' error
-    [org_uid]                 [nvarchar](255) NOT NULL,   -- emisor con el que se timbró; las descargas usan este
-    [facturapi_id]            [nvarchar](50)  NULL,
-    [uuid]                    [char](36)      NULL,
-    [serie]                   [nvarchar](25)  NULL,       -- siempre 'NOM'
-    [folio]                   [int]           NULL,
-    [total]                   [decimal](12,2) NULL,
-    [fecha_timbrado]          [datetime2](0)  NULL,       -- hora local CDMX, escrita como string con toDBString
-    [mensaje_error]           [nvarchar](1000) NULL,
-    [stamped_by]              [int]           NOT NULL,   -- usuario del último intento
-    [created_at]              [datetime2](0)  NOT NULL,   -- buildDate(new Date())
-    [updated_at]              [datetime2](0)  NOT NULL,
+    [id_period_employee_cfdi]     [int]            IDENTITY(1,1) NOT NULL,
+    [id_period_employee]          [int]            NULL,        -- FK -> period_employees, ON DELETE SET NULL; NULL solo si estado = 'C'
+    [id_period]                   [int]            NOT NULL,    -- FK -> periods, sin cascade; sobrevive al recálculo
+    [id_empleado]                 [int]            NOT NULL,    -- FK -> RH.empleados, sin cascade; sobrevive al recálculo
+    [livemode]                    [bit]            NOT NULL,    -- modo de la organización al timbrar
+    [estado]                      [char](1)        NOT NULL,    -- 'P' en proceso, 'T' timbrado, 'E' error, 'X' cancelación en proceso, 'C' cancelado
+    [org_uid]                     [nvarchar](255)  NOT NULL,    -- emisor con el que se timbró; las descargas y la cancelación usan este
+    [facturapi_id]                [nvarchar](50)   NULL,
+    [uuid]                        [char](36)       NULL,
+    [serie]                       [nvarchar](25)   NULL,        -- siempre 'NOM'
+    [folio]                       [int]            NULL,
+    [total]                       [decimal](12,2)  NULL,
+    [fecha_timbrado]              [datetime2](0)   NULL,        -- hora local CDMX, escrita como string con toDBString
+    [mensaje_error]               [nvarchar](1000) NULL,
+    [stamped_by]                  [int]            NOT NULL,    -- usuario del último intento de timbrado
+    [motivo_cancelacion]          [char](2)        NULL,        -- '02' o '03'
+    [cancelacion_solicitada_at]   [datetime2](0)   NULL,        -- buildDate(new Date()), cuándo se pidió la cancelación
+    [fecha_cancelacion]           [datetime2](0)   NULL,        -- cuándo quedó en 'C'
+    [cancelled_by]                [int]            NULL,        -- usuario que solicitó la cancelación
+    [created_at]                  [datetime2](0)   NOT NULL,    -- buildDate(new Date())
+    [updated_at]                  [datetime2](0)   NOT NULL,
  CONSTRAINT [PK_period_employee_cfdi] PRIMARY KEY CLUSTERED ([id_period_employee_cfdi] ASC),
- CONSTRAINT [UQ_period_employee_cfdi] UNIQUE ([id_period_employee], [livemode]),
  CONSTRAINT [FK_period_employee_cfdi_period_employee] FOREIGN KEY ([id_period_employee])
-     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE CASCADE,
- CONSTRAINT [CK_period_employee_cfdi_estado] CHECK ([estado] IN ('P','T','E')),
+     REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE SET NULL,
+ CONSTRAINT [FK_period_employee_cfdi_period] FOREIGN KEY ([id_period])
+     REFERENCES [payroll].[periods] ([id_period]),
+ CONSTRAINT [FK_period_employee_cfdi_empleado] FOREIGN KEY ([id_empleado])
+     REFERENCES [RH].[empleados] ([id_empleado]),
+ CONSTRAINT [CK_period_employee_cfdi_estado] CHECK ([estado] IN ('P','T','E','X','C')),
  CONSTRAINT [CK_period_employee_cfdi_coherencia] CHECK (
-     ([estado] = 'T' AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
-         AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL)
-     OR ([estado] = 'E' AND [mensaje_error] IS NOT NULL AND [uuid] IS NULL)
-     OR ([estado] = 'P' AND [uuid] IS NULL AND [mensaje_error] IS NULL))
+     ([estado] IN ('P','E')
+         AND [uuid] IS NULL
+         AND [motivo_cancelacion] IS NULL AND [cancelacion_solicitada_at] IS NULL
+         AND [fecha_cancelacion] IS NULL AND [cancelled_by] IS NULL
+         AND (([estado] = 'P' AND [mensaje_error] IS NULL)
+              OR ([estado] = 'E' AND [mensaje_error] IS NOT NULL)))
+     OR ([estado] = 'T'
+         AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
+         AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL
+         AND [motivo_cancelacion] IS NULL AND [cancelacion_solicitada_at] IS NULL
+         AND [fecha_cancelacion] IS NULL AND [cancelled_by] IS NULL)
+     OR ([estado] = 'X'
+         AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
+         AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL
+         AND [motivo_cancelacion] IS NOT NULL AND [cancelled_by] IS NOT NULL
+         AND [cancelacion_solicitada_at] IS NOT NULL AND [fecha_cancelacion] IS NULL)
+     OR ([estado] = 'C'
+         AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
+         AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL
+         AND [motivo_cancelacion] IS NOT NULL AND [cancelled_by] IS NOT NULL
+         AND [cancelacion_solicitada_at] IS NOT NULL AND [fecha_cancelacion] IS NOT NULL)),
+ CONSTRAINT [CK_period_employee_cfdi_motivo] CHECK (
+     [motivo_cancelacion] IS NULL OR [motivo_cancelacion] IN ('02','03')),
+ CONSTRAINT [CK_period_employee_cfdi_huerfano] CHECK (
+     [id_period_employee] IS NOT NULL OR [estado] = 'C')
 ) ON [PRIMARY]
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UX_period_employee_cfdi_uuid]
     ON [payroll].[period_employee_cfdi] ([uuid])
     WHERE [uuid] IS NOT NULL
+GO
+
+-- A lo más un recibo vigente por fila fiscal y modo; cualquier número de cancelados ('C').
+CREATE UNIQUE NONCLUSTERED INDEX [UX_period_employee_cfdi_vigente]
+    ON [payroll].[period_employee_cfdi] ([id_period_employee], [livemode])
+    WHERE [estado] IN ('P','T','E','X')
+GO
+
+-- Para listar los recibos cancelados de un periodo/empleado en el Detalle (spec 99).
+CREATE NONCLUSTERED INDEX [IX_period_employee_cfdi_period_empleado]
+    ON [payroll].[period_employee_cfdi] ([id_period], [id_empleado])
+GO
+
+-- Spec 99: migración a mano sobre la tabla ya creada por la spec 98. Orden obligatorio.
+-- 1) columnas nuevas, todas NULL por ahora.
+ALTER TABLE [payroll].[period_employee_cfdi] ADD
+    [id_period]                 [int]          NULL,
+    [id_empleado]               [int]          NULL,
+    [motivo_cancelacion]        [char](2)      NULL,
+    [cancelacion_solicitada_at] [datetime2](0) NULL,
+    [fecha_cancelacion]         [datetime2](0) NULL,
+    [cancelled_by]              [int]          NULL
+GO
+
+-- 2) llenar id_period/id_empleado desde period_employees, para los recibos existentes.
+UPDATE c
+   SET c.[id_period]   = pe.[id_period],
+       c.[id_empleado] = pe.[id_empleado]
+  FROM [CentroPodologico].[payroll].[period_employee_cfdi] c
+  JOIN [CentroPodologico].[payroll].[period_employees] pe
+    ON pe.[id_period_employee] = c.[id_period_employee]
+ WHERE c.[id_period] IS NULL
+GO
+
+-- 3) pasarlas a NOT NULL.
+ALTER TABLE [payroll].[period_employee_cfdi] ALTER COLUMN [id_period]   [int] NOT NULL
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] ALTER COLUMN [id_empleado] [int] NOT NULL
+GO
+
+-- 4) id_period_employee puede quedar NULL (recibo 'C' sobreviviente) y su FK pasa a SET NULL.
+ALTER TABLE [payroll].[period_employee_cfdi] DROP CONSTRAINT [FK_period_employee_cfdi_period_employee]
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] ALTER COLUMN [id_period_employee] [int] NULL
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [FK_period_employee_cfdi_period_employee] FOREIGN KEY ([id_period_employee])
+        REFERENCES [payroll].[period_employees] ([id_period_employee]) ON DELETE SET NULL
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [FK_period_employee_cfdi_period] FOREIGN KEY ([id_period])
+        REFERENCES [payroll].[periods] ([id_period])
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [FK_period_employee_cfdi_empleado] FOREIGN KEY ([id_empleado])
+        REFERENCES [RH].[empleados] ([id_empleado])
+GO
+
+-- 5) UQ_period_employee_cfdi (1 por fila/modo, siempre) -> índice filtrado (permite varios 'C').
+ALTER TABLE [payroll].[period_employee_cfdi] DROP CONSTRAINT [UQ_period_employee_cfdi]
+GO
+CREATE UNIQUE NONCLUSTERED INDEX [UX_period_employee_cfdi_vigente]
+    ON [payroll].[period_employee_cfdi] ([id_period_employee], [livemode])
+    WHERE [estado] IN ('P','T','E','X')
+GO
+
+-- 6) recrear los CHECK con los estados/columnas nuevos, agregar los nuevos y el índice de listado.
+ALTER TABLE [payroll].[period_employee_cfdi] DROP CONSTRAINT [CK_period_employee_cfdi_estado]
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] DROP CONSTRAINT [CK_period_employee_cfdi_coherencia]
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [CK_period_employee_cfdi_estado] CHECK ([estado] IN ('P','T','E','X','C'))
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [CK_period_employee_cfdi_coherencia] CHECK (
+        ([estado] IN ('P','E')
+            AND [uuid] IS NULL
+            AND [motivo_cancelacion] IS NULL AND [cancelacion_solicitada_at] IS NULL
+            AND [fecha_cancelacion] IS NULL AND [cancelled_by] IS NULL
+            AND (([estado] = 'P' AND [mensaje_error] IS NULL)
+                 OR ([estado] = 'E' AND [mensaje_error] IS NOT NULL)))
+        OR ([estado] = 'T'
+            AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
+            AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL
+            AND [motivo_cancelacion] IS NULL AND [cancelacion_solicitada_at] IS NULL
+            AND [fecha_cancelacion] IS NULL AND [cancelled_by] IS NULL)
+        OR ([estado] = 'X'
+            AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
+            AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL
+            AND [motivo_cancelacion] IS NOT NULL AND [cancelled_by] IS NOT NULL
+            AND [cancelacion_solicitada_at] IS NOT NULL AND [fecha_cancelacion] IS NULL)
+        OR ([estado] = 'C'
+            AND [facturapi_id] IS NOT NULL AND [uuid] IS NOT NULL AND [folio] IS NOT NULL
+            AND [total] IS NOT NULL AND [fecha_timbrado] IS NOT NULL AND [mensaje_error] IS NULL
+            AND [motivo_cancelacion] IS NOT NULL AND [cancelled_by] IS NOT NULL
+            AND [cancelacion_solicitada_at] IS NOT NULL AND [fecha_cancelacion] IS NOT NULL))
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [CK_period_employee_cfdi_motivo] CHECK (
+        [motivo_cancelacion] IS NULL OR [motivo_cancelacion] IN ('02','03'))
+GO
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [CK_period_employee_cfdi_huerfano] CHECK (
+        [id_period_employee] IS NOT NULL OR [estado] = 'C')
+GO
+CREATE NONCLUSTERED INDEX [IX_period_employee_cfdi_period_empleado]
+    ON [payroll].[period_employee_cfdi] ([id_period], [id_empleado])
 GO
 
 
