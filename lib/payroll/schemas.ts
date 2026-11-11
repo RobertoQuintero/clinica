@@ -178,6 +178,11 @@ export const payrollStampingQueueSchema = z.object({
   idPeriod: z.number().int().positive("Periodo inválido"),
 });
 
+// Spec 99: volver a consultar ante el SAT una cancelación que quedó en 'X' (pendiente).
+export const refreshPayrollCancellationStatusSchema = z.object({
+  idReceipt: z.number().int().positive("Recibo inválido"),
+});
+
 /** Parámetro de ruta de `/api/nomina/cfdi/[id]/xml|pdf`. */
 export const payrollCfdiDownloadParamsSchema = z.object({
   id: z.coerce.number().int().positive("Recibo inválido"),

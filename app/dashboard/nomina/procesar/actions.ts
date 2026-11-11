@@ -106,11 +106,13 @@ import {
   payrollEmployeeDetailFiltersSchema,
   payrollProcessFiltersSchema,
   payrollStampingQueueSchema,
+  refreshPayrollCancellationStatusSchema,
   reopenPayrollPeriodSchema,
   revertPayrollCalculationSchema,
   stampPayrollReceiptSchema,
   unapprovePayrollPeriodSchema,
 } from "@/lib/payroll/schemas";
+import { CancellationMotive } from "facturapi";
 import { getOrgClient } from "@/lib/billing/facturapiClient";
 import { toUserMessage } from "@/lib/billing/errors";
 import { getOrganizationByUid } from "@/lib/billing/organizationsRepository";
@@ -120,16 +122,25 @@ import {
   PAYROLL_STAMPING_BLOCK_REASON_LABELS,
 } from "@/lib/payroll/cfdi/payrollStampingBlockers";
 import {
+  cancelPayrollReceiptSchema,
+  formatPayrollReceiptFolio,
+  resolveCancellationOutcome,
+} from "@/lib/payroll/cfdi/payrollCfdiCancellation";
+import {
+  completePayrollCancellation,
   completePayrollReceipt,
   DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL,
   failPayrollReceipt,
   hasActiveCertificate,
   hasLiveStampedReceipts,
   loadPayrollCfdiReceipt,
+  loadPayrollCfdiReceiptForDownload,
   loadPeriodPayrollCfdiOverview,
   loadPayrollStampingQueue,
   loadPayrollStampingSource,
+  reservePayrollCancellation,
   reservePayrollReceipt,
+  revertPayrollCancellation,
   toPayrollCfdiSource,
 } from "@/lib/payroll/cfdi/payrollCfdiRepository";
 import type { PayrollCfdiRowState } from "@/interfaces/payroll_cfdi";
@@ -2460,5 +2471,152 @@ export async function getPayrollStampingQueue(input: unknown): Promise<ActionRes
   } catch (error) {
     console.error("getPayrollStampingQueue", error);
     return { ok: false, message: "No se pudo cargar la cola de timbrado" };
+  }
+}
+
+/** El estado "CFDI" tras una cancelación, según en qué quedó la fila: 'C' no es vigente (vuelve a "Pendiente"). */
+function buildCancellationRowState(
+  outcome: "pending" | "not_cancelled",
+  receipt: PayrollCfdiRowState["receipt"]
+): PayrollCfdiRowState {
+  if (!receipt) return { status: "pendiente" };
+  if (outcome === "pending") return { status: "cancelacion_en_proceso", receipt };
+  return { status: receipt.livemode ? "timbrado" : "prueba", receipt };
+}
+
+function revalidatePayrollEmployeeDetail(idEmpleado: number) {
+  revalidatePayrollPaths();
+  revalidatePath(`/dashboard/nomina/procesar/${idEmpleado}`);
+}
+
+/**
+ * Cancela ante el SAT un CFDI de nómina ya timbrado (spec 99): reserva `'T' -> 'X'`, llama a
+ * Facturapi con el emisor guardado en el recibo (no el activo) y resuelve a `'C'`, se queda en
+ * `'X'` (pendiente ante el SAT) o revierte a `'T'` si Facturapi rechaza o falla la llamada.
+ */
+export async function cancelPayrollReceipt(input: unknown): Promise<ActionResult<PayrollCfdiRowState>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_user, id_empresa } = access.data;
+
+  const parsed = cancelPayrollReceiptSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { idReceipt, motive, confirmFolio } = parsed.data;
+
+  try {
+    const target = await loadPayrollCfdiReceiptForDownload(idReceipt, id_empresa);
+    if (!target || target.receipt.estado !== "T") {
+      return { ok: false, message: "Este recibo no está timbrado" };
+    }
+    if (target.receipt.livemode && confirmFolio !== formatPayrollReceiptFolio(target.receipt)) {
+      return { ok: false, message: "El folio no coincide" };
+    }
+
+    const reservation = await db.transaction((tx) => reservePayrollCancellation(tx, idReceipt, motive, id_user));
+    if (reservation.status === "not_found" || reservation.status === "not_cancellable") {
+      return { ok: false, message: "Este recibo no está timbrado" };
+    }
+    const { receipt } = reservation;
+    const idPeriodEmployee = receipt.id_period_employee as number;
+
+    try {
+      const client = await getOrgClient(receipt.org_uid, id_empresa);
+      const invoice = await client.invoices.cancel(receipt.facturapi_id as string, {
+        motive: motive as CancellationMotive,
+      });
+      const outcome = resolveCancellationOutcome(invoice);
+
+      if (outcome === "cancelled") {
+        await db.transaction((tx) =>
+          completePayrollCancellation(tx, {
+            idReceipt,
+            idEmpresa: id_empresa,
+            idUser: id_user,
+            orgUid: receipt.org_uid,
+            uuid: receipt.uuid as string,
+            livemode: receipt.livemode,
+            idPeriod: receipt.id_period,
+            idEmpleado: receipt.id_empleado,
+          })
+        );
+        revalidatePayrollEmployeeDetail(receipt.id_empleado);
+        return { ok: true, data: { status: "pendiente" } };
+      }
+
+      if (outcome === "not_cancelled") {
+        await revertPayrollCancellation(idReceipt);
+      }
+
+      revalidatePayrollEmployeeDetail(receipt.id_empleado);
+      const updatedReceipt = await loadPayrollCfdiReceipt(idPeriodEmployee);
+      return { ok: true, data: buildCancellationRowState(outcome === "pending" ? "pending" : "not_cancelled", updatedReceipt ?? undefined) };
+    } catch (cancelError) {
+      await revertPayrollCancellation(idReceipt);
+      revalidatePayrollEmployeeDetail(receipt.id_empleado);
+      return { ok: false, message: toUserMessage(cancelError) };
+    }
+  } catch (error) {
+    console.error("cancelPayrollReceipt", error);
+    return { ok: false, message: "No se pudo cancelar el CFDI" };
+  }
+}
+
+/**
+ * Vuelve a preguntarle a Facturapi por una cancelación que quedó en `'X'` (spec 99): solo aplica a
+ * recibos en ese estado. Resuelve igual que `cancelPayrollReceipt`: `'C'`, se queda en `'X'`, o
+ * revierte a `'T'` si el SAT terminó rechazando la cancelación.
+ */
+export async function refreshPayrollCancellationStatus(input: unknown): Promise<ActionResult<PayrollCfdiRowState>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const { id_user, id_empresa } = access.data;
+
+  const parsed = refreshPayrollCancellationStatusSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { idReceipt } = parsed.data;
+
+  try {
+    const target = await loadPayrollCfdiReceiptForDownload(idReceipt, id_empresa);
+    if (!target || target.receipt.estado !== "X") {
+      return { ok: false, message: "Esta cancelación no está en proceso" };
+    }
+    const receipt = target.receipt;
+    const idPeriodEmployee = receipt.id_period_employee as number;
+
+    const client = await getOrgClient(receipt.org_uid, id_empresa);
+    const invoice = await client.invoices.retrieve(receipt.facturapi_id as string);
+    const outcome = resolveCancellationOutcome(invoice);
+
+    if (outcome === "cancelled") {
+      await db.transaction((tx) =>
+        completePayrollCancellation(tx, {
+          idReceipt,
+          idEmpresa: id_empresa,
+          idUser: id_user,
+          orgUid: receipt.org_uid,
+          uuid: receipt.uuid as string,
+          livemode: receipt.livemode,
+          idPeriod: receipt.id_period,
+          idEmpleado: receipt.id_empleado,
+        })
+      );
+      revalidatePayrollEmployeeDetail(receipt.id_empleado);
+      return { ok: true, data: { status: "pendiente" } };
+    }
+
+    if (outcome === "not_cancelled") {
+      await revertPayrollCancellation(idReceipt);
+    }
+
+    revalidatePayrollEmployeeDetail(receipt.id_empleado);
+    const updatedReceipt = await loadPayrollCfdiReceipt(idPeriodEmployee);
+    return { ok: true, data: buildCancellationRowState(outcome === "pending" ? "pending" : "not_cancelled", updatedReceipt ?? undefined) };
+  } catch (error) {
+    console.error("refreshPayrollCancellationStatus", error);
+    return { ok: false, message: toUserMessage(error) };
   }
 }
