@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import type { IPayrollEmployeeRow, IPayrollProcessPage, PayrollType } from "@/interfaces/payroll_calculation";
-import type { PayrollCfdiRowState } from "@/interfaces/payroll_cfdi";
+import type { PayrollCfdiRowState, PayrollIssuerSummary } from "@/interfaces/payroll_cfdi";
 import { PAYROLL_TYPE } from "@/lib/payroll/constants";
 import { formatPayrollCurrency } from "@/lib/payroll/moneyFormat";
 import { buildPayrollEmployeeDetailHref } from "@/lib/payroll/processUrls";
@@ -21,6 +21,8 @@ interface Props {
   hasActiveFilters: boolean;
   /** Spec 98: estado "CFDI" por `id_period_employee`; solo se pasa en la nómina fiscal. */
   cfdiStates?: Map<number, PayrollCfdiRowState>;
+  /** Spec 98/99: solo se pasa en la nómina fiscal, para timbrar y cancelar. */
+  payrollIssuer?: PayrollIssuerSummary;
 }
 
 /** Importe de una comisión con su conteo ("3 consultas") como texto secundario; sin conteo si es 0. */
@@ -62,6 +64,7 @@ export default function PayrollEmployeesTable({
   totals,
   hasActiveFilters,
   cfdiStates,
+  payrollIssuer,
 }: Props) {
   // El detalle conserva los filtros para "Regresar" y para Anterior / Siguiente.
   const detailFilters = { idPeriod, payrollType, idPuesto, search };
@@ -216,6 +219,8 @@ export default function PayrollEmployeesTable({
                           state={cfdiStates?.get(employeeRow.id_period_employee)}
                           idPeriod={idPeriod}
                           idEmpleado={employeeRow.id_empleado}
+                          employeeName={employeeRow.nombre_completo}
+                          payrollIssuer={payrollIssuer ?? { active: false, hasCertificate: false, name: null, isLive: false }}
                         />
                       </>
                     )}

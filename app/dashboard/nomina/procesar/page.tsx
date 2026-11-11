@@ -285,6 +285,7 @@ export default async function ProcesarNominaPage({
               totals={result.data.totals}
               hasActiveFilters={filters.idPuesto !== null || filters.search !== ""}
               cfdiStates={result.data.cfdiStates}
+              payrollIssuer={result.data.payrollIssuer}
             />
           )}
         </>
