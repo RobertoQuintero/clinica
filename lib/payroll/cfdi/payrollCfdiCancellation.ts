@@ -24,19 +24,13 @@ export type PayrollCancellationOutcome = "cancelled" | "pending" | "not_cancelle
 /**
  * Traduce la respuesta de Facturapi (`invoices.cancel`/`invoices.retrieve`) al desenlace que le
  * importa a esta spec. `status === 'canceled'` manda; si no, `cancellation_status` distingue entre
- * "sigue en trámite ante el SAT" (`pending`/`verifying`) y "no se canceló" (el resto).
+ * solo un rechazo explícito permite volver a timbrado; cualquier otro estado es incierto.
  */
 export function resolveCancellationOutcome(invoice: Invoice): PayrollCancellationOutcome {
   if (invoice.status === InvoiceStatus.CANCELED) return "cancelled";
 
-  if (
-    invoice.cancellation_status === CancellationStatus.PENDING ||
-    invoice.cancellation_status === CancellationStatus.VERIFYING
-  ) {
-    return "pending";
-  }
-
-  return "not_cancelled";
+  if (invoice.cancellation_status === CancellationStatus.REJECTED) return "not_cancelled";
+  return "pending";
 }
 
 /** `NOM-{folio}`, la confirmación que Live exige escribir antes de cancelar. */

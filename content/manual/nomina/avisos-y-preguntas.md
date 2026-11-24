@@ -62,7 +62,7 @@ En la vista fiscal, consulta los motivos de "Bloquequeado" o el mensaje de "Erro
 Porque hay un aviso "Recalcula la nómina" activo en el periodo: el cálculo guardado ya no coincide con los datos actuales. Entra a [Procesar nómina](./procesar-nomina) y presiona "Recalcular" antes de aprobar.
 
 **¿Puedo deshacer un periodo aprobado o pagado?**
-Un periodo **Aprobada** se puede desaprobar con un motivo, y regresa a **En cálculo**. Un periodo **Pagada** puede [reabrirse](./procesar-nomina#como-reabrir-un-periodo-pagado) con un motivo si no tiene CFDI reales vigentes o con cancelación en proceso.
+Un periodo **Aprobada** se puede desaprobar con un motivo, y regresa a **En cálculo**. Un periodo **Pagada** puede [reabrirse](./procesar-nomina#como-reabrir-un-periodo-pagado) con un motivo si no tiene CFDI reales pendientes de timbrado, vigentes o con cancelación en proceso. Un error real histórico sin identificar también requiere revisión antes de borrar el cálculo.
 
 **¿Por qué ya no puedo editar las faltas, los retardos o las horas extra de este periodo?**
 Porque el periodo está en **Aprobada** o **Pagada** y el cálculo quedó congelado. Para volver a editar, desaprueba el periodo aprobado o reabre el pagado desde [Procesar nómina](./procesar-nomina#como-reabrir-un-periodo-pagado).

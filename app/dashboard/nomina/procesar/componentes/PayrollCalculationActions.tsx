@@ -242,7 +242,7 @@ export default function PayrollCalculationActions({
               ? "payroll-approve-blocked-reason"
               : action === "pay" && hasMissingEmployees
                 ? "payroll-pay-blocked-reason"
-                : action === "reopen" && hasStampedLiveReceipts
+                : (action === "reopen" || action === "recalculate" || action === "revert") && hasStampedLiveReceipts
                   ? "payroll-reopen-blocked-reason"
                   : null;
           const blockedMessage =

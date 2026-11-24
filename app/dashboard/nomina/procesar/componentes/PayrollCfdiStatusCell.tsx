@@ -2,6 +2,7 @@ import type { PayrollCfdiRowState, PayrollIssuerSummary } from "@/interfaces/pay
 import { PAYROLL_STAMPING_BLOCK_REASON_LABELS } from "@/lib/payroll/cfdi/payrollStampingBlockers";
 import PayrollCfdiCancelButton from "./PayrollCfdiCancelButton";
 import PayrollCfdiRefreshStatusButton from "./PayrollCfdiRefreshStatusButton";
+import PayrollCfdiReconcile from "./PayrollCfdiReconcile";
 import PayrollCfdiStampButton from "./PayrollCfdiStampButton";
 
 interface Props {
@@ -65,8 +66,11 @@ export default function PayrollCfdiStatusCell({ state, idPeriod, idEmpleado, emp
         {state.status === "pendiente" && (
           <PayrollCfdiStampButton idPeriod={idPeriod} idEmpleado={idEmpleado} variant="stamp" />
         )}
-        {state.status === "error" && (
+        {state.status === "error" && !(state.receipt?.livemode && !state.receipt.external_id) && (
           <PayrollCfdiStampButton idPeriod={idPeriod} idEmpleado={idEmpleado} variant="retry" />
+        )}
+        {state.receipt && (state.status === "en_proceso" || (state.status === "error" && state.receipt.livemode && !state.receipt.external_id)) && (
+          <PayrollCfdiReconcile idReceipt={state.receipt.id_period_employee_cfdi} historical={state.receipt.livemode && !state.receipt.external_id} />
         )}
         {(state.status === "timbrado" || state.status === "prueba") && state.receipt && (
           <PayrollCfdiCancelButton

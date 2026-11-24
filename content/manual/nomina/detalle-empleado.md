@@ -43,7 +43,7 @@ Si falta en un periodo histórico, la app lo prepara al timbrar con el salario f
 
 ## CFDI de nómina
 
-En la vista fiscal de un periodo ordinario, la tarjeta de CFDI muestra el estado y los motivos que impiden timbrar. Desde aquí puedes timbrar o reintentar, cancelar un recibo y consultar una cancelación pendiente. Descarga el XML y PDF del comprobante timbrado; en **Recibos cancelados** también están el XML, PDF y acuse de cancelación. Consulta [Procesar nómina](./procesar-nomina#como-timbrar-los-recibos) para los requisitos y el procedimiento.
+En la vista fiscal de un periodo ordinario, la tarjeta de CFDI muestra el estado y los motivos que impiden timbrar. Desde aquí puedes timbrar o reintentar, cancelar un recibo y usar "Consultar estado" tanto para un timbrado incierto como para una cancelación pendiente. Si un recibo real histórico requiere revisión manual, registra el resultado y la referencia de la evidencia después de verificarlo en Facturapi. Descarga el XML y PDF del comprobante timbrado; en **Recibos cancelados** también están el XML, PDF y acuse de cancelación. Consulta [Procesar nómina](./procesar-nomina#como-timbrar-los-recibos) para los requisitos y el procedimiento.
 
 ## Avisos de esta pantalla
 

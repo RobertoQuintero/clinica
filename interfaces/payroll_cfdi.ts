@@ -16,6 +16,8 @@ export interface IPayrollCfdiReceipt {
   livemode:                  boolean;
   estado:                    PayrollCfdiStatus;
   org_uid:                   string;
+  external_id:               string | null;
+  intento_timbrado:           number | null;
   facturapi_id:              string | null;
   uuid:                      string | null;
   serie:                     string | null;

@@ -12,6 +12,7 @@ import { formatPeriodDate } from "@/lib/payroll/periodFormat";
 import { buildTaxParametersHref, type TaxParametersTab } from "@/lib/payroll/taxParametersUrls";
 import PayrollCfdiCancelButton from "../../componentes/PayrollCfdiCancelButton";
 import PayrollCfdiRefreshStatusButton from "../../componentes/PayrollCfdiRefreshStatusButton";
+import PayrollCfdiReconcile from "../../componentes/PayrollCfdiReconcile";
 import PayrollCfdiStampButton from "../../componentes/PayrollCfdiStampButton";
 
 interface Props {
@@ -91,11 +92,11 @@ export default function PayrollCfdiCard({
             </div>
           )}
 
-          {cfdi.status === "en_proceso" && (
-            <p className="flex gap-2 text-sm text-[#44474f] dark:text-zinc-400">
+          {cfdi.status === "en_proceso" && cfdi.receipt && (
+            <div className="flex items-center justify-between gap-4"><p className="flex gap-2 text-sm text-[#44474f] dark:text-zinc-400">
               <Hourglass size={16} className="shrink-0 mt-0.5" aria-hidden />
-              Timbrando con el PAC. Esto solo toma unos segundos; refresca la página si no cambia.
-            </p>
+              El resultado del timbrado está pendiente de confirmación.
+            </p><PayrollCfdiReconcile idReceipt={cfdi.receipt.id_period_employee_cfdi} historical={cfdi.receipt.livemode && !cfdi.receipt.external_id} /></div>
           )}
 
           {cfdi.status === "cancelacion_en_proceso" && cfdi.receipt && (
@@ -141,10 +142,12 @@ export default function PayrollCfdiCard({
                 <p className="flex gap-2 text-sm text-[#ba1a1a] dark:text-red-400">
                   <CircleAlert size={16} className="shrink-0 mt-0.5" aria-hidden />
                   <span>
-                    <span className="font-semibold">El PAC rechazó el timbrado.</span> {cfdi.receipt.mensaje_error}
+                    <span className="font-semibold">{cfdi.receipt.livemode && !cfdi.receipt.external_id ? "Este recibo requiere revisión manual en Facturapi." : "El PAC rechazó el timbrado."}</span> {cfdi.receipt.mensaje_error}
                   </span>
                 </p>
-                <PayrollCfdiStampButton idPeriod={idPeriod} idEmpleado={idEmpleado} variant="retry" />
+                {cfdi.receipt.livemode && !cfdi.receipt.external_id
+                  ? <PayrollCfdiReconcile idReceipt={cfdi.receipt.id_period_employee_cfdi} historical />
+                  : <PayrollCfdiStampButton idPeriod={idPeriod} idEmpleado={idEmpleado} variant="retry" />}
               </div>
             </div>
           )}

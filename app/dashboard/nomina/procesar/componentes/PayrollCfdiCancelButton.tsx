@@ -34,7 +34,10 @@ export default function PayrollCfdiCancelButton({ receipt, employeeName, issuerN
           receipt={receipt}
           employeeName={employeeName}
           issuerName={issuerName}
-          onClose={() => setShowDialog(false)}
+          onClose={() => {
+            setShowDialog(false);
+            router.refresh();
+          }}
           onCancelled={() => {
             setShowDialog(false);
             router.refresh();
