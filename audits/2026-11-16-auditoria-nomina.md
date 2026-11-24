@@ -27,6 +27,10 @@ Los hallazgos están agrupados por tópico (A–E) para poder atenderlos en bloq
 
 ## Grupo A — Control de acceso y sesión
 
+**Actualización 2026-11-24 — spec 102:** A1 y A2 atendidos en Nómina. `getCurrentPayrollUser` verifica el JWT y consulta el usuario vigente; `assertPayrollAccess` valida la sucursal seleccionada o la principal contra la empresa y el estado activo. Las descargas XML, PDF y acuse comparten la validación del usuario y mantienen el filtro por empresa. Los demás módulos y la duración del JWT no cambiaron.
+
+**Evidencia:** `tests/payroll-access.test.ts` pasó sus tres pruebas con simulaciones de JWT, cambios de rol y usuario, sucursales, errores de consulta y rechazo de las tres descargas antes de consultar recibos o al proveedor. También pasaron TypeScript (`tsc --noEmit --incremental false`) y ESLint de los archivos de código modificados. Pendiente: verificación de aceptación con datos y navegación reales; las pruebas automatizadas simulan la base de datos y el proveedor.
+
 ### A1 · ALTA · La sucursal activa sale de una cookie que nunca se valida
 
 - **Dónde:** `lib/payroll/access.ts:57-58`.

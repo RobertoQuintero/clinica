@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
 
-import { requireBillingAccess } from "@/lib/auth/session";
+import { getCurrentPayrollUser } from "@/lib/payroll/access";
 import { getOrgClient } from "@/lib/billing/facturapiClient";
 import { toUserMessage } from "@/lib/billing/errors";
 import { payrollCfdiDownloadParamsSchema } from "@/lib/payroll/schemas";
@@ -15,12 +15,9 @@ export const runtime = "nodejs";
  * estado (o un recibo de otra empresa) se trata como 404, igual que un recibo inexistente.
  */
 export const GET = async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
-  let id_empresa: number;
-  try {
-    ({ id_empresa } = await requireBillingAccess());
-  } catch (err) {
-    return NextResponse.json({ ok: false, message: toUserMessage(err) }, { status: 401 });
-  }
+  const access = await getCurrentPayrollUser();
+  if (!access.ok) return NextResponse.json(access, { status: 401 });
+  const { id_empresa } = access.data;
 
   const parsed = payrollCfdiDownloadParamsSchema.safeParse(await params);
   if (!parsed.success) {
