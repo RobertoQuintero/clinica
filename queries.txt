@@ -3550,6 +3550,48 @@ GO
 
 
 
+-- Spec 100: SDI fijo congelado para la fila fiscal de cada empleado y periodo.
+-- La clave compuesta impide asociar el cálculo a una fila operativa.
+ALTER TABLE [payroll].[period_employees] ADD CONSTRAINT [UQ_period_employees_id_tipo]
+    UNIQUE ([id_period_employee], [tipo_nomina])
+GO
+CREATE TABLE [payroll].[period_employee_sdi](
+    [id_period_employee] [int] NOT NULL,
+    [tipo_nomina] [char](1) NOT NULL CONSTRAINT [DF_period_employee_sdi_tipo] DEFAULT ('F'),
+    [estado] [char](1) NOT NULL, -- C: calculado; E: datos insuficientes
+    [motivo] [nvarchar](500) NULL,
+    [salario_diario_fiscal] [decimal](12,2) NULL,
+    [fecha_ingreso] [date] NULL,
+    [fecha_referencia] [date] NULL,
+    [antiguedad_anios] [int] NULL,
+    [dias_vacaciones] [int] NULL,
+    [dias_aguinaldo] [int] NULL,
+    [porcentaje_prima_vacacional] [decimal](9,4) NULL,
+    [factor_integracion] [decimal](18,12) NULL,
+    [salario_diario_integrado] [decimal](12,2) NULL,
+    [origen] [varchar](20) NOT NULL, -- procesamiento | timbrado
+    [calculado_at] [datetime2](0) NOT NULL CONSTRAINT [DF_period_employee_sdi_calculado_at] DEFAULT (SYSDATETIME()),
+ CONSTRAINT [PK_period_employee_sdi] PRIMARY KEY CLUSTERED ([id_period_employee]),
+ CONSTRAINT [FK_period_employee_sdi_fiscal] FOREIGN KEY ([id_period_employee], [tipo_nomina])
+     REFERENCES [payroll].[period_employees] ([id_period_employee], [tipo_nomina]) ON DELETE CASCADE,
+ CONSTRAINT [CK_period_employee_sdi_tipo] CHECK ([tipo_nomina] = 'F'),
+ CONSTRAINT [CK_period_employee_sdi_origen] CHECK ([origen] IN ('procesamiento', 'timbrado')),
+ CONSTRAINT [CK_period_employee_sdi_estado] CHECK (
+     ([estado] = 'E' AND [motivo] IS NOT NULL AND LEN(LTRIM(RTRIM([motivo]))) > 0
+         AND [salario_diario_integrado] IS NULL)
+     OR ([estado] = 'C' AND [motivo] IS NULL
+         AND [salario_diario_fiscal] IS NOT NULL AND [salario_diario_fiscal] > 0
+         AND [fecha_ingreso] IS NOT NULL AND [fecha_referencia] IS NOT NULL
+         AND [fecha_ingreso] <= [fecha_referencia]
+         AND [antiguedad_anios] IS NOT NULL AND [antiguedad_anios] >= 0
+         AND [dias_vacaciones] IS NOT NULL AND [dias_vacaciones] > 0
+         AND [dias_aguinaldo] IS NOT NULL AND [dias_aguinaldo] > 0
+         AND [porcentaje_prima_vacacional] IS NOT NULL AND [porcentaje_prima_vacacional] >= 0
+         AND [factor_integracion] IS NOT NULL AND [factor_integracion] >= 1
+         AND [salario_diario_integrado] IS NOT NULL AND [salario_diario_integrado] > 0))
+) ON [PRIMARY]
+GO
+
 ------------ OTROS PAGOS -----------------------
 
 CREATE TABLE [payroll].[other_payments](

@@ -60,6 +60,7 @@ import {
   PUNCTUALITY_BONUS_SELECT_SQL,
 } from "@/lib/payroll/punctualityBonusSql";
 import { ISR_BRACKET_APPLY_SQL, ISR_PARAMETERS_SQL, ISR_UPDATE_SET_SQL } from "@/lib/payroll/isrSql";
+import { INSERT_HISTORICAL_SDI_SQL, INSERT_PERIOD_SDI_SQL } from "@/lib/payroll/sdiSql";
 import {
   IMSS_APPLY_SQL,
   IMSS_BREAKDOWN_SELECT_SQL,
@@ -1201,6 +1202,32 @@ export async function getPayrollEmployeeDetail(
     const cancelledReceipts = cfdiOverview
       ? await loadCancelledPayrollReceipts(period.id_period, idEmpleado, id_empresa)
       : [];
+    const sdiRows = payrollType === "F" && period.tipo_periodo === "O" && snapshotRow
+      ? await db.queryParams(
+          `SELECT s.[estado], s.[motivo], s.[salario_diario_fiscal],
+                  CONVERT(varchar(10), s.[fecha_ingreso], 120) AS fecha_ingreso,
+                  CONVERT(varchar(10), s.[fecha_referencia], 120) AS fecha_referencia,
+                  s.[antiguedad_anios], s.[dias_vacaciones], s.[dias_aguinaldo],
+                  s.[porcentaje_prima_vacacional], s.[factor_integracion], s.[salario_diario_integrado], s.[origen],
+                  CASE WHEN EXISTS (SELECT 1 FROM [CentroPodologico].[payroll].[period_employee_cfdi] c
+                    WHERE c.[id_period_employee] = pe.[id_period_employee] AND c.[estado] IN ('P','T','X'))
+                    THEN 0 ELSE 1 END AS can_regenerate
+             FROM [CentroPodologico].[payroll].[period_employees] pe
+             LEFT JOIN [CentroPodologico].[payroll].[period_employee_sdi] s ON s.[id_period_employee] = pe.[id_period_employee]
+            WHERE pe.[id_period_employee] = @id_period_employee`,
+          { id_period_employee: Number(snapshotRow.id_period_employee) },
+        ) : [];
+    const sdiRow = sdiRows[0];
+    const sdi = sdiRow?.estado ? {
+      estado: sdiRow.estado as "C" | "E", motivo: sdiRow.motivo ?? null,
+      salario_diario_fiscal: toNullableNumber(sdiRow.salario_diario_fiscal),
+      fecha_ingreso: sdiRow.fecha_ingreso ?? null, fecha_referencia: sdiRow.fecha_referencia ?? null,
+      antiguedad_anios: toNullableNumber(sdiRow.antiguedad_anios), dias_vacaciones: toNullableNumber(sdiRow.dias_vacaciones),
+      dias_aguinaldo: toNullableNumber(sdiRow.dias_aguinaldo),
+      porcentaje_prima_vacacional: toNullableNumber(sdiRow.porcentaje_prima_vacacional),
+      factor_integracion: toNullableNumber(sdiRow.factor_integracion),
+      salario_diario_integrado: toNullableNumber(sdiRow.salario_diario_integrado), origen: sdiRow.origen as "procesamiento" | "timbrado",
+    } : null;
 
     return {
       ok: true,
@@ -1208,6 +1235,8 @@ export async function getPayrollEmployeeDetail(
         period,
         employee,
         snapshot,
+        sdi,
+        sdiCanRegenerate: Boolean(sdiRow?.can_regenerate),
         perceptions,
         totalPerceptions,
         totalTaxed,
@@ -1914,6 +1943,9 @@ export async function calculatePayrollPeriod(
          FROM [CentroPodologico].[payroll].[period_employees] pe
         WHERE pe.[id_period] = @id_period AND pe.[tipo_nomina] = 'F' AND pe.[isr_estado] = 'C';
 
+       -- Spec 100: congelar el SDI de las filas fiscales en esta misma transacción.
+       ${INSERT_PERIOD_SDI_SQL}
+
        -- Spec 91: cuota obrera del IMSS de los renglones 'F'. Va después del ISR porque el tope al neto lo descuenta.
        -- Los renglones 'O' se quedan en 'X'. El desglose y la deducción solo existen para los 'C', aunque retengan 0.
        ${IMSS_PARAMETERS_SQL}
@@ -2352,6 +2384,43 @@ export async function getPayrollPeriodStatusLog(idPeriod: number): Promise<Actio
  * (el `UNIQUE` evita duplicados ante dos clics), llama a `invoices.create` fuera de la transacción
  * y cierra en `'T'` o `'E'`.
  */
+export async function regeneratePayrollSdi(input: unknown): Promise<ActionResult<null>> {
+  const access = await assertPayrollAccess();
+  if (!access.ok) return access;
+  const parsed = stampPayrollReceiptSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Datos inválidos" };
+  try {
+    const result = await db.transaction(async (tx) => {
+      const rows = await tx.queryParams(
+        `SELECT pe.[id_period_employee]
+           FROM [CentroPodologico].[payroll].[period_employees] pe WITH (UPDLOCK, HOLDLOCK)
+           JOIN [CentroPodologico].[payroll].[periods] p ON p.[id_period] = pe.[id_period]
+          WHERE pe.[id_period] = @id_period AND pe.[id_empleado] = @id_empleado
+            AND pe.[tipo_nomina] = 'F' AND p.[id_sucursal] = @id_sucursal AND p.[tipo_periodo] = 'O'`,
+        { id_period: parsed.data.idPeriod, id_empleado: parsed.data.idEmpleado, id_sucursal: access.data.id_sucursal },
+      );
+      if (!rows[0]) return "El empleado no tiene una fila fiscal ordinaria en este periodo.";
+      const id = Number(rows[0].id_period_employee);
+      const receipts = await tx.queryParams(
+        `SELECT TOP 1 1 AS blocked FROM [CentroPodologico].[payroll].[period_employee_cfdi]
+          WHERE [id_period_employee] = @id_period_employee AND [estado] IN ('P','T','X')`,
+        { id_period_employee: id },
+      );
+      if (receipts.length) return "No se puede regenerar el SDI mientras exista un CFDI vigente o en proceso.";
+      await tx.queryParams(`DELETE FROM [CentroPodologico].[payroll].[period_employee_sdi]
+        WHERE [id_period_employee] = @id_period_employee`, { id_period_employee: id });
+      await tx.queryParams(INSERT_HISTORICAL_SDI_SQL, { id_period_employee: id });
+      return null;
+    });
+    if (result) return { ok: false, message: result };
+    revalidatePayrollPaths();
+    return { ok: true, data: null };
+  } catch (error) {
+    console.error("regeneratePayrollSdi", error);
+    return { ok: false, message: "No se pudo regenerar el SDI." };
+  }
+}
+
 export async function stampPayrollReceipt(input: unknown): Promise<ActionResult<PayrollCfdiRowState>> {
   const access = await assertPayrollAccess();
   if (!access.ok) return access;
@@ -2406,10 +2475,36 @@ export async function stampPayrollReceipt(input: unknown): Promise<ActionResult<
     }
     const livemode = issuer.is_live;
 
-    const reservation = await db.transaction((tx) =>
-      reservePayrollReceipt(tx, idPeriodEmployee, idPeriod, idEmpleado, livemode, issuer.uid, id_user, confirmStaleRetry ?? false)
-    );
+    const reservation = await db.transaction(async (tx) => {
+      // Serializa la preparación y la reserva con una regeneración concurrente.
+      const locked = await tx.queryParams(
+        `SELECT [id_period_employee] FROM [CentroPodologico].[payroll].[period_employees] WITH (UPDLOCK, HOLDLOCK)
+          WHERE [id_period_employee] = @id_period_employee`, { id_period_employee: idPeriodEmployee },
+      );
+      if (!locked.length) throw new Error("La fila fiscal ya no existe");
+      const readSdi = () => tx.queryParams(
+        `SELECT [estado], [motivo], [salario_diario_integrado]
+           FROM [CentroPodologico].[payroll].[period_employee_sdi]
+          WHERE [id_period_employee] = @id_period_employee`, { id_period_employee: idPeriodEmployee },
+      );
+      let sdiRows = await readSdi();
+      if (!sdiRows.length) {
+        await tx.queryParams(INSERT_HISTORICAL_SDI_SQL, { id_period_employee: idPeriodEmployee });
+        sdiRows = await readSdi();
+      }
+      const sdi = sdiRows[0];
+      const amount = sdi?.salario_diario_integrado == null ? NaN : Number(sdi.salario_diario_integrado);
+      if (sdi?.estado !== "C" || !Number.isFinite(amount) || amount <= 0) {
+        return { status: "sdi_error" as const, message: String(sdi?.motivo || "No se pudo calcular el salario diario integrado.") };
+      }
+      const result = await reservePayrollReceipt(tx, idPeriodEmployee, idPeriod, idEmpleado, livemode, issuer.uid, id_user, confirmStaleRetry ?? false);
+      return result.status === "reserved" ? { ...result, sdi: amount } : result;
+    });
 
+    if (reservation.status === "sdi_error") {
+      revalidatePayrollPaths();
+      return { ok: false, message: `No se puede timbrar: ${reservation.message}` };
+    }
     if (reservation.status === "already_stamped") {
       return { ok: false, message: "Este recibo ya está timbrado" };
     }
@@ -2420,7 +2515,7 @@ export async function stampPayrollReceipt(input: unknown): Promise<ActionResult<
       return { ok: false, message: PAYROLL_RECEIPT_STALE_RETRY_MARKER };
     }
 
-    const payload = buildPayrollCfdiPayload(toPayrollCfdiSource(source));
+    const payload = buildPayrollCfdiPayload(toPayrollCfdiSource(source, reservation.sdi));
 
     try {
       const client = await getOrgClient(issuer.uid, id_empresa);

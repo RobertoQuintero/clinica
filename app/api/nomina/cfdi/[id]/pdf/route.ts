@@ -40,7 +40,7 @@ export const GET = async (_req: Request, { params }: { params: Promise<{ id: str
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="NOM-${target.receipt.folio}-${target.codigoEmpleado}.pdf"`,
+        "Content-Disposition": `attachment; filename="NOM-${target.receipt.folio}-${target.codigoEmpleado}.pdf"`,
       },
     });
   } catch (err) {
