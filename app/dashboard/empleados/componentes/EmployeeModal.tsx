@@ -200,9 +200,9 @@ export default function EmployeeModal({ employee, rehireFrom, catalogs, onClose 
     setUploadingPhoto(true);
     setError(null);
     try {
-      const fileName = `empleado_${Date.now()}.jpg`;
+      if (file.size > 5 * 1024 * 1024) throw new Error("La fotografía supera el tamaño máximo de 5 MiB.");
       const uploadRes = await fetch(
-        `/api/upload?folder=clinica/empleados&name=${encodeURIComponent(fileName)}`,
+        `/api/upload?folder=clinica/empleados`,
         { method: "POST", headers: { "Content-Type": file.type }, body: file }
       );
       const uploadData = await uploadRes.json();

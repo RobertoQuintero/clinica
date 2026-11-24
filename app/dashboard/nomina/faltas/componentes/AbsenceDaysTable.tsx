@@ -162,7 +162,6 @@ export default function AbsenceDaysTable({
                             summaryItems={buildSummaryItems(dayRow)}
                             action={justifyAbsence}
                             uploadFolder="clinica/empleados/faltas"
-                            fileNamePrefix="falta"
                           />
                           <MarkNotApplicableButton
                             day={justifiableDay}

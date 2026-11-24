@@ -1,6 +1,6 @@
 # Centro Podológico — Admin
 
-Aplicación de administración (Next.js, App Router) para una clínica podológica: pacientes, tratamientos, citas, ventas, productos, sucursales y usuarios, sobre SQL Server. La UI y los identificadores están mayormente en español.
+Aplicación de administración (Next.js, App Router) para una clínica podológica: pacientes, tratamientos, citas, ventas, inventario, empleados, nómina y facturación, sobre SQL Server. La UI y los identificadores están mayormente en español.
 
 ## Stack
 
@@ -10,6 +10,7 @@ Aplicación de administración (Next.js, App Router) para una clínica podológi
 - **Tailwind CSS 4**
 - **Google Calendar API** (`googleapis`) para sincronizar citas por sucursal
 - **Cloudinary** para carga de imágenes
+- **Facturapi** para facturación electrónica y CFDI de nómina
 - **FullCalendar** para el calendario de citas, **Recharts** para gráficas, **jsPDF** para reportes
 - **Checadores biométricos ZKTeco** (protocolo ADMS/iClock) para asistencia de empleados
 
@@ -17,7 +18,7 @@ Aplicación de administración (Next.js, App Router) para una clínica podológi
 
 - Node.js 20+
 - Acceso a una instancia de SQL Server con la base `CentroPodologico`
-- Credenciales de una cuenta de servicio de Google (para Calendar) y de Cloudinary (para uploads)
+- Credenciales de Google Calendar, Cloudinary y Facturapi para sus respectivas integraciones
 
 ## Configuración
 
@@ -41,7 +42,18 @@ GOOGLE_EXTRA_CALENDAR_IDS=   # opcional, IDs separados por coma
 
 # Cloudinary (leído automáticamente por el SDK)
 CLOUDINARY_URL=
+
+# Facturación y CFDI
+FACTURAPI_USER_KEY=
+BILLING_ENCRYPTION_KEY=
+
+# Solo para datos demo y capturas del manual
+ALLOW_DEMO_SEED=
+DEMO_USER_PASSWORD=
+MANUAL_CAPTURE_BASE_URL=
 ```
+
+Consulta `.env.template` como punto de partida. Las variables de las integraciones se necesitan para las funciones correspondientes. La empresa demo requiere configuración y confirmación explícitas; consulta [Sucursal Demo](docs/sucursal-demo.md).
 
 No hay herramienta de migraciones: los cambios de esquema se aplican directamente contra la base de datos. `queries.txt` en la raíz contiene SQL ad hoc usado durante el desarrollo.
 
@@ -53,9 +65,11 @@ npm run dev      # servidor de desarrollo (localhost:3000)
 npm run build    # build de producción
 npm run start    # levanta el build de producción
 npm run lint     # eslint
+npm run seed:demo       # crea datos de demostración
+npm run capture:manual  # captura imágenes del manual con Playwright
 ```
 
-No hay suite de pruebas configurada en este repositorio.
+Hay pruebas con `node:test` en `tests/` para nómina y cargas. No existe un script `npm test` configurado; la prueba de integración de SDI requiere SQL Server y datos adecuados. Consulta los archivos de prueba antes de ejecutarlos.
 
 ## Arquitectura
 
@@ -65,9 +79,9 @@ No hay suite de pruebas configurada en este repositorio.
 
 ### Mutaciones vía Server Actions
 
-Casi toda la lectura/escritura de datos ocurre a través de Server Actions (`"use server"`), un archivo `actions.ts` por feature: `app/dashboard/<feature>/actions.ts` (citas, empleados, enlaces, conteos, movimientos, pacientes, pedidos, productos, proveedores, recepciones, servicios, sucursales, tratamientos, usuarios, ventas) más `app/dashboard/actions.ts` y `app/actions/auth.ts`. Las nuevas features de CRUD deben seguir el patrón de server actions, no agregar endpoints REST.
+La aplicación usa principalmente Server Actions (`"use server"`) para lectura y escritura, organizadas por módulo y, cuando corresponde, por pantalla. `app/api/` también contiene rutas para la carga de archivos, el protocolo ADMS/iClock, catálogos y descargas de facturación, y descargas de CFDI de nómina. Estas rutas comprueban su propia autorización cuando corresponde; `proxy.ts` no cubre `/api/*`.
 
-`app/api/` solo tiene dos rutas REST reales, ambas por necesidad de protocolo (no CRUD de la app): `app/api/upload` (subida de archivos/imágenes a Cloudinary) y `app/api/asistencias/iclock/*` (webhook ADMS que consumen los checadores biométricos ZKTeco — ver [Asistencias biométricas](#asistencias-biométricas-checadores-zkteco) más abajo).
+`POST /api/upload` verifica el JWT y el usuario activo en base de datos antes de aceptar archivos. Admite únicamente las carpetas enumeradas en la ruta, con `clinica/consultas` como predeterminada, y limita el cuerpo a 5 MiB (5 242 880 bytes). Valida el tipo declarado y la firma del contenido; recetas y egresos conservan su límite de 1 MiB en el formulario. Cada carga recibe un identificador generado por el servidor y Cloudinary no sobrescribe archivos existentes. Al reemplazar una imagen de producto se guarda la nueva URL; el archivo anterior no se elimina.
 
 Las actions suelen devolver una unión discriminada `ActionResult<T> = { ok: true; data: T } | { ok: false; message: string }` (ver `app/actions/auth.ts`).
 
@@ -79,9 +93,10 @@ Autenticación basada en JWT (`jose`), guardada en la cookie `auth_token`. El pa
 
 - No autenticado → `/login`; autenticado pero pendiente de aprobación (`status` false) → `/pending`.
 - `id_role === 5` solo puede acceder a `/dashboard/tratamientos`.
-- `/dashboard/usuarios` solo es accesible para `id_role` 1 y 4.
+- `id_role === 6` está limitado al módulo de inventario; el rol 2 tiene acceso restringido dentro de ese módulo.
+- Usuarios, empleados, facturación y nómina están restringidos a los roles 1 y 4. Ayuda aplica los permisos del manual correspondiente.
 
-Rutas nuevas con restricción por rol deben extender `proxy.ts` en lugar de filtrarse solo del lado del cliente.
+Las restricciones de interfaz y de ruta deben complementarse con autorización del lado del servidor en cada operación. Nómina, por ejemplo, consulta el usuario y sus permisos vigentes en la base de datos; ver [Nómina](docs/nomina.md).
 
 `contexts/AuthContext.tsx` envuelve el estado del cliente sobre las server actions de `app/actions/auth.ts` (`loginAction`, `logoutAction`, `registerAction`, `getMeAction`). `lib/rateLimiter.ts` implementa bloqueo por IP/email para login y registro.
 
@@ -99,6 +114,7 @@ Rutas nuevas con restricción por rol deben extender `proxy.ts` en lugar de filt
 
 - **Documentos** (`[id]/documentos/`): carga y gestión de documentos del empleado (Cloudinary).
 - **Asistencia** (`[id]/asistencia/`): checadas del empleado, alimentadas por los checadores biométricos (ver abajo).
+- También incluye gestión de horarios, vacaciones y bajas. Los detalles están en [RH y empleados](docs/rh-empleados.md).
 
 ### Asistencias biométricas (checadores ZKTeco)
 
@@ -117,6 +133,14 @@ Módulo de inventario multi-sucursal, con lógica compartida en `lib/inventory/`
 - **Recepciones** (`recepciones/`, `interfaces/purchase_reception.ts`): recepción de mercancía contra un pedido, actualiza stock.
 - **Movimientos** (`movimientos/`, `interfaces/movement.ts`, `kardex.ts`): kardex de entradas/salidas de stock por sucursal.
 - **Conteos** (`conteos/`, `interfaces/stock_count.ts`): conteos físicos de inventario para conciliar contra el stock del sistema.
+
+### Nómina, facturación y ayuda
+
+- **Nómina** (`app/dashboard/nomina/`, `lib/payroll/`): periodos, cálculo y aprobación, incidencias, comisiones, bonos, parámetros fiscales, PTU y CFDI. Consulta las reglas y limitaciones en [Nómina](docs/nomina.md).
+- **Facturación** (`app/dashboard/facturacion/`, `lib/billing/`): organizaciones, clientes, productos y facturas mediante Facturapi. Consulta [Facturación](docs/facturacion.md) para la configuración y el alcance por empresa.
+- **Ayuda** (`app/dashboard/ayuda/`): manual de usuario en Markdown, actualmente con contenido de nómina en `content/manual/nomina/`. Consulta [Manual de usuario](docs/manual-usuario.md).
+
+También hay documentación específica para [inventario](docs/inventario.md), [Google Calendar](docs/google-calendar.md) y [asistencias biométricas](docs/asistencias-biometricas.md).
 
 ### Manejo de fechas/horas (crítico, específico de mssql)
 
@@ -145,16 +169,21 @@ app/
   api/
     upload/                 # subida a Cloudinary
     asistencias/iclock/     # webhook ADMS para checadores biométricos ZKTeco
+    facturacion/ nomina/    # catálogos y descargas de documentos fiscales
   dashboard/
-    <feature>/              # citas, conteos, empleados, enlaces, movimientos,
-      page.tsx              # pacientes, pedidos, productos, proveedores,
-      actions.ts            # recepciones, servicios, sucursales, tratamientos,
-      componentes/           # usuarios, ventas
+    <feature>/              # módulos clínicos, inventario, RH, nómina y facturación
+      page.tsx              # pantalla principal del módulo
+      actions.ts            # server actions, también en subrutas cuando aplica
+      componentes/          # componentes de interfaz
   login/ register/ pending/
 contexts/                  # AuthContext, SucursalContext, ThemeContext
 database/connection.ts     # singleton db (query / queryParams)
 interfaces/                 # tipos TS por entidad de dominio (paciente.ts, cita.ts, employee.ts, ...)
-lib/                        # integraciones server-side (Google Calendar, rate limiter, ADMS, inventory)
+lib/                        # lógica de dominio e integraciones server-side
+content/manual/             # contenido Markdown de la ayuda integrada
+docs/                       # documentación técnica por módulo
+scripts/                    # datos demo y capturas del manual
+tests/                      # pruebas de nómina y cargas
 utils/                       # helpers puros (fechas, ids aleatorios)
 proxy.ts                    # middleware de Next.js (auth + autorización por rol)
 queries.txt                  # SQL ad hoc de desarrollo

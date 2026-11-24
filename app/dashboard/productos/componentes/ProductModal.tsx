@@ -93,11 +93,6 @@ export default function ProductModal({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError]         = useState<string | null>(null);
 
-  // Id estable mientras el modal permanece abierto, usado como public_id en
-  // Cloudinary para un producto aún no guardado (ver spec 41).
-  const [tempId] = useState(() => Math.random().toString(36).slice(2, 10));
-  const stableProductKey = form.id_product > 0 ? String(form.id_product) : `tmp_${tempId}`;
-
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -106,11 +101,10 @@ export default function ProductModal({
     setImageError(null);
     try {
       const resized = await resizeImage(file);
-
-      const fileName = `producto_${stableProductKey}.jpg`;
+      if (resized.size > 5 * 1024 * 1024) throw new Error("La imagen supera el tamaño máximo de 5 MiB.");
 
       const uploadRes = await fetch(
-        `/api/upload?name=${encodeURIComponent(fileName)}&folder=clinica/productos&overwrite=true`,
+        `/api/upload?folder=clinica/productos`,
         {
           method: "POST",
           headers: { "Content-Type": "image/jpeg" },
@@ -497,7 +491,7 @@ export default function ProductModal({
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || uploadingImage}
               className="rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0051d5]/90 disabled:opacity-50"
             >
               {saving ? "Guardando…" : "Guardar Producto"}

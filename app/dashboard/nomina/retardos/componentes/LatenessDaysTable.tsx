@@ -173,7 +173,6 @@ export default function LatenessDaysTable({
                             summaryItems={buildSummaryItems(dayRow)}
                             action={justifyLateness}
                             uploadFolder="clinica/empleados/retardos"
-                            fileNamePrefix="retardo"
                           />
                           <MarkNotApplicableButton
                             day={dayRow}

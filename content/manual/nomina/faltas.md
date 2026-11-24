@@ -22,7 +22,7 @@ La tabla lista un día por fila, con las columnas **Empleado**, **Día**, **Hora
 
 ## Cómo justificar una falta
 
-"Subir justificante" adjunta un PDF o una imagen (máximo 5 MB) como comprobante. "No aplica" la descarta con un comentario obligatorio, para días como un feriado o una falla del checador. Ambas se pueden deshacer con "Volver a injustificada".
+"Subir justificante" adjunta un PDF o una imagen (máximo 5 MiB, es decir, 5 242 880 bytes) como comprobante. Si el archivo supera el límite, aparece un mensaje y debes elegir uno más pequeño. "No aplica" la descarta con un comentario obligatorio, para días como un feriado o una falla del checador. Ambas se pueden deshacer con "Volver a injustificada".
 
 > [!WARNING]
 > Con el periodo en **Aprobada** o **Pagada**, la pantalla queda de solo lectura. Para corregir una falta, desaprueba el periodo aprobado o [reabre el pagado](./procesar-nomina#como-reabrir-un-periodo-pagado) si cumple las condiciones.

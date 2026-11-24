@@ -19,7 +19,6 @@ interface ButtonProps {
   /** Carpeta de Cloudinary, por ejemplo "clinica/empleados/faltas". */
   uploadFolder: string;
   /** Prefijo del nombre del archivo subido: "falta" o "retardo". */
-  fileNamePrefix: string;
 }
 
 interface ModalProps extends ButtonProps {
@@ -32,7 +31,6 @@ function JustificationUploadModal({
   summaryItems,
   action,
   uploadFolder,
-  fileNamePrefix,
   onClose,
 }: ModalProps) {
   const router = useRouter();
@@ -66,8 +64,7 @@ function JustificationUploadModal({
     setErrorMessage(null);
     setIsSaving(true);
     try {
-      const fileName = `${fileNamePrefix}_${day.id_empleado}_${day.fecha}_${Date.now()}_${selectedFile.name}`;
-      const fileUrl = await uploadDocumentFile(selectedFile, uploadFolder, fileName);
+      const fileUrl = await uploadDocumentFile(selectedFile, uploadFolder);
       const result = await action({
         id_period: idPeriod,
         id_empleado: day.id_empleado,

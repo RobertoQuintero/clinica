@@ -22,7 +22,7 @@ La tabla lista un retardo por fila, con las columnas **Empleado**, **Día**, **P
 
 ## Cómo justificar un retardo
 
-Igual que en Faltas: "Subir justificante" adjunta un comprobante, "No aplica" lo descarta con un comentario obligatorio, y "Volver a injustificado" deshace cualquiera de los dos.
+Igual que en Faltas: "Subir justificante" adjunta un comprobante de hasta 5 MiB (5 242 880 bytes); si supera ese tamaño, aparece un mensaje para elegir un archivo más pequeño. "No aplica" lo descarta con un comentario obligatorio, y "Volver a injustificado" deshace cualquiera de los dos.
 
 > [!WARNING]
 > Con el periodo en **Aprobada** o **Pagada**, la pantalla queda de solo lectura. Para corregir un retardo, desaprueba el periodo aprobado o [reabre el pagado](./procesar-nomina#como-reabrir-un-periodo-pagado) si cumple las condiciones.

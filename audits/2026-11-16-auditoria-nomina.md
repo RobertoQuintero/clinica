@@ -112,6 +112,10 @@ Los hallazgos están agrupados por tópico (A–E) para poder atenderlos en bloq
 
 ## Grupo C — Archivos y entradas externas
 
+**Actualización 2026-11-24 — spec 103:** C1 atendido. `/api/upload` verifica el JWT y consulta que el usuario esté activo y no eliminado antes de leer el archivo; si falla la consulta, rechaza la subida. Solo admite las carpetas previstas, limita el cuerpo a 5 MiB, genera el identificador en el servidor y desactiva la sobrescritura. Los clientes muestran errores de tamaño y Productos utiliza la URL de cada nueva carga. C2 y C3 permanecen abiertos.
+
+**Evidencia:** `tests/upload.test.ts` pasó cinco pruebas que simulan sesión, usuario revocado, error de base de datos, carpetas, tamaño real, tipos y parámetros de sobrescritura. También pasaron TypeScript y ESLint de los archivos modificados. Pendiente: verificar los formularios mediante navegación y cargas reales; las pruebas automatizadas simulan la base de datos y Cloudinary.
+
 ### C1 · ALTA · `/api/upload` no tiene autenticación
 
 - **Dónde:** `app/api/upload/route.ts:64-108`; `proxy.ts:135` (el `matcher` no cubre `/api/*`).

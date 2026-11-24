@@ -58,7 +58,7 @@ interface SectionProps {
   locked?:      boolean;
 }
 
-function FotosSection({ title, categoriaKey, archivos, onAddArchivo, paciente, id_paciente, id_consulta, locked }: SectionProps) {
+function FotosSection({ title, categoriaKey, archivos, onAddArchivo, id_consulta, locked }: SectionProps) {
   const fileInputRef                       = useRef<HTMLInputElement>(null);
   const cameraInputRef                     = useRef<HTMLInputElement>(null);
   const [uploadingFile,  setUploadingFile] = useState(false);
@@ -75,17 +75,11 @@ function FotosSection({ title, categoriaKey, archivos, onAddArchivo, paciente, i
     try {
       const isImage    = file.type.startsWith("image/");
       const fileToSend = isImage ? await resizeImage(file) : file;
+      if (fileToSend.size > 5 * 1024 * 1024) {
+        throw new Error("El archivo supera el tamaño máximo de 5 MiB.");
+      }
 
-      const sanitize = (s: string) =>
-        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_").toLowerCase();
-      const baseName  = paciente
-        ? `${sanitize(paciente.nombre)}_${sanitize(paciente.apellido_paterno)}_consulta${id_consulta}`
-        : `paciente${id_paciente}_consulta${id_consulta}`;
-      const seq      = visibleArchivos.length + 1;
-      const ext      = isImage ? ".jpg" : ".pdf";
-      const fileName = `${baseName}_${categoriaKey}_${seq}${ext}`;
-
-      const uploadRes  = await fetch(`/api/upload?name=${encodeURIComponent(fileName)}`, {
+      const uploadRes  = await fetch(`/api/upload`, {
         method: "POST",
         headers: { "Content-Type": isImage ? "image/jpeg" : "application/pdf" },
         body: fileToSend,

@@ -38,9 +38,6 @@ const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> 
     img.src = objectUrl;
   });
 
-const sanitize = (s: string) =>
-  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_").toLowerCase();
-
 const fmtDatetime = (val: string) => {
   if (!val) return "—";
   return new Date(String(val).replace(" ", "T"))
@@ -123,12 +120,8 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
         fileToSend = file;
       }
 
-      const num      = recetas.length + 1;
-      const ext      = isImage ? ".jpg" : ".pdf";
-      const fileName = `${sanitize(nombre_paciente)}_tratamiento_${id_tratamiento}_RECETA_${num}${ext}`;
-
       const uploadRes  = await fetch(
-        `/api/upload?name=${encodeURIComponent(fileName)}&folder=${encodeURIComponent("clinica/recetas")}`,
+        `/api/upload?folder=${encodeURIComponent("clinica/recetas")}`,
         {
           method:  "POST",
           headers: { "Content-Type": isImage ? "image/jpeg" : "application/pdf" },
