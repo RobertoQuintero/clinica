@@ -264,9 +264,11 @@ each one:
 | `org.set_payroll_issuer` | `setPayrollIssuer` (spec 72, `detail` = `{ active, deactivated_uid }`) | `app/dashboard/facturacion/actions.ts` |
 | `payroll_receipt.stamp` | `stampPayrollReceipt` (spec 98, `completePayrollReceipt`; `detail` = `{ id_period, id_empleado, facturapi_id, folio }`) | `app/dashboard/nomina/procesar/actions.ts` (via `lib/payroll/cfdi/payrollCfdiRepository.ts`) |
 | `payroll_receipt.cancel` | `cancelPayrollReceipt`/`refreshPayrollCancellationStatus` (spec 99, `completePayrollCancellation`; written once, when the row reaches `'C'`; `detail` = `{ id_period, id_empleado, facturapi_id, folio, motivo }`) | `app/dashboard/nomina/procesar/actions.ts` (via `lib/payroll/cfdi/payrollCfdiRepository.ts`) |
+| `payroll_receipt.reconcile` | Manual historical review and evidence (spec 104) | `app/dashboard/nomina/procesar/actions.ts` |
+| `payroll_receipt.stamp_conflict` | Confirmed invoice could not be associated with the expected local row and attempt; records its UUID and Facturapi ID outside the failed transaction (spec 104) | `app/dashboard/nomina/procesar/actions.ts` |
 
 `detail` must never contain key material or the CSD password. The catalog is complete as
-of spec 99 (`payroll_receipt.cancel` was added there) — a future spec that adds a new mutation should extend
+of spec 104 — a future spec that adds a new mutation should extend
 `BillingAuditAction` (`lib/billing/organizationsRepository.ts`) and this table together.
 
 ## `getOrgClient` contract
@@ -287,6 +289,7 @@ of spec 99 (`payroll_receipt.cancel` was added there) — a future spec that add
   argument and even accepted it as a `?mode=` query param that won the DB's actual setting —
   so `?mode=live` in a URL was enough to invoice in production. Resolving the mode *inside*
   the client, never as an argument, makes that class of mistake impossible from any call site.
+- Payroll reconciliation and cancellation use `getOrgClientForStoredMode` with the mode saved on the receipt, after tenant validation. This preserves the original Test/Live context even when the issuer's current mode has changed; ordinary creation still uses `getOrgClient`.
 - In spec 28, `is_live` stays `0` on every row and there is no UI to change it — Live mode
   ships in spec 30, alongside the invoices that are the only thing that makes it consequential.
   When `is_live` does flip to `true` (spec 30), `getOrgClient` requires both a stored live key

@@ -31,23 +31,25 @@ import type { PayrollPeriodStatus, PayrollPeriodType } from "@/interfaces/payrol
 const SCHEMA_TABLE_CFDI = "[CentroPodologico].[payroll].[period_employee_cfdi]";
 const SCHEMA_TABLE_PERIOD_EMPLOYEES = "[CentroPodologico].[payroll].[period_employees]";
 
-/** Una `'P'` más vieja que esto se considera atascada: solo se reintenta con confirmación. */
-export const STALE_RESERVATION_MINUTES = 10;
 
 /**
  * Spec 99: limpieza explícita antes de cada `DELETE FROM period_employees` de `procesar/actions.ts`
  * (cuatro lugares). Esos batches ya borran `period_employees` con `DELETE ... WHERE id_period = @id_period`
  * dentro de su propio `BEGIN TRAN`, así que esta línea se interpola en el mismo batch, antes de esa
  * instrucción -- no es una llamada aparte, para que corra en la misma transacción. Preserva los recibos
- * ya cancelados (`'C'`), que sobreviven gracias a `ON DELETE SET NULL`; borra el resto ('P','T','E','X')
- * para conservar el comportamiento actual.
+ * ya cancelados (`'C'`), que sobreviven gracias a `ON DELETE SET NULL`. Primero protege los Live
+ * pendientes, vigentes y los errores históricos sin revisar; los demás conservan el comportamiento actual.
  */
 export const DELETE_NON_CANCELLED_PERIOD_RECEIPTS_SQL = `
+       IF EXISTS (SELECT 1 FROM ${SCHEMA_TABLE_CFDI}
+                   WHERE [id_period] = @id_period AND [livemode] = 1
+                     AND ([estado] IN ('P','T','X') OR ([estado] = 'E' AND [external_id] IS NULL)))
+         THROW 50006, 'PERIOD_HAS_STAMPED_RECEIPTS', 1;
        DELETE FROM ${SCHEMA_TABLE_CFDI} WHERE [id_period] = @id_period AND [estado] <> 'C';`;
 
 const RECEIPT_SELECT_COLUMNS = `
   [id_period_employee_cfdi], cfdi.[id_period_employee], cfdi.[id_period], cfdi.[id_empleado],
-  [livemode], [estado], [org_uid],
+  [livemode], [estado], [org_uid], [external_id], [intento_timbrado],
   [facturapi_id], [uuid], [serie], [folio], CAST([total] AS float) AS total,
   CONVERT(varchar(19), [fecha_timbrado], 120) AS fecha_timbrado,
   [mensaje_error], [stamped_by],
@@ -306,18 +308,17 @@ export async function hasActiveCertificate(orgUid: string): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 export type ReservePayrollReceiptResult =
-  | { status: "reserved"; idReceipt: number }
+  | { status: "reserved"; idReceipt: number; externalId: string; attempt: number }
   | { status: "already_stamped" }
   | { status: "in_progress" }
-  | { status: "stale_needs_confirmation" };
+  | { status: "historical_review" };
 
 /**
  * Reserva el recibo en `'P'` dentro de una transacción corta: el índice filtrado
  * `UX_period_employee_cfdi_vigente (id_period_employee, livemode) WHERE estado IN ('P','T','E','X')`
  * es lo que impide que dos clics o dos pestañas timbren el mismo recibo dos veces. Los recibos
  * ya cancelados (`'C'`) se ignoran: tras cancelar, el siguiente timbrado inserta una fila nueva,
- * la cancelada no se toca. `confirmStaleRetry` solo importa cuando ya hay una `'P'` de más de
- * `STALE_RESERVATION_MINUTES`.
+ * la cancelada no se toca. Una reserva pendiente requiere conciliación antes de otro envío.
  */
 export async function reservePayrollReceipt(
   tx: ITransactionClient,
@@ -326,54 +327,54 @@ export async function reservePayrollReceipt(
   idEmpleado: number,
   livemode: boolean,
   orgUid: string,
-  userId: number,
-  confirmStaleRetry: boolean
+  userId: number
 ): Promise<ReservePayrollReceiptResult> {
   const existingRows = await tx.queryParams(
-    `SELECT [id_period_employee_cfdi], [estado],
-            DATEDIFF(MINUTE, [updated_at], SYSDATETIME()) AS minutes_since_update
+    `SELECT [id_period_employee_cfdi], [estado], [external_id], [intento_timbrado]
        FROM ${SCHEMA_TABLE_CFDI} WITH (UPDLOCK, HOLDLOCK)
       WHERE [id_period_employee] = @id_period_employee AND [livemode] = @livemode
         AND [estado] <> 'C'`,
     { id_period_employee: idPeriodEmployee, livemode }
   );
-  const existing = existingRows[0] as { id_period_employee_cfdi: number; estado: PayrollCfdiStatus; minutes_since_update: number } | undefined;
+  const existing = existingRows[0] as { id_period_employee_cfdi: number; estado: PayrollCfdiStatus; external_id: string | null; intento_timbrado: number | null } | undefined;
   const now = buildDate(new Date());
 
   if (!existing) {
     const inserted = await tx.queryParams(
       `INSERT INTO ${SCHEMA_TABLE_CFDI}
          ([id_period_employee], [id_period], [id_empleado], [livemode], [estado], [org_uid],
-          [stamped_by], [created_at], [updated_at])
-         OUTPUT INSERTED.[id_period_employee_cfdi]
+          [stamped_by], [created_at], [updated_at], [external_id], [intento_timbrado])
+         OUTPUT INSERTED.[id_period_employee_cfdi], INSERTED.[external_id], INSERTED.[intento_timbrado]
        VALUES (@id_period_employee, @id_period, @id_empleado, @livemode, 'P', @org_uid,
-               @stamped_by, @now, @now)`,
+               @stamped_by, @now, @now, NEWID(), 1)`,
       { id_period_employee: idPeriodEmployee, id_period: idPeriod, id_empleado: idEmpleado, livemode, org_uid: orgUid, stamped_by: userId, now }
     );
-    return { status: "reserved", idReceipt: Number(inserted[0].id_period_employee_cfdi) };
+    return { status: "reserved", idReceipt: Number(inserted[0].id_period_employee_cfdi), externalId: String(inserted[0].external_id), attempt: 1 };
   }
 
-  if (existing.estado === "T") return { status: "already_stamped" };
+  if (existing.estado === "T" || existing.estado === "X") return { status: "already_stamped" };
 
-  if (existing.estado === "P") {
-    if (existing.minutes_since_update < STALE_RESERVATION_MINUTES) return { status: "in_progress" };
-    if (!confirmStaleRetry) return { status: "stale_needs_confirmation" };
-  }
+  if (existing.estado === "P") return { status: "in_progress" };
+  if (!existing.external_id && livemode) return { status: "historical_review" };
 
-  // 'E', o 'P' atascada con confirmación: se sobrescribe la misma fila vigente.
-  await tx.queryParams(
+  // Un error resuelto permite reservar el siguiente intento.
+  const updated = await tx.queryParams(
     `UPDATE ${SCHEMA_TABLE_CFDI}
         SET [estado] = 'P', [org_uid] = @org_uid, [facturapi_id] = NULL, [uuid] = NULL,
             [serie] = NULL, [folio] = NULL, [total] = NULL, [fecha_timbrado] = NULL,
-            [mensaje_error] = NULL, [stamped_by] = @stamped_by, [updated_at] = @now
+            [mensaje_error] = NULL, [stamped_by] = @stamped_by, [updated_at] = @now,
+            [external_id] = COALESCE([external_id], NEWID()), [intento_timbrado] = COALESCE([intento_timbrado], 0) + 1
+       OUTPUT INSERTED.[external_id], INSERTED.[intento_timbrado]
       WHERE [id_period_employee_cfdi] = @id`,
     { id: existing.id_period_employee_cfdi, org_uid: orgUid, stamped_by: userId, now }
   );
-  return { status: "reserved", idReceipt: existing.id_period_employee_cfdi };
+  return { status: "reserved", idReceipt: existing.id_period_employee_cfdi, externalId: String(updated[0].external_id), attempt: Number(updated[0].intento_timbrado) };
 }
 
 export interface CompletePayrollReceiptInput {
   idReceipt:    number;
+  attempt:      number;
+  externalId:   string;
   facturapiId:  string;
   uuid:         string;
   folio:        number;
@@ -390,20 +391,26 @@ export interface CompletePayrollReceiptInput {
 export async function completePayrollReceipt(
   tx: ITransactionClient,
   input: CompletePayrollReceiptInput
-): Promise<void> {
+): Promise<"updated" | "already_saved" | "conflict"> {
   const now = buildDate(new Date());
-  await tx.queryParams(
+  const updated = await tx.queryParams(
     `UPDATE ${SCHEMA_TABLE_CFDI}
         SET [estado] = 'T', [facturapi_id] = @facturapi_id, [uuid] = @uuid, [serie] = 'NOM',
             [folio] = @folio, [total] = @total, [fecha_timbrado] = @now, [mensaje_error] = NULL,
             [updated_at] = @now
-      WHERE [id_period_employee_cfdi] = @id`,
+       OUTPUT INSERTED.[id_period_employee_cfdi]
+      WHERE [id_period_employee_cfdi] = @id AND [estado] = 'P'
+        AND [external_id] = @external_id AND [intento_timbrado] = @attempt`,
     {
       id: input.idReceipt, facturapi_id: input.facturapiId, uuid: input.uuid,
-      folio: input.folio, total: input.total, now,
+      folio: input.folio, total: input.total, now, external_id: input.externalId, attempt: input.attempt,
     }
   );
 
+  if (!updated.length) {
+    const rows = await tx.queryParams(`SELECT [uuid] FROM ${SCHEMA_TABLE_CFDI} WHERE [id_period_employee_cfdi] = @id AND [estado] = 'T' AND [external_id] = @external_id AND [intento_timbrado] = @attempt`, { id: input.idReceipt, external_id: input.externalId, attempt: input.attempt });
+    return rows[0]?.uuid && String(rows[0].uuid).toLowerCase() === input.uuid.toLowerCase() ? "already_saved" : "conflict";
+  }
   await writeAuditEntry(tx, {
     id_empresa: input.idEmpresa,
     id_user: input.idUser,
@@ -418,16 +425,17 @@ export async function completePayrollReceipt(
       folio: input.folio,
     }),
   });
+  return "updated";
 }
 
 /** Cierra el recibo en `'E'` con el mensaje del PAC o de Facturapi, tal cual. */
-export async function failPayrollReceipt(idReceipt: number, mensajeError: string): Promise<void> {
+export async function failPayrollReceipt(idReceipt: number, attempt: number, externalId: string, mensajeError: string): Promise<void> {
   const now = buildDate(new Date());
   await db.queryParams(
     `UPDATE ${SCHEMA_TABLE_CFDI}
         SET [estado] = 'E', [mensaje_error] = @mensaje_error, [updated_at] = @now
-      WHERE [id_period_employee_cfdi] = @id`,
-    { id: idReceipt, mensaje_error: mensajeError, now }
+      WHERE [id_period_employee_cfdi] = @id AND [estado] = 'P' AND [external_id] = @external_id AND [intento_timbrado] = @attempt`,
+    { id: idReceipt, attempt, external_id: externalId, mensaje_error: mensajeError, now }
   );
 }
 
@@ -453,7 +461,7 @@ export async function loadPayrollCfdiReceiptForDownload(
   const rows = await db.queryParams(
     `SELECT cfdi.[id_period_employee_cfdi], cfdi.[id_period_employee], cfdi.[id_period], cfdi.[id_empleado],
             cfdi.[livemode], cfdi.[estado],
-            cfdi.[org_uid], cfdi.[facturapi_id], cfdi.[uuid], cfdi.[serie], cfdi.[folio],
+            cfdi.[org_uid], cfdi.[external_id], cfdi.[intento_timbrado], cfdi.[facturapi_id], cfdi.[uuid], cfdi.[serie], cfdi.[folio],
             CAST(cfdi.[total] AS float) AS total,
             CONVERT(varchar(19), cfdi.[fecha_timbrado], 120) AS fecha_timbrado,
             cfdi.[mensaje_error], cfdi.[stamped_by],
@@ -607,8 +615,7 @@ async function loadPeriodPayrollCfdiStateRows(
     const currentReceipt = receipts.find((receipt) => receipt.livemode === currentLivemode) ?? null;
 
     const state: PayrollCfdiRowState =
-      reasons.length > 0 ? { status: "bloqueado", reasons }
-      : !currentReceipt ? { status: "pendiente" }
+      !currentReceipt ? (reasons.length > 0 ? { status: "bloqueado", reasons } : { status: "pendiente" })
       : currentReceipt.estado === "P" ? { status: "en_proceso", receipt: currentReceipt }
       : currentReceipt.estado === "E" ? { status: "error", receipt: currentReceipt }
       : currentReceipt.estado === "X" ? { status: "cancelacion_en_proceso", receipt: currentReceipt }
@@ -641,22 +648,20 @@ export async function loadPeriodPayrollCfdiOverview(idPeriod: number, idSucursal
 export async function loadPayrollStampingQueue(idPeriod: number, idSucursal: number): Promise<number[]> {
   const { rows } = await loadPeriodPayrollCfdiStateRows(idPeriod, idSucursal);
   return rows
-    .filter((row) => row.state.status === "pendiente" || row.state.status === "error")
+    .filter((row) => row.state.status === "pendiente" || (row.state.status === "error" && (!row.state.receipt?.livemode || row.state.receipt.external_id !== null)))
     .map((row) => row.idEmpleado);
 }
 
 /**
- * Candado de Reabrir (spec 96/99): `true` si el periodo tiene al menos un recibo Live timbrado
- * (`'T'`) o con la cancelación en proceso (`'X'`) -- mientras el SAT no la confirme, el CFDI
- * sigue vigente. Si todos los Live ya están en `'C'`, Reabrir queda habilitado.
+ * Candado de operaciones sobre el periodo. Para cálculos también incluye errores históricos sin revisar.
  */
-export async function hasLiveStampedReceipts(idPeriod: number): Promise<boolean> {
+export async function hasLiveStampedReceipts(idPeriod: number, includeHistoricalErrors = false): Promise<boolean> {
   const rows = await db.queryParams(
     `SELECT TOP 1 1 AS found
        FROM ${SCHEMA_TABLE_CFDI} cfdi
-       JOIN ${SCHEMA_TABLE_PERIOD_EMPLOYEES} pe ON pe.id_period_employee = cfdi.id_period_employee
-      WHERE pe.id_period = @id_period AND cfdi.estado IN ('T','X') AND cfdi.livemode = 1`,
-    { id_period: idPeriod }
+      WHERE cfdi.id_period = @id_period AND cfdi.livemode = 1
+        AND (cfdi.estado IN ('P','T','X') OR (@include_historical = 1 AND cfdi.estado = 'E' AND cfdi.external_id IS NULL))`,
+    { id_period: idPeriod, include_historical: includeHistoricalErrors }
   );
   return rows.length > 0;
 }
@@ -695,15 +700,17 @@ export async function reservePayrollCancellation(
   if (receipt.estado !== "T") return { status: "not_cancellable" };
 
   const now = buildDate(new Date());
-  await tx.queryParams(
+  const reserved = await tx.queryParams(
     `UPDATE ${SCHEMA_TABLE_CFDI}
-        SET [estado] = 'X', [motivo_cancelacion] = @motive, [cancelacion_solicitada_at] = @now,
+        SET [estado] = 'X', [motivo_cancelacion] = @motive,
+            [cancelacion_solicitada_at] = CASE WHEN [updated_at] >= @now THEN DATEADD(second, 1, [updated_at]) ELSE @now END,
             [cancelled_by] = @cancelled_by, [updated_at] = @now
+      OUTPUT CONVERT(varchar(19), INSERTED.[cancelacion_solicitada_at], 120) AS requested_at
       WHERE [id_period_employee_cfdi] = @id`,
     { id: idReceipt, motive, now, cancelled_by: userId }
   );
 
-  return { status: "reserved", receipt };
+  return { status: "reserved", receipt: { ...receipt, cancelacion_solicitada_at: String(reserved[0].requested_at) } };
 }
 
 export interface CompletePayrollCancellationInput {
@@ -718,20 +725,24 @@ export interface CompletePayrollCancellationInput {
   facturapiId: string;
   folio:       number | null;
   motive:      PayrollCfdiCancellationMotive;
+  requestedAt: string;
 }
 
 /** Cierra la cancelación en `'C'` y escribe `payroll_receipt.cancel` en la misma transacción. */
 export async function completePayrollCancellation(
   tx: ITransactionClient,
   input: CompletePayrollCancellationInput
-): Promise<void> {
+): Promise<boolean> {
   const now = buildDate(new Date());
-  await tx.queryParams(
+  const updated = await tx.queryParams(
     `UPDATE ${SCHEMA_TABLE_CFDI}
         SET [estado] = 'C', [fecha_cancelacion] = @now, [updated_at] = @now
-      WHERE [id_period_employee_cfdi] = @id`,
-    { id: input.idReceipt, now }
+      OUTPUT INSERTED.[id_period_employee_cfdi]
+      WHERE [id_period_employee_cfdi] = @id AND [estado] = 'X' AND [cancelacion_solicitada_at] = @requested_at`,
+    { id: input.idReceipt, now, requested_at: input.requestedAt }
   );
+
+  if (!updated.length) return false;
 
   await writeAuditEntry(tx, {
     id_empresa: input.idEmpresa,
@@ -748,20 +759,20 @@ export async function completePayrollCancellation(
       motivo: input.motive,
     }),
   });
+  return true;
 }
 
 /**
- * Revierte `'X'` -> `'T'` cuando Facturapi rechaza la cancelación o la llamada falla, y limpia
+ * Revierte `'X'` -> `'T'` solo ante rechazo explícito de la solicitud consultada, y limpia
  * las columnas de cancelación -- la fila queda exactamente como antes de intentar cancelarla.
  */
-export async function revertPayrollCancellation(idReceipt: number): Promise<void> {
-  const now = buildDate(new Date());
+export async function revertPayrollCancellation(idReceipt: number, requestedAt: string): Promise<void> {
   await db.queryParams(
     `UPDATE ${SCHEMA_TABLE_CFDI}
         SET [estado] = 'T', [motivo_cancelacion] = NULL, [cancelacion_solicitada_at] = NULL,
-            [cancelled_by] = NULL, [updated_at] = @now
-      WHERE [id_period_employee_cfdi] = @id`,
-    { id: idReceipt, now }
+            [cancelled_by] = NULL, [updated_at] = [cancelacion_solicitada_at]
+      WHERE [id_period_employee_cfdi] = @id AND [estado] = 'X' AND [cancelacion_solicitada_at] = @requested_at`,
+    { id: idReceipt, requested_at: requestedAt }
   );
 }
 

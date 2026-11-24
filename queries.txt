@@ -3628,3 +3628,24 @@ UPDATE p
           WHERE s.[id_proveedor] = p.[id_supplier]
             AND s.[id_empresa]   = p.[id_empresa]
        );
+
+-- Spec 104: identidad estable del recibo y del intento de timbrado.
+-- Aplicar antes de desplegar los cambios de aplicación de esta especificación.
+ALTER TABLE [payroll].[period_employee_cfdi] ADD
+    [external_id] uniqueidentifier NULL,
+    [intento_timbrado] int NULL;
+GO
+
+ALTER TABLE [payroll].[period_employee_cfdi] WITH CHECK
+    ADD CONSTRAINT [CK_period_employee_cfdi_identidad_timbrado] CHECK (
+        ([external_id] IS NULL AND [intento_timbrado] IS NULL)
+        OR
+        ([external_id] IS NOT NULL AND [intento_timbrado] IS NOT NULL
+         AND ([intento_timbrado] > 0 OR ([intento_timbrado] = 0 AND [estado] = 'E')))
+    );
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_period_employee_cfdi_external_id]
+    ON [payroll].[period_employee_cfdi] ([external_id])
+    WHERE [external_id] IS NOT NULL;
+GO

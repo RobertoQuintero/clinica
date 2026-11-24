@@ -77,3 +77,10 @@ export async function getOrgClient(uid: string, idEmpresa: number): Promise<Fact
   }
   return new Facturapi(testKey);
 }
+
+/** Consulta histórica con el ambiente guardado en el documento, aunque el emisor haya cambiado de modo. */
+export async function getOrgClientForStoredMode(uid: string, idEmpresa: number, livemode: boolean): Promise<Facturapi> {
+  const key = await getOrganizationKey(db, uid, idEmpresa, livemode ? "live" : "test");
+  if (!key) throw new Error(`No está disponible la clave ${livemode ? "Live" : "Test"} del emisor del recibo.`);
+  return new Facturapi(key);
+}

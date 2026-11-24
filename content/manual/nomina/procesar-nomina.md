@@ -55,7 +55,7 @@ Con el periodo **Aprobada**, el botón "Desaprobar" abre un modal con el título
 
 Con el periodo **Pagada**, presiona "Reabrir periodo" y captura un **Motivo** de 5 a 200 caracteres. Al confirmar, vuelve a **En cálculo**, pierde los sellos de aprobación y pago y el cambio queda en el historial. Corrige lo necesario, recalcula, aprueba y marca el pago de nuevo.
 
-No se puede reabrir si existe un CFDI real timbrado o con cancelación en proceso; primero debe confirmarse la cancelación de todos esos recibos. Los recibos de prueba no bloquean la reapertura. Al recalcular se eliminan los recibos no cancelados; el historial de cancelados se conserva.
+No se puede reabrir, recalcular ni revertir si existe un CFDI real en timbrado, timbrado o con cancelación en proceso, aunque lleve mucho tiempo pendiente. Consulta su estado y, si está timbrado, confirma su cancelación antes de continuar. Un error real histórico sin identificar también impide las operaciones que borrarían el cálculo hasta que se documente su revisión. Los recibos de prueba no bloquean la reapertura. Al recalcular se eliminan los recibos no cancelados; el historial de cancelados se conserva.
 
 ## Cómo timbrar los recibos
 
@@ -63,9 +63,11 @@ El timbrado está disponible en la vista **Fiscal** de un periodo ordinario **Pa
 
 La columna **CFDI** muestra "Pendiente", "Bloqueado", "En proceso", "Timbrado", "Prueba", "Cancelación en proceso" o "Error". En "Bloqueado" consulta los motivos; en "Error" consulta el mensaje y usa "Reintentar" después de resolverlo. Una fila lista permite "Timbrar"; "Timbrar pendientes" procesa las filas disponibles en secuencia y muestra avance y errores. "Detener" termina el recibo en curso y detiene la cola. El modo de prueba o real depende del emisor configurado. Consulta el [detalle del empleado](./detalle-empleado#cfdi-de-nomina) para descargar los documentos.
 
+Si el timbrado queda **En proceso**, usa "Consultar estado" en la fila o en el detalle; el recibo no vuelve a entrar en el lote mientras su resultado sea incierto. Una búsqueda sin resultados no confirma que no se haya emitido: vuelve a consultar. Solo un rechazo confirmado permite reintentar. Para un recibo real histórico sin identificador, revisa Facturapi y registra el resultado y la referencia de la evidencia en el formulario de revisión antes de reemitir o eliminar el cálculo.
+
 ## Cómo cancelar un CFDI
 
-En la fila o el detalle de un recibo timbrado, elige "Cancelar", selecciona el motivo 02 o 03 en el diálogo "Cancelar CFDI de nómina" y confirma. En modo real debes escribir exactamente el folio solicitado. Si la cancelación queda en proceso, usa "Consultar estado"; hasta su confirmación el comprobante sigue vigente. Si se rechaza, revisa el mensaje y vuelve a intentarlo. Una vez cancelado, el recibo queda en el historial del detalle y se puede timbrar uno nuevo para esa fila.
+En la fila o el detalle de un recibo timbrado, elige "Cancelar", selecciona el motivo 02 o 03 en el diálogo "Cancelar CFDI de nómina" y confirma. En modo real debes escribir exactamente el folio solicitado. Si la respuesta falla o la cancelación queda en proceso, usa "Consultar estado"; hasta su confirmación el comprobante sigue vigente. Solo un rechazo confirmado devuelve el recibo a timbrado. Una vez cancelado, el recibo queda en el historial del detalle y se puede timbrar uno nuevo para esa fila.
 
 ## Cómo calcula
 

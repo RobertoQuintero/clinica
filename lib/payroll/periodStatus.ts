@@ -31,4 +31,4 @@ export const PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE =
 
 /** Spec 98: candado de Reabrir, compartido por la acción y por el botón deshabilitado. */
 export const PERIOD_HAS_STAMPED_RECEIPTS_MESSAGE =
-  "El periodo tiene recibos timbrados; cancélalos antes de reabrir";
+  "El periodo tiene recibos Live pendientes, vigentes o históricos sin revisar; consulta su estado o cancélalos antes de continuar";
