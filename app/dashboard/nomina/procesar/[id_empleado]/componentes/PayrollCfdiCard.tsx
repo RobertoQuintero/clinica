@@ -180,13 +180,14 @@ export default function PayrollCfdiCard({
                   <Download size={14} aria-hidden />
                   XML
                 </Link>
-                <Link
+                <a
                   href={`/api/nomina/cfdi/${cfdi.receipt.id_period_employee_cfdi}/pdf`}
+                  download
                   className="inline-flex items-center gap-2 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"
                 >
                   <Download size={14} aria-hidden />
                   PDF
-                </Link>
+                </a>
                 <PayrollCfdiCancelButton receipt={cfdi.receipt} employeeName={employeeName} issuerName={payrollIssuer?.name ?? null} />
               </div>
             </div>
@@ -238,13 +239,14 @@ function CancelledReceiptsSection({ receipts }: { receipts: PayrollCfdiCancelled
                   <Download size={14} aria-hidden />
                   XML
                 </Link>
-                <Link
+                <a
                   href={`/api/nomina/cfdi/${receipt.idReceipt}/pdf`}
+                  download
                   className="inline-flex items-center gap-2 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"
                 >
                   <Download size={14} aria-hidden />
                   PDF
-                </Link>
+                </a>
                 <Link
                   href={`/api/nomina/cfdi/${receipt.idReceipt}/acuse`}
                   className="inline-flex items-center gap-2 rounded-lg border border-[#c4c6d0] dark:border-zinc-600 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 hover:bg-[#eff4ff] dark:hover:bg-zinc-800 transition-colors"

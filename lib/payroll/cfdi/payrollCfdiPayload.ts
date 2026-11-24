@@ -51,7 +51,7 @@ export interface PayrollCfdiReceptor {
   puesto:                  string | null;
   fechaIngreso:            string;   // "YYYY-MM-DD"
   salarioBaseCotApor:      number | null;   // solo IMSS 'C'
-  salarioDiarioIntegrado:  number | null;   // solo IMSS 'C'
+  salarioDiarioIntegrado:  number | null;
 }
 
 /** Todo lo que viene del snapshot congelado del periodo más la identidad leída al timbrar. */

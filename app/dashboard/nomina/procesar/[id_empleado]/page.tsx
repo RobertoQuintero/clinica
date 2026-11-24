@@ -21,6 +21,7 @@ import PayrollPerceptionsCard from "./componentes/PayrollPerceptionsCard";
 import PayrollArticle174IsrCard from "./componentes/PayrollArticle174IsrCard";
 import PayrollDeductionsCard from "./componentes/PayrollDeductionsCard";
 import PayrollCfdiCard from "./componentes/PayrollCfdiCard";
+import PayrollSdiCard from "./componentes/PayrollSdiCard";
 import PayrollPaidTreatmentsList from "./componentes/PayrollPaidTreatmentsList";
 import PayrollOvertimeDaysList from "./componentes/PayrollOvertimeDaysList";
 import PayrollPendingDaysList from "./componentes/PayrollPendingDaysList";
@@ -166,6 +167,9 @@ export default async function PayrollEmployeeDetailPage({
                     />
                   ))}
               </div>
+              {payrollType === "F" && !isExtraordinary && (
+                <PayrollSdiCard sdi={detail.sdi} canRegenerate={detail.sdiCanRegenerate} idPeriod={idPeriod} idEmpleado={idEmpleado} />
+              )}
               {payrollType === "F" && !isExtraordinary && (
                 <PayrollCfdiCard
                   cfdi={detail.cfdi}

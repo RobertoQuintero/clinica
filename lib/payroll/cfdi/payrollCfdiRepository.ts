@@ -252,7 +252,7 @@ async function loadPayrollCfdiOvertimeDays(idPeriodEmployee: number): Promise<Pa
 }
 
 /** Convierte el snapshot crudo en el `PayrollCfdiSource` que arma `buildPayrollCfdiPayload`. */
-export function toPayrollCfdiSource(record: PayrollStampingSourceRecord): PayrollCfdiSource {
+export function toPayrollCfdiSource(record: PayrollStampingSourceRecord, salarioDiarioIntegrado: number): PayrollCfdiSource {
   return {
     fechaPago: record.fechaPago,
     fechaInicialPago: record.fechaInicio,
@@ -280,7 +280,7 @@ export function toPayrollCfdiSource(record: PayrollStampingSourceRecord): Payrol
       puesto: record.puesto,
       fechaIngreso: record.fechaIngreso,
       salarioBaseCotApor: record.sbc,
-      salarioDiarioIntegrado: record.sbc,
+      salarioDiarioIntegrado,
     },
     perceptions: record.perceptions,
     overtimeDays: record.overtimeDays,

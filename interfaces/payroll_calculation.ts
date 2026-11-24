@@ -201,6 +201,21 @@ export interface IPayrollEmployeeSnapshot extends IIsrBreakdown, IImssRowSummary
   calculated_at:   string;      // "YYYY-MM-DD HH:mm:ss"
 }
 
+export interface IPayrollSdi {
+  estado: "C" | "E";
+  motivo: string | null;
+  salario_diario_fiscal: number | null;
+  fecha_ingreso: string | null;
+  fecha_referencia: string | null;
+  antiguedad_anios: number | null;
+  dias_vacaciones: number | null;
+  dias_aguinaldo: number | null;
+  porcentaje_prima_vacacional: number | null;
+  factor_integracion: number | null;
+  salario_diario_integrado: number | null;
+  origen: "procesamiento" | "timbrado";
+}
+
 export interface IPayrollEmployeeDetail {
   period:   IPayrollPeriodRow;
   employee: {
@@ -215,6 +230,8 @@ export interface IPayrollEmployeeDetail {
   };
   // null si el empleado no está en la nómina del tipo pedido (o si el periodo sigue en estatus 1).
   snapshot:         IPayrollEmployeeSnapshot | null;
+  sdi:              IPayrollSdi | null;
+  sdiCanRegenerate: boolean;
   perceptions:      IPayrollPerceptionLine[];   // [] si snapshot es null
   totalPerceptions: number;                     // suma de perceptions[].amount
   // Suma de lo gravado y de lo exento (spec 73); null en operativa o si alguna línea no tiene su desglose.
