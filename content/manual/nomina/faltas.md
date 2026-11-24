@@ -3,7 +3,7 @@ title: "Faltas"
 description: "Revisar las faltas injustificadas que descuentan días de la nómina."
 section: "pantallas"
 order: 6
-updated: "2026-10-23"
+updated: "2026-11-24"
 ---
 
 ## Para qué sirve
@@ -25,7 +25,7 @@ La tabla lista un día por fila, con las columnas **Empleado**, **Día**, **Hora
 "Subir justificante" adjunta un PDF o una imagen (máximo 5 MB) como comprobante. "No aplica" la descarta con un comentario obligatorio, para días como un feriado o una falla del checador. Ambas se pueden deshacer con "Volver a injustificada".
 
 > [!WARNING]
-> Con el periodo en **Aprobada** o **Pagada**, la pantalla queda de solo lectura: desaparece la columna de acciones y ninguna falta se puede justificar, marcar como "No aplica" o devolver a injustificada. Para corregir algo hay que desaprobar el periodo primero (ver [Cómo desaprobar un periodo](./procesar-nomina#como-desaprobar-un-periodo)).
+> Con el periodo en **Aprobada** o **Pagada**, la pantalla queda de solo lectura. Para corregir una falta, desaprueba el periodo aprobado o [reabre el pagado](./procesar-nomina#como-reabrir-un-periodo-pagado) si cumple las condiciones.
 
 ## Cómo calcula
 

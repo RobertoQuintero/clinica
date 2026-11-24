@@ -3,7 +3,7 @@ title: "Parámetros fiscales"
 description: "Capturar la UMA, el salario mínimo y las tarifas de ISR vigentes cada año."
 section: "pantallas"
 order: 10
-updated: "2026-10-21"
+updated: "2026-11-24"
 ---
 
 ## Para qué sirve
@@ -30,7 +30,7 @@ Cada tramo se agrega o se edita con su límite inferior, su límite superior (va
 
 ## Cómo calcula
 
-El ISR y el IMSS de cada periodo usan el valor vigente a la fecha de **fin** del periodo, no el valor capturado más reciente: si un valor cambia a mitad de un periodo, ese periodo sigue usando el que ya tenía.
+El ISR y el IMSS de cada periodo usan el valor vigente a la fecha de **fin** del periodo, no el valor capturado más reciente: si un valor cambia a mitad del periodo, se usa el vigente al final. Un cálculo ya guardado no cambia hasta recalcularlo.
 
 ## Avisos de esta pantalla
 

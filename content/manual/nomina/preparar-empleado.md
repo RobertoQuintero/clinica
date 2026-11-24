@@ -3,7 +3,7 @@ title: "Preparar al empleado para nómina"
 description: "Qué datos necesita el expediente de un empleado antes de incluirlo en la nómina."
 section: "primeros-pasos"
 order: 2
-updated: "2026-10-21"
+updated: "2026-11-24"
 ---
 
 La mayoría de los avisos "No calculado" o de los empleados que faltan en una nómina vienen de datos que no se capturaron en el expediente del empleado. Esta página reúne, pestaña por pestaña, qué revisar antes de calcular.
@@ -16,7 +16,7 @@ En la sección "Información Laboral" del expediente:
 - **"Salario diario"**: su sueldo por día en la nómina operativa (el pago real). Si queda en $0.00, el empleado no entra a la operativa.
 - **"Salario diario fiscal"**: su sueldo por día en la nómina fiscal. Si queda en $0.00, el empleado no entra a la fiscal. Un empleado puede tener los dos, solo uno, o ninguno.
 
-En la sección "Datos fiscales", solo se exigen cuando el empleado tiene "Salario diario fiscal" capturado: RFC, CURP, NSS, código postal fiscal, tipo de régimen, tipo de contrato y tipo de jornada (más el banco, si su cuenta no es una CLABE de 18 dígitos). Si falta algo, el expediente muestra una caja ámbar "Pendiente para timbrar" con la lista exacta de lo que falta.
+Para timbrar se requieren RFC, CURP, código postal fiscal, periodo de pago, tipo de régimen y tipo de contrato. Según el régimen también se requieren NSS y tipo de jornada; si se captura una cuenta válida que no es CLABE, se requiere el banco. La sucursal necesita tener estado capturado. El expediente muestra "Pendiente para timbrar" con los problemas detectados para un empleado con salario fiscal.
 
 ![Sección Información Laboral y Datos fiscales del expediente](captura:preparar-empleado-datos-personales)
 
@@ -45,6 +45,8 @@ Igual que las vacaciones, un día económico activo no cuenta como falta ni reta
 ## IMSS
 
 La tarjeta "SBC vigente hoy" muestra el salario base de cotización actual del empleado, el mismo que se reportó en IDSE. Se da de alta con "Nuevo SBC", se corrige el monto con "Editar SBC" (para moverlo a otra fecha hay que eliminarlo y crear uno nuevo) y se quita con "Eliminar SBC". Junto con el NSS capturado en Datos personales, el SBC es lo que permite calcular la cuota obrera del IMSS del empleado en la nómina fiscal.
+
+El SBC es independiente del [salario diario integrado](./detalle-empleado#salario-diario-integrado) preparado para el CFDI.
 
 ## Usuarios
 

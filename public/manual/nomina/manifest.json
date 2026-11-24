@@ -3,19 +3,19 @@
   "captures": {
     "periodos-listado": {
       "width": 2400,
-      "height": 3903
+      "height": 3904
     },
     "procesar-nomina-tabla": {
       "width": 2400,
-      "height": 2397
+      "height": 2398
     },
     "detalle-empleado-percepciones": {
       "width": 2400,
-      "height": 3033
+      "height": 3034
     },
     "comisiones-tiers": {
       "width": 2400,
-      "height": 1817
+      "height": 1818
     },
     "horas-extra-tabla": {
       "width": 2400,
@@ -23,7 +23,7 @@
     },
     "faltas-tabla": {
       "width": 2400,
-      "height": 1337
+      "height": 1338
     },
     "retardos-tabla": {
       "width": 2400,
@@ -47,7 +47,7 @@
     },
     "aviso-recalcula": {
       "width": 2304,
-      "height": 112
+      "height": 114
     },
     "tutorial-aguinaldo-paso-1": {
       "width": 2400,
@@ -59,7 +59,7 @@
     },
     "tutorial-nomina-paso-1": {
       "width": 2400,
-      "height": 2397
+      "height": 2398
     },
     "tutorial-ptu-paso-1": {
       "width": 2400,

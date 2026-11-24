@@ -3,7 +3,7 @@ title: "Conceptos básicos"
 description: "Qué es un periodo, cómo se calcula una nómina y qué significa cada estado."
 section: "primeros-pasos"
 order: 1
-updated: "2026-10-23"
+updated: "2026-11-24"
 ---
 
 Este manual explica, en lenguaje sencillo, cómo pagar la nómina del Centro Podológico. Antes de entrar a las pantallas, conviene tener claros unos pocos conceptos que se repiten en todas ellas.
@@ -25,7 +25,7 @@ Un periodo pasa por estos estados, que se muestran como una etiqueta de color:
 - **Programada**: el periodo existe pero todavía no se ha calculado. Sus fechas se pueden editar o el periodo se puede eliminar.
 - **En cálculo**: ya se calculó al menos una vez con el botón "Calcular nómina". Mientras esté en este estado no se pueden editar sus fechas; el botón "Recalcular" vuelve a calcular con los datos más recientes, y "Revertir a Programada" borra el cálculo y regresa el periodo a Programada.
 - **Aprobada**: el cálculo queda congelado al presionar "Aprobar". Ya no se puede recalcular, revertir, ni cambiar faltas, retardos u horas extra del periodo. La única salida de este estado es "Desaprobar", que regresa el periodo a En cálculo.
-- **Pagada**: se llega con "Marcar como pagada" desde Aprobada, una vez que ya se les pagó a los empleados. Es definitiva: un periodo pagado no se puede desaprobar ni revertir.
+- **Pagada**: se llega con "Marcar como pagada" desde Aprobada, una vez que ya se les pagó a los empleados. Se puede reabrir con un motivo si no hay CFDI reales vigentes o con cancelación en proceso.
 
 Ver [Procesar nómina](./procesar-nomina#como-aprobar-un-periodo) para el detalle de cómo aprobar, pagar y desaprobar un periodo.
 
@@ -44,4 +44,4 @@ Una **percepción** es cualquier monto que se le paga al empleado: su sueldo bas
 
 ## Todavía no disponible
 
-Esta primera versión del módulo cubre el cálculo, la aprobación y el pago del periodo. Todavía no están disponibles: timbrar el recibo de nómina ante el SAT, calcular las cuotas patronales del IMSS, ni el finiquito de un empleado que causa baja.
+El timbrado está disponible para periodos ordinarios pagados (ver [Procesar nómina](./procesar-nomina#como-timbrar-los-recibos)). Todavía no están disponibles el cálculo de las cuotas patronales del IMSS ni el finiquito de un empleado que causa baja.
