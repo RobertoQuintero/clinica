@@ -12,7 +12,9 @@
 
 - Only `id_role` 1 and 4 (`PAYROLL_ALLOWED_ROLE_IDS` in `lib/payroll/constants.ts`).
 - Gated in three places: `proxy.ts` (`/dashboard/nomina` -> `/dashboard`), `navConfig.tsx` (`excludeRoles: [2, 3, 5, 6]`) and `assertPayrollAccess()` in `lib/payroll/access.ts` (server-only; every action returns `{ ok: false }` for other roles). `access.ts` also holds `ActionResult`, `IPayrollSession` and `PERIOD_ROW_SELECT`; not a `"use server"` file, so none of it is a public action.
-- Active branch comes from the `sel_sucursal` cookie with JWT fallback, never client input. Each period belongs to a single branch.
+- On each call, the verified JWT supplies only `id_user`; `getCurrentPayrollUser()` reads the current active, non-deleted user, role, company and primary branch from `dbo.users`. A missing user, revoked role or database error denies access; authorization is not cached.
+- `sel_sucursal` is untrusted input. `assertPayrollAccess()` accepts a positive integer only when `dbo.sucursales` confirms it is active and belongs to the current company. Otherwise it validates the current primary branch by the same rules; if that fails, access is denied. Roles 1/4 may use any valid branch in their company, regardless of `sucursales_string`. Each period belongs to one branch.
+- XML, PDF and cancellation receipt downloads validate the current user and receipt company, independently of the selected branch. Authorization query failures deny the request before receipt or provider access.
 
 ## `payroll.periods`
 

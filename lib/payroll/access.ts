@@ -1,6 +1,6 @@
 import "server-only";
 
-import { IAuthUser } from "@/interfaces/auth";
+import db from "@/database/connection";
 import { PAYROLL_ALLOWED_ROLE_IDS } from "@/lib/payroll/constants";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
@@ -34,27 +34,67 @@ export const PERIOD_ROW_SELECT = `
   pp.clave_sat   AS frecuencia_clave_sat`;
 
 /**
- * Gate de rol dentro del propio server action (además de `proxy.ts`) y sucursal activa
- * derivada del servidor (cookie `sel_sucursal` con respaldo en el JWT), nunca del cliente.
+ * Valida la identidad del JWT y consulta la autorización vigente del usuario.
  */
-export async function assertPayrollAccess(): Promise<ActionResult<IPayrollSession>> {
+export async function getCurrentPayrollUser(): Promise<ActionResult<IPayrollSession>> {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
   if (!token) return { ok: false, message: "No autenticado" };
 
-  let user: IAuthUser;
+  let idUser: number;
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    user = payload as unknown as IAuthUser;
+    if (typeof payload.id_user !== "number" || !Number.isSafeInteger(payload.id_user) || payload.id_user <= 0) {
+      return { ok: false, message: "Sesión inválida" };
+    }
+    idUser = payload.id_user;
   } catch {
     return { ok: false, message: "Sesión inválida" };
   }
 
-  if (!PAYROLL_ALLOWED_ROLE_IDS.includes(user.id_role)) {
-    return { ok: false, message: "No tienes permisos para acceder a Nómina" };
+  try {
+    const rows = await db.queryParams(
+      `SELECT id_user, id_role, id_empresa, id_sucursal
+         FROM dbo.users
+        WHERE id_user = @id_user AND status = 1 AND deleted_at IS NULL`,
+      { id_user: idUser },
+    );
+    const user = rows[0] as (IPayrollSession & { id_role: number }) | undefined;
+    if (user && PAYROLL_ALLOWED_ROLE_IDS.includes(user.id_role)) {
+      return { ok: true, data: { id_user: user.id_user, id_empresa: user.id_empresa, id_sucursal: user.id_sucursal } };
+    }
+  } catch {
+    return { ok: false, message: "No fue posible validar el acceso a Nómina" };
   }
+  return { ok: false, message: "No tienes permisos para acceder a Nómina" };
+}
 
-  const selectedBranchId = Number(cookieStore.get("sel_sucursal")?.value ?? 0);
-  const id_sucursal = selectedBranchId > 0 ? selectedBranchId : user.id_sucursal;
-  return { ok: true, data: { id_sucursal, id_user: user.id_user, id_empresa: user.id_empresa } };
+export async function assertPayrollAccess(): Promise<ActionResult<IPayrollSession>> {
+  const result = await getCurrentPayrollUser();
+  if (!result.ok) {
+    return result;
+  }
+  const user = result.data;
+  const cookieStore = await cookies();
+  const selectedBranch = cookieStore.get("sel_sucursal")?.value;
+  const selectedBranchId = selectedBranch && /^\d+$/.test(selectedBranch) ? Number(selectedBranch) : 0;
+  const candidates = [selectedBranchId, user.id_sucursal].filter(
+    (id, index, ids) => Number.isSafeInteger(id) && id > 0 && ids.indexOf(id) === index,
+  );
+
+  try {
+    for (const idSucursal of candidates) {
+      const rows = await db.queryParams(
+        `SELECT id_sucursal FROM dbo.sucursales
+          WHERE id_sucursal = @id_sucursal AND id_empresa = @id_empresa AND status = 1`,
+        { id_sucursal: idSucursal, id_empresa: user.id_empresa },
+      );
+      if (rows.length > 0) {
+        return { ok: true, data: { ...user, id_sucursal: idSucursal } };
+      }
+    }
+  } catch {
+    return { ok: false, message: "No fue posible validar el acceso a Nómina" };
+  }
+  return { ok: false, message: "No tienes una sucursal válida para acceder a Nómina" };
 }
