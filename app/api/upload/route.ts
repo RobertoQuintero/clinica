@@ -1,5 +1,9 @@
 import { v2 as cloudinary } from "cloudinary";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
+import db from "@/database/connection";
+import { randomUUID } from "node:crypto";
 
 export const runtime = "nodejs";
 
@@ -11,6 +15,19 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/gif",
   "image/webp",
   "application/pdf",
+]);
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_FOLDERS = new Set([
+  "clinica/consultas",
+  "clinica/facturas",
+  "clinica/egresos",
+  "clinica/recetas",
+  "clinica/empleados",
+  "clinica/empleados/documentos",
+  "clinica/empleados/faltas",
+  "clinica/empleados/retardos",
+  "clinica/productos",
 ]);
 
 /**
@@ -46,27 +63,45 @@ function detectMimeFromBytes(buf: Buffer): string | null {
   return null;
 }
 
-/**
- * Cloudinary rejects public_ids containing characters like <, >, ?, #, %, etc.
- * Strip anything outside the safe set (letters, numbers, underscore, dash, dot,
- * forward slash) and collapse repeated underscores left behind by the removal.
- */
-function sanitizePublicId(rawName: string): string {
-  const sanitized = rawName
-    .replace(/[^\w\-./]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  return sanitized || "archivo";
-}
-
 // The SDK reads CLOUDINARY_URL automatically — no manual config needed.
 
 export const POST = async (req: Request) => {
+  const token = (await cookies()).get("auth_token")?.value;
+  if (!token) {
+    return NextResponse.json({ ok: false, data: "No autenticado" }, { status: 401 });
+  }
+
+  let idUser: number;
+  try {
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.JWT_SECRET_SEED!));
+    if (typeof payload.id_user !== "number" || !Number.isSafeInteger(payload.id_user) || payload.id_user <= 0) {
+      return NextResponse.json({ ok: false, data: "Sesión inválida" }, { status: 401 });
+    }
+    idUser = payload.id_user;
+  } catch {
+    return NextResponse.json({ ok: false, data: "Sesión inválida" }, { status: 401 });
+  }
+
+  try {
+    const users = await db.queryParams(
+      `SELECT id_user FROM dbo.users
+        WHERE id_user = @id_user AND status = 1 AND deleted_at IS NULL`,
+      { id_user: idUser },
+    );
+    if (users.length === 0) {
+      return NextResponse.json({ ok: false, data: "Usuario no autorizado" }, { status: 403 });
+    }
+  } catch {
+    return NextResponse.json({ ok: false, data: "No fue posible validar el usuario" }, { status: 503 });
+  }
+
   try {
     const { searchParams } = new URL(req.url);
-    const fileName = searchParams.get("name") ?? "archivo";
-    // Strip extension to use as public_id; Cloudinary adds the extension itself.
-    const publicId = sanitizePublicId(fileName.replace(/\.[^.]+$/, ""));
+    const folder = searchParams.get("folder") ?? "clinica/consultas";
+    if (!ALLOWED_FOLDERS.has(folder)) {
+      return NextResponse.json({ ok: false, data: "Carpeta no permitida" }, { status: 400 });
+    }
+    const publicId = randomUUID();
 
     // ── 1. Validate declared Content-Type ──────────────────────────────────
     const declaredType = (req.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
@@ -77,7 +112,29 @@ export const POST = async (req: Request) => {
       );
     }
 
-    const buffer = Buffer.from(await req.arrayBuffer());
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const reader = req.body?.getReader();
+    if (reader) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > MAX_FILE_SIZE) {
+            await reader.cancel().catch(() => {});
+            return NextResponse.json(
+              { ok: false, data: "El archivo supera el tamaño máximo de 5 MiB." },
+              { status: 413 },
+            );
+          }
+          chunks.push(Buffer.from(value));
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+    const buffer = Buffer.concat(chunks, size);
     if (!buffer.length) {
       return NextResponse.json({ ok: false, data: "No se recibió ningún archivo" }, { status: 400 });
     }
@@ -91,12 +148,9 @@ export const POST = async (req: Request) => {
       );
     }
 
-    const folder = searchParams.get("folder") ?? "clinica/consultas";
-    const overwrite = searchParams.get("overwrite") === "true";
-
     const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { public_id: publicId, folder, resource_type: "auto", overwrite },
+        { public_id: publicId, folder, resource_type: "auto", overwrite: false },
         (error, result) => {
           if (error || !result) reject(error ?? new Error("Upload falló"));
           else resolve(result as { secure_url: string });

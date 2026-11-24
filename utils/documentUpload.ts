@@ -18,9 +18,9 @@ export function validateDocumentFile(file: File): string | null {
 }
 
 /** Sube el archivo a Cloudinary vía /api/upload y regresa su URL. Lanza un `Error` si falla. */
-export async function uploadDocumentFile(file: File, folder: string, fileName: string): Promise<string> {
+export async function uploadDocumentFile(file: File, folder: string): Promise<string> {
   const response = await fetch(
-    `/api/upload?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(fileName)}`,
+    `/api/upload?folder=${encodeURIComponent(folder)}`,
     { method: "POST", headers: { "Content-Type": file.type }, body: file }
   );
   const uploadResult = await response.json();

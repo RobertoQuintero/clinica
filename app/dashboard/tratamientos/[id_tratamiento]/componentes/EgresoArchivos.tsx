@@ -39,9 +39,6 @@ const resizeImage = (file: File, maxWidth = 700, quality = 0.82): Promise<Blob> 
     img.src = objectUrl;
   });
 
-const sanitize = (s: string) =>
-  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_").toLowerCase();
-
 const fmtDatetime = (val: string) => {
   if (!val) return "—";
   return new Date(String(val).replace(" ", "T"))
@@ -98,13 +95,8 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
         fileToSend = file;
       }
 
-      const num       = archivos.length + 1;
-      const ext       = isImage ? ".jpg" : ".pdf";
-      const fileName  = `egreso_${egreso.id_egreso}_archivo_${num}${ext}`;
-      const sanitized = sanitize(fileName);
-
       const uploadRes  = await fetch(
-        `/api/upload?name=${encodeURIComponent(sanitized)}&folder=${encodeURIComponent("clinica/egresos")}`,
+        `/api/upload?folder=${encodeURIComponent("clinica/egresos")}`,
         {
           method:  "POST",
           headers: { "Content-Type": isImage ? "image/jpeg" : "application/pdf" },

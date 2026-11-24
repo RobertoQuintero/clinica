@@ -12,8 +12,6 @@ interface Props {
   onUploaded: () => void;
 }
 
-const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9_.-]/g, "_");
-
 export default function UploadInvoiceModal({ id_purchase_order, onClose, onUploaded }: Props) {
   const isClient = useIsClient();
   const [file, setFile]                   = useState<File | null>(null);
@@ -32,6 +30,11 @@ export default function UploadInvoiceModal({ id_purchase_order, onClose, onUploa
       setFile(null);
       return;
     }
+    if (selected && selected.size > 5 * 1024 * 1024) {
+      setError("El archivo supera el tamaño máximo de 5 MiB.");
+      setFile(null);
+      return;
+    }
     setFile(selected);
   };
 
@@ -43,9 +46,8 @@ export default function UploadInvoiceModal({ id_purchase_order, onClose, onUploa
     setUploading(true);
     setError(null);
     try {
-      const fileName = sanitize(`factura_orden_${id_purchase_order}_${Date.now()}.pdf`);
       const uploadRes = await fetch(
-        `/api/upload?name=${encodeURIComponent(fileName)}&folder=${encodeURIComponent("clinica/facturas")}`,
+        `/api/upload?folder=${encodeURIComponent("clinica/facturas")}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/pdf" },

@@ -113,8 +113,7 @@ export default function EmployeeDocumentUploader({ id_empleado, documentTypes }:
 
     setUploading(true);
     try {
-      const fileName = `empleado_${id_empleado}_${Date.now()}_${file.name}`;
-      const fileUrl = await uploadDocumentFile(file, "clinica/empleados/documentos", fileName);
+      const fileUrl = await uploadDocumentFile(file, "clinica/empleados/documentos");
 
       const input: EmployeeDocumentInput = {
         id_empleado,
