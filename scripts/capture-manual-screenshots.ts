@@ -183,9 +183,12 @@ async function main(): Promise<void> {
 
       const filePath = path.join(OUTPUT_DIR, `${definition.name}.png`);
       await locator.screenshot({ path: filePath });
+      // Chromium can round fractional CSS bounds differently from Math.round at device scale.
+      // Read the dimensions stored in the PNG so the manifest always matches the actual image.
+      const png = await readFile(filePath);
       captures[definition.name] = {
-        width: Math.round(boundingBox.width * DEVICE_SCALE_FACTOR),
-        height: Math.round(boundingBox.height * DEVICE_SCALE_FACTOR),
+        width: png.readUInt32BE(16),
+        height: png.readUInt32BE(20),
       };
       console.log(`Capturada "${definition.name}".`);
     }

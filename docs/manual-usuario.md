@@ -80,7 +80,7 @@ Implemented with a small remark plugin, `lib/manual/remarkCallouts.ts` — no MD
 
 - **With a real capture** (the name is in the module's manifest): `ManualMarkdown` renders a `<figure>` — the PNG through `next/image` at its real width/height, wrapped in a link that opens it full-size in a new tab, with the `alt` text as `<figcaption>`. The page's Server Component resolves every marker's capture once via `loadManualCapture` (`lib/manual/captures.ts`) and passes the resolved map to `ManualMarkdown`; the renderer itself never reads the manifest. A standalone image markdown line is wrapped by `ManualMarkdown` in a bare paragraph; its `p` override unwraps that paragraph when the capture renders a `<figure>`, because `<figure>` is not phrasing content and nesting it inside `<p>` is invalid HTML (a hydration error) — keep that unwrap if you touch the `img`/`p` renderers.
 - **Without one** (no manifest, or the name isn't in it): in `npm run dev` it renders as a dashed placeholder box with a camera icon, the `alt` text and the capture name; outside development (`NODE_ENV !== "development"`) it renders nothing — a "Captura pendiente" box in production would look like a bug, not a placeholder.
-- Every page should carry at least one.
+- Every page should carry at least one when a suitable capture is available. The pending images for the 2026 Nómina update and their blockers are recorded in `scripts/manual-captures/limitaciones-spec-101.md`; until they can be generated, the new Días pendientes page has no marker and existing images may show older controls.
 
 ## Internal and screen links
 

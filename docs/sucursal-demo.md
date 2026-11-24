@@ -35,11 +35,13 @@ shows in place of its `captura:` markers (see "Capture placeholders" in `docs/ma
 
 ## The lock (`ALLOW_DEMO_SEED`, `DEMO_USER_PASSWORD`)
 
-Both scripts refuse to run without `ALLOW_DEMO_SEED=true` in `.env.local`. With it set, `seed:demo`
+`seed:demo` refuses to run without `ALLOW_DEMO_SEED=true` in `.env.local`. With it set, `seed:demo`
 prints `DB_HOST`/`DB_NAME` and asks you to type `demo` to continue — a deliberate, unmissable step
 before writing to whatever database `.env.local` currently points at. Never set `ALLOW_DEMO_SEED`
 in a production environment. `DEMO_USER_PASSWORD` is required by both scripts: `seed:demo` hashes
 and stores it on "Usuario Demo", and `capture:manual` uses it to log in as that same user.
+`capture:manual` does not check `ALLOW_DEMO_SEED`; it does need a reachable database, the existing
+demo company and user, and the app running against the same database.
 
 ## Running it
 
@@ -52,6 +54,12 @@ npm run capture:manual         # abre Chromium, prepara y captura las 19 pantall
 `capture:manual` reads `MANUAL_CAPTURE_BASE_URL` (default `http://localhost:3000`), so point it at
 whatever `npm run dev` is actually serving. It is idempotent: periods and the PTU distribution it
 finds already calculated/closed are left alone, so a failed run can simply be run again.
+
+The 2026 Nómina manual update could not regenerate captures because the database query timed out.
+The affected scenarios and remaining work are listed in
+`scripts/manual-captures/limitaciones-spec-101.md`. The 19 existing PNGs and manifest remain in use;
+they do not yet cover pending days, reopening, or the newer CFDI and SDI views. Use fictitious data
+and a test issuer for any new CFDI screenshots; never issue or cancel real receipts for captures.
 
 ## Removing it
 

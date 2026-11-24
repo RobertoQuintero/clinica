@@ -3,7 +3,7 @@ title: "Avisos y preguntas frecuentes"
 description: "Qué significa cada aviso de nómina y qué hacer para resolverlo."
 section: "avisos"
 order: 1
-updated: "2026-10-23"
+updated: "2026-11-24"
 ---
 
 Esta página reúne los avisos que pueden aparecer en las pantallas de nómina, qué significan y qué hacer con cada uno.
@@ -48,16 +48,24 @@ Desde el 1 de diciembre, [Periodos](./periodos) y [Procesar nómina](./procesar-
 
 **Qué hacer:** sigue el enlace "Crear la nómina extraordinaria" del aviso. Basta con **crear** el periodo para que el aviso desaparezca; no hace falta calcularlo de inmediato, aunque conviene hacerlo antes de la fecha límite.
 
+## "Días pendientes capturados no se pagarán en este cálculo"
+
+Una captura de [Días pendientes de pago](./dias-pendientes) tiene tarifa positiva, pero el empleado no está en el cálculo de esa nómina. Revisa su salario y frecuencia, y recalcula. La captura no pagada no se pierde.
+
+## CFDI bloqueado o con error
+
+En la vista fiscal, consulta los motivos de "Bloquequeado" o el mensaje de "Error" en la fila o el detalle. Revisa los datos fiscales, las retenciones, las percepciones y el emisor; después vuelve a intentar. Si hace falta corregir el cálculo de un periodo pagado, revisa las condiciones para [reabrirlo](./procesar-nomina#como-reabrir-un-periodo-pagado).
+
 ## Preguntas frecuentes
 
 **¿Por qué el botón "Aprobar" aparece deshabilitado?**
 Porque hay un aviso "Recalcula la nómina" activo en el periodo: el cálculo guardado ya no coincide con los datos actuales. Entra a [Procesar nómina](./procesar-nomina) y presiona "Recalcular" antes de aprobar.
 
 **¿Puedo deshacer un periodo aprobado o pagado?**
-Un periodo **Aprobada** se puede desaprobar con un motivo, y regresa a **En cálculo**. Un periodo **Pagada** es definitivo: no se puede desaprobar ni revertir. Ver [Procesar nómina](./procesar-nomina#como-desaprobar-un-periodo).
+Un periodo **Aprobada** se puede desaprobar con un motivo, y regresa a **En cálculo**. Un periodo **Pagada** puede [reabrirse](./procesar-nomina#como-reabrir-un-periodo-pagado) con un motivo si no tiene CFDI reales vigentes o con cancelación en proceso.
 
 **¿Por qué ya no puedo editar las faltas, los retardos o las horas extra de este periodo?**
-Porque el periodo está en **Aprobada** o **Pagada** y el cálculo quedó congelado. Para volver a editar hay que desaprobar el periodo primero desde [Procesar nómina](./procesar-nomina#como-desaprobar-un-periodo).
+Porque el periodo está en **Aprobada** o **Pagada** y el cálculo quedó congelado. Para volver a editar, desaprueba el periodo aprobado o reabre el pagado desde [Procesar nómina](./procesar-nomina#como-reabrir-un-periodo-pagado).
 
 **¿Por qué un empleado no aparece en ninguna nómina, ni siquiera en el aviso de excluidos?**
 Casi siempre porque le falta su "Periodo de pago" en Datos personales. Un empleado sin esa frecuencia capturada nunca entra a ningún periodo de esa frecuencia, y tampoco genera el aviso de excluido: hay que revisar su expediente a mano (ver [Preparar al empleado](./preparar-empleado#datos-personales)).
@@ -69,3 +77,4 @@ No. Las decisiones (autorizar, rechazar, justificar) son independientes del cál
 
 - [Procesar nómina](./procesar-nomina)
 - [Preparar al empleado para nómina](./preparar-empleado)
+- [Días pendientes de pago](./dias-pendientes)
