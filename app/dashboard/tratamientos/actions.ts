@@ -3,7 +3,6 @@
 import db from "@/database/connection";
 import { ITratamientoOnicomicosis, ITratamientoOnicomicosisListRow } from "@/interfaces/tratamiento_onicomicosis";
 import { IConsulta } from "@/interfaces/consulta";
-import { IAuthUser } from "@/interfaces/auth";
 import { buildDate, toDBString } from "@/utils/date_helpper";
 import { applyConsultationConsumption } from "@/lib/inventory/consultationConsumption";
 import { createWebId } from "@/utils/random";
@@ -12,12 +11,28 @@ import { jwtVerify } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 
-async function getActiveUser(): Promise<IAuthUser> {
+interface ITreatmentSession {
+  id_user: number;
+  id_empresa: number;
+}
+
+async function getActiveUser(): Promise<ITreatmentSession> {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
   if (!token) throw new Error("No autenticado");
   const { payload } = await jwtVerify(token, JWT_SECRET);
-  return payload as unknown as IAuthUser;
+  const { id_user } = payload;
+  if (typeof id_user !== "number" || !Number.isSafeInteger(id_user) || id_user <= 0) {
+    throw new Error("No autenticado");
+  }
+  const users = await db.queryParams(
+    `SELECT [id_user], [id_empresa]
+       FROM [CentroPodologico].[dbo].[users]
+      WHERE [id_user] = @id_user AND [status] = 1 AND [deleted_at] IS NULL`,
+    { id_user }
+  );
+  if (!users.length) throw new Error("No autenticado");
+  return { id_user: users[0].id_user, id_empresa: users[0].id_empresa };
 }
 
 export async function getTratamientos(
@@ -133,6 +148,7 @@ export async function searchTratamientos(
 export async function getTratamiento(
   id_tratamiento: number
 ): Promise<ITratamientoOnicomicosis | null> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT t.[id_tratamiento],
             t.[id_consulta],
@@ -170,6 +186,7 @@ export async function getTratamientoDetalle(
   phone_code:          string | null;
   edad_paciente:       number | null;
 }) | null> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT t.[id_tratamiento],
             t.[id_consulta],
@@ -239,6 +256,7 @@ export async function getTratamientoDetalle(
 export async function markTratamientoRevisado(
   id_tratamiento: number
 ): Promise<void> {
+  await getActiveUser();
   await db.queryParams(
     `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
         SET [new_message] = 0,
@@ -252,6 +270,7 @@ export async function updateTratamientoStage(
   id_tratamiento: number,
   id_stage: number
 ): Promise<void> {
+  await getActiveUser();
   await db.queryParams(
     `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
         SET [id_stage] = @id_stage
@@ -263,6 +282,7 @@ export async function updateTratamientoStage(
 export async function getArchivosByConsulta(
   id_consulta: number
 ): Promise<{ id_archivo: number; ruta: string; categoria: string }[]> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT [id_archivo], [ruta], [categoria]
        FROM [CentroPodologico].[dbo].[archivos]
@@ -287,6 +307,7 @@ export interface IPagoTratamientoRow {
 export async function getPagosByTratamiento(
   id_tratamiento: number
 ): Promise<IPagoTratamientoRow[]> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT p.[id_tratamiento_pago],
             p.[total],
@@ -309,6 +330,7 @@ export async function getPagosByTratamiento(
 }
 
 export async function getDefaultTotalTipo1(): Promise<number> {
+  await getActiveUser();
   const rows = await db.queryParams(
     `SELECT [total]
        FROM [CentroPodologico].[dbo].[Tratamiento_pagos_tipos]
@@ -319,6 +341,7 @@ export async function getDefaultTotalTipo1(): Promise<number> {
 }
 
 export async function getDefaultTotalTipo2(): Promise<number> {
+  await getActiveUser();
   const rows = await db.queryParams(
     `SELECT [total]
        FROM [CentroPodologico].[dbo].[Tratamiento_pagos_tipos]
@@ -329,6 +352,7 @@ export async function getDefaultTotalTipo2(): Promise<number> {
 }
 
 export async function getMetodosPagoTratamiento(): Promise<{ idMetodoPago: number; descripcion: string }[]> {
+  await getActiveUser();
   const rows = await db.query(
     `SELECT [idMetodoPago], [descripcion]
        FROM [CentroPodologico].[dbo].[MetodosPagos]
@@ -381,6 +405,7 @@ export async function createPagoTratamiento(data: {
 }
 
 export async function hasPagoTipo2(id_tratamiento: number): Promise<boolean> {
+  await getActiveUser();
   const rows = await db.queryParams(
     `SELECT TOP 1 1 AS existe
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
@@ -396,6 +421,7 @@ export async function deletePagoTratamiento(
   id_tratamiento_pago: number
 ): Promise<{ ok: boolean; message?: string }> {
   try {
+    await getActiveUser();
     await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
           SET [status] = 0
@@ -416,6 +442,7 @@ export async function updatePagoTratamiento(data: {
   referencia:          string;
 }): Promise<{ ok: boolean; message?: string }> {
   try {
+    await getActiveUser();
     await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
           SET [total]        = @total,
@@ -449,6 +476,7 @@ export interface IRecetaTratamiento {
 export async function getRecetasByTratamiento(
   id_tratamiento: number
 ): Promise<IRecetaTratamiento[]> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT [id_archivo],
             [ruta],
@@ -471,6 +499,7 @@ export async function saveRecetaTratamiento(data: {
   created_at:     string;
 }): Promise<{ ok: boolean; data?: IRecetaTratamiento; message?: string }> {
   try {
+    await getActiveUser();
     const result = await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[archivos]
          ([id_archivo],[id_consulta],[ruta],[tipo],[created_at],[categoria])
@@ -541,6 +570,7 @@ export interface IEgresoArchivoRow {
 export async function getEgresosByTratamiento(
   id_tratamiento: number
 ): Promise<IEgresoRow[]> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT DE.[id_egreso],
             DE.[id_egreso_tipo],
@@ -578,6 +608,7 @@ export async function getEgresosByTratamiento(
 }
 
 export async function getEgresoTipos(): Promise<{ id_egreso_tipo: number; name: string }[]> {
+  await getActiveUser();
   const rows = await db.query(
     `SELECT [id_egreso_tipo], [name]
        FROM [CentroPodologico].[dbo].[egresos_tipos]`
@@ -586,6 +617,7 @@ export async function getEgresoTipos(): Promise<{ id_egreso_tipo: number; name: 
 }
 
 export async function getEgresoStages(): Promise<{ id_egreso_stage: number; name: string }[]> {
+  await getActiveUser();
   const rows = await db.query(
     `SELECT [id_egreso_stage], [name]
        FROM [CentroPodologico].[dbo].[Egreso_stages]`
@@ -651,6 +683,7 @@ export async function updateEgreso(data: {
   id_egreso_stage: number;
 }): Promise<{ ok: boolean; message?: string }> {
   try {
+    await getActiveUser();
     const iva = data.iva_bit ? Number(data.monto) * 0.16 : 0;
     await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Egresos]
@@ -704,6 +737,7 @@ export async function deleteEgreso(
 export async function getArchivosByEgreso(
   id_egreso: number
 ): Promise<IEgresoArchivoRow[]> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT EA.[id_egreso_archivo],
             EA.[id_egreso],
@@ -730,6 +764,7 @@ export async function saveEgresoArchivo(data: {
   created_at: string;
 }): Promise<{ ok: boolean; data?: IEgresoArchivoRow; message?: string }> {
   try {
+    await getActiveUser();
     const result = await db.queryParams(
       `
       declare @id_egreso_archivo INT =
@@ -762,6 +797,7 @@ export async function saveEgresoArchivo(data: {
 export async function getConsultasByTratamiento(
   id_tratamiento: number
 ): Promise<IConsulta[]> {
+  await getActiveUser();
   const data = await db.queryParams(
     `SELECT c.[id_consulta], c.[id_paciente], c.[id_podologo],
             CONVERT(varchar(19), c.[fecha], 120) AS fecha,
@@ -795,6 +831,7 @@ export async function createConsultaOnicomicosis(form: {
   id_tratamiento:       number;
 }): Promise<{ ok: boolean; id_consulta?: number; message?: string }> {
   try {
+    await getActiveUser();
     const created_at = buildDate(new Date());
     const result = await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[consultas]

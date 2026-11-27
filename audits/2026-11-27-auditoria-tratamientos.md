@@ -8,6 +8,14 @@
 
 ## Resumen
 
+### Seguimiento — SPEC 108
+
+La SPEC 108 atiende A1 en las 27 acciones exportadas de Tratamientos: cada llamada verifica el JWT y consulta `dbo.users` para exigir un usuario activo y no eliminado antes del SQL de negocio o del consumo de inventario. Listado y búsqueda usan la empresa vigente de ese registro. Los hallazgos siguientes se conservan como evidencia del estado auditado originalmente.
+
+La parte de A3 relativa a la vigencia del usuario y la empresa actual queda cubierta en estas acciones. Siguen pendientes la autorización por recurso, sucursal, especialista y operación de A2, la evaluación de cambios de rol y los controles de sesión en `proxy.ts` y otros módulos. Los datos de recursos procedentes de formularios no se validan por esta spec.
+
+**Verificación:** `tests/treatment-access.test.ts` ejercita directamente las 27 acciones con dependencias simuladas: cookie ausente, JWT inválido o vencido, identidades inválidas, usuario inexistente, inactivo o eliminado y fallo de consulta. Comprueba ausencia de SQL de negocio y consumo tras el rechazo, además de sesiones válidas, contratos y consulta de vigencia por llamada. Pasaron las pruebas, `tsc --noEmit` y ESLint de los archivos modificados. Estas pruebas no sustituyen la verificación HTTP ni una prueba con base de datos real.
+
 | Severidad | Cantidad | IDs |
 |---|---|---|
 | Alta | 3 | A1, A2, B1 |
