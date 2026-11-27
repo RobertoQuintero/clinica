@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import { ATTENDANCE_BONUS_APPLY_SQL, ATTENDANCE_BONUS_COLUMNS } from "@/lib/payroll/attendanceBonusSql";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
@@ -34,8 +34,8 @@ const SNAPSHOT_DIFFERS_CONDITION = ATTENDANCE_BONUS_COLUMNS.map(({ column, expre
  * sin el candado de descuento) y evalúa el bono con los fragmentos de `attendanceBonusSql.ts`, los mismos del cálculo.
  * No depende de `lateness_settings`: los retardos no afectan este bono.
  */
-export async function isAttendanceBonusRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isAttendanceBonusRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SET NOCOUNT ON;
      DECLARE @id_sucursal int, @id_payment_period smallint, @fecha_inicio date, @fecha_fin date;
      SELECT @id_sucursal        = id_sucursal,

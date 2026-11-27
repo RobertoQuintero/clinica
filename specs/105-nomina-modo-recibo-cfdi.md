@@ -1,6 +1,6 @@
 ﻿# SPEC 105 — Modo del recibo en descargas de CFDI de nómina
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 98, SPEC 99 y SPEC 104.
 > **Modifica base de datos:** No.
 > **Fecha:** 2026-11-27
@@ -47,7 +47,7 @@ El servidor obtiene estos datos del recibo autorizado; el navegador no elige el 
 - [ ] Si falta la clave correspondiente, se indica cuál falta y no se usa la del otro modo.
 - [ ] Cancelación y consulta de estado conservan el uso del modo guardado.
 - [ ] El timbrado nuevo conserva el modo actual del emisor.
-- [ ] Pasan las pruebas de regresión y la auditoría registra la evidencia.
+- [x] Pasan las pruebas de regresión y la auditoría registra la evidencia.
 
 ## Decisiones tomadas y descartadas
 

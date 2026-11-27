@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import { IPayrollMissingEmployee } from "@/interfaces/payroll_calculation";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { ELIGIBLE_CHRISTMAS_BONUS_EMPLOYEE_CONDITIONS, ELIGIBLE_EMPLOYEE_BASE_CONDITIONS } from "@/lib/payroll/eligibleEmployees";
@@ -20,6 +20,7 @@ type PeriodForMissingEmployees = Pick<
  */
 export async function loadMissingEligibleEmployees(
   period: PeriodForMissingEmployees,
+  client: ITransactionClient = db,
 ): Promise<IPayrollMissingEmployee[]> {
   const isPtuPeriod = period.tipo_periodo === "E" && period.concepto_extraordinario === "P";
   if (isPtuPeriod) return [];
@@ -30,7 +31,7 @@ export async function loadMissingEligibleEmployees(
     ? ELIGIBLE_CHRISTMAS_BONUS_EMPLOYEE_CONDITIONS
     : ELIGIBLE_EMPLOYEE_BASE_CONDITIONS;
 
-  const rows = await db.queryParams(
+  const rows = await client.queryParams(
     `SELECT e.[id_empleado], e.[codigo_empleado], ${EMPLOYEE_FULL_NAME_SQL} AS nombre_completo,
             salary.[tipo_nomina]
        FROM [CentroPodologico].[RH].[empleados] e

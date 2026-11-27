@@ -1,5 +1,7 @@
 import "server-only";
 
+import db, { type ITransactionClient } from "@/database/connection";
+
 import { IPayrollMissingEmployee } from "@/interfaces/payroll_calculation";
 import { IPayrollPeriodRow } from "@/interfaces/payroll_period";
 import { isAbsenceRecalculationNeeded } from "@/lib/payroll/absenceRecalculation";
@@ -44,38 +46,34 @@ type PeriodForRecalculationChecks = Pick<
  * el de empleados faltantes aplica a ordinarios y aguinaldo (no a PTU, que `loadMissingEligibleEmployees`
  * ya descarta).
  */
-export async function collectRecalculationFlags(period: PeriodForRecalculationChecks): Promise<IRecalculationFlags> {
+export async function collectRecalculationFlags(period: PeriodForRecalculationChecks, client: ITransactionClient = db): Promise<IRecalculationFlags> {
   const isOrdinaryPeriod = period.tipo_periodo === "O";
 
-  const [
-    overtimeRecalculationNeeded,
-    absenceRecalculationNeeded,
-    latenessRecalculationNeeded,
-    punctualityBonusRecalculationNeeded,
-    attendanceBonusRecalculationNeeded,
-    shiftExtensionBonusRecalculationNeeded,
-    isrRecalculationNeeded,
-    imssRecalculationNeeded,
-    exemptionRecalculationNeeded,
-    vacationPayRecalculationNeeded,
-    extraordinaryRecalculationNeeded,
-    pendingDaysRecalculationNeeded,
-    missingEligibleEmployees,
-  ] = await Promise.all([
-    isOrdinaryPeriod ? isOvertimeRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? isAbsenceRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? isLatenessRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? isPunctualityBonusRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? isAttendanceBonusRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? isShiftExtensionBonusRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? isImssRecalculationNeeded(period.id_period) : false,
-    isExemptionRecalculationNeeded(period.id_period),
-    isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period) : false,
-    isOrdinaryPeriod ? false : isExtraordinaryRecalculationNeeded(period.id_period),
-    isOrdinaryPeriod ? isPendingDaysRecalculationNeeded(period.id_period) : false,
-    loadMissingEligibleEmployees(period),
-  ]);
+  const checks = [
+    () => isOrdinaryPeriod ? isOvertimeRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? isAbsenceRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? isLatenessRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? isPunctualityBonusRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? isAttendanceBonusRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? isShiftExtensionBonusRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? isIsrRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? isImssRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isExemptionRecalculationNeeded(period.id_period, client),
+    () => isOrdinaryPeriod ? isVacationPayRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+    () => isOrdinaryPeriod ? Promise.resolve(false) : isExtraordinaryRecalculationNeeded(period.id_period, client),
+    () => isOrdinaryPeriod ? isPendingDaysRecalculationNeeded(period.id_period, client) : Promise.resolve(false),
+  ] as const;
+
+  // A transaction supports only one active request at a time.
+  const results = client === db
+    ? await Promise.all(checks.map((check) => check()))
+    : await checks.reduce<Promise<boolean[]>>(async (previous, check) => {
+        const values = await previous;
+        values.push(await check());
+        return values;
+      }, Promise.resolve([]));
+  const [overtimeRecalculationNeeded, absenceRecalculationNeeded, latenessRecalculationNeeded, punctualityBonusRecalculationNeeded, attendanceBonusRecalculationNeeded, shiftExtensionBonusRecalculationNeeded, isrRecalculationNeeded, imssRecalculationNeeded, exemptionRecalculationNeeded, vacationPayRecalculationNeeded, extraordinaryRecalculationNeeded, pendingDaysRecalculationNeeded] = results;
+  const missingEligibleEmployees = await loadMissingEligibleEmployees(period, client);
 
   return {
     overtimeRecalculationNeeded,

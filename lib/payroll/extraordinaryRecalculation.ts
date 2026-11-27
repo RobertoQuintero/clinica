@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import {
   ARTICLE_174_APPLY_SQL,
   ARTICLE_174_COLUMNS_SQL,
@@ -32,8 +32,8 @@ const ARTICLE_174_DIFFERS_CONDITION = `EXISTS (
  *
  * Un solo batch con los fragmentos de `isrArticle174Sql.ts`, los mismos del cálculo.
  */
-export async function isExtraordinaryRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isExtraordinaryRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SET NOCOUNT ON;
      DECLARE @fecha_inicio date, @fecha_fin date, @concepto char(1);
      SELECT @fecha_inicio = fecha_inicio,

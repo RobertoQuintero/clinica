@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
@@ -20,8 +20,8 @@ import { addZeroToday } from "@/utils/date_helpper";
  * completo y no `decided_at` contra `calculated_at`.
  * Un solo batch: lee el periodo, arma las faltas de hoy y evalúa dos EXISTS apoyados en los UNIQUE de las tablas.
  */
-export async function isAbsenceRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isAbsenceRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `DECLARE @id_sucursal int, @id_payment_period int, @fecha_inicio date, @fecha_fin date;
      SELECT @id_sucursal        = id_sucursal,
             @id_payment_period  = id_payment_period,

@@ -85,10 +85,10 @@ class DB {
    * atado a la transacción, para que el resto del código no tenga que distinguir
    * entre ejecutar con o sin transacción.
    */
-  async transaction<T>(work: (tx: ITransactionClient) => Promise<T>): Promise<T> {
+  async transaction<T>(work: (tx: ITransactionClient) => Promise<T>, options?: { serializable?: boolean }): Promise<T> {
     const pool = await sql.connect(this.dbSettings);
     const dbTransaction = new sql.Transaction(pool);
-    await dbTransaction.begin();
+    await dbTransaction.begin(options?.serializable ? sql.ISOLATION_LEVEL.SERIALIZABLE : undefined);
 
     const client: ITransactionClient = {
       queryParams: async (consult: string, params: Record<string, unknown>) => {

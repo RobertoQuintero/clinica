@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import {
   ABSENCE_CONTROLLED_EMPLOYEE_CONDITION,
   ELIGIBLE_ANY_PAYROLL_EMPLOYEE_CONDITIONS,
@@ -35,8 +35,8 @@ const SNAPSHOT_DIFFERS_CONDITION = PUNCTUALITY_BONUS_COLUMNS.map(({ column, expr
  * injustificados hasta hoy inclusive, las faltas hasta ayer, sin el candado de descuento) y evalúa el bono con los
  * fragmentos de `punctualityBonusSql.ts`, los mismos del cálculo.
  */
-export async function isPunctualityBonusRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isPunctualityBonusRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SET NOCOUNT ON;
      DECLARE @id_sucursal int, @id_payment_period smallint, @fecha_inicio date, @fecha_fin date;
      SELECT @id_sucursal        = id_sucursal,
