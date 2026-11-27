@@ -14,6 +14,14 @@ interface FacturapiErrorShape {
   response?: { data?: { message?: string } };
 }
 
+/** Clave requerida por un documento histórico que ya no está disponible. */
+export class StoredModeKeyUnavailableError extends Error {
+  constructor(livemode: boolean) {
+    super(`No está disponible la clave ${livemode ? "Live" : "Test"} del emisor del recibo.`);
+    this.name = "StoredModeKeyUnavailableError";
+  }
+}
+
 /** Catálogo de rechazos comunes → mensaje accionable. Todo lo demás cae al genérico. */
 const KNOWN_PATTERNS: Array<{ test: RegExp; message: string }> = [
   {
@@ -70,6 +78,8 @@ function extractRawMessage(err: unknown): string | null {
  */
 export function toUserMessage(err: unknown): string {
   console.error("[billing]", err);
+
+  if (err instanceof StoredModeKeyUnavailableError) return err.message;
 
   const raw = extractRawMessage(err);
   if (!raw) return GENERIC_MESSAGE;
