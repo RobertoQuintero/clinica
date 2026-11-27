@@ -22,14 +22,13 @@ import AccordionRecetas from "./componentes/AccordionRecetas";
 import AccordionConsultas from "./componentes/AccordionConsultas";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { ICita } from "@/interfaces/cita";
 import { IConsulta } from "@/interfaces/consulta";
-import { IPaciente } from "@/interfaces/paciente";
 import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
-import { buildDate } from "@/utils/date_helpper";
-import { getPacientes, getPodologos, getServicioOpciones, saveCita } from "@/app/dashboard/citas/actions";
-import CitaModal from "@/app/dashboard/citas/componentes/CitaModal";
+import { getPodologos } from "@/app/dashboard/citas/actions";
+import { getSucursalCalendarios } from "@/app/dashboard/sucursales/actions";
+import { useSucursal } from "@/contexts/SucursalContext";
+import { useAsyncData } from "@/hooks/useAsyncData";
 import ConfirmModal from "@/app/dashboard/componentes/ConfirmModal";
 import CopyButton, { WhatsAppIcon } from "@/app/dashboard/componentes/CopyButton";
 
@@ -66,20 +65,6 @@ function buildSolicitudMessage(detalle: DetailRow): string {
   ].join("\n");
 }
 
-const EMPTY: ICita = {
-  id_cita:            0,
-  id_paciente:        0,
-  id_podologo:        0,
-  fecha_inicio:       "",
-  fecha_fin:          "",
-  estado:             "agendada",
-  motivo_cancelacion: "",
-  created_at:         "",
-  deleted_at:         "",
-  id_sucursal:        0,
-  id_empresa:         0,
-};
-
 const EMPTY_CONSULTA: IConsulta = {
   id_consulta:          0,
   id_paciente:          0,
@@ -108,8 +93,11 @@ export default function TratamientoDetallePage({ params }: Props) {
   const { id_tratamiento: id_str } = use(params);
   const id_tratamiento = Number(id_str);
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("solicitud");
 
   const { user }                          = useAuth();
+  const { selectedId } = useSucursal();
+  const { data: calendarios } = useAsyncData([selectedId], () => getSucursalCalendarios(selectedId));
 
   const [detalle, setDetalle]   = useState<DetailRow | null>(null);
   const [marking, setMarking]   = useState(false);
@@ -118,14 +106,7 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
-  // States for CitaModal
-  const [pacientes, setPacientes]           = useState<IPaciente[]>([]);
   const [podologos, setPodologos]           = useState<IUser[]>([]);
-  const [servicioOpciones, setServicioOpciones] = useState<{ id_servicio_opcion: number; nombre: string }[]>([]);
-  const [showModal, setShowModal]         = useState(false);
-  const [form, setForm]                   = useState<ICita>(EMPTY);
-  const [savingCita, setSavingCita]       = useState(false);
-  const [errorCita, setErrorCita]         = useState<string | null>(null);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [cancellingStage, setCancellingStage]     = useState(false);
   const [errorCancel, setErrorCancel]             = useState<string | null>(null);
@@ -166,9 +147,7 @@ export default function TratamientoDetallePage({ params }: Props) {
   }, [id_tratamiento]);
 
   useEffect(() => {
-    getPacientes().then(setPacientes).catch(console.error);
     getPodologos().then(setPodologos).catch(console.error);
-    getServicioOpciones().then(setServicioOpciones).catch(console.error);
   }, []);
 
   const openCrearConsulta = async () => {
@@ -231,47 +210,6 @@ export default function TratamientoDetallePage({ params }: Props) {
       setErrorConsulta("Error inesperado");
     } finally {
       setSavingConsulta(false);
-    }
-  };
-
-  const openCrearCitaByTratamiento = () => {
-    if (!detalle) return;
-    setForm({
-      ...EMPTY,
-      id_paciente:    detalle.id_paciente,
-      id_podologo:    detalle.id_podologo,
-      id_tratamiento: id_tratamiento,
-      id_consulta:    undefined,
-      id_sucursal:    detalle.id_sucursal,
-      id_empresa:     user!.id_empresa,
-    });
-    setErrorCita(null);
-    setShowModal(true);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingCita(true);
-    setErrorCita(null);
-    try {
-      const payload = {
-        ...form,
-        created_at: form.created_at || buildDate(new Date()),
-      };
-      const result = await saveCita(payload);
-      if (!result.ok) throw new Error(result.message ?? "Error al guardar");
-      setShowModal(false);
-    } catch (err: unknown) {
-      setErrorCita(err instanceof Error ? err.message : "Error inesperado");
-    } finally {
-      if(detalle && detalle.id_stage<=3){
-        await updateTratamientoStage(id_tratamiento, 4);
-      }
-      setSavingCita(false);
     }
   };
 
@@ -345,7 +283,11 @@ export default function TratamientoDetallePage({ params }: Props) {
                 )}
                 {tienePagoTipo2 && (
                 <button
-                  onClick={openCrearCitaByTratamiento}
+                  onClick={() => {
+                    if (calendarios?.[0]?.link_calendar) {
+                      window.open(calendarios[0].link_calendar, "_blank");
+                    }
+                  }}
                   className="rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#003ea8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0051d5] focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-zinc-900"
                 >
                   Crear cita
@@ -372,36 +314,53 @@ export default function TratamientoDetallePage({ params }: Props) {
           }
       </div>
 
-      <div className="flex flex-col gap-5">
-        <AccordionSolicitud
+      <div>
+        <div className="border-b border-[#c4c6d0] dark:border-zinc-700 overflow-x-auto">
+          <nav className="flex gap-0 -mb-px" aria-label="Secciones del tratamiento">
+            {[
+              { id: "solicitud", label: "Solicitud" },
+              ...(user?.id_role !== 5 ? [{ id: "pagos", label: "Pagos" }] : []),
+              { id: "egresos", label: "Egresos" },
+              { id: "recetas", label: "Recetas" },
+              { id: "consultas", label: "Consultas" },
+            ].map((tab) => (
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined}
+                className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id ? "border-[#0051d5] text-[#0051d5] dark:border-blue-400 dark:text-blue-400" : "border-transparent text-[#44474f] hover:text-[#0051d5] dark:text-zinc-400 dark:hover:text-blue-400"}`}
+              >{tab.label}</button>
+            ))}
+          </nav>
+        </div>
+        <div className="mt-6">
+        <div hidden={activeTab !== "solicitud"}><AccordionSolicitud
             detalle={detalle}
             archivos={archivos}
             onStageUpdated={() => setDetalle((prev) => prev ? { ...prev, id_stage: 2 } : prev)}
-          />
+          /></div>
         {
           user?.id_role !== 5 && 
           <>
-          <AccordionPagos
+          <div hidden={activeTab !== "pagos"}><AccordionPagos
               id_tratamiento={id_tratamiento}
               nombre_paciente={detalle.nombre_paciente}
               onFirstPago={() => setTienePagoTipo2(true)}
               stage={detalle.id_stage}
-            />
+            /></div>
           </>
         }
-        <AccordionEgresos id_tratamiento={id_tratamiento} stage={detalle.id_stage}/>
-        <AccordionRecetas
+        <div hidden={activeTab !== "egresos"}><AccordionEgresos id_tratamiento={id_tratamiento} stage={detalle.id_stage}/></div>
+        <div hidden={activeTab !== "recetas"}><AccordionRecetas
           id_tratamiento={id_tratamiento}
           nombre_paciente={detalle.nombre_paciente}
           nombre_podologo={detalle.nombre_usuario}
           nombre_especialista={detalle.nombre_especialista}
           id_stage={detalle.id_stage}
           id_role={user?.id_role || 0}
-        />
-        <AccordionConsultas
+        /></div>
+        <div hidden={activeTab !== "consultas"}><AccordionConsultas
           id_tratamiento={id_tratamiento}
           id_paciente={detalle.id_paciente}
-        />
+        /></div>
+        </div>
       </div>
 
       {showConfirmFinalizar && (
@@ -447,19 +406,6 @@ export default function TratamientoDetallePage({ params }: Props) {
               setCancellingStage(false);
             }
           }}
-        />
-      )}
-
-      {showModal && (
-        <CitaModal
-          form={form}
-          pacientes={pacientes}
-          servicioOpciones={servicioOpciones}
-          saving={savingCita}
-          error={errorCita}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          onClose={() => setShowModal(false)}
         />
       )}
 

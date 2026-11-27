@@ -77,8 +77,6 @@ interface Props {
 export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nombre_podologo, nombre_especialista, id_stage, id_role }: Props) {
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-
-  const [open,      setOpen     ] = useState(true);
   const [recetas,   setRecetas  ] = useState<IRecetaTratamiento[]>([]);
   const [loading,   setLoading  ] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -157,28 +155,8 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
   return (
     <div className="rounded-xl border border-[#c4c6d0] dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm">
       {/* header */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between px-4 py-4 text-left transition-colors hover:bg-[#f8f9ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0051d5] dark:hover:bg-zinc-800/50 sm:px-5"
-      >
-        <span className="text-base font-semibold text-[#0b1c30] dark:text-zinc-100">
-          Recetas
-        </span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className={`h-5 w-5 text-zinc-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+        <h2 className="px-4 py-4 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 sm:px-6">Recetas</h2>
 
-      {open && (
         <div className="border-t border-[#c4c6d0] dark:border-zinc-700 px-5 py-4 space-y-4">
           {/* upload controls */}
           {
@@ -322,7 +300,6 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
             </div>
           )}
         </div>
-      )}
     </div>
   );
 }
