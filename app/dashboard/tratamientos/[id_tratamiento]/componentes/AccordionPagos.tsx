@@ -146,13 +146,14 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
 
   return (
     <>
-      <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900 overflow-hidden">
+      <div className="rounded-lg border border-[#c4c6d0] bg-white dark:border-zinc-700 dark:bg-zinc-900 overflow-hidden">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-6 py-4 text-left"
+          aria-expanded={open}
+          className="flex w-full items-center justify-between px-4 py-4 text-left transition-colors hover:bg-[#f8f9ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0051d5] dark:hover:bg-zinc-800/50 sm:px-6"
         >
-          <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
+          <span className="text-sm font-semibold uppercase tracking-wide text-[#44474f] dark:text-zinc-300">
             Pagos (Ingresos)
           </span>
           <svg
@@ -169,16 +170,16 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
         </button>
 
         {open && (
-          <div className="px-6 pb-6">
+          <div className="px-4 pb-5 sm:px-6 sm:pb-6">
             {loadingData ? (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando pagos…</p>
             ) : (
               <>
                 {/* Payments table */}
                 {pagos.length > 0 ? (
-                  <div className="mb-4 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                  <div className="mb-4 overflow-x-auto rounded-lg border border-[#c4c6d0] dark:border-zinc-700">
                     <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                      <thead className="bg-zinc-50 dark:bg-zinc-800">
+                      <thead className="bg-[#f8f9ff] dark:bg-zinc-800">
                         <tr>
                           <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                             Fecha
@@ -221,7 +222,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                                   required
                                   value={editForm.total}
                                   onChange={(e) => setEditForm((f) => ({ ...f, total: Number(e.target.value) }))}
-                                  className="w-28 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                                  className="w-28 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                                 />
                               </td>
                               <td className="px-4 py-2">
@@ -229,7 +230,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                                   required
                                   value={editForm.idMetodoPago}
                                   onChange={(e) => setEditForm((f) => ({ ...f, idMetodoPago: Number(e.target.value) }))}
-                                  className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                                  className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                                 >
                                   {metodos.map((m) => (
                                     <option key={m.idMetodoPago} value={m.idMetodoPago}>
@@ -243,7 +244,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                                   type="text"
                                   value={editForm.referencia}
                                   onChange={(e) => setEditForm((f) => ({ ...f, referencia: e.target.value }))}
-                                  className="w-32 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                                  className="w-32 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                                 />
                               </td>
                               <td className="px-4 py-2" colSpan={2}>
@@ -258,7 +259,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                                   <button
                                     type="button"
                                     onClick={() => { setEditingId(null); setEditError(""); }}
-                                    className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+                                    className="rounded-md bg-[#eff4ff] px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
                                   >
                                     Cancelar
                                   </button>
@@ -277,7 +278,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                               <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">
                                 {p.nombre_tipo}
                               </td>
-                              <td className="px-4 py-2 text-right font-medium text-zinc-800 dark:text-zinc-100">
+                              <td className="px-4 py-2 text-right font-medium text-[#0b1c30] dark:text-zinc-100">
                                 ${Number(p.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                               </td>
                               <td className="px-4 py-2 text-zinc-700 dark:text-zinc-300">
@@ -300,7 +301,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                                     <button
                                       disabled={stage!==undefined && stage>=5}
                                       onClick={() => openEdit(p)}
-                                      className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+                                      className="rounded-md bg-[#eff4ff] px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
                                     >
                                       Editar
                                     </button>
@@ -329,21 +330,21 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                   <button
                   disabled={stage!==undefined && stage>=5}
                     onClick={() => setAddingPago(true)}
-                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                    className="rounded-md bg-[#0051d5] px-4 py-2 text-sm font-medium text-white hover:bg-[#003ea8] dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                   >
                     + Agregar pago
                   </button>
                 ) : (
                   <form
                     onSubmit={handleAddPago}
-                    className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800"
+                    className="mt-2 rounded-lg border border-[#c4c6d0] bg-[#f8f9ff] p-4 dark:border-zinc-700 dark:bg-zinc-800"
                   >
                     <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                       Nuevo pago
                     </h3>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div>
-                        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                        <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">
                           Total
                         </label>
                         <input
@@ -353,18 +354,18 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                           required
                           value={pagoForm.total}
                           onChange={(e) => setPagoForm((f) => ({ ...f, total: Number(e.target.value) }))}
-                          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                        <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">
                           Método de pago
                         </label>
                         <select
                           required
                           value={pagoForm.idMetodoPago}
                           onChange={(e) => setPagoForm((f) => ({ ...f, idMetodoPago: Number(e.target.value) }))}
-                          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                         >
                           <option value={0} disabled>Seleccionar…</option>
                           {metodos.map((m) => (
@@ -375,14 +376,14 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                        <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">
                           Referencia
                         </label>
                         <input
                           type="text"
                           value={pagoForm.referencia}
                           onChange={(e) => setPagoForm((f) => ({ ...f, referencia: e.target.value }))}
-                          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                         />
                       </div>
                     </div>
@@ -393,14 +394,14 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
                       <button
                         type="submit"
                         disabled={savingPago}
-                        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                        className="rounded-md bg-[#0051d5] px-4 py-2 text-sm font-medium text-white hover:bg-[#003ea8] disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                       >
                         {savingPago ? "Guardando…" : "Guardar pago"}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setAddingPago(false); setPagoError(""); }}
-                        className="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+                        className="rounded-md bg-[#eff4ff] px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
                       >
                         Cancelar
                       </button>

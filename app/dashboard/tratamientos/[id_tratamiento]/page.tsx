@@ -116,6 +116,7 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [archivos, setArchivos] = useState<{ id_archivo: number; ruta: string; categoria: string }[]>([]);
   const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   // States for CitaModal
   const [pacientes, setPacientes]           = useState<IPaciente[]>([]);
@@ -157,6 +158,9 @@ export default function TratamientoDetallePage({ params }: Props) {
         setTienePagoTipo2(tienePago);
         setNumConsultas(consultas.length);
       }
+      setLoading(false);
+    }).catch(() => {
+      setLoadError(true);
       setLoading(false);
     });
   }, [id_tratamiento]);
@@ -272,13 +276,13 @@ export default function TratamientoDetallePage({ params }: Props) {
   };
 
   if (loading) {
-    return <p className="p-6 text-zinc-500 dark:text-zinc-400">Cargando…</p>;
+    return <p role="status" className="m-4 rounded-xl border border-[#c4c6d0] bg-white p-6 text-sm text-[#44474f] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 sm:m-6">Cargando…</p>;
   }
 
-  if (notFound || !detalle) {
+  if (loadError || notFound || !detalle) {
     return (
       <div className="p-6">
-        <p className="text-red-600 dark:text-red-400">Tratamiento no encontrado.</p>
+        <p role={loadError ? "alert" : undefined} className="text-red-700 dark:text-red-400">{loadError ? "No se pudo cargar el tratamiento. Intenta nuevamente." : "Tratamiento no encontrado."}</p>
         <button
           onClick={() => router.back()}
           className="mt-4 rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
@@ -290,27 +294,27 @@ export default function TratamientoDetallePage({ params }: Props) {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
+    <div className="p-4 sm:p-6">
+      <div className="mb-5 flex flex-col gap-5 rounded-xl border border-[#c4c6d0] bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900 sm:p-6">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+            className="rounded-lg bg-[#eff4ff] px-3 py-2 text-sm font-semibold text-[#0051d5] transition-colors hover:bg-[#dbe1ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0051d5] dark:bg-zinc-800 dark:text-blue-300 dark:hover:bg-zinc-700 dark:focus-visible:ring-blue-400"
           >
             ← Volver
           </button>
-          <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
+          <h1 className="text-[28px] font-bold leading-9 tracking-[-0.02em] text-[#0b1c30] dark:text-zinc-50">
             Detalle del Tratamiento #{detalle.id_tratamiento}
           </h1>
           <CopyButton
             text={buildSolicitudMessage(detalle)}
             label="Copiar solicitud"
             icon={<WhatsAppIcon />}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-green-300 dark:border-green-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#009c6b] bg-white px-3 py-2 text-sm font-semibold text-[#005236] transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009c6b] dark:border-emerald-700 dark:bg-zinc-800 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
           />
           {detalle.new_message && (
             <>
-              <span className="rounded-md bg-yellow-100 px-3 py-1.5 text-sm text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">
+              <span className="rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
                 {detalle.message}
               </span>
               <button
@@ -321,7 +325,7 @@ export default function TratamientoDetallePage({ params }: Props) {
                   setDetalle((prev) => prev ? { ...prev, new_message: false, message: "" } : prev);
                   setMarking(false);
                 }}
-                className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-[#005236] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#002718] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009c6b] disabled:opacity-50"
               >
                 {marking ? "…" : "Revisado"}
               </button>
@@ -330,11 +334,11 @@ export default function TratamientoDetallePage({ params }: Props) {
         </div>
           {
             user?.id_role !== 5 && detalle.id_stage<5 && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 border-t border-[#e5eeff] pt-4 dark:border-zinc-700">
                 {tienePagoTipo2 && (
                 <button
                   onClick={openCrearConsulta}
-                  className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
+                  className="rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#003ea8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0051d5] focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-zinc-900"
                 >
                   Crear consulta
                 </button>
@@ -342,7 +346,7 @@ export default function TratamientoDetallePage({ params }: Props) {
                 {tienePagoTipo2 && (
                 <button
                   onClick={openCrearCitaByTratamiento}
-                  className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-600 dark:hover:bg-zinc-500 whitespace-nowrap"
+                  className="rounded-lg bg-[#0051d5] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#003ea8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0051d5] focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-zinc-900"
                 >
                   Crear cita
                 </button>
@@ -350,7 +354,7 @@ export default function TratamientoDetallePage({ params }: Props) {
                 {numConsultas >= 6 && detalle.id_stage < 5  && (
                   <button
                     onClick={() => { setErrorFinalizar(null); setShowConfirmFinalizar(true); }}
-                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 whitespace-nowrap"
+                    className="rounded-lg bg-[#005236] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#002718] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009c6b] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900"
                   >
                     Finalizar
                   </button>
@@ -358,7 +362,7 @@ export default function TratamientoDetallePage({ params }: Props) {
                 {detalle.id_stage !== 6 && (
                   <button
                     onClick={() => { setErrorCancel(null); setShowConfirmCancel(true); }}
-                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 whitespace-nowrap"
+                    className="rounded-lg border border-[#ba1a1a] px-4 py-2 text-sm font-semibold text-[#ba1a1a] transition-colors hover:bg-[#ffdad6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ba1a1a] dark:border-red-400 dark:text-red-300 dark:hover:bg-red-950 dark:focus-visible:ring-red-400"
                   >
                     Cancelar
                   </button>
@@ -368,7 +372,7 @@ export default function TratamientoDetallePage({ params }: Props) {
           }
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         <AccordionSolicitud
             detalle={detalle}
             archivos={archivos}

@@ -87,13 +87,14 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900 overflow-hidden">
+    <div className="rounded-lg border border-[#c4c6d0] bg-white dark:border-zinc-700 dark:bg-zinc-900 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-6 py-4 text-left"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between px-4 py-4 text-left transition-colors hover:bg-[#f8f9ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0051d5] dark:hover:bg-zinc-800/50 sm:px-6"
       >
-        <span className="text-sm font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">
+        <span className="text-sm font-semibold uppercase tracking-wide text-[#44474f] dark:text-zinc-300">
           Egresos (Pagos Especialista)
         </span>
         <svg
@@ -105,7 +106,7 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
       </button>
 
       {open && (
-        <div className="px-6 pb-6">
+        <div className="px-4 pb-5 sm:px-6 sm:pb-6">
           {loadingData ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando egresos…</p>
           ) : (
@@ -134,7 +135,7 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
                   <button
                   disabled={stage!==undefined && stage>=5}
                     onClick={() => setAdding(true)}
-                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+                    className="rounded-md bg-[#0051d5] px-4 py-2 text-sm font-medium text-white hover:bg-[#003ea8] dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
                   >
                     + Agregar egreso
                   </button>

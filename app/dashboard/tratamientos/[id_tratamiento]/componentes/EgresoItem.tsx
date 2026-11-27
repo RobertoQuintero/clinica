@@ -111,7 +111,7 @@ export default function EgresoItem({
 
   return (
     <>
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+      <div className="rounded-lg border border-[#c4c6d0] dark:border-zinc-700 bg-[#f8f9ff] dark:bg-zinc-800/50 p-4">
         {editing ? (
           <EgresoForm
             form={editForm}
@@ -132,17 +132,17 @@ export default function EgresoItem({
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
                 <div>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">Tipo: </span>
-                  <span className="font-medium text-zinc-800 dark:text-zinc-100">{localEg.nombre_tipo}</span>
+                  <span className="font-medium text-[#0b1c30] dark:text-zinc-100">{localEg.nombre_tipo}</span>
                 </div>
                 <div>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">Monto: </span>
-                  <span className="font-medium text-zinc-800 dark:text-zinc-100">
+                  <span className="font-medium text-[#0b1c30] dark:text-zinc-100">
                     ${Number(localEg.monto).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">IVA: </span>
-                  <span className="font-medium text-zinc-800 dark:text-zinc-100">
+                  <span className="font-medium text-[#0b1c30] dark:text-zinc-100">
                     ${Number(localEg.iva).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -174,7 +174,7 @@ export default function EgresoItem({
                 <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => { setEditing(true); setEditError(""); }}
-                    className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+                    className="rounded-md bg-[#eff4ff] px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
                   >
                     Editar
                   </button>

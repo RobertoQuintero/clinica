@@ -29,9 +29,9 @@ interface Props {
 }
 
 const selectClass =
-  "rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100";
+  "rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100";
 const inputClass =
-  "rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-800 focus:border-indigo-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100";
+  "rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-[#0b1c30] focus:border-[#0051d5] focus:ring-2 focus:ring-[#0051d5] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100";
 
 export default function EgresoForm({
   form,
@@ -50,7 +50,7 @@ export default function EgresoForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800 space-y-3"
+      className="rounded-lg border border-[#c4c6d0] bg-[#f8f9ff] p-4 dark:border-zinc-700 dark:bg-zinc-800 space-y-3"
     >
       {title && (
         <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -60,7 +60,7 @@ export default function EgresoForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Tipo</label>
+          <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">Tipo</label>
           <select
             required
             className={`w-full ${selectClass}`}
@@ -76,7 +76,7 @@ export default function EgresoForm({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Método de pago</label>
+          <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">Método de pago</label>
           <select
             required
             className={`w-full ${selectClass}`}
@@ -92,7 +92,7 @@ export default function EgresoForm({
 
         {canEditStage && (
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Estado</label>
+            <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">Estado</label>
             <select
               required
               className={`w-full ${selectClass}`}
@@ -108,7 +108,7 @@ export default function EgresoForm({
         )}
 
         <div>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Monto</label>
+          <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">Monto</label>
           <input
             type="number"
             min="0"
@@ -122,7 +122,7 @@ export default function EgresoForm({
 
         <div style={{display:'flex',alignItems:'flex-end',gap:'0.5rem'}}>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">IVA (16%)</label>
+            <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">IVA (16%)</label>
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-1.5 cursor-pointer select-none text-sm text-zinc-700 dark:text-zinc-300">
               <input
@@ -147,7 +147,7 @@ export default function EgresoForm({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">Referencia</label>
+          <label className="block text-xs font-medium text-[#44474f] dark:text-zinc-400 mb-1">Referencia</label>
           <input
             type="text"
             value={form.referencia}
@@ -165,14 +165,14 @@ export default function EgresoForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
+          className="rounded-md bg-[#0051d5] px-4 py-2 text-sm font-medium text-white hover:bg-[#003ea8] disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
         >
           {saving ? "Guardando…" : submitLabel}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+          className="rounded-md bg-[#eff4ff] px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
         >
           Cancelar
         </button>
