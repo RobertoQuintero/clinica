@@ -273,7 +273,7 @@ of spec 104 — a future spec that adds a new mutation should extend
 
 ## `getOrgClient` contract
 
-- `lib/billing/facturapiClient.ts` exposes two clients: `getRootClient()` (platform key,
+- `lib/billing/facturapiClient.ts` exposes `getRootClient()` (platform key,
   account-level operations — everything in spec 28's `actions.ts` uses this one, since
   managing organizations is an account operation, not invoicing on behalf of one) and
   `getOrgClient(uid, idEmpresa)` (organization-specific test/live key, reserved for the
@@ -289,7 +289,7 @@ of spec 104 — a future spec that adds a new mutation should extend
   argument and even accepted it as a `?mode=` query param that won the DB's actual setting —
   so `?mode=live` in a URL was enough to invoice in production. Resolving the mode *inside*
   the client, never as an argument, makes that class of mistake impossible from any call site.
-- Payroll reconciliation and cancellation use `getOrgClientForStoredMode` with the mode saved on the receipt, after tenant validation. This preserves the original Test/Live context even when the issuer's current mode has changed; ordinary creation still uses `getOrgClient`.
+- Payroll reconciliation, cancellation, status checks and XML/PDF/acuse downloads use `getOrgClientForStoredMode` with the issuer and mode saved on the receipt, after tenant validation. If that mode's key is missing, downloads report which key is unavailable without falling back to the other mode. New payroll stamping still uses `getOrgClient` and the issuer's current mode. Spec 105's automated checks simulate the provider; real Test and Live receipt verification remains pending.
 - In spec 28, `is_live` stays `0` on every row and there is no UI to change it — Live mode
   ships in spec 30, alongside the invoices that are the only thing that makes it consequential.
   When `is_live` does flip to `true` (spec 30), `getOrgClient` requires both a stored live key

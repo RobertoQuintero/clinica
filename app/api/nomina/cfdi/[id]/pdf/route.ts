@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
 
 import { getCurrentPayrollUser } from "@/lib/payroll/access";
-import { getOrgClient } from "@/lib/billing/facturapiClient";
+import { getOrgClientForStoredMode } from "@/lib/billing/facturapiClient";
 import { toUserMessage } from "@/lib/billing/errors";
 import { payrollCfdiDownloadParamsSchema } from "@/lib/payroll/schemas";
 import { loadPayrollCfdiReceiptForDownload } from "@/lib/payroll/cfdi/payrollCfdiRepository";
@@ -29,7 +29,7 @@ export const GET = async (_req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, message: "El recibo no existe o no está timbrado" }, { status: 404 });
     }
 
-    const client = await getOrgClient(target.receipt.org_uid, id_empresa);
+    const client = await getOrgClientForStoredMode(target.receipt.org_uid, id_empresa, target.receipt.livemode);
     const download = await client.invoices.downloadPdf(target.receipt.facturapi_id as string);
     const body = download instanceof Readable ? (Readable.toWeb(download) as ReadableStream) : (download as Blob);
 

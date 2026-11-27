@@ -1,6 +1,6 @@
 # 104 — Integridad del timbrado y la cancelación de CFDI de nómina
 
-**Estado:** Aprobado  
+**Estado:** Implementado  
 **Fecha:** 24 de noviembre de 2026  
 **Depende de:** 96 (reapertura de periodos pagados), 98 (timbrado de CFDI de nómina) y 99 (cancelación de CFDI de nómina).
 

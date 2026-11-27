@@ -3,6 +3,7 @@ import Facturapi from "facturapi";
 
 import db from "@/database/connection";
 import { getOrganizationByUid, getOrganizationKey } from "@/lib/billing/organizationsRepository";
+import { StoredModeKeyUnavailableError } from "@/lib/billing/errors";
 
 /**
  * Cliente único de Facturapi del módulo. Reemplaza las 4 implementaciones casi
@@ -81,6 +82,6 @@ export async function getOrgClient(uid: string, idEmpresa: number): Promise<Fact
 /** Consulta histórica con el ambiente guardado en el documento, aunque el emisor haya cambiado de modo. */
 export async function getOrgClientForStoredMode(uid: string, idEmpresa: number, livemode: boolean): Promise<Facturapi> {
   const key = await getOrganizationKey(db, uid, idEmpresa, livemode ? "live" : "test");
-  if (!key) throw new Error(`No está disponible la clave ${livemode ? "Live" : "Test"} del emisor del recibo.`);
+  if (!key) throw new StoredModeKeyUnavailableError(livemode);
   return new Facturapi(key);
 }

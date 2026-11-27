@@ -97,6 +97,10 @@ Los hallazgos están agrupados por tópico (A–E) para poder atenderlos en bloq
 
 ### B5 · MEDIA · El cliente de Facturapi usa el modo actual de la organización, no el del recibo
 
+**Actualización 2026-11-27 — spec 105: atendido.** Las descargas XML, PDF y acuse usan el emisor y `livemode` guardados en el recibo mediante `getOrgClientForStoredMode`; cancelación y consulta de estado conservan ese mismo criterio. Si falta la clave correspondiente, la respuesta indica Test o Live y no consulta la clave alternativa. El timbrado nuevo conserva el modo actual del emisor.
+
+**Evidencia:** `node --experimental-test-module-mocks --conditions=react-server --import tsx --test tests/payroll-cfdi-stored-mode.test.ts tests/payroll-access.test.ts` pasó 6 pruebas: las tres descargas en ambos sentidos de cambio de modo, claves faltantes, cancelación, consulta y control de acceso. Se simularon base de datos y proveedor; queda pendiente verificar con recibos y claves reales Test y Live, incluidas descargas y acuse tras cambiar el modo del emisor.
+
 - **Dónde:** `lib/billing/facturapiClient.ts:45-79`, usado en descargas (`app/api/nomina/cfdi/[id]/*/route.ts`), cancelación y "Consultar estado".
 - **Qué pasa:** `getOrgClient` elige la llave Test o Live según `is_live` de hoy. Un recibo Test de una organización que ya pasó a Live (o al revés) se consulta con la llave equivocada.
 - **Impacto:** no se pueden descargar, cancelar ni reconciliar los recibos del otro modo; una `'X'` de ese modo queda atascada. No hay riesgo de timbrar en el modo incorrecto.

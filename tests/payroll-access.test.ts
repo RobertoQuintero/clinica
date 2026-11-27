@@ -27,7 +27,7 @@ mock.module("@/lib/payroll/cfdi/payrollCfdiRepository", { namedExports: {
   loadPayrollCfdiReceiptForDownload: async () => { receiptCalls++; return null; },
 } });
 mock.module("@/lib/billing/facturapiClient", { namedExports: {
-  getOrgClient: async () => { providerCalls++; throw new Error("unexpected provider call"); },
+  getOrgClientForStoredMode: async () => { providerCalls++; throw new Error("unexpected provider call"); },
 } });
 
 async function main() {
