@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 
 /**
  * Aviso "Recalcula" (spec 97): ¿los días pendientes de pago ya no coinciden con lo que congeló el último
@@ -12,8 +12,8 @@ import db from "@/database/connection";
  *      (la captura se borró y se volvió a capturar con otro valor).
  * Un solo SELECT con EXISTS, igual que `overtimeRecalculation`.
  */
-export async function isPendingDaysRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isPendingDaysRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SELECT CASE WHEN EXISTS (
               -- 1. Captura de este periodo que ningún tipo pagó, para un tipo donde el empleado sí tiene fila.
               SELECT 1

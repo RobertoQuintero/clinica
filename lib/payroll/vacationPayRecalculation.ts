@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import { VACATION_PAY_EVENTS_SQL } from "@/lib/payroll/vacationPaySql";
 
 /**
@@ -14,8 +14,8 @@ import { VACATION_PAY_EVENTS_SQL } from "@/lib/payroll/vacationPaySql";
  * Los eventos salen de `VACATION_PAY_EVENTS_SQL`, el mismo fragmento del cálculo, y el candado se lee igual que ahí.
  * Un concepto ya pagado por otro periodo en ese tipo no activa el aviso: el cálculo tampoco lo pagaría.
  */
-export async function isVacationPayRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isVacationPayRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SET NOCOUNT ON;
      DECLARE @fecha_inicio date, @fecha_fin date;
      SELECT @fecha_inicio = fecha_inicio, @fecha_fin = fecha_fin

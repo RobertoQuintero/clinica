@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import {
   SHIFT_EXTENSION_BONUS_APPLY_SQL,
   SHIFT_EXTENSION_BONUS_COLUMNS,
@@ -29,8 +29,8 @@ const SNAPSHOT_DIFFERS_CONDITION = SHIFT_EXTENSION_BONUS_COLUMNS.map(
  * Un solo batch: arma `#shift_extension_days` y evalúa el bono con los fragmentos de `shiftExtensionBonusSql.ts`, los
  * mismos del cálculo.
  */
-export async function isShiftExtensionBonusRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isShiftExtensionBonusRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SET NOCOUNT ON;
      DECLARE @id_sucursal int, @id_payment_period smallint, @fecha_inicio date, @fecha_fin date;
      SELECT @id_sucursal        = id_sucursal,

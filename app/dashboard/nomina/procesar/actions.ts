@@ -1272,7 +1272,9 @@ const PERIOD_NOT_CALCULABLE_MARKER = "PERIOD_NOT_CALCULABLE";
 const PERIOD_NOT_REVERTIBLE_MARKER = "PERIOD_NOT_REVERTIBLE";
 // Spec 94: aprobar, pagar y desaprobar un periodo.
 const PERIOD_NOT_APPROVABLE_MARKER = "PERIOD_NOT_APPROVABLE";
+const PERIOD_NEEDS_RECALCULATION_MARKER = "PERIOD_NEEDS_RECALCULATION";
 const PERIOD_NOT_PAYABLE_MARKER = "PERIOD_NOT_PAYABLE";
+const PERIOD_HAS_MISSING_EMPLOYEES_MARKER = "PERIOD_HAS_MISSING_EMPLOYEES";
 const PERIOD_NOT_UNAPPROVABLE_MARKER = "PERIOD_NOT_UNAPPROVABLE";
 // Spec 96: reabrir un periodo pagado.
 const PERIOD_NOT_REOPENABLE_MARKER = "PERIOD_NOT_REOPENABLE";
@@ -1298,8 +1300,14 @@ function describePayrollCalculationError(error: unknown): string {
   if (sqlError.message?.includes(PERIOD_NOT_APPROVABLE_MARKER)) {
     return "El periodo no existe en esta sucursal o ya no está en estatus En cálculo";
   }
+  if (sqlError.message?.includes(PERIOD_NEEDS_RECALCULATION_MARKER)) {
+    return PERIOD_NEEDS_RECALCULATION_MESSAGE;
+  }
   if (sqlError.message?.includes(PERIOD_NOT_PAYABLE_MARKER)) {
     return "El periodo no existe en esta sucursal o ya no está en estatus Aprobada";
+  }
+  if (sqlError.message?.includes(PERIOD_HAS_MISSING_EMPLOYEES_MARKER)) {
+    return PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE;
   }
   if (sqlError.message?.includes(PERIOD_NOT_UNAPPROVABLE_MARKER)) {
     return "El periodo no existe en esta sucursal o ya no está en estatus Aprobada";
@@ -2121,8 +2129,7 @@ export async function revertPayrollCalculation(input: unknown): Promise<ActionRe
 /**
  * Aprobar (solo estatus 2 → 3, spec 94): congela el periodo con el sello de quién y cuándo, y
  * registra la transición en la bitácora. Se rechaza si algún aviso "Recalcula" está activo; esa
- * comprobación corre antes de abrir la transacción, así que la ventana para que algo cambie
- * entre el aviso y el `COMMIT` es de milisegundos (ver riesgos de la spec 94).
+ * comprobación y transición comparten una transacción serializable (spec 106).
  */
 export async function approvePayrollPeriod(input: unknown): Promise<ActionResult<null>> {
   const access = await assertPayrollAccess();
@@ -2135,48 +2142,33 @@ export async function approvePayrollPeriod(input: unknown): Promise<ActionResult
   }
 
   try {
-    const periodRows = await db.queryParams(
-      `SELECT id_period, id_sucursal, id_payment_period,
-              CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
-              tipo_periodo, concepto_extraordinario
-         FROM [CentroPodologico].[payroll].[periods]
-        WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
-      { id_period: parsed.data.id_period, id_sucursal },
-    );
-    if (periodRows[0]) {
-      const flags = await collectRecalculationFlags(periodRows[0]);
-      if (isAnyRecalculationFlagActive(flags)) {
-        return {
-          ok: false,
-          message: PERIOD_NEEDS_RECALCULATION_MESSAGE,
-        };
-      }
-    }
-
     const { from, to } = PERIOD_STATUS_TRANSITIONS.approve;
     const changedAt = buildDate(new Date());
-    await db.queryParams(
-      `SET XACT_ABORT ON;
-       BEGIN TRAN;
+    await db.transaction(async (tx) => {
+      const periodRows = await tx.queryParams(
+        `SELECT id_period, id_sucursal, id_payment_period,
+                CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
+                tipo_periodo, concepto_extraordinario
+           FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = ${from}`,
+        { id_period: parsed.data.id_period, id_sucursal },
+      );
+      if (!periodRows[0]) throw new Error(PERIOD_NOT_APPROVABLE_MARKER);
+      const flags = await collectRecalculationFlags(periodRows[0], tx);
+      if (isAnyRecalculationFlagActive(flags)) throw new Error(PERIOD_NEEDS_RECALCULATION_MARKER);
 
-       IF NOT EXISTS (
-         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
-          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = ${from}
-       )
-         THROW 50005, '${PERIOD_NOT_APPROVABLE_MARKER}', 1;
-
-       UPDATE [CentroPodologico].[payroll].[periods]
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[payroll].[periods]
           SET status = ${to}, approved_by = @changed_by, approved_at = CAST(@changed_at AS datetime2(0)),
               updated_at = CAST(@changed_at AS datetime2(0))
         WHERE id_period = @id_period;
 
        INSERT INTO [CentroPodologico].[payroll].[period_status_log]
          (id_period, status_anterior, status_nuevo, comentario, changed_by, changed_at)
-       VALUES (@id_period, ${from}, ${to}, NULL, @changed_by, @changed_at);
-
-       COMMIT;`,
-      { id_period: parsed.data.id_period, id_sucursal, changed_by: id_user, changed_at: changedAt },
-    );
+       VALUES (@id_period, ${from}, ${to}, NULL, @changed_by, @changed_at);`,
+        { id_period: parsed.data.id_period, changed_by: id_user, changed_at: changedAt },
+      );
+    }, { serializable: true });
 
     revalidatePayrollPaths();
     return { ok: true, data: null };
@@ -2198,46 +2190,33 @@ export async function payPayrollPeriod(input: unknown): Promise<ActionResult<nul
   }
 
   try {
-    // Spec 96: un periodo con empleados elegibles fuera del cálculo no se puede pagar.
-    const periodRows = await db.queryParams(
-      `SELECT id_period, id_sucursal, id_payment_period,
-              CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
-              tipo_periodo, concepto_extraordinario
-         FROM [CentroPodologico].[payroll].[periods]
-        WHERE id_period = @id_period AND id_sucursal = @id_sucursal`,
-      { id_period: parsed.data.id_period, id_sucursal },
-    );
-    if (periodRows[0]) {
-      const missingEligibleEmployees = await loadMissingEligibleEmployees(periodRows[0]);
-      if (missingEligibleEmployees.length > 0) {
-        return { ok: false, message: PERIOD_HAS_MISSING_EMPLOYEES_MESSAGE };
-      }
-    }
-
     const { from, to } = PERIOD_STATUS_TRANSITIONS.pay;
     const changedAt = buildDate(new Date());
-    await db.queryParams(
-      `SET XACT_ABORT ON;
-       BEGIN TRAN;
+    await db.transaction(async (tx) => {
+      const periodRows = await tx.queryParams(
+        `SELECT id_period, id_sucursal, id_payment_period,
+                CONVERT(varchar(10), fecha_fin, 120) AS fecha_fin,
+                tipo_periodo, concepto_extraordinario
+           FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
+          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = ${from}`,
+        { id_period: parsed.data.id_period, id_sucursal },
+      );
+      if (!periodRows[0]) throw new Error(PERIOD_NOT_PAYABLE_MARKER);
+      const missingEligibleEmployees = await loadMissingEligibleEmployees(periodRows[0], tx);
+      if (missingEligibleEmployees.length > 0) throw new Error(PERIOD_HAS_MISSING_EMPLOYEES_MARKER);
 
-       IF NOT EXISTS (
-         SELECT 1 FROM [CentroPodologico].[payroll].[periods] WITH (UPDLOCK, HOLDLOCK)
-          WHERE id_period = @id_period AND id_sucursal = @id_sucursal AND status = ${from}
-       )
-         THROW 50005, '${PERIOD_NOT_PAYABLE_MARKER}', 1;
-
-       UPDATE [CentroPodologico].[payroll].[periods]
+      await tx.queryParams(
+        `UPDATE [CentroPodologico].[payroll].[periods]
           SET status = ${to}, paid_by = @changed_by, paid_at = CAST(@changed_at AS datetime2(0)),
               updated_at = CAST(@changed_at AS datetime2(0))
         WHERE id_period = @id_period;
 
        INSERT INTO [CentroPodologico].[payroll].[period_status_log]
          (id_period, status_anterior, status_nuevo, comentario, changed_by, changed_at)
-       VALUES (@id_period, ${from}, ${to}, NULL, @changed_by, @changed_at);
-
-       COMMIT;`,
-      { id_period: parsed.data.id_period, id_sucursal, changed_by: id_user, changed_at: changedAt },
-    );
+       VALUES (@id_period, ${from}, ${to}, NULL, @changed_by, @changed_at);`,
+        { id_period: parsed.data.id_period, changed_by: id_user, changed_at: changedAt },
+      );
+    }, { serializable: true });
 
     revalidatePayrollPaths();
     return { ok: true, data: null };

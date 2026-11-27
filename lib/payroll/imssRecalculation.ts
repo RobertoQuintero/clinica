@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import { IMSS_APPLY_SQL, IMSS_COLUMNS_SQL, IMSS_PARAMETERS_SQL } from "@/lib/payroll/imssSql";
 
 /**
@@ -48,7 +48,7 @@ export const IMSS_RECALCULATION_CHECK_SQL = `SET NOCOUNT ON;
  *
  * Un solo batch con los fragmentos de `imssSql.ts`, los mismos del cálculo.
  */
-export async function isImssRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(IMSS_RECALCULATION_CHECK_SQL, { id_period: idPeriod });
+export async function isImssRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(IMSS_RECALCULATION_CHECK_SQL, { id_period: idPeriod });
   return Number(rows[0]?.recalculation_needed ?? 0) === 1;
 }

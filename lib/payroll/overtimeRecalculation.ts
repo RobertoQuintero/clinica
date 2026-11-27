@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 
 /**
  * Aviso "Recalcula" (specs 61 y 75): ¿las autorizaciones de horas extra ya no coinciden con lo que congeló el último cálculo?
@@ -14,8 +14,8 @@ import db from "@/database/connection";
  * Un solo SELECT con EXISTS, acotado al periodo y apoyado en los UNIQUE (id_empleado, fecha[, tipo_nomina]) de ambas tablas.
  * Un periodo calculado antes de la spec 75 tiene renglones 'F' sin desglose: el caso 1 los detecta.
  */
-export async function isOvertimeRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isOvertimeRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SELECT CASE WHEN EXISTS (
               -- 1. Día autorizado del rango que ningún periodo ha pagado en ese tipo (solo con configuración y salario operativo).
               SELECT 1

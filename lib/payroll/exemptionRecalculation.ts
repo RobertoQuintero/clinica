@@ -1,6 +1,6 @@
 import "server-only";
 
-import db from "@/database/connection";
+import db, { type ITransactionClient } from "@/database/connection";
 import { SALARY_PERCEPTION_ID } from "@/lib/payroll/constants";
 import {
   EXEMPTION_APPLY_SQL,
@@ -28,8 +28,8 @@ const STORED_PERCEPTION_DIFFERS_CONDITION = `EXISTS (
  *
  * Un solo batch con los fragmentos de `exemptionSql.ts`, los mismos del cálculo.
  */
-export async function isExemptionRecalculationNeeded(idPeriod: number): Promise<boolean> {
-  const rows = await db.queryParams(
+export async function isExemptionRecalculationNeeded(idPeriod: number, client: ITransactionClient = db): Promise<boolean> {
+  const rows = await client.queryParams(
     `SET NOCOUNT ON;
      DECLARE @id_payment_period smallint, @fecha_fin date;
      SELECT @id_payment_period = id_payment_period,

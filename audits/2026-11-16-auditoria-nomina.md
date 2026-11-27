@@ -153,9 +153,11 @@ Los hallazgos están agrupados por tópico (A–E) para poder atenderlos en bloq
 
 ### D1 · MEDIA · Aprobar y pagar validan fuera de la transacción
 
-- **Dónde:** `procesar/actions.ts:2107-2123` (aprobar) y `2171-2184` (pagar).
-- **Qué pasa:** `collectRecalculationFlags` y `loadMissingEligibleEmployees` corren antes del `BEGIN TRAN`. Un cambio entre la verificación y el `COMMIT` (una justificación, una checada que llega, un empleado nuevo) deja aprobado o pagado un periodo desactualizado. Riesgo reconocido en el comentario de la acción.
-- **Corrección:** tras aprobar, volver a evaluar los avisos y desaprobar automáticamente si alguno se activó, o mover las comprobaciones críticas al batch SQL.
+- **Estado:** atendido mediante la SPEC 106; la evidencia de concurrencia es parcial y se describe abajo.
+- **Hallazgo original:** `collectRecalculationFlags` y `loadMissingEligibleEmployees` corrían antes de la transacción, dejando una ventana para cambios concurrentes antes del `COMMIT`.
+- **Corrección:** aprobar y pagar validan sucursal y estatus bajo `UPDLOCK, HOLDLOCK` y ejecutan sus comprobaciones en la misma transacción `SERIALIZABLE` que actualiza el periodo y registra la bitácora. Aprobar comprueba los avisos; pagar comprueba únicamente empleados elegibles faltantes. Los errores revierten la transición.
+- **Evidencia (2026-11-27):** ocho pruebas automatizadas de acciones pasaron con dependencias simuladas. En SQL Server de pruebas, dos sesiones verificaron que una actualización de empleado queda bloqueada durante la consulta de elegibilidad hasta el `COMMIT` y que una inserción de día pendiente en un rango vacío queda bloqueada durante la comprobación hasta el `ROLLBACK`; las transacciones escritoras se revirtieron. Los comandos y requisitos están en `docs/nomina.md`.
+- **Limitaciones:** las pruebas concurrentes cubren esas dos operaciones, no todas las fuentes y planes de ejecución. La granularidad depende de índices y planes; siguen siendo posibles bloqueos amplios e interbloqueos. Los cambios posteriores al `COMMIT` y las capturas retroactivas permanecen fuera de esta corrección (D2).
 
 ### D2 · BAJA · Riesgos ya documentados que siguen abiertos
 
