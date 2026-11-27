@@ -33,7 +33,7 @@ export default function ImageSliderModal({ open, archivos, slideIndex, onClose, 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">
+          <span className="text-sm font-semibold text-[#44474f] dark:text-zinc-300">
             {archivos[slideIndex].categoria} — {slideIndex + 1} / {archivos.length}
           </span>
           <button
@@ -45,7 +45,7 @@ export default function ImageSliderModal({ open, archivos, slideIndex, onClose, 
         </div>
 
         <div
-          className="flex items-center justify-center overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800"
+          className="flex items-center justify-center overflow-hidden rounded-lg bg-[#eff4ff] dark:bg-zinc-800"
           style={{ minHeight: 320 }}
         >
           <a href={archivos[slideIndex].ruta} target="_blank" rel="noopener noreferrer">
@@ -64,7 +64,7 @@ export default function ImageSliderModal({ open, archivos, slideIndex, onClose, 
           <div className="mt-4 flex items-center justify-between">
             <button
               onClick={() => onSlide((slideIndex - 1 + archivos.length) % archivos.length)}
-              className="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+              className="rounded-md bg-[#eff4ff] px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
             >
               ← Anterior
             </button>
@@ -83,7 +83,7 @@ export default function ImageSliderModal({ open, archivos, slideIndex, onClose, 
             </div>
             <button
               onClick={() => onSlide((slideIndex + 1) % archivos.length)}
-              className="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+              className="rounded-md bg-[#eff4ff] px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
             >
               Siguiente →
             </button>

@@ -18,17 +18,17 @@ export default function TratamientoFila({ tratamiento: t }: Props) {
   const router = useRouter();
 
   return (
-    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+    <tr className="transition-colors hover:bg-[#f8f9ff] dark:hover:bg-zinc-800/50">
+      <td className="whitespace-nowrap px-4 py-3 text-[#0b1c30] dark:text-zinc-100">
         {fmtDatetime(t.created_at)}
       </td>
-      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">{t.nombre_paciente}</td>
+      <td className="px-4 py-3 font-semibold text-[#0b1c30] dark:text-zinc-100">{t.nombre_paciente}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_especialista}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.whatsapp_paciente ?? "—"}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.pago_especialista}</td>
       <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{t.nombre_usuario}</td>
       <td className="px-4 py-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dbe1ff] px-2.5 py-1 text-xs font-semibold text-[#003ea8] dark:bg-blue-900/40 dark:text-blue-200">
           {t.nombre_stage}
           {t.id_stage === 4 && (
             <span className="text-zinc-500 dark:text-zinc-400">
@@ -43,7 +43,8 @@ export default function TratamientoFila({ tratamiento: t }: Props) {
       <td className="px-4 py-3 flex justify-end">
         <button
           onClick={() => router.push(`/dashboard/tratamientos/${t.id_tratamiento}`)}
-          className="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+          aria-label={`Ver detalle del tratamiento de ${t.nombre_paciente}`}
+          className="rounded-lg bg-[#eff4ff] px-3 py-2 text-xs font-semibold text-[#0051d5] transition-colors hover:bg-[#dbe1ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0051d5] dark:bg-zinc-800 dark:text-blue-300 dark:hover:bg-zinc-700 dark:focus-visible:ring-blue-400"
           title="Ver detalle"
         >
           <svg

@@ -146,7 +146,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
   };
 
   return (
-    <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700">
+    <div className="mt-3 rounded-lg border border-[#c4c6d0] dark:border-zinc-700">
       {/* file inputs: visually hidden but NOT display:none — Chrome freezes on display:none inputs */}
       <input
         id={`egreso-file-${egreso.id_egreso}`}
@@ -183,7 +183,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
       </button>
 
       {open && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700 px-4 py-3 space-y-3">
+        <div className="border-t border-[#c4c6d0] dark:border-zinc-700 px-4 py-3 space-y-3">
           <div className="flex justify-end gap-2">
 
             {/* Foto — label triggers the camera input natively, no scripted .click() needed */}
@@ -233,9 +233,9 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
           ) : archivos.length === 0 ? (
             <p className="text-xs text-zinc-400">Sin archivos registrados.</p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <div className="overflow-x-auto rounded-lg border border-[#c4c6d0] dark:border-zinc-700">
               <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-xs">
-                <thead className="bg-zinc-50 dark:bg-zinc-800">
+                <thead className="bg-[#f8f9ff] dark:bg-zinc-800">
                   <tr>
                     {["#", "Fecha", "Usuario", "Enlace"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{h}</th>

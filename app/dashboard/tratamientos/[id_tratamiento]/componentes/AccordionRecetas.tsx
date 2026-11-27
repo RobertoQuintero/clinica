@@ -155,14 +155,15 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
   };
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm">
+    <div className="rounded-xl border border-[#c4c6d0] dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm">
       {/* header */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between px-4 py-4 text-left transition-colors hover:bg-[#f8f9ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0051d5] dark:hover:bg-zinc-800/50 sm:px-5"
       >
-        <span className="text-base font-semibold text-zinc-800 dark:text-zinc-100">
+        <span className="text-base font-semibold text-[#0b1c30] dark:text-zinc-100">
           Recetas
         </span>
         <svg
@@ -178,7 +179,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
       </button>
 
       {open && (
-        <div className="border-t border-zinc-200 dark:border-zinc-700 px-5 py-4 space-y-4">
+        <div className="border-t border-[#c4c6d0] dark:border-zinc-700 px-5 py-4 space-y-4">
           {/* upload controls */}
           {
             (id_role === 5 ||id_role === 1 ||id_role === 4) &&
@@ -248,14 +249,14 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
           ) : recetas.length === 0 ? (
             <p className="text-sm text-zinc-400">Sin recetas registradas.</p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <div className="overflow-x-auto rounded-lg border border-[#c4c6d0] dark:border-zinc-700">
               <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                <thead className="bg-zinc-100 dark:bg-zinc-800">
+                <thead className="bg-[#eff4ff] dark:bg-zinc-800">
                   <tr>
                     {["#", "Tipo", "Fecha", "Enlace", ""].map((h) => (
                       <th
                         key={h}
-                        className="px-4 py-3 text-left font-medium text-zinc-600 dark:text-zinc-300 whitespace-nowrap"
+                        className="px-4 py-3 text-left font-medium text-[#44474f] dark:text-zinc-300 whitespace-nowrap"
                       >
                         {h}
                       </th>
@@ -266,13 +267,13 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
                   {recetas.map((r, idx) => {
                     return (
                     <tr key={r.id_archivo} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100">
+                      <td className="px-4 py-3 text-[#0b1c30] dark:text-zinc-100">
                         {recetas.length - idx}
                       </td>
-                      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 capitalize">
+                      <td className="px-4 py-3 text-[#0b1c30] dark:text-zinc-100 capitalize">
                         {r.tipo || "—"}
                       </td>
-                      <td className="px-4 py-3 text-zinc-800 dark:text-zinc-100 whitespace-nowrap">
+                      <td className="px-4 py-3 text-[#0b1c30] dark:text-zinc-100 whitespace-nowrap">
                         {fmtDatetime(r.created_at)}
                       </td>
                       <td className="px-4 py-3 max-w-xs truncate">
