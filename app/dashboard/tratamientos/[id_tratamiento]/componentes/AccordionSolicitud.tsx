@@ -47,7 +47,6 @@ const fmtDatetime = (val: string) => {
 };
 
 export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }: Props) {
-  const [open, setOpen]             = useState(true);
   const [modalOpen, setModalOpen]   = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
 
@@ -63,29 +62,8 @@ export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }
   return (
     <>
       <div className="rounded-lg border border-[#c4c6d0] bg-white dark:border-zinc-700 dark:bg-zinc-900 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="flex w-full items-center justify-between px-4 py-4 text-left transition-colors hover:bg-[#f8f9ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0051d5] dark:hover:bg-zinc-800/50 sm:px-6"
-        >
-          <span className="text-sm font-semibold uppercase tracking-wide text-[#44474f] dark:text-zinc-300">
-            Solicitud de tratamiento
-          </span>
-          <svg
-            className={`h-4 w-4 text-zinc-500 transition-transform dark:text-zinc-400 ${open ? "rotate-180" : ""}`}
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
+        <h2 className="px-4 py-4 text-sm font-semibold text-[#0b1c30] dark:text-zinc-100 sm:px-6">Solicitud</h2>
 
-        {open && (
           <div className="px-4 pb-5 sm:px-6 sm:pb-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               {/* General info */}
@@ -139,7 +117,6 @@ export default function AccordionSolicitud({ detalle, archivos, onStageUpdated }
               </div>
             </div>
           </div>
-        )}
       </div>
 
       <ImageSliderModal
