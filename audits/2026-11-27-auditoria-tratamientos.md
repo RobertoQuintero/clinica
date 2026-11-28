@@ -8,6 +8,16 @@
 
 ## Resumen
 
+### Seguimiento — SPEC 110
+
+Se reforzó la resolución del tratamiento padre de consultas y archivos para rechazar relaciones inexistentes, contradictorias o múltiples. Los egresos, sus comprobantes, los listados y los datos derivados exigen además el origen `TRATAMIENTO` y un tratamiento autorizado. La migración `database/migrations/110-egresos-origen.sql` agrega el campo nullable; el usuario confirmó su aplicación en la base de pruebas. Debe aplicarse antes de desplegar el código que lo utiliza.
+
+La investigación y sus límites están en `audits/2026-11-27-spec110-investigacion.md`. No hubo evidencia suficiente para clasificar los tres egresos históricos observados; permanecen sin clasificar y bloqueados desde Tratamientos. Se generó fuera del repositorio un reporte de identificadores y motivos. No se han identificado todos los posibles escritores externos: deben investigarse y coordinarse para evitar nuevos egresos sin clasificar.
+
+**Verificación:** las 12 pruebas de acceso con dependencias simuladas, TypeScript y ESLint pasaron. `scripts/spec110-sql-control.cjs` ejecutó en SQL Server consultas de autorización extraídas del código sobre tablas temporales con relaciones válidas e inconsistentes y egresos de distintos orígenes; no ejecuta todas las acciones ni demuestra el estado de los datos históricos reales. En navegación local con roles 4 y 5 se comprobaron detalle y controles, consulta de egresos y comprobantes clasificados, ocultación de un egreso ambiguo, rechazo de un tratamiento de otro especialista y rechazo del médico externo ante una sucursal no asignada. El administrador pudo abrir ese tratamiento; el formulario de consulta no ofreció selector de sucursal. La prueba de sucursales y egresos usó registros controlados asociados a un paciente existente en la base de pruebas; el script informó que los retiró, aunque una comprobación independiente posterior falló por sintaxis.
+
+La evidencia reduce el alcance pendiente de A2, pero no acredita por completo el aislamiento de todas las combinaciones históricas y de empresas en ejecución real, ni la invocación directa de todas las acciones de archivos. Las pruebas simuladas no ejecutan SQL. Siguen fuera del alcance la privacidad de las URL, la concurrencia y los demás hallazgos; tampoco se verificaron los datos o escritores externos de producción. La SPEC 110 no modificó pantallas, por lo que no requiere actualizar el manual por cambios adicionales de interfaz.
+
 ### Seguimiento — SPEC 109
 
 Se añadió autorización en las acciones de Tratamientos con el rol, la empresa y las sucursales vigentes del usuario. El acceso al tratamiento se comprueba mediante su consulta inicial; pagos, egresos, recetas, consultas y sus archivos requieren acceso al tratamiento correspondiente. El listado y la búsqueda exigen una sucursal asignada y, para el rol 5, fuerzan el especialista de la sesión. El médico externo puede consultar sus egresos y comprobantes, pero no modificarlos ni acceder a los pagos del paciente. Las restricciones de operación por rol se aplican también en servidor.

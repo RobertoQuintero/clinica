@@ -9,6 +9,9 @@ let user: { id_user: number; id_empresa: number; id_role: number; sucursales_str
 let treatment: { id_paciente: number; id_empresa: number; id_sucursal: number; id_especialista: number } | undefined;
 let parentId: number | undefined;
 let consultation: { id_empresa: number; id_sucursal: number; id_tratamiento: number } | undefined;
+let consultationCandidates: typeof consultation[] | undefined;
+let expenseOrigin: string | null = "TRATAMIENTO";
+let expenseStillAccessible = true;
 let podologoBranches: string | undefined;
 let failQuery = false;
 let authCalls = 0;
@@ -32,11 +35,12 @@ mock.module("@/database/connection", { defaultExport: {
     businessCalls.push({ sql, params });
     if (sql.includes("SELECT c.[id_paciente], c.[id_empresa], c.[id_sucursal], t.[id_especialista]")) return treatment && params?.id_tratamiento === 1 ? [treatment] : [];
     if (sql.includes("SELECT [id_tratamiento] FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]")) return parentId === undefined ? [] : [{ id_tratamiento: parentId }];
-    if (sql.includes("SELECT [id_tabla_referencia], [id_egreso_stage]")) return parentId === undefined ? [] : [{ id_tabla_referencia: parentId, id_egreso_stage: 1 }];
-    if (sql.includes("SELECT c.[id_empresa], c.[id_sucursal], t.[id_tratamiento]")) return consultation ? [consultation] : [];
+    if (sql.includes("SELECT [id_tabla_referencia], [id_egreso_stage]")) return parentId === undefined || expenseOrigin !== "TRATAMIENTO" ? [] : [{ id_tabla_referencia: parentId, id_egreso_stage: 1 }];
+    if (sql.includes("SELECT c.[id_empresa], c.[id_sucursal], t.[id_tratamiento]")) return consultationCandidates ?? (consultation ? [consultation] : []);
     if (sql.includes("INSERT INTO [CentroPodologico].[dbo].[consultas]")) return [{ id_consulta: 42 }];
     if (sql.includes("INSERT INTO [CentroPodologico].[dbo].[archivos]")) return [{ id_archivo: 1 }];
-    if (sql.includes("INSERT INTO [CentroPodologico].[dbo].[Egresos_archivos]")) return [{ id_egreso_archivo: 1 }];
+    if (sql.includes("INSERT INTO [CentroPodologico].[dbo].[Egresos_archivos]")) return expenseStillAccessible ? [{ id_egreso_archivo: 1 }] : [];
+    if (sql.includes("SELECT @@ROWCOUNT AS affected")) return [{ affected: expenseStillAccessible ? 1 : 0 }];
     return [];
   },
   query: async (sql: string) => { businessCalls.push({ sql }); return []; },
@@ -90,7 +94,7 @@ async function main() {
   function reset() {
     token = valid; user = { id_user: 2, id_empresa: 7, id_role: 1, sucursales_string: "1,2", status: 1, deleted_at: null };
     treatment = { id_paciente: 8, id_empresa: 7, id_sucursal: 1, id_especialista: 2 };
-    parentId = 1; consultation = { id_empresa: 7, id_sucursal: 1, id_tratamiento: 1 }; podologoBranches = "1";
+    parentId = 1; consultation = { id_empresa: 7, id_sucursal: 1, id_tratamiento: 1 }; consultationCandidates = undefined; expenseOrigin = "TRATAMIENTO"; expenseStillAccessible = true; podologoBranches = "1";
     failQuery = false; authCalls = 0; businessCalls = []; consumptionCalls = 0;
   }
   const scenarios: [string, () => void, number][] = [
@@ -230,6 +234,59 @@ async function main() {
       await assert.rejects(() => actions.getArchivosByConsulta(1));
     }
     reset(); await actions.getArchivosByConsulta(1);
+  });
+  test("archivos de consulta requieren un único tratamiento candidato autorizado", async () => {
+    const valid = { id_empresa: 7, id_sucursal: 1, id_tratamiento: 1 };
+    for (const candidates of [[], [valid, valid], [valid, { ...valid, id_tratamiento: 99 }]]) {
+      reset(); consultationCandidates = candidates;
+      await assert.rejects(() => actions.getArchivosByConsulta(1));
+      assert.ok(!businessCalls.some(call => call.sql.includes("FROM [CentroPodologico].[dbo].[archivos]")));
+    }
+    reset(); consultationCandidates = [valid]; user!.id_role = 5; treatment!.id_especialista = 3;
+    await assert.rejects(() => actions.getArchivosByConsulta(1));
+    reset(); consultationCandidates = [valid];
+    await actions.getArchivosByConsulta(1);
+    const resolution = businessCalls.find(call => call.sql.includes("SELECT c.[id_empresa], c.[id_sucursal], t.[id_tratamiento]"))!;
+    assert.match(resolution.sql, /t\.\[id_consulta\]\s*=\s*c\.\[id_consulta\]/);
+    assert.match(resolution.sql, /c\.\[id_tratamiento\]\s+IS\s+NULL\s+OR\s+EXISTS/i);
+  });
+  test("origen y tratamiento acreditados protegen egresos y comprobantes", async () => {
+    const originalError = console.error; console.error = () => {};
+    try {
+      for (const origin of [null, "OTRO"]) {
+        reset(); expenseOrigin = origin;
+        await assert.rejects(() => actions.getArchivosByEgreso(1));
+        for (const call of [calls.updateEgreso, calls.deleteEgreso, calls.saveEgresoArchivo]) {
+          assert.equal((await call() as { ok: boolean }).ok, false);
+        }
+        assert.ok(!businessCalls.some(call => /UPDATE \[CentroPodologico\]\.\[dbo\]\.\[Egresos\]|INSERT INTO \[CentroPodologico\]\.\[dbo\]\.\[Egresos_archivos\]/.test(call.sql)));
+        const resolution = businessCalls.find(call => call.sql.includes("SELECT [id_tabla_referencia], [id_egreso_stage]"))!;
+        assert.match(resolution.sql, /\[origen\]\s*=\s*'TRATAMIENTO'/);
+      }
+      for (const setup of [() => { treatment!.id_empresa = 8; }, () => { treatment!.id_sucursal = 3; }, () => { user!.id_role = 5; treatment!.id_especialista = 3; }]) {
+        reset(); setup(); await assert.rejects(() => actions.getArchivosByEgreso(1));
+      }
+      for (const call of [calls.updateEgreso, calls.deleteEgreso, calls.saveEgresoArchivo]) {
+        reset(); expenseStillAccessible = false;
+        assert.equal((await call() as { ok: boolean }).ok, false);
+        const mutation = businessCalls.at(-1)!;
+        assert.match(mutation.sql, /\[origen\]\s*=\s*'TRATAMIENTO'/);
+        assert.match(mutation.sql, /\[id_tabla_referencia\]\s*=\s*@id_tratamiento/);
+        assert.equal(mutation.params?.id_tratamiento, 1);
+      }
+      reset(); await actions.getArchivosByEgreso(1);
+      assert.match(businessCalls.at(-1)!.sql, /DE\.\[origen\]\s*=\s*'TRATAMIENTO'/);
+    } finally { console.error = originalError; }
+  });
+  test("listados y datos derivados consideran únicamente egresos de tratamientos", async () => {
+    reset(); await actions.getEgresosByTratamiento(1);
+    assert.match(businessCalls.at(-1)!.sql, /DE\.\[origen\]\s*=\s*'TRATAMIENTO'/);
+    reset(); await actions.getTratamientos(1);
+    assert.match(businessCalls.at(-1)!.sql, /DE\.origen\s*=\s*'TRATAMIENTO'/i);
+    reset(); assert.equal((await actions.createEgreso(form)).ok, true);
+    const insert = businessCalls.find(call => call.sql.includes("INSERT INTO [CentroPodologico].[dbo].[Egresos]"))!;
+    assert.match(insert.sql, /\[origen\]/);
+    assert.match(insert.sql, /'TRATAMIENTO'/);
   });
   test("creación de consulta deriva datos de origen y valida la asignación del podólogo", async () => {
     const originalError = console.error; console.error = () => {};

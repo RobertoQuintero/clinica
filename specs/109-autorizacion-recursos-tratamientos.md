@@ -66,9 +66,11 @@ Cada paso conservará funcionales las acciones ya protegidas por la SPEC 108 y s
 - [x] El servidor exige los permisos por operación establecidos en la interfaz.
 - [ ] Las consultas históricas y sus archivos requieren acceso a su sucursal.
 - [x] Las nuevas consultas usan paciente, empresa y sucursal de origen y validan al podólogo.
-- [ ] La interfaz refleja los permisos y no permite elegir otra sucursal al crear consultas.
+- [x] La interfaz refleja los permisos y no permite elegir otra sucursal al crear consultas.
 - [x] Pasan las pruebas de acceso, TypeScript y lint de los archivos modificados.
 - [x] La auditoría y el manual afectado, si existe, reflejan los cambios.
+
+**Seguimiento de verificación — SPEC 110:** con roles 4 y 5 se comprobó en navegación la visibilidad de controles, egresos y comprobantes clasificados, la ausencia de pagos y controles de modificación para el médico externo y la ausencia de un selector de sucursal al crear consultas. Con registros controlados también se comprobó el rechazo del médico ante una sucursal no asignada y su acceso a otra asignada. La matriz de otras empresas y el acceso directo a consultas históricas y sus archivos no se verificaron integralmente en ejecución real, por lo que esos criterios permanecen pendientes. Las pruebas simuladas y las consultas SQL sobre tablas temporales aportan cobertura adicional, con los límites detallados en la auditoría.
 
 ## Decisiones tomadas y descartadas
 

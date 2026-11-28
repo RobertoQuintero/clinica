@@ -53,7 +53,13 @@ async function authorizeTreatment(id_tratamiento: number, user: ITreatmentSessio
     `SELECT c.[id_paciente], c.[id_empresa], c.[id_sucursal], t.[id_especialista]
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
        INNER JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_consulta] = t.[id_consulta]
-      WHERE t.[id_tratamiento] = @id_tratamiento`,
+      WHERE t.[id_tratamiento] = @id_tratamiento
+        AND (c.[id_tratamiento] IS NULL OR c.[id_tratamiento] = t.[id_tratamiento])
+        AND NOT EXISTS (
+          SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other
+           WHERE other.[id_consulta] = c.[id_consulta]
+             AND other.[id_tratamiento] <> t.[id_tratamiento]
+        )`,
     { id_tratamiento }
   );
   const treatment = rows[0];
@@ -78,7 +84,7 @@ async function authorizePayment(id_tratamiento_pago: number, user: ITreatmentSes
 async function authorizeExpense(id_egreso: number, user: ITreatmentSession) {
   const rows = await db.queryParams(
     `SELECT [id_tabla_referencia], [id_egreso_stage] FROM [CentroPodologico].[dbo].[Egresos]
-      WHERE [id_egreso] = @id_egreso`,
+      WHERE [id_egreso] = @id_egreso AND [origen] = 'TRATAMIENTO'`,
     { id_egreso }
   );
   if (!rows.length) throw new Error("Sin acceso al egreso");
@@ -100,11 +106,15 @@ async function authorizeConsultation(id_consulta: number, user: ITreatmentSessio
        FROM [CentroPodologico].[dbo].[consultas] c
        INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
          ON t.[id_tratamiento] = c.[id_tratamiento] OR t.[id_consulta] = c.[id_consulta]
-      WHERE c.[id_consulta] = @id_consulta`,
+      WHERE c.[id_consulta] = @id_consulta
+        AND (c.[id_tratamiento] IS NULL OR EXISTS (
+          SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] linked
+           WHERE linked.[id_tratamiento] = c.[id_tratamiento]
+        ))`,
     { id_consulta }
   );
   const consultation = rows[0];
-  if (!consultation || consultation.id_empresa !== user.id_empresa ||
+  if (rows.length !== 1 || !consultation || consultation.id_empresa !== user.id_empresa ||
       !user.sucursales.includes(consultation.id_sucursal)) {
     throw new Error("Sin acceso a la consulta");
   }
@@ -136,13 +146,15 @@ export async function getTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento] and [cancelada] is null) AS num_consultas,
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] c2 WHERE c2.[id_tratamiento] = t.[id_tratamiento] AND c2.[cancelada] IS NULL
+              AND c2.[id_empresa] = @id_empresa AND c2.[id_sucursal] = @id_sucursal
+              AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c2.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])) AS num_consultas,
             isnull((select 
                     top 1
                     es.name
                     from dbo.egresos DE
                     left join dbo.egreso_stages ES on ES.id_egreso_stage=DE.id_egreso_stage
-                    where id_tabla_referencia=t.id_tratamiento
+                    where id_tabla_referencia=t.id_tratamiento and DE.origen='TRATAMIENTO'
                     order by de.created_at desc),'Por pagar') pago_especialista,
             p.[whatsapp] AS whatsapp_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
@@ -150,6 +162,8 @@ export async function getTratamientos(
          ON c.[id_consulta] = t.[id_consulta]
         AND c.[id_sucursal] = @id_sucursal
         AND c.[id_empresa]  = @id_empresa
+        AND (c.[id_tratamiento] IS NULL OR c.[id_tratamiento] = t.[id_tratamiento])
+        AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])
  INNER JOIN [CentroPodologico].[dbo].[pacientes] p
          ON p.[id_paciente] = c.[id_paciente]
   LEFT JOIN [CentroPodologico].[dbo].[users] e
@@ -192,13 +206,17 @@ export async function searchTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento] and [cancelada] is null) AS num_consultas,
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] c2 WHERE c2.[id_tratamiento] = t.[id_tratamiento] AND c2.[cancelada] IS NULL
+              AND c2.[id_empresa] = @id_empresa AND c2.[id_sucursal] = @id_sucursal
+              AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c2.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])) AS num_consultas,
             p.[whatsapp] AS whatsapp_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
         AND c.[id_sucursal] = @id_sucursal
         AND c.[id_empresa]  = @id_empresa
+        AND (c.[id_tratamiento] IS NULL OR c.[id_tratamiento] = t.[id_tratamiento])
+        AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])
  INNER JOIN [CentroPodologico].[dbo].[pacientes] p
          ON p.[id_paciente] = c.[id_paciente]
   LEFT JOIN [CentroPodologico].[dbo].[users] e
@@ -697,6 +715,7 @@ export async function getEgresosByTratamiento(
   LEFT JOIN [CentroPodologico].[dbo].[Users] DU
          ON DU.[id_user] = DE.[id_user_capturo]
       WHERE DE.[status] = 1
+        AND DE.[origen] = 'TRATAMIENTO'
         AND DE.[id_tabla_referencia] = @id_tratamiento
       ORDER BY DE.[created_at] DESC`,
     { id_tratamiento }
@@ -746,11 +765,11 @@ export async function createEgreso(data: {
       INSERT INTO [CentroPodologico].[dbo].[Egresos]
          ( [id_egreso],[id_egreso_tipo],[id_tabla_referencia],[idMetodoPago],
           [iva_bit],[iva],[monto],[created_at],[id_user_capturo],
-          [id_egreso_stage],[referencia],[status])
+          [id_egreso_stage],[referencia],[status],[origen])
        VALUES
          (@id_egreso,@id_egreso_tipo,@id_tratamiento,@idMetodoPago,
           @iva_bit,@iva,@monto,@created_at,@id_user_capturo,
-          1,@referencia,1)`,
+          1,@referencia,1,'TRATAMIENTO')`,
       {
        
         id_egreso_tipo:  Number(data.id_egreso_tipo),
@@ -790,7 +809,7 @@ export async function updateEgreso(data: {
       throw new Error("Sin permiso para cambiar la etapa del egreso");
     }
     const iva = data.iva_bit ? Number(data.monto) * 0.16 : 0;
-    await db.queryParams(
+    const updated = await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Egresos]
           SET [id_egreso_tipo]  = @id_egreso_tipo,
               [idMetodoPago]    = @idMetodoPago,
@@ -799,9 +818,13 @@ export async function updateEgreso(data: {
               [monto]           = @monto,
               [referencia]      = @referencia,
               [id_egreso_stage] = @id_egreso_stage
-        WHERE [id_egreso] = @id_egreso`,
+        WHERE [id_egreso] = @id_egreso
+          AND [origen] = 'TRATAMIENTO'
+          AND [id_tabla_referencia] = @id_tratamiento;
+       SELECT @@ROWCOUNT AS affected`,
       {
         id_egreso:       Number(data.id_egreso),
+        id_tratamiento:  egreso.id_tabla_referencia,
         id_egreso_tipo:  Number(data.id_egreso_tipo),
         idMetodoPago:    Number(data.idMetodoPago),
         iva_bit:         Number(data.iva_bit),
@@ -811,6 +834,7 @@ export async function updateEgreso(data: {
         id_egreso_stage: Number(data.id_egreso_stage),
       }
     );
+    if (!updated[0]?.affected) throw new Error("Sin acceso al egreso");
     return { ok: true };
   } catch (e) {
     console.error(e);
@@ -824,17 +848,21 @@ export async function deleteEgreso(
   try {
     const user = await getActiveUser();
     denyExternal(user);
-    await authorizeExpense(id_egreso, user);
+    const egreso = await authorizeExpense(id_egreso, user);
     const { id_user } = user;
     const deleted_at  = buildDate(new Date());
-    await db.queryParams(
+    const updated = await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Egresos]
           SET [status]         = 0,
               [deleted_at]     = @deleted_at,
               [id_user_elimino] = @id_user_elimino
-        WHERE [id_egreso] = @id_egreso`,
-      { id_egreso, deleted_at, id_user_elimino: id_user }
+        WHERE [id_egreso] = @id_egreso
+          AND [origen] = 'TRATAMIENTO'
+          AND [id_tabla_referencia] = @id_tratamiento;
+       SELECT @@ROWCOUNT AS affected`,
+      { id_egreso, id_tratamiento: egreso.id_tabla_referencia, deleted_at, id_user_elimino: id_user }
     );
+    if (!updated[0]?.affected) throw new Error("Sin acceso al egreso");
     return { ok: true };
   } catch (e) {
     console.error(e);
@@ -845,7 +873,7 @@ export async function deleteEgreso(
 export async function getArchivosByEgreso(
   id_egreso: number
 ): Promise<IEgresoArchivoRow[]> {
-  await authorizeExpense(id_egreso, await getActiveUser());
+  const egreso = await authorizeExpense(id_egreso, await getActiveUser());
   const data = await db.queryParams(
     `SELECT EA.[id_egreso_archivo],
             EA.[id_egreso],
@@ -855,12 +883,16 @@ export async function getArchivosByEgreso(
             EA.[id_user],
             ISNULL(DU.[nombre], '—') AS [user]
        FROM [CentroPodologico].[dbo].[Egresos_archivos] EA
+ INNER JOIN [CentroPodologico].[dbo].[Egresos] DE
+         ON DE.[id_egreso] = EA.[id_egreso]
+        AND DE.[origen] = 'TRATAMIENTO'
+        AND DE.[id_tabla_referencia] = @id_tratamiento
   LEFT JOIN [CentroPodologico].[dbo].[Users] DU
          ON DU.[id_user] = EA.[id_user]
       WHERE EA.[status] = 1
         AND EA.[id_egreso] = @id_egreso
       ORDER BY EA.[created_at] DESC`,
-    { id_egreso }
+    { id_egreso, id_tratamiento: egreso.id_tabla_referencia }
   );
   return data as IEgresoArchivoRow[];
 }
@@ -874,7 +906,7 @@ export async function saveEgresoArchivo(data: {
   try {
     const user = await getActiveUser();
     denyExternal(user);
-    await authorizeExpense(data.id_egreso, user);
+    const egreso = await authorizeExpense(data.id_egreso, user);
     const result = await db.queryParams(
       `
       declare @id_egreso_archivo INT =
@@ -885,16 +917,22 @@ export async function saveEgresoArchivo(data: {
               INSERTED.[url],
               CONVERT(varchar(19), INSERTED.[created_at], 120) AS created_at,
               INSERTED.[status], INSERTED.[id_user]
-       VALUES (@id_egreso_archivo, @id_egreso, @url, @created_at, 1, @id_user)`,
+       SELECT @id_egreso_archivo, @id_egreso, @url, @created_at, 1, @id_user
+        WHERE EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Egresos]
+                       WHERE [id_egreso] = @id_egreso
+                         AND [origen] = 'TRATAMIENTO'
+                         AND [id_tabla_referencia] = @id_tratamiento)`,
       {
         id_egreso:  Number(data.id_egreso),
+        id_tratamiento: egreso.id_tabla_referencia,
         url:        data.url,
         created_at: data.created_at,
         id_user:    Number(data.id_user),
       }
     );
     const row = result?.[0] as IEgresoArchivoRow | undefined;
-    if (row) row.user = "";
+    if (!row) throw new Error("Sin acceso al egreso");
+    row.user = "";
     return { ok: true, data: row };
   } catch (e) {
     console.error(e);
@@ -925,6 +963,11 @@ export async function getConsultasByTratamiento(
        LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = c.[id_podologo]
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s ON s.[id_sucursal] = c.[id_sucursal]
       WHERE c.[id_tratamiento] = @id_tratamiento
+        AND NOT EXISTS (
+          SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other
+           WHERE other.[id_consulta] = c.[id_consulta]
+             AND other.[id_tratamiento] <> @id_tratamiento
+        )
         AND c.[id_empresa] = @id_empresa
         AND c.[id_sucursal] IN (${branchPlaceholders})
         AND c.[deleted_at] IS NULL
