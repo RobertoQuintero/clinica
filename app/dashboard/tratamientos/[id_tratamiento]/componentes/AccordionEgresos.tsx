@@ -40,6 +40,7 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
   const [stages,      setStages]      = useState<{ id_egreso_stage: number; name: string }[]>([]);
   const [metodos,     setMetodos]     = useState<{ idMetodoPago: number; descripcion: string }[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // add
   const [adding,   setAdding]   = useState(false);
@@ -60,8 +61,7 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
       setStages(s);
       setMetodos(m);
       setAddForm({ ...EMPTY_FORM, id_egreso_tipo: t[0]?.id_egreso_tipo ?? 0, idMetodoPago: m[0]?.idMetodoPago ?? 0, id_egreso_stage: s[0]?.id_egreso_stage ?? 0, monto: defMonto });
-      setLoadingData(false);
-    });
+    }).catch(() => setLoadError(true)).finally(() => setLoadingData(false));
   }, [id_tratamiento]);
 
   const handleAddChange = (field: keyof EgresoFormValues, value: number | string) => {
@@ -72,6 +72,7 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
     e.preventDefault();
     setSaving(true);
     setAddError("");
+    try {
     const result = await createEgreso({ id_tratamiento, ...addForm });
     if (result.ok) {
       const rows = await getEgresosByTratamiento(id_tratamiento);
@@ -81,7 +82,11 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
     } else {
       setAddError(result.message ?? "Error al guardar");
     }
-    setSaving(false);
+    } catch {
+      setAddError("No se pudo guardar o actualizar la lista de egresos.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -91,6 +96,8 @@ export default function AccordionEgresos({ id_tratamiento, stage }: Props) {
         <div className="px-4 pb-5 sm:px-6 sm:pb-6">
           {loadingData ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando egresos…</p>
+          ) : loadError ? (
+            <p role="alert" className="text-sm text-red-600">No se pudieron cargar los egresos o ya no tienes acceso.</p>
           ) : (
             <>
               {egresos.length === 0 && !adding && (

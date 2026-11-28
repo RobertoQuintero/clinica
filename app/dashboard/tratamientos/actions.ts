@@ -14,6 +14,16 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET_SEED!);
 interface ITreatmentSession {
   id_user: number;
   id_empresa: number;
+  id_role: number;
+  sucursales: number[];
+}
+
+function parseSucursales(value: unknown): number[] {
+  return typeof value === "string"
+    ? value.split(",").map((item) => item.trim())
+      .filter((item) => /^\d+$/.test(item)).map(Number)
+      .filter((item) => Number.isSafeInteger(item) && item > 0)
+    : [];
 }
 
 async function getActiveUser(): Promise<ITreatmentSession> {
@@ -26,21 +36,99 @@ async function getActiveUser(): Promise<ITreatmentSession> {
     throw new Error("No autenticado");
   }
   const users = await db.queryParams(
-    `SELECT [id_user], [id_empresa]
+    `SELECT [id_user], [id_empresa], [id_role], [sucursales_string]
        FROM [CentroPodologico].[dbo].[users]
       WHERE [id_user] = @id_user AND [status] = 1 AND [deleted_at] IS NULL`,
     { id_user }
   );
   if (!users.length) throw new Error("No autenticado");
-  return { id_user: users[0].id_user, id_empresa: users[0].id_empresa };
+  const user = users[0];
+  const sucursales = parseSucursales(user.sucursales_string);
+  if (!sucursales.length) throw new Error("Sin acceso a sucursales");
+  return { id_user: user.id_user, id_empresa: user.id_empresa, id_role: user.id_role, sucursales };
+}
+
+async function authorizeTreatment(id_tratamiento: number, user: ITreatmentSession) {
+  const rows = await db.queryParams(
+    `SELECT c.[id_paciente], c.[id_empresa], c.[id_sucursal], t.[id_especialista]
+       FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
+       INNER JOIN [CentroPodologico].[dbo].[consultas] c ON c.[id_consulta] = t.[id_consulta]
+      WHERE t.[id_tratamiento] = @id_tratamiento
+        AND (c.[id_tratamiento] IS NULL OR c.[id_tratamiento] = t.[id_tratamiento])
+        AND NOT EXISTS (
+          SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other
+           WHERE other.[id_consulta] = c.[id_consulta]
+             AND other.[id_tratamiento] <> t.[id_tratamiento]
+        )`,
+    { id_tratamiento }
+  );
+  const treatment = rows[0];
+  if (!treatment || treatment.id_empresa !== user.id_empresa ||
+      !user.sucursales.includes(treatment.id_sucursal) ||
+      (user.id_role === 5 && treatment.id_especialista !== user.id_user)) {
+    throw new Error("Sin acceso al tratamiento");
+  }
+  return treatment;
+}
+
+async function authorizePayment(id_tratamiento_pago: number, user: ITreatmentSession) {
+  const rows = await db.queryParams(
+    `SELECT [id_tratamiento] FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
+      WHERE [id_tratamiento_pago] = @id_tratamiento_pago`,
+    { id_tratamiento_pago }
+  );
+  if (!rows.length) throw new Error("Sin acceso al pago");
+  await authorizeTreatment(rows[0].id_tratamiento, user);
+}
+
+async function authorizeExpense(id_egreso: number, user: ITreatmentSession) {
+  const rows = await db.queryParams(
+    `SELECT [id_tabla_referencia], [id_egreso_stage] FROM [CentroPodologico].[dbo].[Egresos]
+      WHERE [id_egreso] = @id_egreso AND [origen] = 'TRATAMIENTO'`,
+    { id_egreso }
+  );
+  if (!rows.length) throw new Error("Sin acceso al egreso");
+  await authorizeTreatment(rows[0].id_tabla_referencia, user);
+  return rows[0];
+}
+
+function requireRole(user: ITreatmentSession, roles: number[]) {
+  if (!roles.includes(user.id_role)) throw new Error("Sin permiso para esta operación");
+}
+
+function denyExternal(user: ITreatmentSession) {
+  if (user.id_role === 5) throw new Error("Sin permiso para esta operación");
+}
+
+async function authorizeConsultation(id_consulta: number, user: ITreatmentSession) {
+  const rows = await db.queryParams(
+    `SELECT c.[id_empresa], c.[id_sucursal], t.[id_tratamiento]
+       FROM [CentroPodologico].[dbo].[consultas] c
+       INNER JOIN [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
+         ON t.[id_tratamiento] = c.[id_tratamiento] OR t.[id_consulta] = c.[id_consulta]
+      WHERE c.[id_consulta] = @id_consulta
+        AND (c.[id_tratamiento] IS NULL OR EXISTS (
+          SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] linked
+           WHERE linked.[id_tratamiento] = c.[id_tratamiento]
+        ))`,
+    { id_consulta }
+  );
+  const consultation = rows[0];
+  if (rows.length !== 1 || !consultation || consultation.id_empresa !== user.id_empresa ||
+      !user.sucursales.includes(consultation.id_sucursal)) {
+    throw new Error("Sin acceso a la consulta");
+  }
+  await authorizeTreatment(consultation.id_tratamiento, user);
 }
 
 export async function getTratamientos(
   id_sucursal: number,
   id_especialista?: number
 ): Promise<ITratamientoOnicomicosisListRow[]> {
-  const { id_empresa } = await getActiveUser();
-  const especialistaFilter = id_especialista != null
+  const { id_empresa, id_role, id_user, sucursales } = await getActiveUser();
+  if (!sucursales.includes(id_sucursal)) throw new Error("Sin acceso a la sucursal");
+  const especialista = id_role === 5 ? id_user : id_especialista;
+  const especialistaFilter = especialista != null
     ? `AND t.[id_especialista] = @id_especialista AND t.[id_stage]<5`
     : ``;
   const data = await db.queryParams(
@@ -58,13 +146,15 @@ export async function getTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento] and [cancelada] is null) AS num_consultas,
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] c2 WHERE c2.[id_tratamiento] = t.[id_tratamiento] AND c2.[cancelada] IS NULL
+              AND c2.[id_empresa] = @id_empresa AND c2.[id_sucursal] = @id_sucursal
+              AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c2.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])) AS num_consultas,
             isnull((select 
                     top 1
                     es.name
                     from dbo.egresos DE
                     left join dbo.egreso_stages ES on ES.id_egreso_stage=DE.id_egreso_stage
-                    where id_tabla_referencia=t.id_tratamiento
+                    where id_tabla_referencia=t.id_tratamiento and DE.origen='TRATAMIENTO'
                     order by de.created_at desc),'Por pagar') pago_especialista,
             p.[whatsapp] AS whatsapp_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
@@ -72,6 +162,8 @@ export async function getTratamientos(
          ON c.[id_consulta] = t.[id_consulta]
         AND c.[id_sucursal] = @id_sucursal
         AND c.[id_empresa]  = @id_empresa
+        AND (c.[id_tratamiento] IS NULL OR c.[id_tratamiento] = t.[id_tratamiento])
+        AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])
  INNER JOIN [CentroPodologico].[dbo].[pacientes] p
          ON p.[id_paciente] = c.[id_paciente]
   LEFT JOIN [CentroPodologico].[dbo].[users] e
@@ -83,7 +175,7 @@ export async function getTratamientos(
       WHERE 1=1
         ${especialistaFilter}
       ORDER BY t.[created_at] DESC`,
-    { id_sucursal, id_empresa, ...(id_especialista != null ? { id_especialista } : {}) }
+    { id_sucursal, id_empresa, ...(especialista != null ? { id_especialista: especialista } : {}) }
   );
   return data as ITratamientoOnicomicosisListRow[];
 }
@@ -93,8 +185,10 @@ export async function searchTratamientos(
   q: string,
   id_especialista?: number
 ): Promise<ITratamientoOnicomicosisListRow[]> {
-  const { id_empresa } = await getActiveUser();
-  const especialistaFilter = id_especialista != null
+  const { id_empresa, id_role, id_user, sucursales } = await getActiveUser();
+  if (!sucursales.includes(id_sucursal)) throw new Error("Sin acceso a la sucursal");
+  const especialista = id_role === 5 ? id_user : id_especialista;
+  const especialistaFilter = especialista != null
     ? `AND t.[id_especialista] = @id_especialista AND t.[id_stage]<5`
     : ``;
   const data = await db.queryParams(
@@ -112,13 +206,17 @@ export async function searchTratamientos(
             ISNULL(s.[name], '—') AS nombre_stage,
             ISNULL(t.[new_message], 0)  AS new_message,
             t.[message],
-            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] WHERE [id_tratamiento] = t.[id_tratamiento] and [cancelada] is null) AS num_consultas,
+            (SELECT COUNT(*) FROM [CentroPodologico].[dbo].[consultas] c2 WHERE c2.[id_tratamiento] = t.[id_tratamiento] AND c2.[cancelada] IS NULL
+              AND c2.[id_empresa] = @id_empresa AND c2.[id_sucursal] = @id_sucursal
+              AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c2.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])) AS num_consultas,
             p.[whatsapp] AS whatsapp_paciente
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] t
  INNER JOIN [CentroPodologico].[dbo].[consultas] c
          ON c.[id_consulta] = t.[id_consulta]
         AND c.[id_sucursal] = @id_sucursal
         AND c.[id_empresa]  = @id_empresa
+        AND (c.[id_tratamiento] IS NULL OR c.[id_tratamiento] = t.[id_tratamiento])
+        AND NOT EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other WHERE other.[id_consulta] = c.[id_consulta] AND other.[id_tratamiento] <> t.[id_tratamiento])
  INNER JOIN [CentroPodologico].[dbo].[pacientes] p
          ON p.[id_paciente] = c.[id_paciente]
   LEFT JOIN [CentroPodologico].[dbo].[users] e
@@ -140,7 +238,7 @@ export async function searchTratamientos(
         AND c.[id_empresa]  = @id_empresa
         ${especialistaFilter}
       ORDER BY t.[created_at] DESC`,
-    { id_sucursal, id_empresa, q, ...(id_especialista != null ? { id_especialista } : {}) }
+    { id_sucursal, id_empresa, q, ...(especialista != null ? { id_especialista: especialista } : {}) }
   );
   return data as ITratamientoOnicomicosisListRow[];
 }
@@ -148,7 +246,7 @@ export async function searchTratamientos(
 export async function getTratamiento(
   id_tratamiento: number
 ): Promise<ITratamientoOnicomicosis | null> {
-  await getActiveUser();
+  await authorizeTreatment(id_tratamiento, await getActiveUser());
   const data = await db.queryParams(
     `SELECT t.[id_tratamiento],
             t.[id_consulta],
@@ -186,7 +284,7 @@ export async function getTratamientoDetalle(
   phone_code:          string | null;
   edad_paciente:       number | null;
 }) | null> {
-  await getActiveUser();
+  await authorizeTreatment(id_tratamiento, await getActiveUser());
   const data = await db.queryParams(
     `SELECT t.[id_tratamiento],
             t.[id_consulta],
@@ -256,7 +354,7 @@ export async function getTratamientoDetalle(
 export async function markTratamientoRevisado(
   id_tratamiento: number
 ): Promise<void> {
-  await getActiveUser();
+  await authorizeTreatment(id_tratamiento, await getActiveUser());
   await db.queryParams(
     `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
         SET [new_message] = 0,
@@ -270,7 +368,11 @@ export async function updateTratamientoStage(
   id_tratamiento: number,
   id_stage: number
 ): Promise<void> {
-  await getActiveUser();
+  const user = await getActiveUser();
+  await authorizeTreatment(id_tratamiento, user);
+  if (user.id_role === 5 ? ![2, 3].includes(id_stage) : ![4, 5, 6].includes(id_stage)) {
+    throw new Error("Sin permiso para esta operación");
+  }
   await db.queryParams(
     `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis]
         SET [id_stage] = @id_stage
@@ -282,7 +384,7 @@ export async function updateTratamientoStage(
 export async function getArchivosByConsulta(
   id_consulta: number
 ): Promise<{ id_archivo: number; ruta: string; categoria: string }[]> {
-  await getActiveUser();
+  await authorizeConsultation(id_consulta, await getActiveUser());
   const data = await db.queryParams(
     `SELECT [id_archivo], [ruta], [categoria]
        FROM [CentroPodologico].[dbo].[archivos]
@@ -307,7 +409,9 @@ export interface IPagoTratamientoRow {
 export async function getPagosByTratamiento(
   id_tratamiento: number
 ): Promise<IPagoTratamientoRow[]> {
-  await getActiveUser();
+  const user = await getActiveUser();
+  denyExternal(user);
+  await authorizeTreatment(id_tratamiento, user);
   const data = await db.queryParams(
     `SELECT p.[id_tratamiento_pago],
             p.[total],
@@ -368,7 +472,10 @@ export async function createPagoTratamiento(data: {
   referencia:     string;
 }): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_user } = await getActiveUser();
+    const user = await getActiveUser();
+    denyExternal(user);
+    await authorizeTreatment(data.id_tratamiento, user);
+    const { id_user } = user;
     const created_at  = buildDate(new Date());
     const webid       = createWebId(10);
 
@@ -405,7 +512,9 @@ export async function createPagoTratamiento(data: {
 }
 
 export async function hasPagoTipo2(id_tratamiento: number): Promise<boolean> {
-  await getActiveUser();
+  const user = await getActiveUser();
+  denyExternal(user);
+  await authorizeTreatment(id_tratamiento, user);
   const rows = await db.queryParams(
     `SELECT TOP 1 1 AS existe
        FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
@@ -421,7 +530,9 @@ export async function deletePagoTratamiento(
   id_tratamiento_pago: number
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    await getActiveUser();
+    const user = await getActiveUser();
+    requireRole(user, [1, 4]);
+    await authorizePayment(id_tratamiento_pago, user);
     await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
           SET [status] = 0
@@ -442,7 +553,9 @@ export async function updatePagoTratamiento(data: {
   referencia:          string;
 }): Promise<{ ok: boolean; message?: string }> {
   try {
-    await getActiveUser();
+    const user = await getActiveUser();
+    requireRole(user, [1, 4]);
+    await authorizePayment(data.id_tratamiento_pago, user);
     await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Tratamiento_onicomicosis_pagos]
           SET [total]        = @total,
@@ -476,7 +589,7 @@ export interface IRecetaTratamiento {
 export async function getRecetasByTratamiento(
   id_tratamiento: number
 ): Promise<IRecetaTratamiento[]> {
-  await getActiveUser();
+  await authorizeTreatment(id_tratamiento, await getActiveUser());
   const data = await db.queryParams(
     `SELECT [id_archivo],
             [ruta],
@@ -499,7 +612,9 @@ export async function saveRecetaTratamiento(data: {
   created_at:     string;
 }): Promise<{ ok: boolean; data?: IRecetaTratamiento; message?: string }> {
   try {
-    await getActiveUser();
+    const user = await getActiveUser();
+    requireRole(user, [1, 4, 5]);
+    await authorizeTreatment(data.id_tratamiento, user);
     const result = await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[archivos]
          ([id_archivo],[id_consulta],[ruta],[tipo],[created_at],[categoria])
@@ -570,7 +685,7 @@ export interface IEgresoArchivoRow {
 export async function getEgresosByTratamiento(
   id_tratamiento: number
 ): Promise<IEgresoRow[]> {
-  await getActiveUser();
+  await authorizeTreatment(id_tratamiento, await getActiveUser());
   const data = await db.queryParams(
     `SELECT DE.[id_egreso],
             DE.[id_egreso_tipo],
@@ -600,6 +715,7 @@ export async function getEgresosByTratamiento(
   LEFT JOIN [CentroPodologico].[dbo].[Users] DU
          ON DU.[id_user] = DE.[id_user_capturo]
       WHERE DE.[status] = 1
+        AND DE.[origen] = 'TRATAMIENTO'
         AND DE.[id_tabla_referencia] = @id_tratamiento
       ORDER BY DE.[created_at] DESC`,
     { id_tratamiento }
@@ -636,7 +752,10 @@ export async function createEgreso(data: {
   id_egreso_stage: number;
 }): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_user } = await getActiveUser();
+    const user = await getActiveUser();
+    requireRole(user, [1, 4]);
+    await authorizeTreatment(data.id_tratamiento, user);
+    const { id_user } = user;
     const created_at  = buildDate(new Date());
     const iva         = data.iva_bit ? Number(data.monto) * 0.16 : 0;
     await db.queryParams(
@@ -646,11 +765,11 @@ export async function createEgreso(data: {
       INSERT INTO [CentroPodologico].[dbo].[Egresos]
          ( [id_egreso],[id_egreso_tipo],[id_tabla_referencia],[idMetodoPago],
           [iva_bit],[iva],[monto],[created_at],[id_user_capturo],
-          [id_egreso_stage],[referencia],[status])
+          [id_egreso_stage],[referencia],[status],[origen])
        VALUES
          (@id_egreso,@id_egreso_tipo,@id_tratamiento,@idMetodoPago,
           @iva_bit,@iva,@monto,@created_at,@id_user_capturo,
-          1,@referencia,1)`,
+          1,@referencia,1,'TRATAMIENTO')`,
       {
        
         id_egreso_tipo:  Number(data.id_egreso_tipo),
@@ -683,9 +802,14 @@ export async function updateEgreso(data: {
   id_egreso_stage: number;
 }): Promise<{ ok: boolean; message?: string }> {
   try {
-    await getActiveUser();
+    const user = await getActiveUser();
+    denyExternal(user);
+    const egreso = await authorizeExpense(data.id_egreso, user);
+    if (![1, 4].includes(user.id_role) && Number(data.id_egreso_stage) !== egreso.id_egreso_stage) {
+      throw new Error("Sin permiso para cambiar la etapa del egreso");
+    }
     const iva = data.iva_bit ? Number(data.monto) * 0.16 : 0;
-    await db.queryParams(
+    const updated = await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Egresos]
           SET [id_egreso_tipo]  = @id_egreso_tipo,
               [idMetodoPago]    = @idMetodoPago,
@@ -694,9 +818,13 @@ export async function updateEgreso(data: {
               [monto]           = @monto,
               [referencia]      = @referencia,
               [id_egreso_stage] = @id_egreso_stage
-        WHERE [id_egreso] = @id_egreso`,
+        WHERE [id_egreso] = @id_egreso
+          AND [origen] = 'TRATAMIENTO'
+          AND [id_tabla_referencia] = @id_tratamiento;
+       SELECT @@ROWCOUNT AS affected`,
       {
         id_egreso:       Number(data.id_egreso),
+        id_tratamiento:  egreso.id_tabla_referencia,
         id_egreso_tipo:  Number(data.id_egreso_tipo),
         idMetodoPago:    Number(data.idMetodoPago),
         iva_bit:         Number(data.iva_bit),
@@ -706,6 +834,7 @@ export async function updateEgreso(data: {
         id_egreso_stage: Number(data.id_egreso_stage),
       }
     );
+    if (!updated[0]?.affected) throw new Error("Sin acceso al egreso");
     return { ok: true };
   } catch (e) {
     console.error(e);
@@ -717,16 +846,23 @@ export async function deleteEgreso(
   id_egreso: number
 ): Promise<{ ok: boolean; message?: string }> {
   try {
-    const { id_user } = await getActiveUser();
+    const user = await getActiveUser();
+    denyExternal(user);
+    const egreso = await authorizeExpense(id_egreso, user);
+    const { id_user } = user;
     const deleted_at  = buildDate(new Date());
-    await db.queryParams(
+    const updated = await db.queryParams(
       `UPDATE [CentroPodologico].[dbo].[Egresos]
           SET [status]         = 0,
               [deleted_at]     = @deleted_at,
               [id_user_elimino] = @id_user_elimino
-        WHERE [id_egreso] = @id_egreso`,
-      { id_egreso, deleted_at, id_user_elimino: id_user }
+        WHERE [id_egreso] = @id_egreso
+          AND [origen] = 'TRATAMIENTO'
+          AND [id_tabla_referencia] = @id_tratamiento;
+       SELECT @@ROWCOUNT AS affected`,
+      { id_egreso, id_tratamiento: egreso.id_tabla_referencia, deleted_at, id_user_elimino: id_user }
     );
+    if (!updated[0]?.affected) throw new Error("Sin acceso al egreso");
     return { ok: true };
   } catch (e) {
     console.error(e);
@@ -737,7 +873,7 @@ export async function deleteEgreso(
 export async function getArchivosByEgreso(
   id_egreso: number
 ): Promise<IEgresoArchivoRow[]> {
-  await getActiveUser();
+  const egreso = await authorizeExpense(id_egreso, await getActiveUser());
   const data = await db.queryParams(
     `SELECT EA.[id_egreso_archivo],
             EA.[id_egreso],
@@ -747,12 +883,16 @@ export async function getArchivosByEgreso(
             EA.[id_user],
             ISNULL(DU.[nombre], '—') AS [user]
        FROM [CentroPodologico].[dbo].[Egresos_archivos] EA
+ INNER JOIN [CentroPodologico].[dbo].[Egresos] DE
+         ON DE.[id_egreso] = EA.[id_egreso]
+        AND DE.[origen] = 'TRATAMIENTO'
+        AND DE.[id_tabla_referencia] = @id_tratamiento
   LEFT JOIN [CentroPodologico].[dbo].[Users] DU
          ON DU.[id_user] = EA.[id_user]
       WHERE EA.[status] = 1
         AND EA.[id_egreso] = @id_egreso
       ORDER BY EA.[created_at] DESC`,
-    { id_egreso }
+    { id_egreso, id_tratamiento: egreso.id_tabla_referencia }
   );
   return data as IEgresoArchivoRow[];
 }
@@ -764,7 +904,9 @@ export async function saveEgresoArchivo(data: {
   created_at: string;
 }): Promise<{ ok: boolean; data?: IEgresoArchivoRow; message?: string }> {
   try {
-    await getActiveUser();
+    const user = await getActiveUser();
+    denyExternal(user);
+    const egreso = await authorizeExpense(data.id_egreso, user);
     const result = await db.queryParams(
       `
       declare @id_egreso_archivo INT =
@@ -775,16 +917,22 @@ export async function saveEgresoArchivo(data: {
               INSERTED.[url],
               CONVERT(varchar(19), INSERTED.[created_at], 120) AS created_at,
               INSERTED.[status], INSERTED.[id_user]
-       VALUES (@id_egreso_archivo, @id_egreso, @url, @created_at, 1, @id_user)`,
+       SELECT @id_egreso_archivo, @id_egreso, @url, @created_at, 1, @id_user
+        WHERE EXISTS (SELECT 1 FROM [CentroPodologico].[dbo].[Egresos]
+                       WHERE [id_egreso] = @id_egreso
+                         AND [origen] = 'TRATAMIENTO'
+                         AND [id_tabla_referencia] = @id_tratamiento)`,
       {
         id_egreso:  Number(data.id_egreso),
+        id_tratamiento: egreso.id_tabla_referencia,
         url:        data.url,
         created_at: data.created_at,
         id_user:    Number(data.id_user),
       }
     );
     const row = result?.[0] as IEgresoArchivoRow | undefined;
-    if (row) row.user = "";
+    if (!row) throw new Error("Sin acceso al egreso");
+    row.user = "";
     return { ok: true, data: row };
   } catch (e) {
     console.error(e);
@@ -797,7 +945,10 @@ export async function saveEgresoArchivo(data: {
 export async function getConsultasByTratamiento(
   id_tratamiento: number
 ): Promise<IConsulta[]> {
-  await getActiveUser();
+  const user = await getActiveUser();
+  await authorizeTreatment(id_tratamiento, user);
+  const branchParams = Object.fromEntries(user.sucursales.map((id, index) => [`sucursal${index}`, id]));
+  const branchPlaceholders = user.sucursales.map((_, index) => `@sucursal${index}`).join(", ");
   const data = await db.queryParams(
     `SELECT c.[id_consulta], c.[id_paciente], c.[id_podologo],
             CONVERT(varchar(19), c.[fecha], 120) AS fecha,
@@ -812,9 +963,16 @@ export async function getConsultasByTratamiento(
        LEFT JOIN [CentroPodologico].[dbo].[users] u ON u.[id_user] = c.[id_podologo]
        LEFT JOIN [CentroPodologico].[dbo].[sucursales] s ON s.[id_sucursal] = c.[id_sucursal]
       WHERE c.[id_tratamiento] = @id_tratamiento
+        AND NOT EXISTS (
+          SELECT 1 FROM [CentroPodologico].[dbo].[Tratamiento_onicomicosis] other
+           WHERE other.[id_consulta] = c.[id_consulta]
+             AND other.[id_tratamiento] <> @id_tratamiento
+        )
+        AND c.[id_empresa] = @id_empresa
+        AND c.[id_sucursal] IN (${branchPlaceholders})
         AND c.[deleted_at] IS NULL
       ORDER BY c.[fecha] DESC`,
-    { id_tratamiento }
+    { id_tratamiento, id_empresa: user.id_empresa, ...branchParams }
   );
   return data as IConsulta[];
 }
@@ -831,7 +989,18 @@ export async function createConsultaOnicomicosis(form: {
   id_tratamiento:       number;
 }): Promise<{ ok: boolean; id_consulta?: number; message?: string }> {
   try {
-    await getActiveUser();
+    const user = await getActiveUser();
+    denyExternal(user);
+    const treatment = await authorizeTreatment(form.id_tratamiento, user);
+    const podologos = await db.queryParams(
+      `SELECT [sucursales_string] FROM [CentroPodologico].[dbo].[users]
+        WHERE [id_user] = @id_podologo AND [id_empresa] = @id_empresa
+          AND [status] = 1 AND [deleted_at] IS NULL`,
+      { id_podologo: form.id_podologo, id_empresa: treatment.id_empresa }
+    );
+    if (!podologos.length || !parseSucursales(podologos[0].sucursales_string).includes(treatment.id_sucursal)) {
+      return { ok: false, message: "El podólogo no está asignado a la sucursal del tratamiento" };
+    }
     const created_at = buildDate(new Date());
     const result = await db.queryParams(
       `INSERT INTO [CentroPodologico].[dbo].[consultas]
@@ -846,7 +1015,7 @@ export async function createConsultaOnicomicosis(form: {
          @costo_total,@id_sucursal,@id_empresa,1,@id_tratamiento
        )`,
       {
-        id_paciente:          form.id_paciente,
+        id_paciente:          treatment.id_paciente,
         id_podologo:          form.id_podologo,
         fecha:                toDBString(created_at) ?? created_at,
         diagnostico:          form.diagnostico,
@@ -854,8 +1023,8 @@ export async function createConsultaOnicomicosis(form: {
         observaciones:        form.observaciones,
         created_at,
         costo_total:          form.costo_total,
-        id_sucursal:          form.id_sucursal,
-        id_empresa:           form.id_empresa,
+        id_sucursal:          treatment.id_sucursal,
+        id_empresa:           treatment.id_empresa,
         id_tratamiento:       form.id_tratamiento,
       }
     );
@@ -874,8 +1043,8 @@ export async function createConsultaOnicomicosis(form: {
 
       await applyConsultationConsumption({
         id_consulta: newConsulta.id_consulta,
-        id_sucursal: form.id_sucursal,
-        id_empresa:  form.id_empresa,
+        id_sucursal: treatment.id_sucursal,
+        id_empresa:  treatment.id_empresa,
         id_user:     form.id_podologo,
       });
 

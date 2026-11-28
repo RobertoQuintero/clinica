@@ -79,14 +79,15 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [recetas,   setRecetas  ] = useState<IRecetaTratamiento[]>([]);
   const [loading,   setLoading  ] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error,     setError    ] = useState<string | null>(null);
 
   useEffect(() => {
     getRecetasByTratamiento(id_tratamiento).then((rows) => {
       setRecetas(rows);
-      setLoading(false);
-    });
+    }).catch(() => { setLoadError(true); setError("No se pudieron cargar las recetas o ya no tienes acceso."); })
+      .finally(() => setLoading(false));
   }, [id_tratamiento]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,7 +225,7 @@ export default function AccordionRecetas({ id_tratamiento, nombre_paciente, nomb
           {/* list */}
           {loading ? (
             <p className="text-sm text-zinc-400">Cargando…</p>
-          ) : recetas.length === 0 ? (
+          ) : loadError ? null : recetas.length === 0 ? (
             <p className="text-sm text-zinc-400">Sin recetas registradas.</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-[#c4c6d0] dark:border-zinc-700">

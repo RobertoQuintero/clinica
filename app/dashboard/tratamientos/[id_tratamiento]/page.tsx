@@ -12,7 +12,6 @@ import {
   getConsultasByTratamiento,
   createConsultaOnicomicosis,
 } from "@/app/dashboard/tratamientos/actions";
-import { getSucursalesActivas } from "@/app/dashboard/pacientes/[id]/expediente/actions";
 import ConsultaModal from "@/app/dashboard/pacientes/[id]/expediente/componentes/ConsultaModal";
 import { ITratamientoOnicomicosis } from "@/interfaces/tratamiento_onicomicosis";
 import AccordionSolicitud from "./componentes/AccordionSolicitud";
@@ -23,7 +22,6 @@ import AccordionConsultas from "./componentes/AccordionConsultas";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { IConsulta } from "@/interfaces/consulta";
-import { ISucursal } from "@/interfaces/sucursal";
 import { IUser } from "@/interfaces/user";
 import { getPodologos } from "@/app/dashboard/citas/actions";
 import { getSucursalCalendarios } from "@/app/dashboard/sucursales/actions";
@@ -95,7 +93,7 @@ export default function TratamientoDetallePage({ params }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("solicitud");
 
-  const { user }                          = useAuth();
+  const { user, isLoading: authLoading }  = useAuth();
   const { selectedId } = useSucursal();
   const { data: calendarios } = useAsyncData([selectedId], () => getSucursalCalendarios(selectedId));
 
@@ -121,10 +119,9 @@ export default function TratamientoDetallePage({ params }: Props) {
   const [consultaForm,        setConsultaForm       ] = useState<IConsulta>(EMPTY_CONSULTA);
   const [savingConsulta,      setSavingConsulta     ] = useState(false);
   const [errorConsulta,       setErrorConsulta      ] = useState<string | null>(null);
-  const [sucursales,          setSucursales         ] = useState<ISucursal[]>([]);
-  const [sucursalesLoaded,    setSucursalesLoaded   ] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     getTratamientoDetalle(id_tratamiento).then(async (row) => {
       if (!row) {
         setNotFound(true);
@@ -132,7 +129,7 @@ export default function TratamientoDetallePage({ params }: Props) {
         setDetalle(row as DetailRow);
         const [imgs, tienePago, consultas] = await Promise.all([
           getArchivosByConsulta(row.id_consulta),
-          hasPagoTipo2(id_tratamiento),
+          user.id_role === 5 ? Promise.resolve(false) : hasPagoTipo2(id_tratamiento),
           getConsultasByTratamiento(id_tratamiento),
         ]);
         setArchivos(imgs);
@@ -144,7 +141,7 @@ export default function TratamientoDetallePage({ params }: Props) {
       setLoadError(true);
       setLoading(false);
     });
-  }, [id_tratamiento]);
+  }, [id_tratamiento, user]);
 
   useEffect(() => {
     getPodologos().then(setPodologos).catch(console.error);
@@ -152,11 +149,6 @@ export default function TratamientoDetallePage({ params }: Props) {
 
   const openCrearConsulta = async () => {
     if (!detalle) return;
-    if (!sucursalesLoaded) {
-      const data = await getSucursalesActivas();
-      setSucursales(data);
-      setSucursalesLoaded(true);
-    }
     setConsultaForm({
       ...EMPTY_CONSULTA,
       id_paciente:    detalle.id_paciente,
@@ -212,6 +204,10 @@ export default function TratamientoDetallePage({ params }: Props) {
       setSavingConsulta(false);
     }
   };
+
+  if (!authLoading && !user) {
+    return <p role="alert" className="m-4 text-red-700 dark:text-red-400">No se pudo verificar la sesión.</p>;
+  }
 
   if (loading) {
     return <p role="status" className="m-4 rounded-xl border border-[#c4c6d0] bg-white p-6 text-sm text-[#44474f] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 sm:m-6">Cargando…</p>;
@@ -415,7 +411,8 @@ export default function TratamientoDetallePage({ params }: Props) {
           saving={savingConsulta}
           error={errorConsulta}
           podologos={podologos}
-          sucursales={sucursales}
+          sucursales={[]}
+          ocultarSucursal
           currentUser={user ?? undefined}
           onChange={handleConsultaChange}
           onPodologoChange={handleConsultaPodologoChange}

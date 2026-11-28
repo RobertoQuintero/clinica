@@ -39,7 +39,7 @@ export default function EgresoItem({
   onUpdated,
 }: EgresoItemProps) {
   const { user } = useAuth();
-  const canModify = user?.id_role !== 5;
+  const canModify = !!user && user.id_role !== 5;
 
   const [editing,     setEditing]     = useState(false);
   const [editForm,    setEditForm]    = useState<EgresoFormValues>({
