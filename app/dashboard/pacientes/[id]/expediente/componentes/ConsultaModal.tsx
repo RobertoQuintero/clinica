@@ -27,6 +27,7 @@ interface Props {
   podologos: IUser[];
   sucursales: ISucursal[];
   currentUser?: IAuthUser;
+  ocultarSucursal?: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onPodologoChange: (id: number) => void;
   onSucursalChange: (id: number) => void;
@@ -34,7 +35,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function ConsultaModal({ form, saving, error, podologos, sucursales, currentUser, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
+export default function ConsultaModal({ form, saving, error, podologos, sucursales, currentUser, ocultarSucursal = false, onChange, onPodologoChange, onSucursalChange, onSubmit, onClose }: Props) {
   const isNew             = form.id_consulta === 0;
   const isFinalized       = !isNew && !!form.fecha_fin;
   const isPodologoRole    = currentUser?.id_role === 2;
@@ -136,7 +137,7 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
             </label>
           )}
 
-          <label className="flex flex-col gap-1">
+          {!ocultarSucursal && <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sucursal</span>
             <input
               type="text"
@@ -157,7 +158,7 @@ export default function ConsultaModal({ form, saving, error, podologos, sucursal
                 ))}
               </datalist>
             )}
-          </label>
+          </label>}
 
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Podólogo</span>

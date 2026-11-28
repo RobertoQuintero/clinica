@@ -46,6 +46,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
   const [metodos, setMetodos]           = useState<{ idMetodoPago: number; descripcion: string }[]>([]);
   const [defaultTotal, setDefaultTotal] = useState(0);
   const [loadingData, setLoadingData]   = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // Add payment form
   const [addingPago, setAddingPago]   = useState(false);
@@ -74,8 +75,7 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
       setMetodos(mets);
       setDefaultTotal(defTotal);
       setPagoForm({ total: defTotal, idMetodoPago: mets[0]?.idMetodoPago ?? 0, referencia: "" });
-      setLoadingData(false);
-    });
+    }).catch(() => setLoadError(true)).finally(() => setLoadingData(false));
   }, [id_tratamiento]);
 
   const handleAddPago = async (e: React.FormEvent) => {
@@ -150,6 +150,8 @@ export default function AccordionPagos({ id_tratamiento, nombre_paciente, onFirs
           <div className="px-4 pb-5 sm:px-6 sm:pb-6">
             {loadingData ? (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Cargando pagos…</p>
+            ) : loadError ? (
+              <p role="alert" className="text-sm text-red-600">No se pudieron cargar los pagos o ya no tienes acceso.</p>
             ) : (
               <>
                 {/* Payments table */}

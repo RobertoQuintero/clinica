@@ -52,6 +52,7 @@ export interface EgresoArchivosProps {
 
 export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivosProps) {
   const { user } = useAuth();
+  const canUpload = !!user && user.id_role !== 5;
   const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,10 +65,16 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
 
   const load = async () => {
     setLoading(true);
-    const rows = await getArchivosByEgreso(egreso.id_egreso);
-    setArchivos(rows);
-    setLoaded(true);
-    setLoading(false);
+    setError(null);
+    try {
+      const rows = await getArchivosByEgreso(egreso.id_egreso);
+      setArchivos(rows);
+      setLoaded(true);
+    } catch {
+      setError("No se pudieron cargar los archivos o ya no tienes acceso.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggle = () => {
@@ -77,7 +84,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !canUpload) return;
     setError(null);
     setUploading(true);
     try {
@@ -121,7 +128,6 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
       const stage = egreso.id_egreso_stage;
       let newStage: number | null = null;
       if ((role === 1 || role === 4) && stage === 1) newStage = 2;
-      else if (role === 5 && stage === 2) newStage = 3;
 
       if (newStage !== null) {
         const stageResult = await updateEgreso({
@@ -148,7 +154,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
   return (
     <div className="mt-3 rounded-lg border border-[#c4c6d0] dark:border-zinc-700">
       {/* file inputs: visually hidden but NOT display:none — Chrome freezes on display:none inputs */}
-      <input
+      {canUpload && <><input
         id={`egreso-file-${egreso.id_egreso}`}
         ref={fileInputRef}
         type="file"
@@ -164,7 +170,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
         capture="environment"
         style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", borderWidth: 0 }}
         onChange={handleUpload}
-      />
+      /></>}
 
       <button
         type="button"
@@ -184,7 +190,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
 
       {open && (
         <div className="border-t border-[#c4c6d0] dark:border-zinc-700 px-4 py-3 space-y-3">
-          <div className="flex justify-end gap-2">
+          {canUpload && <div className="flex justify-end gap-2">
 
             {/* Foto — label triggers the camera input natively, no scripted .click() needed */}
             <label
@@ -222,7 +228,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
                 </>
               )}
             </label>
-          </div>
+          </div>}
 
           {error && (
             <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-900/30 dark:text-red-400">{error}</p>
@@ -230,7 +236,7 @@ export default function EgresoArchivos({ egreso, onStageUpdated }: EgresoArchivo
 
           {loading ? (
             <p className="text-xs text-zinc-400">Cargando…</p>
-          ) : archivos.length === 0 ? (
+          ) : !loaded ? null : archivos.length === 0 ? (
             <p className="text-xs text-zinc-400">Sin archivos registrados.</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-[#c4c6d0] dark:border-zinc-700">
